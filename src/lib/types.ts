@@ -1,6 +1,7 @@
 export interface Company {
   id: string;
   name: string;
+  slug?: string;
   created_at: string;
 }
 
@@ -47,5 +48,23 @@ export interface Job {
   location: string;
   terminal: string;
   status: JobStatus;
+  created_at: string;
+}
+
+export const APPLICANT_STATUSES = ["applied", "reviewing", "interviewing", "offer", "hired", "rejected"] as const;
+
+export type ApplicantStatus = (typeof APPLICANT_STATUSES)[number];
+
+export interface Applicant {
+  id: string;
+  company_id: string;
+  job_id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  terminal_preference: string;
+  experience: string;
+  resume_url: string | null;
+  status: ApplicantStatus;
   created_at: string;
 }

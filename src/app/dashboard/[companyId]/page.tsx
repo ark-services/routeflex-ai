@@ -64,12 +64,20 @@ export default async function DashboardPage({
           </p>
         </div>
 
-        <Link
-          href={`/dashboard/${companyId}/jobs`}
-          className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors"
-        >
-          View Jobs &rarr;
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/dashboard/${companyId}/jobs`}
+            className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors"
+          >
+            View Jobs &rarr;
+          </Link>
+          <Link
+            href={`/dashboard/${companyId}/applicants`}
+            className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors"
+          >
+            View Applicants &rarr;
+          </Link>
+        </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
