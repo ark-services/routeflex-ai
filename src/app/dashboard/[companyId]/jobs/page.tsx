@@ -1,16 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { addCandidate, updateCandidateStage } from "./actions";
-import { StageSelect } from "./stage-select";
+import { addJob } from "./actions";
+import { NewJobForm } from "./new-job-form";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import Link from "next/link";
-import type { Candidate } from "@/lib/types";
+import type { Job } from "@/lib/types";
 
-export default async function DashboardPage({
+export default async function JobsPage({
   params,
   searchParams,
 }: {
@@ -41,65 +38,41 @@ export default async function DashboardPage({
   };
   const canEdit = membership.role === "owner" || membership.role === "admin";
 
-  const { data: candidates } = await supabase
-    .from("candidates")
+  const { data: jobs } = await supabase
+    .from("jobs")
     .select("*")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
-  const rows = (candidates ?? []) as Candidate[];
+  const rows = (jobs ?? []) as Job[];
+
+  const statusColor: Record<string, string> = {
+    open: "bg-emerald-100 text-emerald-700",
+    paused: "bg-amber-100 text-amber-700",
+    closed: "bg-stone-100 text-stone-500",
+  };
 
   return (
     <>
       <Header companyName={company.name} companyId={companyId} />
 
       <section className="space-y-10 pb-16">
-        {/* Page heading */}
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
-            {company.name}
-          </h1>
-          <p className="text-stone-500">
-            {user.email} &middot; <Badge>{membership.role}</Badge>
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+              Jobs
+            </h1>
+            <p className="text-stone-500">{company.name}</p>
+          </div>
         </div>
-
-        <Link
-          href={`/dashboard/${companyId}/jobs`}
-          className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors"
-        >
-          View Jobs &rarr;
-        </Link>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        {/* Add candidate form — owners/admins only */}
-        {canEdit && (
-          <Card className="p-6 space-y-4">
-            <h2 className="text-sm font-semibold text-stone-900">
-              Add candidate
-            </h2>
-            <form action={addCandidate}>
-              <input type="hidden" name="companyId" value={companyId} />
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <Input name="firstName" placeholder="First name" required />
-                <Input name="lastName" placeholder="Last name" required />
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="Email (optional)"
-                />
-                <Input name="phone" placeholder="Phone (optional)" />
-              </div>
-              <Button type="submit">Add candidate</Button>
-            </form>
-          </Card>
-        )}
+        {canEdit && <NewJobForm companyId={companyId} action={addJob} />}
 
-        {/* Candidates table */}
         {rows.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-stone-400">No candidates yet.</p>
+            <p className="text-stone-400">No jobs yet.</p>
           </div>
         ) : (
           <Card className="overflow-hidden">
@@ -107,45 +80,40 @@ export default async function DashboardPage({
               <thead>
                 <tr className="border-b border-stone-200/60 text-left">
                   <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Name
+                    Title
                   </th>
                   <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Email
+                    Location
                   </th>
                   <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Phone
+                    Terminal
                   </th>
                   <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Stage
+                    Status
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((c) => (
+                {rows.map((job) => (
                   <tr
-                    key={c.id}
+                    key={job.id}
                     className="border-b border-stone-100 last:border-0"
                   >
                     <td className="px-5 py-3.5 font-medium text-stone-900">
-                      {c.first_name} {c.last_name}
+                      {job.title}
                     </td>
                     <td className="px-5 py-3.5 text-stone-500">
-                      {c.email ?? "—"}
+                      {job.location || "—"}
                     </td>
                     <td className="px-5 py-3.5 text-stone-500">
-                      {c.phone ?? "—"}
+                      {job.terminal || "—"}
                     </td>
                     <td className="px-5 py-3.5">
-                      {canEdit ? (
-                        <StageSelect
-                          companyId={companyId}
-                          candidateId={c.id}
-                          currentStage={c.stage}
-                          action={updateCandidateStage}
-                        />
-                      ) : (
-                        <Badge>{c.stage}</Badge>
-                      )}
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[job.status] ?? ""}`}
+                      >
+                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                      </span>
                     </td>
                   </tr>
                 ))}

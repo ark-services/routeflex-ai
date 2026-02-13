@@ -34,3 +34,18 @@ export interface Candidate {
   stage: Stage;
   created_at: string;
 }
+
+export const JOB_STATUSES = ["open", "paused", "closed"] as const;
+
+export type JobStatus = (typeof JOB_STATUSES)[number];
+
+export interface Job {
+  id: string;
+  company_id: string;
+  title: string;
+  slug: string;
+  location: string;
+  terminal: string;
+  status: JobStatus;
+  created_at: string;
+}

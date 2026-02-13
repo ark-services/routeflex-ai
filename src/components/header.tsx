@@ -33,6 +33,14 @@ export function Header({
               Dashboard
             </Link>
           )}
+          {companyId && (
+            <Link
+              href={`/dashboard/${companyId}/jobs`}
+              className="text-stone-500 hover:text-stone-900 transition-colors"
+            >
+              Jobs
+            </Link>
+          )}
         </nav>
       </div>
       <div className="flex items-center gap-4">
