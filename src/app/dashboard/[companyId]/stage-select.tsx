@@ -25,7 +25,7 @@ export function StageSelect({
         name="stage"
         defaultValue={currentStage}
         onChange={() => formRef.current?.requestSubmit()}
-        className="rounded border px-2 py-1 text-sm bg-transparent"
+        className="rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-sm text-stone-700 transition-colors focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
       >
         {STAGES.map((s) => (
           <option key={s} value={s}>
