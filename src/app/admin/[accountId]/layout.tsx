@@ -20,7 +20,7 @@ export default async function AdminLayout({
   ];
 
   return (
-    <>
+    <div className="mx-auto max-w-5xl px-6 sm:px-8">
       <Header companyName={membership.account.name} />
       <section className="space-y-8 pb-16">
         <div className="border-b border-stone-200/60 pb-4">
@@ -35,6 +35,6 @@ export default async function AdminLayout({
         </div>
         {children}
       </section>
-    </>
+    </div>
   );
 }

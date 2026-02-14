@@ -15,16 +15,36 @@ export default async function Home() {
 
   if (!user) redirect("/login");
 
-  // Fetch companies the user belongs to
-  const { data: memberships } = await supabase
-    .from("company_members")
-    .select("company_id, role, companies(id, name)")
+  // Fetch companies the user can access via account membership
+  const { data: accountMemberships, error: membershipError } = await supabase
+    .from("account_memberships")
+    .select("account_id, role")
     .eq("user_id", user.id);
 
-  const companies = (memberships ?? []).map((m) => ({
-    id: (m.companies as unknown as { id: string; name: string }).id,
-    name: (m.companies as unknown as { id: string; name: string }).name,
-    role: m.role,
+  if (membershipError) {
+    console.error("Error fetching account memberships", membershipError);
+  }
+
+  const accountIds = (accountMemberships ?? []).map((m) => m.account_id);
+
+  const { data: companiesData, error: companiesError } = await supabase
+    .from("companies")
+    .select("id, name, account_id")
+    .in("account_id", accountIds.length ? accountIds : ["00000000-0000-0000-0000-000000000000"]);
+
+  if (companiesError) {
+    console.error("Error fetching companies", companiesError);
+  }
+
+  // Role is account-scoped in v1; use the membership role for all companies in that account
+  const roleByAccount = new Map(
+    (accountMemberships ?? []).map((m) => [m.account_id, m.role] as const)
+  );
+
+  const companies = (companiesData ?? []).map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+    role: roleByAccount.get(c.account_id as string) ?? "member",
   }));
 
   // Auto-redirect if exactly one company
@@ -35,7 +55,7 @@ export default async function Home() {
   // Zero companies — no access
   if (companies.length === 0) {
     return (
-      <>
+      <div className="mx-auto max-w-5xl px-6 sm:px-8">
         <Header />
         <section className="py-16 sm:py-24">
           <div className="mx-auto max-w-md text-center space-y-4">
@@ -43,7 +63,7 @@ export default async function Home() {
               No access
             </h1>
             <p className="text-stone-500 leading-relaxed">
-              You have not been invited to any company. Please ask an
+              You do not have access to any company yet. Please ask an account
               administrator to add you.
             </p>
             <p className="text-sm text-stone-400">
@@ -54,13 +74,13 @@ export default async function Home() {
             </form>
           </div>
         </section>
-      </>
+      </div>
     );
   }
 
   // Multiple companies — show selector
   return (
-    <>
+    <div className="mx-auto max-w-5xl px-6 sm:px-8">
       <Header />
       <section className="py-16 sm:py-24">
         <div className="mx-auto max-w-md space-y-8">
@@ -86,6 +106,6 @@ export default async function Home() {
           </ul>
         </div>
       </section>
-    </>
+    </div>
   );
 }
