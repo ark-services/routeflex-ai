@@ -4,8 +4,8 @@ import { addJob } from "./actions";
 import { NewJobForm } from "./new-job-form";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import type { Job } from "@/lib/types";
+import Link from "next/link";
 
 export default async function JobsPage({
   params,
@@ -25,7 +25,7 @@ export default async function JobsPage({
 
   const { data: membership } = await supabase
     .from("company_members")
-    .select("role, companies(id, name)")
+    .select("role, companies(id, name, slug)")
     .eq("company_id", companyId)
     .eq("user_id", user.id)
     .single();
@@ -35,6 +35,7 @@ export default async function JobsPage({
   const company = membership.companies as unknown as {
     id: string;
     name: string;
+    slug: string;
   };
   const canEdit = membership.role === "owner" || membership.role === "admin";
 
@@ -97,10 +98,16 @@ export default async function JobsPage({
                 {rows.map((job) => (
                   <tr
                     key={job.id}
-                    className="border-b border-stone-100 last:border-0"
+                    className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60"
                   >
                     <td className="px-5 py-3.5 font-medium text-stone-900">
-                      {job.title}
+                      <Link
+                        href={`/apply/${company.slug}/${job.slug}`}
+                        className="hover:underline underline-offset-4"
+                        title="Open public application page"
+                      >
+                        {job.title}
+                      </Link>
                     </td>
                     <td className="px-5 py-3.5 text-stone-500">
                       {job.location || "—"}

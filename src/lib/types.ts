@@ -68,3 +68,47 @@ export interface Applicant {
   status: ApplicantStatus;
   created_at: string;
 }
+
+// Monday-style board types
+
+export interface BoardGroup {
+  id: string;
+  company_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export const COLUMN_TYPES = ["text", "number", "date", "file", "status"] as const;
+export type ColumnType = (typeof COLUMN_TYPES)[number];
+
+export interface BoardColumn {
+  id: string;
+  board_id: string;
+  company_id: string;
+  name: string;
+  type: ColumnType;
+  settings: any; // jsonb
+  sort_order: number;
+  is_system: boolean;
+  created_at: string;
+}
+
+export interface BoardStatusLabel {
+  id: string;
+  column_id: string;
+  label: string;
+  color: string;
+  sort_order: number;
+}
+
+export interface BoardCell {
+  id: string;
+  applicant_id: string;
+  column_id: string;
+  value_text: string | null;
+  value_number: number | null;
+  value_date: string | null;
+  value_status_label_id: string | null;
+  created_at: string;
+}

@@ -1,9 +1,6 @@
-import { redirect } from "next/navigation";
+import ApplicantsBoard from "./ApplicantsBoard";
 import { createClient } from "@/lib/supabase/server";
-import { Header } from "@/components/header";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { Applicant } from "@/lib/types";
+import { seedDefaultBoardColumns } from "./actions";
 
 export default async function ApplicantsPage({
   params,
@@ -12,122 +9,84 @@ export default async function ApplicantsPage({
 }) {
   const { companyId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  // Seed default columns if needed
+  await seedDefaultBoardColumns(companyId);
 
-  const { data: membership } = await supabase
-    .from("company_members")
-    .select("role, companies(id, name)")
+  const { data: groups, error: groupErr } = await supabase
+    .from("board_groups")
+    .select("id,name,sort_order")
     .eq("company_id", companyId)
-    .eq("user_id", user.id)
-    .single();
+    .order("sort_order", { ascending: true });
 
-  if (!membership) redirect("/");
+  if (groupErr) throw new Error(groupErr.message);
 
-  const company = membership.companies as unknown as {
-    id: string;
-    name: string;
-  };
-
-  const { data: applicants } = await supabase
+  const { data: applicants, error: appErr } = await supabase
     .from("applicants")
-    .select("*, jobs(title)")
+    .select(
+      "id,full_name,email,phone,status,created_at,resume_path,group_id,jobs(title)"
+    )
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
-  const rows = (applicants ?? []) as (Applicant & {
-    jobs: { title: string };
-  })[];
+  if (appErr) throw new Error(appErr.message);
 
-  const statusColor: Record<string, string> = {
-    applied: "bg-blue-100 text-blue-700",
-    reviewing: "bg-amber-100 text-amber-700",
-    interviewing: "bg-purple-100 text-purple-700",
-    offer: "bg-emerald-100 text-emerald-700",
-    hired: "bg-green-100 text-green-700",
-    rejected: "bg-stone-100 text-stone-500",
-  };
+  // Fetch board columns
+  const { data: columns, error: colErr } = await supabase
+    .from("board_columns")
+    .select("id,board_id,name,type,is_system,sort_order")
+    .eq("company_id", companyId)
+    .order("sort_order", { ascending: true });
+
+  if (colErr) throw new Error(colErr.message);
+
+  // Fetch status labels for all status-type columns
+  const statusColumnIds = (columns ?? [])
+    .filter((c) => c.type === "status")
+    .map((c) => c.id);
+
+  let statusLabels: any[] = [];
+  if (statusColumnIds.length > 0) {
+    const { data: labels, error: labelErr } = await supabase
+      .from("board_status_labels")
+      .select("id,column_id,label,color,sort_order")
+      .in("column_id", statusColumnIds)
+      .order("sort_order", { ascending: true });
+
+    if (labelErr) throw new Error(labelErr.message);
+    statusLabels = labels ?? [];
+  }
+
+  // Fetch all cell values for applicants
+  const applicantIds = (applicants ?? []).map((a) => a.id);
+  let cells: any[] = [];
+  if (applicantIds.length > 0) {
+    const { data: cellData, error: cellErr } = await supabase
+      .from("board_cells")
+      .select("applicant_id,column_id,value_text,value_number,value_date,value_status_label_id")
+      .in("applicant_id", applicantIds);
+
+    if (cellErr) throw new Error(cellErr.message);
+    cells = cellData ?? [];
+  }
 
   return (
-    <>
-      <Header companyName={company.name} companyId={companyId} />
+    <div className="mx-auto w-full max-w-7xl px-6 py-12">
+      <h1 className="text-4xl font-semibold tracking-tight text-stone-900">
+        Applicants
+      </h1>
+      <p className="mt-1 text-stone-500">Monday-style board view</p>
 
-      <section className="space-y-10 pb-16">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
-            Applicants
-          </h1>
-          <p className="text-stone-500">{company.name}</p>
-        </div>
-
-        {rows.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-stone-400">No applicants yet.</p>
-          </div>
-        ) : (
-          <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stone-200/60 text-left">
-                  <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Name
-                  </th>
-                  <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Job
-                  </th>
-                  <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Email
-                  </th>
-                  <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Phone
-                  </th>
-                  <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Status
-                  </th>
-                  <th className="px-5 py-3 text-xs font-medium uppercase tracking-wider text-stone-400">
-                    Applied
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((applicant) => (
-                  <tr
-                    key={applicant.id}
-                    className="border-b border-stone-100 last:border-0"
-                  >
-                    <td className="px-5 py-3.5 font-medium text-stone-900">
-                      {applicant.full_name}
-                    </td>
-                    <td className="px-5 py-3.5 text-stone-500">
-                      {applicant.jobs.title}
-                    </td>
-                    <td className="px-5 py-3.5 text-stone-500">
-                      {applicant.email}
-                    </td>
-                    <td className="px-5 py-3.5 text-stone-500">
-                      {applicant.phone}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor[applicant.status] ?? ""}`}
-                      >
-                        {applicant.status.charAt(0).toUpperCase() +
-                          applicant.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-stone-500">
-                      {new Date(applicant.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        )}
-      </section>
-    </>
+      <div className="mt-10">
+        <ApplicantsBoard
+          companyId={companyId}
+          groups={(groups ?? []) as any}
+          applicants={(applicants ?? []) as any}
+          columns={(columns ?? []) as any}
+          statusLabels={statusLabels}
+          cells={cells}
+        />
+      </div>
+    </div>
   );
 }
