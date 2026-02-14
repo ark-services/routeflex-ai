@@ -9,7 +9,25 @@ export interface CompanyMember {
   id: string;
   company_id: string;
   user_id: string;
-  role: "owner" | "admin" | "member";
+  role: "owner" | "admin" | "member" | "viewer";
+  created_at: string;
+}
+
+// Account types
+export interface Account {
+  id: string;
+  name: string;
+  plan_type: "basic" | "pro" | "enterprise";
+  max_seats: number;
+  billing_anchor_day: number;
+  created_at: string;
+}
+
+export interface AccountMembership {
+  id: string;
+  account_id: string;
+  user_id: string;
+  role: "admin" | "member" | "viewer";
   created_at: string;
 }
 

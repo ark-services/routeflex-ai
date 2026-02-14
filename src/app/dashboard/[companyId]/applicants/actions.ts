@@ -477,6 +477,19 @@ export async function updateBoardCell(
 ) {
   const supabase = await createClient();
 
+  // For status columns, fetch old value before update
+  let oldStatusLabelId: string | null = null;
+  if (columnType === "status") {
+    const { data: existingCell } = await supabase
+      .from("board_cells")
+      .select("value_status_label_id")
+      .eq("applicant_id", applicantId)
+      .eq("column_id", columnId)
+      .single();
+
+    oldStatusLabelId = existingCell?.value_status_label_id ?? null;
+  }
+
   // Map value to appropriate column based on type
   const cellData: any = {
     applicant_id: applicantId,
@@ -504,6 +517,27 @@ export async function updateBoardCell(
     });
 
   if (error) throw new Error(error.message);
+
+  // TRIGGER AUTOMATION: Detect status change and dispatch
+  if (columnType === "status" && oldStatusLabelId !== value) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: company } = await supabase.from("companies").select("account_id").eq("id", companyId).single();
+
+    // Non-blocking dispatch
+    fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/.*$/, '') || 'http://localhost:3000'}/api/automations/dispatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accountId: company?.account_id,
+        companyId,
+        applicantId,
+        columnId,
+        oldStatusLabelId,
+        newStatusLabelId: value,
+        userId: user?.id,
+      }),
+    }).catch((err) => console.error('Failed to dispatch automation:', err));
+  }
 
   revalidatePath(dashPath(companyId));
 }
