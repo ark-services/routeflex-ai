@@ -44,17 +44,38 @@ export default function PublicApplicationForm({
 
     const formData = new FormData(e.currentTarget);
 
+    // Client-side validation for required fields
+    const requiredFields = fields.filter(f => f.required);
+    for (const field of requiredFields) {
+      const value = formData.get(field.key);
+
+      if (field.type === 'file') {
+        if (!value || !(value instanceof File) || value.size === 0) {
+          setError(`${field.label} is required`);
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (!value || (typeof value === 'string' && !value.trim())) {
+        setError(`${field.label} is required`);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
+      console.log('[Form] Submitting application...');
       const result = await submitApplication(jobId, token, formData);
 
       if (result.error) {
+        console.error('[Form] Submission failed:', result.error);
         setError(result.error);
         setIsSubmitting(false);
       } else {
+        console.log('[Form] Submission successful:', result.applicantId);
         setSubmitted(true);
       }
     } catch (err) {
-      console.error("Submission error:", err);
+      console.error('[Form] Unexpected submission error:', err);
       setError("An unexpected error occurred. Please try again.");
       setIsSubmitting(false);
     }
@@ -101,13 +122,17 @@ export default function PublicApplicationForm({
 
       {fields.map((field) => (
         <div key={field.field_id}>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor={field.key}
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             {field.label}
             {field.required && <span className="text-red-500 ml-1">*</span>}
           </label>
 
           {field.type === "text" && (
             <input
+              id={field.key}
               type="text"
               name={field.key}
               required={field.required}
@@ -117,6 +142,7 @@ export default function PublicApplicationForm({
 
           {field.type === "textarea" && (
             <textarea
+              id={field.key}
               name={field.key}
               required={field.required}
               rows={field.settings?.rows || 4}
@@ -126,6 +152,7 @@ export default function PublicApplicationForm({
 
           {field.type === "email" && (
             <input
+              id={field.key}
               type="email"
               name={field.key}
               required={field.required}
@@ -135,6 +162,7 @@ export default function PublicApplicationForm({
 
           {field.type === "phone" && (
             <input
+              id={field.key}
               type="tel"
               name={field.key}
               required={field.required}
@@ -144,6 +172,7 @@ export default function PublicApplicationForm({
 
           {field.type === "number" && (
             <input
+              id={field.key}
               type="number"
               name={field.key}
               required={field.required}
@@ -155,6 +184,7 @@ export default function PublicApplicationForm({
 
           {field.type === "date" && (
             <input
+              id={field.key}
               type="date"
               name={field.key}
               required={field.required}
@@ -165,6 +195,7 @@ export default function PublicApplicationForm({
           {field.type === "file" && (
             <div>
               <input
+                id={field.key}
                 type="file"
                 name={field.key}
                 required={field.required}
@@ -176,12 +207,16 @@ export default function PublicApplicationForm({
                   Accepted formats: {field.settings.accept}
                 </p>
               )}
+              <p className="text-xs text-gray-500 mt-1">
+                Maximum file size: 10MB
+              </p>
             </div>
           )}
 
           {field.type === "checkbox" && (
             <div className="flex items-center gap-2">
               <input
+                id={field.key}
                 type="checkbox"
                 name={field.key}
                 required={field.required}
@@ -196,13 +231,16 @@ export default function PublicApplicationForm({
               {field.settings.options.map((option: string, idx: number) => (
                 <div key={idx} className="flex items-center gap-2">
                   <input
+                    id={`${field.key}-${idx}`}
                     type="radio"
                     name={field.key}
                     value={option}
                     required={field.required}
                     className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                   />
-                  <span className="text-sm text-gray-700">{option}</span>
+                  <label htmlFor={`${field.key}-${idx}`} className="text-sm text-gray-700">
+                    {option}
+                  </label>
                 </div>
               ))}
             </div>
@@ -210,6 +248,7 @@ export default function PublicApplicationForm({
 
           {field.type === "select" && field.settings?.options && (
             <select
+              id={field.key}
               name={field.key}
               required={field.required}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"

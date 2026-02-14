@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { uploadResume } from "@/lib/storage/resumeUpload";
 
 /**
  * Submit a public job application.
@@ -26,6 +27,18 @@ export async function submitApplication(
     },
   });
 
+  // Log FormData entries for debugging (mask sensitive values)
+  const formDataEntries = Array.from(formData.entries()).map(([key, value]) => {
+    if (key.toLowerCase().includes('password') || key.toLowerCase().includes('ssn')) {
+      return [key, '[REDACTED]'];
+    }
+    if (value instanceof File) {
+      return [key, `File: ${value.name} (${value.size} bytes)`];
+    }
+    return [key, typeof value === 'string' ? value.substring(0, 100) : value];
+  });
+  console.log('[Application Submit] FormData entries:', formDataEntries);
+
   // Validate token and get form details using the helper function
   const { data: formDetails, error: formError } = await supabase.rpc(
     "get_public_form_by_token",
@@ -33,10 +46,16 @@ export async function submitApplication(
   );
 
   if (formError || !formDetails || formDetails.length === 0) {
+    console.error('[Application Submit] Invalid token:', { token, formError });
     return { error: "Invalid application form link" };
   }
 
   const form = formDetails[0];
+  console.log('[Application Submit] Form loaded:', {
+    formId: form.form_id,
+    jobId: form.job_id,
+    companyId: form.company_id
+  });
 
   // Get form fields using the helper function
   const { data: fieldsData, error: fieldsError } = await supabase.rpc(
@@ -45,64 +64,91 @@ export async function submitApplication(
   );
 
   if (fieldsError || !fieldsData) {
+    console.error('[Application Submit] Failed to load fields:', fieldsError);
     return { error: "Failed to load form fields" };
   }
 
   const fields = fieldsData;
+  console.log('[Application Submit] Fields loaded:', {
+    count: fields.length,
+    fieldKeys: fields.map((f: any) => ({ key: f.key, type: f.type, required: f.required }))
+  });
 
   // Validate required fields
   for (const field of fields) {
     if (field.required) {
       const value = formData.get(field.key);
-      if (!value || (typeof value === "string" && !value.trim())) {
-        return { error: `${field.label} is required` };
+
+      // Special handling for file fields
+      if (field.type === 'file') {
+        if (!value || !(value instanceof File) || value.size === 0) {
+          console.error('[Application Submit] Required file missing:', field.key);
+          return { error: `${field.label} is required` };
+        }
+      } else {
+        // For non-file fields
+        if (!value || (typeof value === "string" && !value.trim())) {
+          console.error('[Application Submit] Required field missing:', field.key);
+          return { error: `${field.label} is required` };
+        }
       }
     }
   }
 
   try {
     // Get the board for this job
-    const { data: board } = await supabase
+    const { data: board, error: boardError } = await supabase
       .from("boards")
       .select("id")
       .eq("job_id", jobId)
       .eq("name", "Applicants")
       .single();
 
-    if (!board) {
+    if (boardError || !board) {
+      console.error('[Application Submit] Board not found:', { jobId, boardError });
       return { error: "Application board not found" };
     }
 
     // Get the "New Applicants" group
-    const { data: group } = await supabase
+    const { data: group, error: groupError } = await supabase
       .from("board_groups")
       .select("id")
       .eq("board_id", board.id)
       .eq("name", "New Applicants")
       .single();
 
-    if (!group) {
+    if (groupError || !group) {
+      console.error('[Application Submit] Default group not found:', { boardId: board.id, groupError });
       return { error: "Default group not found" };
     }
 
     // Handle resume upload if present
     let resumePath: string | null = null;
     const resumeField = fields.find((f: any) => f.type === "file" && f.key === "resume");
-    if (resumeField) {
-      const resumeFile = formData.get("resume") as File | null;
-      if (resumeFile && resumeFile.size > 0) {
-        // Upload to Supabase Storage
-        const fileName = `${form.company_id}/${jobId}/${Date.now()}-${resumeFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("resumes")
-          .upload(fileName, resumeFile);
 
-        if (uploadError) {
-          console.error("Resume upload failed:", uploadError);
-          return { error: "Failed to upload resume" };
+    if (resumeField) {
+      const resumeFile = formData.get("resume");
+
+      if (resumeFile && resumeFile instanceof File && resumeFile.size > 0) {
+        console.log('[Application Submit] Processing resume upload');
+
+        const uploadResult = await uploadResume(
+          supabase,
+          resumeFile,
+          form.company_id,
+          jobId
+        );
+
+        if (!uploadResult.success) {
+          console.error('[Application Submit] Resume upload failed:', uploadResult.error);
+          return { error: uploadResult.error || "Failed to upload resume. Please try again." };
         }
 
-        resumePath = fileName;
+        resumePath = uploadResult.path!;
+        console.log('[Application Submit] Resume uploaded successfully:', resumePath);
+      } else if (resumeField.required) {
+        console.error('[Application Submit] Required resume missing');
+        return { error: `${resumeField.label} is required` };
       }
     }
 
@@ -116,6 +162,8 @@ export async function submitApplication(
     // Get email and phone from form data
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
+
+    console.log('[Application Submit] Creating applicant:', { fullName, email, phone });
 
     // Create the applicant
     const { data: applicant, error: applicantError } = await supabase
@@ -136,51 +184,137 @@ export async function submitApplication(
       .single();
 
     if (applicantError) {
-      console.error("Failed to create applicant:", applicantError);
-      return { error: "Failed to submit application" };
+      console.error('[Application Submit] Failed to create applicant:', applicantError);
+      return { error: "Failed to submit application. Please try again." };
     }
 
-    // Save field values
+    console.log('[Application Submit] Applicant created:', applicant.id);
+
+    // Save field values - build key->id mapping for accurate field resolution
+    const fieldKeyToId = new Map<string, string>();
+    fields.forEach((field: any) => {
+      fieldKeyToId.set(field.key, field.field_id);
+    });
+
     const fieldValues = [];
+
     for (const field of fields) {
       const value = formData.get(field.key);
-      if (!value) continue;
 
       const fieldValue: any = {
         applicant_id: applicant.id,
-        field_id: field.field_id,
+        field_id: field.field_id, // Use field_id from RPC result
       };
 
       // Map value to appropriate column based on field type
       if (field.type === "number") {
-        fieldValue.value_number = parseFloat(value as string);
+        const numValue = value ? parseFloat(value as string) : null;
+        if (numValue !== null && !isNaN(numValue)) {
+          fieldValue.value_number = numValue;
+          fieldValues.push(fieldValue);
+        } else if (field.required) {
+          console.error('[Application Submit] Required number field missing or invalid:', field.key);
+          // Rollback applicant creation
+          await supabase.from("applicants").delete().eq("id", applicant.id);
+          return { error: `${field.label} must be a valid number` };
+        }
       } else if (field.type === "date") {
-        fieldValue.value_date = value as string;
+        if (value && typeof value === 'string' && value.trim()) {
+          fieldValue.value_date = value;
+          fieldValues.push(fieldValue);
+        } else if (field.required) {
+          console.error('[Application Submit] Required date field missing:', field.key);
+          await supabase.from("applicants").delete().eq("id", applicant.id);
+          return { error: `${field.label} is required` };
+        }
       } else if (field.type === "checkbox") {
+        // Checkboxes: checked = "on", unchecked = null
+        // Always save checkbox state (true or false)
         fieldValue.value_bool = value === "on" || value === "true";
+        fieldValues.push(fieldValue);
       } else if (field.type === "file") {
-        fieldValue.value_file_path = resumePath;
+        // File field: save the storage path
+        if (resumePath) {
+          fieldValue.value_file_path = resumePath;
+          fieldValues.push(fieldValue);
+        } else if (field.required) {
+          console.error('[Application Submit] Required file missing:', field.key);
+          await supabase.from("applicants").delete().eq("id", applicant.id);
+          return { error: `${field.label} is required` };
+        }
+        // If optional and no file, don't add a value row
       } else {
-        fieldValue.value_text = value as string;
-      }
-
-      fieldValues.push(fieldValue);
-    }
-
-    if (fieldValues.length > 0) {
-      const { error: valuesError } = await supabase
-        .from("applicant_field_values")
-        .insert(fieldValues);
-
-      if (valuesError) {
-        console.error("Failed to save field values:", valuesError);
-        // Don't fail the entire submission if field values fail
+        // Text, email, phone, textarea, select, radio, etc.
+        if (value && typeof value === 'string' && value.trim()) {
+          fieldValue.value_text = value;
+          fieldValues.push(fieldValue);
+        } else if (field.required) {
+          console.error('[Application Submit] Required text field missing:', field.key);
+          await supabase.from("applicants").delete().eq("id", applicant.id);
+          return { error: `${field.label} is required` };
+        }
+        // Optional fields with no value are not saved
       }
     }
+
+    console.log('[Application Submit] Field values to insert:', {
+      count: fieldValues.length,
+      values: fieldValues.map(v => ({
+        field_id: v.field_id,
+        hasText: !!v.value_text,
+        hasNumber: !!v.value_number,
+        hasDate: !!v.value_date,
+        hasBool: v.value_bool !== undefined,
+        hasFile: !!v.value_file_path
+      }))
+    });
+
+    // CRITICAL: Ensure we have at least one field value to insert
+    if (fieldValues.length === 0) {
+      console.error('[Application Submit] CRITICAL: No field values to insert!');
+      // Rollback applicant creation
+      await supabase.from("applicants").delete().eq("id", applicant.id);
+      return {
+        error: "Application submission failed: No form data received. Please fill out the form and try again."
+      };
+    }
+
+    // Insert field values
+    const { data: insertedValues, error: valuesError } = await supabase
+      .from("applicant_field_values")
+      .insert(fieldValues)
+      .select();
+
+    if (valuesError) {
+      console.error('[Application Submit] CRITICAL: Failed to save field values:', valuesError);
+      // Rollback applicant creation
+      await supabase.from("applicants").delete().eq("id", applicant.id);
+      return {
+        error: "Failed to save application data. Please try again or contact support."
+      };
+    }
+
+    // Verify that we actually inserted rows
+    const insertedCount = insertedValues?.length || 0;
+    console.log('[Application Submit] Field values inserted:', insertedCount);
+
+    if (insertedCount === 0) {
+      console.error('[Application Submit] CRITICAL: Insert returned 0 rows!');
+      // Rollback applicant creation
+      await supabase.from("applicants").delete().eq("id", applicant.id);
+      return {
+        error: "Failed to save application data. Please try again or contact support."
+      };
+    }
+
+    console.log('[Application Submit] SUCCESS:', {
+      applicantId: applicant.id,
+      fieldsInserted: insertedCount
+    });
 
     return { success: true, applicantId: applicant.id };
   } catch (error) {
-    console.error("Application submission error:", error);
-    return { error: "An unexpected error occurred" };
+    console.error('[Application Submit] Unexpected error:', error);
+    return { error: "An unexpected error occurred. Please try again." };
   }
 }
