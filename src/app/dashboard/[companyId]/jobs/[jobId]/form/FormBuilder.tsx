@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFormField, updateFormField, deleteFormField } from "./actions";
 
 type FormField = {
@@ -37,10 +37,20 @@ export default function FormBuilder({
   const [showShareModal, setShowShareModal] = useState(false);
   const [showAddField, setShowAddField] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
+  const [publicUrl, setPublicUrl] = useState<string>("");
 
-  const publicUrl = `${window.location.origin}/apply/${jobId}/${form.public_token}`;
+  // Set publicUrl on client side only to avoid SSR "window is not defined" error
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPublicUrl(`${window.location.origin}/apply/${jobId}/${form.public_token}`);
+    }
+  }, [jobId, form.public_token]);
 
   const handleCopyLink = () => {
+    if (!publicUrl) {
+      console.warn("Public URL not yet available");
+      return;
+    }
     navigator.clipboard.writeText(publicUrl);
     alert("Link copied to clipboard!");
   };
@@ -275,7 +285,8 @@ export default function FormBuilder({
                 />
                 <button
                   onClick={handleCopyLink}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 whitespace-nowrap"
+                  disabled={!publicUrl}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Copy Link
                 </button>

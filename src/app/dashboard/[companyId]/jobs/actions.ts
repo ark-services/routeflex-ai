@@ -88,25 +88,40 @@ export async function addJob(formData: FormData) {
     console.log(`[addJob] Created board ${boardId} for job ${job.id}`);
 
     // ========================================================================
-    // STEP 3: Create application form
+    // STEP 3: Create application form (idempotent - check if exists first)
     // ========================================================================
-    const { data: form, error: formErr } = await supabase
+    // Check if form already exists for this job
+    const { data: existingForm } = await supabase
       .from("job_application_forms")
-      .insert({
-        job_id: job.id,
-        company_id: companyId,
-        title: `${title} Application`,
-        description: `Apply for the ${title} position`,
-      })
       .select("id, public_token")
-      .single();
+      .eq("job_id", job.id)
+      .maybeSingle();
 
-    if (formErr || !form?.id) {
-      console.error("[addJob] Failed to create application form:", formErr);
-      throw formErr || new Error("Form creation failed");
+    let form = existingForm;
+
+    if (!form) {
+      // Create new form
+      const { data: newForm, error: formErr } = await supabase
+        .from("job_application_forms")
+        .insert({
+          job_id: job.id,
+          company_id: companyId,
+          title: `${title} Application`,
+          description: `Apply for the ${title} position`,
+        })
+        .select("id, public_token")
+        .single();
+
+      if (formErr || !newForm?.id) {
+        console.error("[addJob] Failed to create application form:", formErr);
+        throw formErr || new Error("Form creation failed");
+      }
+
+      form = newForm;
+      console.log(`[addJob] Created form ${form.id} with token ${form.public_token}`);
+    } else {
+      console.log(`[addJob] Using existing form ${form.id}`);
     }
-
-    console.log(`[addJob] Created form ${form.id} with token ${form.public_token}`);
 
     // ========================================================================
     // STEP 4: Create default form fields using helper function

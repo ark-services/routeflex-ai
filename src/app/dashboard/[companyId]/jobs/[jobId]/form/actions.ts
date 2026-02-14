@@ -18,9 +18,10 @@ export async function getApplicationForm(companyId: string, jobId: string) {
     .select("id, job_id, company_id, public_token, title, description, settings")
     .eq("company_id", companyId)
     .eq("job_id", jobId)
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
+  if (!form) throw new Error("Application form not found for this job");
   return form;
 }
 

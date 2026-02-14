@@ -27,7 +27,7 @@ export async function submitApplication(
   });
 
   // Validate token and get form details using the helper function
-  const { data: formData: formDetails, error: formError } = await supabase.rpc(
+  const { data: formDetails, error: formError } = await supabase.rpc(
     "get_public_form_by_token",
     { token }
   );
