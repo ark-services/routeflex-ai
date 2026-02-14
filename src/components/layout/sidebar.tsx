@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard } from "lucide-react";
-import type { Job } from "@/lib/types";
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, MoreVertical } from "lucide-react";
+import type { Job, Company } from "@/lib/types";
+import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
 
 interface SidebarProps {
   companyId: string;
+  companies: Company[];
   jobs: Job[];
   canCreateJob: boolean;
   onCreateJob: () => void;
@@ -14,12 +16,15 @@ interface SidebarProps {
 
 export function Sidebar({
   companyId,
+  companies,
   jobs,
   canCreateJob,
   onCreateJob,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [jobSelectOpen, setJobSelectOpen] = useState(false);
+  const [applicantsMenuOpen, setApplicantsMenuOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const params = useParams();
 
@@ -32,6 +37,64 @@ export function Sidebar({
   const handleJobChange = (jobId: string) => {
     setJobSelectOpen(false);
     router.push(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
+  };
+
+  const handleViewApplicationPage = () => {
+    if (!currentJob) return;
+
+    // Get the current company's slug
+    const currentCompany = companies.find((c) => c.id === companyId);
+    if (!currentCompany) return;
+
+    const companySlug = currentCompany.slug;
+    const jobSlug = currentJob.slug;
+
+    // Open in new tab
+    window.open(`/apply/${companySlug}/${jobSlug}`, '_blank');
+    setApplicantsMenuOpen(false);
+  };
+
+  const handleRenameBoard = () => {
+    const newName = prompt("Enter new name for the Applicants board:", "Applicants");
+    if (!newName || newName.trim() === "") return;
+
+    startTransition(async () => {
+      const result = await renameApplicantsBoard(companyId, newName.trim());
+      if (result.error) {
+        alert(result.error);
+      } else {
+        router.refresh();
+      }
+      setApplicantsMenuOpen(false);
+    });
+  };
+
+  const handleDuplicateBoard = () => {
+    if (!confirm("Duplicate the Applicants board configuration (groups and columns)?")) return;
+
+    startTransition(async () => {
+      const result = await duplicateApplicantsBoard(companyId);
+      if (result.error) {
+        alert(result.error);
+      } else {
+        router.refresh();
+      }
+      setApplicantsMenuOpen(false);
+    });
+  };
+
+  const handleDeleteBoard = () => {
+    if (!confirm("Delete the Applicants board? This will remove all board configuration (groups, columns, and cell data). This cannot be undone.")) return;
+
+    startTransition(async () => {
+      const result = await deleteApplicantsBoard(companyId);
+      if (result.error) {
+        alert(result.error);
+      } else {
+        router.refresh();
+      }
+      setApplicantsMenuOpen(false);
+    });
   };
 
   if (collapsed) {
@@ -129,17 +192,85 @@ export function Sidebar({
           {/* Nested Navigation - Applicants */}
           {hasJobs && currentJobId && (
             <div className="ml-3 mt-2 space-y-1">
-              <button
-                onClick={() =>
-                  router.push(
-                    `/dashboard/${companyId}/jobs/${currentJobId}/applicants`
-                  )
-                }
-                className="w-full text-left px-3 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-lg transition-colors flex items-center gap-2"
-              >
-                <LayoutDashboard className="h-4 w-4 text-stone-500" />
-                Applicants
-              </button>
+              <div className="relative group">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() =>
+                    router.push(
+                      `/dashboard/${companyId}/jobs/${currentJobId}/applicants`
+                    )
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(
+                        `/dashboard/${companyId}/jobs/${currentJobId}/applicants`
+                      );
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-lg transition-colors flex items-center gap-2 cursor-pointer select-none"
+                >
+                  <LayoutDashboard className="h-4 w-4 text-stone-500" />
+                  <span className="flex-1">Applicants</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setApplicantsMenuOpen(!applicantsMenuOpen);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-stone-200 rounded transition-opacity"
+                    title="More actions"
+                    aria-haspopup="menu"
+                    aria-expanded={applicantsMenuOpen}
+                  >
+                    <MoreVertical className="h-3 w-3 text-stone-600" />
+                  </button>
+                </div>
+
+                {/* Kebab Menu Dropdown */}
+                {applicantsMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setApplicantsMenuOpen(false)}
+                    />
+                    <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-stone-200 bg-white shadow-lg z-20">
+                      <div className="py-1">
+                        <button
+                          onClick={handleViewApplicationPage}
+                          disabled={isPending}
+                          className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                        >
+                          View application page
+                        </button>
+                        <button
+                          onClick={handleRenameBoard}
+                          disabled={isPending}
+                          className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={handleDuplicateBoard}
+                          disabled={isPending}
+                          className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                        >
+                          Duplicate
+                        </button>
+                        <div className="my-1 border-t border-stone-100" />
+                        <button
+                          onClick={handleDeleteBoard}
+                          disabled={isPending}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

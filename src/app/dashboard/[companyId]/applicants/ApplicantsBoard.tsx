@@ -94,6 +94,7 @@ const PRESET_COLORS = [
 
 export default function ApplicantsBoard({
   companyId,
+  boardId,
   groups,
   applicants,
   columns,
@@ -101,6 +102,7 @@ export default function ApplicantsBoard({
   cells,
 }: {
   companyId: string;
+  boardId?: string;
   groups: Group[];
   applicants: ApplicantRow[];
   columns: BoardColumn[];
@@ -288,23 +290,25 @@ export default function ApplicantsBoard({
 
   function onCreateGroup() {
     const name = newGroupName.trim();
-    if (!name) return;
+    if (!name || !boardId) return;
 
     startTransition(async () => {
-      await createGroup(companyId, name);
+      await createGroup(companyId, boardId, name);
       setNewGroupName("");
     });
   }
 
   function onToggleGroupCollapse(groupId: string, currentCollapsed: boolean) {
+    if (!boardId) return;
     startTransition(async () => {
-      await toggleGroupCollapse(companyId, groupId, !currentCollapsed);
+      await toggleGroupCollapse(companyId, boardId, groupId, !currentCollapsed);
     });
   }
 
   function onUpdateGroupColor(groupId: string, color: string) {
+    if (!boardId) return;
     startTransition(async () => {
-      await updateGroupColor(companyId, groupId, color);
+      await updateGroupColor(companyId, boardId, groupId, color);
       setColorPickerGroupId(null);
     });
   }

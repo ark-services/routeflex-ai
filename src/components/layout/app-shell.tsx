@@ -48,6 +48,7 @@ export function AppShell({
       <div className="flex-1 flex overflow-hidden">
         <Sidebar
           companyId={currentCompanyId}
+          companies={companies}
           jobs={jobs}
           canCreateJob={canCreateJob}
           onCreateJob={() => setShowCreateJob(true)}

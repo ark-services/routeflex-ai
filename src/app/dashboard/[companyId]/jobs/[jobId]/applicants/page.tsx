@@ -47,12 +47,25 @@ export default async function ApplicantsPage({
   if (!job) redirect(`/dashboard/${companyId}`);
 
   // Seed default columns if needed
-  await seedDefaultBoardColumns(companyId);
+  await seedDefaultBoardColumns(companyId, jobId);
+
+  // Get the board ID for this job
+  const { data: board } = await supabase
+    .from("boards")
+    .select("id")
+    .eq("company_id", companyId)
+    .or('name.eq.Applicants,name.ilike.%Applicants%')
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .single();
+
+  if (!board) throw new Error("Applicants board not found");
 
   const { data: groups, error: groupErr } = await supabase
     .from("board_groups")
     .select("id,name,sort_order,color,is_collapsed")
     .eq("company_id", companyId)
+    .eq("board_id", board.id)
     .order("sort_order", { ascending: true });
 
   if (groupErr) throw new Error(groupErr.message);
@@ -113,6 +126,7 @@ export default async function ApplicantsPage({
       <ApplicantsBoard
         companyId={companyId}
         jobId={jobId}
+        boardId={board.id}
         groups={(groups ?? []) as any}
         applicants={(applicants ?? []) as any}
         columns={(columns ?? []) as any}

@@ -10,11 +10,12 @@ function dashPath(companyId: string) {
 // ===== Board Management =====
 
 /**
- * Gets or creates the canonical "Applicants" board for a company.
+ * Gets or creates the canonical "Applicants" board for a company/job.
  * Ensures exactly one Applicants board exists per company.
  */
 export async function getOrCreateApplicantsBoard(
-  companyId: string
+  companyId: string,
+  jobId?: string
 ): Promise<string> {
   const supabase = await createClient();
 
@@ -57,7 +58,7 @@ export async function getOrCreateApplicantsBoard(
  * Uses the canonical Applicants board from the boards table.
  * Creates: Name, Email, Phone, Status columns + default status labels.
  */
-export async function seedDefaultBoardColumns(companyId: string) {
+export async function seedDefaultBoardColumns(companyId: string, jobId?: string) {
   const supabase = await createClient();
 
   // Check if columns already exist
@@ -72,7 +73,7 @@ export async function seedDefaultBoardColumns(companyId: string) {
   }
 
   // Get or create the canonical Applicants board
-  const boardId = await getOrCreateApplicantsBoard(companyId);
+  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
 
   // Create system columns
   const systemColumns = [
@@ -172,7 +173,7 @@ export async function bulkDeleteApplicants(companyId: string, applicantIds: stri
   revalidatePath(dashPath(companyId));
 }
 
-export async function createGroup(companyId: string, name: string, color?: string) {
+export async function createGroup(companyId: string, boardId: string, name: string, color?: string) {
   const supabase = await createClient();
 
   // Default colors cycle (Monday-style)
@@ -183,6 +184,7 @@ export async function createGroup(companyId: string, name: string, color?: strin
     .from("board_groups")
     .select("sort_order")
     .eq("company_id", companyId)
+    .eq("board_id", boardId)
     .order("sort_order", { ascending: false })
     .limit(1);
 
@@ -193,35 +195,37 @@ export async function createGroup(companyId: string, name: string, color?: strin
 
   const { error } = await supabase
     .from("board_groups")
-    .insert({ company_id: companyId, name, sort_order: nextSort, color: groupColor });
+    .insert({ company_id: companyId, board_id: boardId, name, sort_order: nextSort, color: groupColor });
 
   if (error) throw new Error(error.message);
 
   revalidatePath(dashPath(companyId));
 }
 
-export async function toggleGroupCollapse(companyId: string, groupId: string, isCollapsed: boolean) {
+export async function toggleGroupCollapse(companyId: string, boardId: string, groupId: string, isCollapsed: boolean) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("board_groups")
     .update({ is_collapsed: isCollapsed })
     .eq("id", groupId)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("board_id", boardId);
 
   if (error) throw new Error(error.message);
 
   revalidatePath(dashPath(companyId));
 }
 
-export async function updateGroupColor(companyId: string, groupId: string, color: string) {
+export async function updateGroupColor(companyId: string, boardId: string, groupId: string, color: string) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("board_groups")
     .update({ color })
     .eq("id", groupId)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("board_id", boardId);
 
   if (error) throw new Error(error.message);
 
