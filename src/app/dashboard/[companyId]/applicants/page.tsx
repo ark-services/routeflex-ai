@@ -1,6 +1,8 @@
 import ApplicantsBoard from "./ApplicantsBoard";
 import { createClient } from "@/lib/supabase/server";
 import { seedDefaultBoardColumns } from "./actions";
+import { Header } from "@/components/header";
+import { redirect } from "next/navigation";
 
 export default async function ApplicantsPage({
   params,
@@ -10,12 +12,34 @@ export default async function ApplicantsPage({
   const { companyId } = await params;
   const supabase = await createClient();
 
+  // Check auth
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: membership } = await supabase
+    .from("company_members")
+    .select("role, companies(id, name, slug)")
+    .eq("company_id", companyId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership) redirect("/");
+
+  const company = membership.companies as unknown as {
+    id: string;
+    name: string;
+    slug: string;
+  };
+
   // Seed default columns if needed
   await seedDefaultBoardColumns(companyId);
 
   const { data: groups, error: groupErr } = await supabase
     .from("board_groups")
-    .select("id,name,sort_order")
+    .select("id,name,sort_order,color,is_collapsed")
     .eq("company_id", companyId)
     .order("sort_order", { ascending: true });
 
@@ -24,10 +48,10 @@ export default async function ApplicantsPage({
   const { data: applicants, error: appErr } = await supabase
     .from("applicants")
     .select(
-      "id,full_name,email,phone,status,created_at,resume_path,group_id,jobs(title)"
+      "id,full_name,email,phone,status,created_at,resume_path,group_id,position,jobs(title)"
     )
     .eq("company_id", companyId)
-    .order("created_at", { ascending: false });
+    .order("position", { ascending: true });
 
   if (appErr) throw new Error(appErr.message);
 
@@ -71,22 +95,19 @@ export default async function ApplicantsPage({
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-12">
-      <h1 className="text-4xl font-semibold tracking-tight text-stone-900">
-        Applicants
-      </h1>
-      <p className="mt-1 text-stone-500">Monday-style board view</p>
-
-      <div className="mt-10">
-        <ApplicantsBoard
-          companyId={companyId}
-          groups={(groups ?? []) as any}
-          applicants={(applicants ?? []) as any}
-          columns={(columns ?? []) as any}
-          statusLabels={statusLabels}
-          cells={cells}
-        />
+    <div className="relative -mx-6 sm:-mx-8">
+      <div className="mx-auto max-w-5xl px-6 sm:px-8">
+        <Header companyName={company.name} companyId={companyId} />
       </div>
+
+      <ApplicantsBoard
+        companyId={companyId}
+        groups={(groups ?? []) as any}
+        applicants={(applicants ?? []) as any}
+        columns={(columns ?? []) as any}
+        statusLabels={statusLabels}
+        cells={cells}
+      />
     </div>
   );
 }
