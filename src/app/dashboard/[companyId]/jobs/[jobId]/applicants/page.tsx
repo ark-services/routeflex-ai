@@ -1,6 +1,38 @@
 import ApplicantsBoard from "./ApplicantsBoard";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
+
+function ErrorPanel({
+  title,
+  message,
+  technicalDetails,
+  showDetails = false,
+}: {
+  title: string;
+  message: string;
+  technicalDetails?: string;
+  showDetails?: boolean;
+}) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">{title}</h1>
+        <p className="text-gray-700 mb-4">{message}</p>
+        {showDetails && technicalDetails && (
+          <details className="mt-4">
+            <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+              Show technical details
+            </summary>
+            <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
+              {technicalDetails}
+            </pre>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default async function ApplicantsPage({
   params,
@@ -22,7 +54,7 @@ export default async function ApplicantsPage({
     .from("companies")
     .select("id, name, slug, account_id")
     .eq("id", companyId)
-    .single();
+    .maybeSingle();
 
   if (!company) redirect("/");
 
@@ -31,7 +63,7 @@ export default async function ApplicantsPage({
     .select("role")
     .eq("account_id", company.account_id)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!membership) redirect("/");
 
@@ -41,33 +73,39 @@ export default async function ApplicantsPage({
     .select("id, title")
     .eq("id", jobId)
     .eq("company_id", companyId)
-    .single();
+    .maybeSingle();
 
   if (!job) redirect(`/dashboard/${companyId}`);
 
-  // Get the job-specific board (created during job creation)
-  const { data: board } = await supabase
-    .from("boards")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("job_id", jobId)
-    .eq("name", "Applicants")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
+  // ============================================================================
+  // Get or create the applicants board (self-healing)
+  // ============================================================================
+  const boardResult = await getOrCreateApplicantsBoard(
+    supabase,
+    companyId,
+    jobId
+  );
 
-  if (!board) throw new Error("Applicants board not found. Please recreate the job.");
+  if (!boardResult.success) {
+    const isDev = process.env.NODE_ENV === "development";
+    return (
+      <ErrorPanel
+        title="Board Error"
+        message={
+          boardResult.error ||
+          "Unable to load or create the applicants board. Please check your permissions."
+        }
+        technicalDetails={boardResult.technicalDetails}
+        showDetails={isDev}
+      />
+    );
+  }
 
-  const { data: groups, error: groupErr } = await supabase
-    .from("board_groups")
-    .select("id,name,sort_order,color,is_collapsed")
-    .eq("company_id", companyId)
-    .eq("board_id", board.id)
-    .order("sort_order", { ascending: true });
+  const { board, groups } = boardResult;
 
-  if (groupErr) throw new Error(groupErr.message);
-
-  // Filter applicants by jobId
+  // ============================================================================
+  // Fetch applicants for this job
+  // ============================================================================
   const { data: applicants, error: appErr } = await supabase
     .from("applicants")
     .select(
@@ -77,18 +115,42 @@ export default async function ApplicantsPage({
     .eq("job_id", jobId)
     .order("position", { ascending: true });
 
-  if (appErr) throw new Error(appErr.message);
+  if (appErr) {
+    const isDev = process.env.NODE_ENV === "development";
+    return (
+      <ErrorPanel
+        title="Data Error"
+        message="Failed to load applicants"
+        technicalDetails={appErr.message}
+        showDetails={isDev}
+      />
+    );
+  }
 
+  // ============================================================================
   // Fetch board columns
+  // ============================================================================
   const { data: columns, error: colErr } = await supabase
     .from("board_columns")
     .select("id,board_id,name,type,is_system,sort_order")
     .eq("company_id", companyId)
     .order("sort_order", { ascending: true });
 
-  if (colErr) throw new Error(colErr.message);
+  if (colErr) {
+    const isDev = process.env.NODE_ENV === "development";
+    return (
+      <ErrorPanel
+        title="Data Error"
+        message="Failed to load board columns"
+        technicalDetails={colErr.message}
+        showDetails={isDev}
+      />
+    );
+  }
 
+  // ============================================================================
   // Fetch status labels for all status-type columns
+  // ============================================================================
   const statusColumnIds = (columns ?? [])
     .filter((c) => c.type === "status")
     .map((c) => c.id);
@@ -101,20 +163,44 @@ export default async function ApplicantsPage({
       .in("column_id", statusColumnIds)
       .order("sort_order", { ascending: true });
 
-    if (labelErr) throw new Error(labelErr.message);
+    if (labelErr) {
+      const isDev = process.env.NODE_ENV === "development";
+      return (
+        <ErrorPanel
+          title="Data Error"
+          message="Failed to load status labels"
+          technicalDetails={labelErr.message}
+          showDetails={isDev}
+        />
+      );
+    }
     statusLabels = labels ?? [];
   }
 
+  // ============================================================================
   // Fetch all cell values for applicants
+  // ============================================================================
   const applicantIds = (applicants ?? []).map((a) => a.id);
   let cells: any[] = [];
   if (applicantIds.length > 0) {
     const { data: cellData, error: cellErr } = await supabase
       .from("board_cells")
-      .select("applicant_id,column_id,value_text,value_number,value_date,value_status_label_id")
+      .select(
+        "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id"
+      )
       .in("applicant_id", applicantIds);
 
-    if (cellErr) throw new Error(cellErr.message);
+    if (cellErr) {
+      const isDev = process.env.NODE_ENV === "development";
+      return (
+        <ErrorPanel
+          title="Data Error"
+          message="Failed to load cell data"
+          technicalDetails={cellErr.message}
+          showDetails={isDev}
+        />
+      );
+    }
     cells = cellData ?? [];
   }
 

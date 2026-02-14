@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { JobStatus } from "@/lib/types";
+import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 
 function slugify(title: string): string {
   return title
@@ -11,14 +12,6 @@ function slugify(title: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
-
-const DEFAULT_GROUPS = [
-  { name: "New Applicants", color: "#0073ea", sort_order: 1 },
-  { name: "Background Check", color: "#00c875", sort_order: 2 },
-  { name: "Interview", color: "#fdab3d", sort_order: 3 },
-  { name: "HR Paperwork", color: "#e2445c", sort_order: 4 },
-  { name: "Hired", color: "#9cd326", sort_order: 5 },
-] as const;
 
 /**
  * Creates a new job with full form engine setup.
@@ -67,25 +60,26 @@ export async function addJob(formData: FormData) {
   // Best-effort seeding: do NOT block job creation if seeding fails
   try {
     // ========================================================================
-    // STEP 2: Create job-specific board
+    // STEP 2: Create job-specific board (using idempotent helper)
     // ========================================================================
-    const { data: board, error: boardErr } = await supabase
-      .from("boards")
-      .insert({
-        company_id: companyId,
-        job_id: job.id,
-        name: "Applicants",
-      })
-      .select("id")
-      .single();
+    const boardResult = await getOrCreateApplicantsBoard(
+      supabase,
+      companyId,
+      job.id
+    );
 
-    if (boardErr || !board?.id) {
-      console.error("[addJob] Failed to create board:", boardErr);
-      throw boardErr || new Error("Board creation failed");
+    if (!boardResult.success) {
+      console.error("[addJob] Failed to create board:", boardResult.error);
+      throw new Error(
+        boardResult.error ||
+          "Board creation failed: " + boardResult.technicalDetails
+      );
     }
 
-    const boardId = board.id;
-    console.log(`[addJob] Created board ${boardId} for job ${job.id}`);
+    const boardId = boardResult.board.id;
+    console.log(
+      `[addJob] Board ready: ${boardId} with ${boardResult.groups.length} groups`
+    );
 
     // ========================================================================
     // STEP 3: Create application form (idempotent - check if exists first)
@@ -239,35 +233,15 @@ export async function addJob(formData: FormData) {
     }
 
     // ========================================================================
-    // STEP 7: Create default board groups
+    // STEP 7: Board groups already created by getOrCreateApplicantsBoard
     // ========================================================================
-    const groupsToCreate = DEFAULT_GROUPS.map((g) => ({
-      board_id: boardId,
-      company_id: companyId,
-      name: g.name,
-      color: g.color,
-      sort_order: g.sort_order,
-    }));
-
-    const { data: groups, error: groupsErr } = await supabase
-      .from("board_groups")
-      .insert(groupsToCreate)
-      .select("id, name");
-
-    if (groupsErr) {
-      console.error("[addJob] Failed to create groups:", groupsErr);
-      // If unique constraint violation, groups already exist (idempotent)
-      if (!groupsErr.message?.includes("unique")) {
-        throw groupsErr;
-      }
-    } else {
-      console.log(`[addJob] Created ${groups?.length || 0} board groups`);
-    }
 
     // ========================================================================
     // STEP 8: Create example applicant (optional, for better UX)
     // ========================================================================
-    const newApplicantsGroup = groups?.find((g) => g.name === "New Applicants");
+    const newApplicantsGroup = boardResult.groups.find(
+      (g) => g.name === "New Applicants"
+    );
     if (newApplicantsGroup?.id) {
       const { error: applicantErr } = await supabase.from("applicants").insert({
         company_id: companyId,
