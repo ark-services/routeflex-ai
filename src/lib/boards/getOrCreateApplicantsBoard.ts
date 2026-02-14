@@ -34,6 +34,8 @@ export type GetOrCreateBoardResult =
 /**
  * Gets or creates an "Applicants" board for a job with default groups.
  * This is idempotent and self-healing - it will create missing boards/groups automatically.
+ * Uses select-then-insert pattern with duplicate key retry instead of upsert to avoid
+ * PostgREST onConflict inference issues.
  *
  * @param supabase - Supabase client (must be authenticated)
  * @param companyId - Company ID
@@ -82,42 +84,74 @@ export async function getOrCreateApplicantsBoard(
       boardId = existingBoard.id;
     } else {
       // ========================================================================
-      // STEP 2: Create board if it doesn't exist
+      // STEP 2: Create board if it doesn't exist (with duplicate key retry)
       // ========================================================================
       console.log("[getOrCreateApplicantsBoard] Board not found, creating...");
 
       const { data: newBoard, error: createError } = await supabase
         .from("boards")
-        .upsert(
-          {
-            company_id: companyId,
-            job_id: jobId,
-            name: "Applicants",
-          },
-          {
-            onConflict: "job_id",
-            ignoreDuplicates: false,
-          }
-        )
+        .insert({
+          company_id: companyId,
+          job_id: jobId,
+          name: "Applicants",
+        })
         .select("id")
-        .single();
+        .maybeSingle();
 
-      if (createError || !newBoard) {
-        console.error(
-          "[getOrCreateApplicantsBoard] Failed to create board:",
-          createError
-        );
+      if (createError) {
+        // If duplicate key error (23505), another process created it - re-fetch
+        if (createError.code === "23505") {
+          console.log(
+            "[getOrCreateApplicantsBoard] Duplicate key, re-fetching board..."
+          );
+          const { data: retryBoard, error: retryError } = await supabase
+            .from("boards")
+            .select("id")
+            .eq("company_id", companyId)
+            .eq("job_id", jobId)
+            .eq("name", "Applicants")
+            .maybeSingle();
+
+          if (retryError || !retryBoard) {
+            console.error(
+              "[getOrCreateApplicantsBoard] Failed to fetch after duplicate:",
+              retryError
+            );
+            return {
+              success: false,
+              error: "Failed to create or fetch board",
+              technicalDetails: retryError?.message || "Board not found after insert conflict",
+            };
+          }
+
+          boardId = retryBoard.id;
+          console.log(
+            `[getOrCreateApplicantsBoard] Found board after retry: ${boardId}`
+          );
+        } else {
+          console.error(
+            "[getOrCreateApplicantsBoard] Failed to create board:",
+            createError
+          );
+          return {
+            success: false,
+            error: "Failed to create board. Please check permissions.",
+            technicalDetails: createError.message,
+          };
+        }
+      } else if (!newBoard) {
+        console.error("[getOrCreateApplicantsBoard] Insert returned no data");
         return {
           success: false,
-          error: "Failed to create board. Please check permissions.",
-          technicalDetails: createError?.message,
+          error: "Failed to create board",
+          technicalDetails: "Insert succeeded but returned no data",
         };
+      } else {
+        console.log(
+          `[getOrCreateApplicantsBoard] Created new board: ${newBoard.id}`
+        );
+        boardId = newBoard.id;
       }
-
-      console.log(
-        `[getOrCreateApplicantsBoard] Created new board: ${newBoard.id}`
-      );
-      boardId = newBoard.id;
     }
 
     // ========================================================================
@@ -143,14 +177,21 @@ export async function getOrCreateApplicantsBoard(
     }
 
     // ========================================================================
-    // STEP 4: Create default groups if none exist
+    // STEP 4: Create missing default groups (idempotent)
     // ========================================================================
-    if (!existingGroups || existingGroups.length === 0) {
+    const existingGroupNames = new Set(
+      (existingGroups || []).map((g) => g.name)
+    );
+    const groupsToCreate = DEFAULT_GROUPS.filter(
+      (g) => !existingGroupNames.has(g.name)
+    );
+
+    if (groupsToCreate.length > 0) {
       console.log(
-        "[getOrCreateApplicantsBoard] No groups found, creating defaults..."
+        `[getOrCreateApplicantsBoard] Creating ${groupsToCreate.length} missing groups...`
       );
 
-      const groupsToCreate = DEFAULT_GROUPS.map((g) => ({
+      const groupInserts = groupsToCreate.map((g) => ({
         board_id: boardId,
         company_id: companyId,
         name: g.name,
@@ -158,15 +199,13 @@ export async function getOrCreateApplicantsBoard(
         sort_order: g.sort_order,
       }));
 
-      const { data: newGroups, error: createGroupsError } = await supabase
+      // Insert missing groups (ignore duplicates from race conditions)
+      const { error: createGroupsError } = await supabase
         .from("board_groups")
-        .upsert(groupsToCreate, {
-          onConflict: "board_id,name",
-          ignoreDuplicates: false,
-        })
-        .select("id, name, sort_order, color, is_collapsed");
+        .insert(groupInserts)
+        .select("id");
 
-      if (createGroupsError || !newGroups || newGroups.length === 0) {
+      if (createGroupsError && createGroupsError.code !== "23505") {
         console.error(
           "[getOrCreateApplicantsBoard] Failed to create groups:",
           createGroupsError
@@ -174,18 +213,38 @@ export async function getOrCreateApplicantsBoard(
         return {
           success: false,
           error: "Failed to create board groups",
-          technicalDetails: createGroupsError?.message,
+          technicalDetails: createGroupsError.message,
+        };
+      }
+
+      // Re-fetch all groups to get complete list
+      const { data: allGroups, error: refetchError } = await supabase
+        .from("board_groups")
+        .select("id, name, sort_order, color, is_collapsed")
+        .eq("company_id", companyId)
+        .eq("board_id", boardId)
+        .order("sort_order", { ascending: true });
+
+      if (refetchError) {
+        console.error(
+          "[getOrCreateApplicantsBoard] Error re-fetching groups:",
+          refetchError
+        );
+        return {
+          success: false,
+          error: "Failed to fetch board groups",
+          technicalDetails: refetchError.message,
         };
       }
 
       console.log(
-        `[getOrCreateApplicantsBoard] Created ${newGroups.length} groups`
+        `[getOrCreateApplicantsBoard] Success - board ${boardId} with ${allGroups?.length || 0} groups`
       );
 
       return {
         success: true,
         board: { id: boardId },
-        groups: newGroups,
+        groups: allGroups || [],
       };
     }
 

@@ -2,6 +2,7 @@
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { uploadResume } from "@/lib/storage/resumeUpload";
+import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 
 /**
  * Submit a public job application.
@@ -96,31 +97,30 @@ export async function submitApplication(
   }
 
   try {
-    // Get the board for this job
-    const { data: board, error: boardError } = await supabase
-      .from("boards")
-      .select("id")
-      .eq("job_id", jobId)
-      .eq("name", "Applicants")
-      .single();
+    // Get or create the board and groups (self-healing)
+    console.log('[Application Submit] Getting or creating board for job:', jobId);
+    const boardResult = await getOrCreateApplicantsBoard(
+      supabase,
+      form.company_id,
+      jobId
+    );
 
-    if (boardError || !board) {
-      console.error('[Application Submit] Board not found:', { jobId, boardError });
-      return { error: "Application board not found" };
+    if (!boardResult.success) {
+      console.error('[Application Submit] Failed to get/create board:', boardResult.error);
+      return { error: boardResult.error || "Failed to setup application board" };
     }
 
-    // Get the "New Applicants" group
-    const { data: group, error: groupError } = await supabase
-      .from("board_groups")
-      .select("id")
-      .eq("board_id", board.id)
-      .eq("name", "New Applicants")
-      .single();
+    const board = boardResult.board;
+    const groups = boardResult.groups;
 
-    if (groupError || !group) {
-      console.error('[Application Submit] Default group not found:', { boardId: board.id, groupError });
-      return { error: "Default group not found" };
+    // Find the "New Applicants" group
+    const newApplicantsGroup = groups.find(g => g.name === "New Applicants");
+    if (!newApplicantsGroup) {
+      console.error('[Application Submit] New Applicants group not found in groups:', groups);
+      return { error: "Default application group not found" };
     }
+
+    console.log('[Application Submit] Using board:', board.id, 'group:', newApplicantsGroup.id);
 
     // Handle resume upload if present
     let resumePath: string | null = null;
@@ -165,6 +165,17 @@ export async function submitApplication(
 
     console.log('[Application Submit] Creating applicant:', { fullName, email, phone });
 
+    // Get next position for this group
+    const { data: maxPositionData } = await supabase
+      .from("applicants")
+      .select("position")
+      .eq("group_id", newApplicantsGroup.id)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextPosition = maxPositionData ? maxPositionData.position + 1 : 0;
+
     // Create the applicant
     const { data: applicant, error: applicantError } = await supabase
       .from("applicants")
@@ -172,12 +183,12 @@ export async function submitApplication(
         company_id: form.company_id,
         job_id: jobId,
         board_id: board.id,
-        group_id: group.id,
+        group_id: newApplicantsGroup.id,
         full_name: fullName,
         email: email || "",
         phone: phone || "",
         status: "applied",
-        position: 0, // Will be auto-incremented by other applicants
+        position: nextPosition,
         resume_path: resumePath,
       })
       .select()
