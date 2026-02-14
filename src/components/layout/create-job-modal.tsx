@@ -30,6 +30,8 @@ export function CreateJobModal({
     setLoading(true);
     setError("");
 
+    console.log("[CreateJobModal] Starting job creation...");
+
     try {
       const formData = new FormData();
       formData.append("title", title);
@@ -40,16 +42,27 @@ export function CreateJobModal({
       const result = await createJob(formData);
 
       if (result.error) {
+        console.error("[CreateJobModal] Error:", result.error);
         setError(result.error);
       } else if (result.jobId) {
+        console.log("[CreateJobModal] Job created successfully:", result.jobId);
+        console.log("[CreateJobModal] Navigating to /dashboard/" + companyId + "/jobs/" + result.jobId + "/applicants");
+
         setTitle("");
         setLocation("");
         setTerminal("");
         onClose();
+
+        // Navigate to the new job's applicants page
         router.push(`/dashboard/${companyId}/jobs/${result.jobId}/applicants`);
+
+        // Refresh to ensure server components re-fetch with the new job
         router.refresh();
+
+        console.log("[CreateJobModal] Navigation and refresh complete");
       }
     } catch (err) {
+      console.error("[CreateJobModal] Exception:", err);
       setError("Failed to create job");
     } finally {
       setLoading(false);

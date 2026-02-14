@@ -59,6 +59,7 @@ export default async function DashboardLayout({
     .order("created_at", { ascending: false });
 
   const jobs = (jobsData ?? []) as Job[];
+  console.log("[DashboardLayout] Fetched", jobs.length, "jobs for company:", companyId);
 
   return (
     <AppShell

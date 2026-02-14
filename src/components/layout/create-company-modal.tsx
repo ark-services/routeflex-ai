@@ -28,6 +28,8 @@ export function CreateCompanyModal({
     setLoading(true);
     setError("");
 
+    console.log("[CreateCompanyModal] Starting company creation...");
+
     try {
       const formData = new FormData();
       formData.append("name", name);
@@ -36,14 +38,25 @@ export function CreateCompanyModal({
       const result = await createCompany(formData);
 
       if (result.error) {
+        console.error("[CreateCompanyModal] Error:", result.error);
         setError(result.error);
       } else if (result.companyId) {
+        console.log("[CreateCompanyModal] Company created successfully:", result.companyId);
+        console.log("[CreateCompanyModal] Navigating to /dashboard/" + result.companyId);
+
         setName("");
         onClose();
+
+        // Navigate to the new company's dashboard
         router.push(`/dashboard/${result.companyId}`);
+
+        // Refresh to ensure server components re-fetch with the new company
         router.refresh();
+
+        console.log("[CreateCompanyModal] Navigation and refresh complete");
       }
     } catch (err) {
+      console.error("[CreateCompanyModal] Exception:", err);
       setError("Failed to create company");
     } finally {
       setLoading(false);

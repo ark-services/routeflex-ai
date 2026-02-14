@@ -3,12 +3,74 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
+async function getApplicantsBoard(
+  supabase: any,
+  companyId: string,
+  jobId?: string,
+  boardId?: string
+): Promise<{ id: string; name?: string } | null> {
+  // If the caller already knows the board, use it.
+  if (boardId) {
+    const { data } = await supabase
+      .from("boards")
+      .select("id, name")
+      .eq("id", boardId)
+      .eq("company_id", companyId)
+      .single();
+    return data ?? null;
+  }
+
+  // Prefer job-scoped Applicants boards when jobId is provided.
+  // Fall back to legacy company-scoped Applicants board.
+  const base = supabase
+    .from("boards")
+    .select("id, name")
+    .eq("company_id", companyId)
+    .or('name.eq.Applicants,name.ilike.%Applicants%')
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (jobId) {
+    // Try job-scoped query first.
+    const resJob = await base.eq("job_id", jobId);
+
+    // If job_id column doesn't exist (older schema), resJob.error will mention it.
+    if (!resJob.error && resJob.data && Array.isArray(resJob.data) && resJob.data.length > 0) {
+      return resJob.data[0];
+    }
+
+    if (
+      resJob.error &&
+      typeof resJob.error.message === "string" &&
+      resJob.error.message.toLowerCase().includes('column "job_id"')
+    ) {
+      // legacy schema: ignore and fall through
+    } else if (resJob.error) {
+      console.error("getApplicantsBoard job-scoped error:", resJob.error);
+    }
+  }
+
+  // Legacy: company-scoped Applicants board
+  const resLegacy = await base;
+  if (!resLegacy.error && resLegacy.data && Array.isArray(resLegacy.data) && resLegacy.data.length > 0) {
+    return resLegacy.data[0];
+  }
+
+  if (resLegacy.error) {
+    console.error("getApplicantsBoard legacy error:", resLegacy.error);
+  }
+
+  return null;
+}
+
 /**
  * Renames the Applicants board for a company
  */
 export async function renameApplicantsBoard(
   companyId: string,
-  newName: string
+  newName: string,
+  jobId?: string,
+  boardId?: string
 ) {
   const supabase = await createClient();
 
@@ -42,15 +104,7 @@ export async function renameApplicantsBoard(
     return { error: "Permission denied" };
   }
 
-  // Find the Applicants board
-  const { data: board } = await supabase
-    .from("boards")
-    .select("id")
-    .eq("company_id", companyId)
-    .or('name.eq.Applicants,name.ilike.%Applicants%')
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
+  const board = await getApplicantsBoard(supabase, companyId, jobId, boardId);
 
   if (!board) {
     return { error: "Applicants board not found" };
@@ -68,13 +122,17 @@ export async function renameApplicantsBoard(
   }
 
   revalidatePath(`/dashboard/${companyId}`);
+  if (jobId) {
+    revalidatePath(`/dashboard/${companyId}/jobs/${jobId}`);
+    revalidatePath(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
+  }
   return { success: true };
 }
 
 /**
  * Duplicates the Applicants board configuration (groups + columns, not applicants)
  */
-export async function duplicateApplicantsBoard(companyId: string) {
+export async function duplicateApplicantsBoard(companyId: string, jobId?: string, boardId?: string) {
   const supabase = await createClient();
 
   const {
@@ -107,33 +165,43 @@ export async function duplicateApplicantsBoard(companyId: string) {
     return { error: "Permission denied" };
   }
 
-  // Find the Applicants board
-  const { data: sourceBoard } = await supabase
-    .from("boards")
-    .select("id, name")
-    .eq("company_id", companyId)
-    .or('name.eq.Applicants,name.ilike.%Applicants%')
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
+  const sourceBoard = await getApplicantsBoard(supabase, companyId, jobId, boardId);
 
   if (!sourceBoard) {
     return { error: "Applicants board not found" };
   }
 
-  // Create duplicate board
-  const { data: newBoard, error: boardError } = await supabase
-    .from("boards")
-    .insert({
-      company_id: companyId,
-      name: `${sourceBoard.name} (Copy)`,
-    })
-    .select()
-    .single();
+  const insertWithJob = {
+    company_id: companyId,
+    job_id: jobId,
+    name: `${sourceBoard.name ?? "Applicants"} (Copy)`,
+  };
 
-  if (boardError || !newBoard) {
-    console.error("Error creating duplicate board:", boardError);
-    return { error: "Failed to duplicate board" };
+  const insertLegacy = {
+    company_id: companyId,
+    name: `${sourceBoard.name ?? "Applicants"} (Copy)`,
+  };
+
+  let newBoard: any = null;
+  {
+    const res1 = await supabase.from("boards").insert(insertWithJob as any).select().single();
+    if (
+      res1.error &&
+      typeof res1.error.message === "string" &&
+      res1.error.message.toLowerCase().includes('column "job_id"')
+    ) {
+      const res2 = await supabase.from("boards").insert(insertLegacy).select().single();
+      if (res2.error || !res2.data) {
+        console.error("Error creating duplicate board:", res2.error);
+        return { error: "Failed to duplicate board" };
+      }
+      newBoard = res2.data;
+    } else if (res1.error || !res1.data) {
+      console.error("Error creating duplicate board:", res1.error);
+      return { error: "Failed to duplicate board" };
+    } else {
+      newBoard = res1.data;
+    }
   }
 
   // Duplicate groups
@@ -197,7 +265,25 @@ export async function duplicateApplicantsBoard(companyId: string) {
               sort_order: label.sort_order,
             }));
 
-            await supabase.from("board_status_labels").insert(newLabels);
+            const payloadWithIds = newLabels.map((nl) => ({
+              ...nl,
+              company_id: companyId,
+              board_id: newBoard.id,
+            }));
+
+            const res1 = await supabase.from("board_status_labels").insert(payloadWithIds as any);
+            if (
+              res1.error &&
+              typeof res1.error.message === "string" &&
+              (res1.error.message.includes('column "company_id"') || res1.error.message.includes('column "board_id"'))
+            ) {
+              const res2 = await supabase.from("board_status_labels").insert(newLabels);
+              if (res2.error) {
+                console.error("Error duplicating status labels:", res2.error);
+              }
+            } else if (res1.error) {
+              console.error("Error duplicating status labels:", res1.error);
+            }
           }
         }
       }
@@ -205,13 +291,17 @@ export async function duplicateApplicantsBoard(companyId: string) {
   }
 
   revalidatePath(`/dashboard/${companyId}`);
+  if (jobId) {
+    revalidatePath(`/dashboard/${companyId}/jobs/${jobId}`);
+    revalidatePath(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
+  }
   return { success: true, boardId: newBoard.id };
 }
 
 /**
  * Deletes the Applicants board (with confirmation)
  */
-export async function deleteApplicantsBoard(companyId: string) {
+export async function deleteApplicantsBoard(companyId: string, jobId?: string, boardId?: string) {
   const supabase = await createClient();
 
   const {
@@ -244,15 +334,7 @@ export async function deleteApplicantsBoard(companyId: string) {
     return { error: "Permission denied" };
   }
 
-  // Find the Applicants board
-  const { data: board } = await supabase
-    .from("boards")
-    .select("id")
-    .eq("company_id", companyId)
-    .or('name.eq.Applicants,name.ilike.%Applicants%')
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
+  const board = await getApplicantsBoard(supabase, companyId, jobId, boardId);
 
   if (!board) {
     return { error: "Applicants board not found" };
@@ -270,5 +352,9 @@ export async function deleteApplicantsBoard(companyId: string) {
   }
 
   revalidatePath(`/dashboard/${companyId}`);
+  if (jobId) {
+    revalidatePath(`/dashboard/${companyId}/jobs/${jobId}`);
+    revalidatePath(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
+  }
   return { success: true };
 }

@@ -27,10 +27,35 @@ export default async function Home() {
 
   const accountIds = (accountMemberships ?? []).map((m) => m.account_id);
 
+  // If the user has no account memberships, they cannot access any companies.
+  // Avoid querying `companies` with a dummy UUID, which can interact poorly with RLS.
+  if (accountIds.length === 0) {
+    return (
+      <div className="mx-auto max-w-5xl px-6 sm:px-8">
+        <Header />
+        <section className="py-16 sm:py-24">
+          <div className="mx-auto max-w-md text-center space-y-4">
+            <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+              No access
+            </h1>
+            <p className="text-stone-500 leading-relaxed">
+              You do not have access to any company yet. Please ask an account
+              administrator to add you.
+            </p>
+            <p className="text-sm text-stone-400">Signed in as {user.email}</p>
+            <form action={logout} className="pt-2">
+              <Button variant="secondary">Log out</Button>
+            </form>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   const { data: companiesData, error: companiesError } = await supabase
     .from("companies")
     .select("id, name, account_id")
-    .in("account_id", accountIds.length ? accountIds : ["00000000-0000-0000-0000-000000000000"]);
+    .in("account_id", accountIds);
 
   if (companiesError) {
     console.error("Error fetching companies", companiesError);

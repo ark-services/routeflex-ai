@@ -3,6 +3,75 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+const ALLOWED_APPLICANT_STATUSES = new Set([
+  "applied",
+  "screening",
+  "first_advantage",
+  "interviewing",
+  "tsa",
+  "hr_paperwork",
+  "hired",
+  "rejected",
+]);
+
+/**
+ * Normalizes any incoming status string into a DB-allowed value.
+ * IMPORTANT: The DB has a CHECK constraint (`applicants_status_check`) so any
+ * non-allowed value will hard-fail inserts/updates.
+ */
+function normalizeApplicantStatus(input: string | null | undefined): string {
+  const raw = (input ?? "").toString();
+  const s = raw.trim().toLowerCase();
+
+  // Empty/undefined -> default
+  if (!s) return "applied";
+
+  // Common UI synonyms / older values -> DB-allowed values
+  if (s === "new" || s === "new_applicants" || s === "new applicants" || s === "pending" || s === "open") return "applied";
+  if (s === "applied" || s === "application" || s === "application received") return "applied";
+
+  // Interview
+  if (s === "interview" || s === "interviewing" || s === "phone screen" || s === "screen" || s === "screening") {
+    // Keep "screening" distinct if explicitly provided
+    if (s === "screen" || s === "screening" || s === "phone screen") return "screening";
+    return "interviewing";
+  }
+
+  // Background check / First Advantage
+  if (
+    s === "background" ||
+    s === "background_check" ||
+    s === "background check" ||
+    s === "bg" ||
+    s === "firstadvantage" ||
+    s === "first advantage" ||
+    s === "first-advantage" ||
+    s === "first_advantage"
+  ) return "first_advantage";
+
+  // TSA
+  if (s === "tsa" || s === "security" || s === "security check") return "tsa";
+
+  // HR paperwork
+  if (s === "hr" || s === "paperwork" || s === "hr paperwork" || s === "final paperwork" || s === "final hr paperwork" || s === "hr_paperwork") {
+    return "hr_paperwork";
+  }
+
+  // Hired / Rejected
+  if (s === "hire" || s === "hired" || s === "onboarded" || s === "onboarding") return "hired";
+  if (s === "reject" || s === "rejected" || s === "declined" || s === "not moving forward") return "rejected";
+
+  // Already valid?
+  if (ALLOWED_APPLICANT_STATUSES.has(s)) return s;
+
+  // Safety fallback to avoid breaking onboarding/job creation due to unexpected strings
+  // (DB will reject unknown values anyway; defaulting here keeps flows resilient.)
+  console.warn(
+    `normalizeApplicantStatus: unexpected status "${raw}". Defaulting to "applied". Allowed: ${Array.from(ALLOWED_APPLICANT_STATUSES).join(", ")}`
+  );
+  return "applied";
+}
+
 function dashPath(companyId: string) {
   return `/dashboard/${companyId}/applicants`;
 }
@@ -110,33 +179,64 @@ export async function seedDefaultBoardColumns(companyId: string, jobId?: string)
   const defaultLabels = [
     { label: "Applied", color: "#3b82f6", sort_order: 1 },
     { label: "Screening", color: "#8b5cf6", sort_order: 2 },
-    { label: "Interview", color: "#f59e0b", sort_order: 3 },
-    { label: "Offer", color: "#10b981", sort_order: 4 },
-    { label: "Rejected", color: "#ef4444", sort_order: 5 },
+    { label: "First Advantage", color: "#06b6d4", sort_order: 3 },
+    { label: "Interviewing", color: "#f59e0b", sort_order: 4 },
+    { label: "TSA", color: "#22c55e", sort_order: 5 },
+    { label: "HR Paperwork", color: "#14b8a6", sort_order: 6 },
+    { label: "Hired", color: "#10b981", sort_order: 7 },
+    { label: "Rejected", color: "#ef4444", sort_order: 8 },
   ];
 
-  const { error: labelError } = await supabase
-    .from("board_status_labels")
-    .insert(
-      defaultLabels.map((lbl) => ({
-        column_id: statusColumn.id,
-        label: lbl.label,
-        color: lbl.color,
-        sort_order: lbl.sort_order,
-      }))
-    );
+  // Some schemas enforce RLS using company_id/board_id on labels.
+  // We'll try including them first, and gracefully fall back if those columns don't exist.
+  const payloadWithIds = defaultLabels.map((lbl) => ({
+    column_id: statusColumn.id,
+    board_id: boardId,
+    company_id: companyId,
+    label: lbl.label,
+    color: lbl.color,
+    sort_order: lbl.sort_order,
+  }));
+
+  const payloadMinimal = defaultLabels.map((lbl) => ({
+    column_id: statusColumn.id,
+    label: lbl.label,
+    color: lbl.color,
+    sort_order: lbl.sort_order,
+  }));
+
+  // Attempt 1: with company_id/board_id
+  let labelError: any = null;
+  {
+    const res = await supabase.from("board_status_labels").insert(payloadWithIds as any);
+    labelError = res.error;
+
+    // If the schema doesn't have those columns, retry with minimal payload
+    if (
+      labelError &&
+      typeof labelError.message === "string" &&
+      (labelError.message.includes('column "company_id"') || labelError.message.includes('column "board_id"'))
+    ) {
+      const res2 = await supabase.from("board_status_labels").insert(payloadMinimal as any);
+      labelError = res2.error;
+    }
+  }
 
   if (labelError) {
-    console.error("Failed to seed status labels:", labelError);
+    console.error(
+      "Failed to seed status labels:",
+      typeof labelError === "object" ? JSON.stringify(labelError, null, 2) : labelError
+    );
   }
 }
 
 export async function updateApplicantStatus(companyId: string, applicantId: string, status: string) {
+  const normalized = normalizeApplicantStatus(status);
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("applicants")
-    .update({ status })
+    .update({ status: normalized })
     .eq("id", applicantId)
     .eq("company_id", companyId);
 
@@ -596,7 +696,7 @@ export async function duplicateApplicant(companyId: string, applicantId: string)
       full_name: `${source.full_name} (Copy)`,
       email: source.email ? `copy_${source.email}` : null,
       phone: source.phone,
-      status: source.status,
+      status: normalizeApplicantStatus(source.status),
       group_id: source.group_id,
       job_id: source.job_id,
       resume_path: source.resume_path,

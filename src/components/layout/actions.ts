@@ -2,19 +2,24 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 export async function createCompany(formData: FormData) {
+  console.log("[createCompany] Starting company creation...");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
+    console.error("[createCompany] User not authenticated");
     return { error: "Not authenticated" };
   }
 
   const name = formData.get("name") as string;
   const accountId = formData.get("accountId") as string;
+
+  console.log("[createCompany] Creating company:", { name, accountId });
 
   if (!name || !accountId) {
     return { error: "Name and account ID are required" };
@@ -28,7 +33,7 @@ export async function createCompany(formData: FormData) {
     .eq("user_id", user.id)
     .single();
 
-  if (!membership || membership.role !== "admin") {
+  if (!membership || (membership.role !== "admin" && membership.role !== "owner")) {
     return { error: "Only admins can create companies" };
   }
 
@@ -50,9 +55,16 @@ export async function createCompany(formData: FormData) {
     .single();
 
   if (companyError) {
-    console.error("Error creating company:", companyError);
+    console.error("[createCompany] Error creating company:", companyError);
     return { error: "Failed to create company" };
   }
+
+  console.log("[createCompany] Company created successfully:", company.id);
+
+  // Revalidate dashboard paths to ensure the UI updates
+  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/${company.id}`);
+  console.log("[createCompany] Revalidated paths: /dashboard and /dashboard/" + company.id);
 
   return { companyId: company.id };
 }
@@ -67,12 +79,14 @@ const DEFAULT_GROUPS = [
 ] as const;
 
 export async function createJob(formData: FormData) {
+  console.log("[createJob] Starting job creation...");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
+    console.error("[createJob] User not authenticated");
     return { error: "Not authenticated" };
   }
 
@@ -80,6 +94,8 @@ export async function createJob(formData: FormData) {
   const location = formData.get("location") as string;
   const terminal = formData.get("terminal") as string;
   const companyId = formData.get("companyId") as string;
+
+  console.log("[createJob] Creating job:", { title, location, terminal, companyId });
 
   if (!title || !companyId) {
     return { error: "Title and company ID are required" };
@@ -134,18 +150,38 @@ export async function createJob(formData: FormData) {
     .single();
 
   if (jobError) {
-    console.error("Error creating job:", jobError);
+    console.error("[createJob] Error creating job:", jobError);
     return { error: "Failed to create job" };
   }
 
-  // Ensure Applicants board exists for this company/job
-  const boardId = await ensureApplicantsBoard(companyId, job.id);
+  console.log("[createJob] Job created successfully:", job.id);
 
-  // Create default board groups (idempotent)
-  await ensureDefaultBoardGroups(companyId, boardId);
+  // Initialize boards/groups/applicants (non-blocking - failures are logged but don't prevent job creation)
+  try {
+    console.log("[createJob] Setting up boards and groups...");
 
-  // Create dummy applicant in "New Applicants" group
-  await createDummyApplicant(companyId, boardId, job.id);
+    // Ensure Applicants board exists for this company/job
+    const boardId = await ensureApplicantsBoard(companyId, job.id);
+    console.log("[createJob] Board ID:", boardId);
+
+    // Create default board groups (idempotent)
+    await ensureDefaultBoardGroups(companyId, boardId);
+    console.log("[createJob] Default board groups created");
+
+    // Create dummy applicant in "New Applicants" group
+    await createDummyApplicant(companyId, boardId, job.id);
+    console.log("[createJob] Dummy applicant created");
+  } catch (setupError) {
+    // Log the error but don't fail the job creation
+    console.error("[createJob] Non-fatal error setting up boards/groups:", setupError);
+    console.warn("[createJob] Job was created successfully, but board setup had issues");
+  }
+
+  // Revalidate paths to ensure the UI updates immediately
+  revalidatePath(`/dashboard/${companyId}`);
+  revalidatePath(`/dashboard/${companyId}/jobs/${job.id}`);
+  revalidatePath(`/dashboard/${companyId}/jobs/${job.id}/applicants`);
+  console.log("[createJob] Revalidated paths for company:", companyId, "and job:", job.id);
 
   return { jobId: job.id };
 }
@@ -156,26 +192,93 @@ export async function createJob(formData: FormData) {
 async function ensureApplicantsBoard(companyId: string, jobId: string): Promise<string> {
   const supabase = await createClient();
 
-  // Check if board exists
-  const { data: existingBoards } = await supabase
+  // Prefer job-scoped boards if the schema supports it.
+  // Some earlier schemas may not have boards.job_id; in that case we fall back to company-scoped Applicants.
+
+  // Attempt 1: job-scoped lookup
+  {
+    const res = await supabase
+      .from("boards")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("job_id", jobId)
+      .eq("name", "Applicants")
+      .limit(1);
+
+    if (!res.error && res.data && res.data.length > 0) {
+      return res.data[0].id;
+    }
+
+    // If the column doesn't exist, fall through to legacy behavior
+    if (
+      res.error &&
+      typeof res.error.message === "string" &&
+      res.error.message.toLowerCase().includes('column "job_id"')
+    ) {
+      // legacy mode
+    } else if (res.error) {
+      console.error("ensureApplicantsBoard: job-scoped lookup failed:", res.error);
+    }
+  }
+
+  // Attempt 2: legacy company-scoped lookup
+  const { data: existingBoards, error: legacyErr } = await supabase
     .from("boards")
     .select("id")
     .eq("company_id", companyId)
-    .or('name.eq.Applicants,name.ilike.%Applicants%')
+    .eq("name", "Applicants")
     .order("created_at", { ascending: true })
     .limit(1);
 
-  if (existingBoards && existingBoards.length > 0) {
-    return existingBoards[0].id; // Return existing board
+  if (!legacyErr && existingBoards && existingBoards.length > 0) {
+    return existingBoards[0].id;
   }
 
-  // Create the board
-  const { data: newBoard } = await supabase.from("boards").insert({
-    company_id: companyId,
-    name: "Applicants",
-  }).select("id").single();
+  if (legacyErr) {
+    console.error("ensureApplicantsBoard: legacy lookup failed:", legacyErr);
+  }
 
-  return newBoard!.id;
+  // Create the board. Try job-scoped insert first; fall back if boards.job_id doesn't exist.
+  {
+    const res1 = await supabase
+      .from("boards")
+      .insert({
+        company_id: companyId,
+        job_id: jobId,
+        name: "Applicants",
+      } as any)
+      .select("id")
+      .single();
+
+    if (!res1.error && res1.data?.id) {
+      return res1.data.id;
+    }
+
+    if (
+      res1.error &&
+      typeof res1.error.message === "string" &&
+      res1.error.message.toLowerCase().includes('column "job_id"')
+    ) {
+      const res2 = await supabase
+        .from("boards")
+        .insert({
+          company_id: companyId,
+          name: "Applicants",
+        })
+        .select("id")
+        .single();
+
+      if (res2.error || !res2.data?.id) {
+        console.error("ensureApplicantsBoard: failed to create board:", res2.error);
+        throw new Error(res2.error?.message || "Failed to create Applicants board");
+      }
+
+      return res2.data.id;
+    }
+
+    console.error("ensureApplicantsBoard: failed to create board:", res1.error);
+    throw new Error(res1.error?.message || "Failed to create Applicants board");
+  }
 }
 
 /**
@@ -268,14 +371,40 @@ async function createDummyApplicant(companyId: string, boardId: string, jobId: s
   const nextPosition = (lastApplicant?.[0]?.position ?? -1) + 1;
 
   // Create dummy applicant
-  await supabase.from("applicants").insert({
+  const insertPayloadWithBoard = {
+    company_id: companyId,
+    job_id: jobId,
+    board_id: boardId,
+    full_name: "Example Applicant",
+    email: "example@applicant.com",
+    phone: "555-555-5555",
+    status: "applied",
+    group_id: newApplicantsGroup.id,
+    position: nextPosition,
+  };
+
+  const insertPayloadLegacy = {
     company_id: companyId,
     job_id: jobId,
     full_name: "Example Applicant",
     email: "example@applicant.com",
     phone: "555-555-5555",
-    status: "New",
+    status: "applied",
     group_id: newApplicantsGroup.id,
     position: nextPosition,
-  });
+  };
+
+  const res1 = await supabase.from("applicants").insert(insertPayloadWithBoard as any);
+  if (
+    res1.error &&
+    typeof res1.error.message === "string" &&
+    res1.error.message.toLowerCase().includes('column "board_id"')
+  ) {
+    const res2 = await supabase.from("applicants").insert(insertPayloadLegacy as any);
+    if (res2.error) {
+      console.error("Failed to create dummy applicant:", res2.error);
+    }
+  } else if (res1.error) {
+    console.error("Failed to create dummy applicant:", res1.error);
+  }
 }
