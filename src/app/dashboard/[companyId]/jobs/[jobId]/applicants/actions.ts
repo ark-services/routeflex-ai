@@ -3,48 +3,50 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-function dashPath(companyId: string) {
-  return `/dashboard/${companyId}/applicants`;
+function dashPath(companyId: string, jobId: string) {
+  return `/dashboard/${companyId}/jobs/${jobId}/applicants`;
 }
 
 // ===== Board Management =====
 
 /**
- * Gets or creates the canonical "Applicants" board for a company/job.
- * Ensures exactly one Applicants board exists per company.
+ * Gets or creates the canonical "Applicants" board for a specific job.
+ * Ensures exactly one Applicants board exists per job.
  */
 export async function getOrCreateApplicantsBoard(
   companyId: string,
-  jobId?: string
+  jobId: string
 ): Promise<string> {
   const supabase = await createClient();
 
-  // Look for existing Applicants board
+  // Look for existing Applicants board for this specific job
   const { data: existingBoards } = await supabase
     .from("boards")
     .select("id, name")
     .eq("company_id", companyId)
-    .or('name.eq.Applicants,name.ilike.%Applicants%')
+    .eq("job_id", jobId)
+    .eq("name", "Applicants")
     .order("created_at", { ascending: true })
     .limit(1);
 
   if (existingBoards && existingBoards.length > 0) {
-    // Return the first (oldest) Applicants board as the canonical one
+    // Return the first (oldest) Applicants board for this job
     return existingBoards[0].id;
   }
 
-  // No board exists, create one
+  // No board exists for this job, create one
   const { data: newBoard, error: boardError } = await supabase
     .from("boards")
     .insert({
       company_id: companyId,
+      job_id: jobId,
       name: "Applicants",
     })
     .select("id")
     .single();
 
   if (boardError) {
-    console.error("Failed to create Applicants board:", boardError);
+    console.error("[getOrCreateApplicantsBoard] Failed to create Applicants board:", boardError);
     throw new Error("Failed to create Applicants board");
   }
 
@@ -54,26 +56,27 @@ export async function getOrCreateApplicantsBoard(
 // ===== Seed Default Board Columns =====
 
 /**
- * Seeds default system columns for a company's applicant board.
- * Uses the canonical Applicants board from the boards table.
+ * Seeds default system columns for a job's applicant board.
+ * Uses the job-scoped Applicants board from the boards table.
  * Creates: Name, Email, Phone, Status columns + default status labels.
  */
-export async function seedDefaultBoardColumns(companyId: string, jobId?: string) {
+export async function seedDefaultBoardColumns(companyId: string, jobId: string) {
   const supabase = await createClient();
 
-  // Check if columns already exist
+  // Get or create the job-scoped Applicants board
+  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
+
+  // Check if columns already exist for this board
   const { data: existing } = await supabase
     .from("board_columns")
     .select("id")
     .eq("company_id", companyId)
+    .eq("board_id", boardId)
     .limit(1);
 
   if (existing && existing.length > 0) {
-    return; // Already seeded
+    return; // Already seeded for this board
   }
-
-  // Get or create the canonical Applicants board
-  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
 
   // Create system columns
   const systemColumns = [
@@ -99,7 +102,7 @@ export async function seedDefaultBoardColumns(companyId: string, jobId?: string)
     .select();
 
   if (colError) {
-    console.error("Failed to seed board columns:", colError);
+    console.error("[seedDefaultBoardColumns] Failed to seed board columns:", colError);
     return;
   }
 
@@ -107,12 +110,13 @@ export async function seedDefaultBoardColumns(companyId: string, jobId?: string)
   const statusColumn = insertedColumns?.find((c) => c.type === "status");
   if (!statusColumn) return;
 
+  // Use lowercase status values to match applicants.status field constraint
   const defaultLabels = [
-    { label: "Applied", color: "#3b82f6", sort_order: 1 },
-    { label: "Screening", color: "#8b5cf6", sort_order: 2 },
-    { label: "Interview", color: "#f59e0b", sort_order: 3 },
-    { label: "Offer", color: "#10b981", sort_order: 4 },
-    { label: "Rejected", color: "#ef4444", sort_order: 5 },
+    { label: "applied", color: "#3b82f6", sort_order: 1 },
+    { label: "screening", color: "#8b5cf6", sort_order: 2 },
+    { label: "interview", color: "#f59e0b", sort_order: 3 },
+    { label: "offer", color: "#10b981", sort_order: 4 },
+    { label: "rejected", color: "#ef4444", sort_order: 5 },
   ];
 
   const { error: labelError } = await supabase
@@ -127,53 +131,85 @@ export async function seedDefaultBoardColumns(companyId: string, jobId?: string)
     );
 
   if (labelError) {
-    console.error("Failed to seed status labels:", labelError);
+    console.error("[seedDefaultBoardColumns] Failed to seed status labels:", labelError);
   }
 }
 
-export async function updateApplicantStatus(companyId: string, applicantId: string, status: string) {
+export async function updateApplicantStatus(
+  companyId: string,
+  jobId: string,
+  applicantId: string,
+  status: string
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("applicants")
     .update({ status })
     .eq("id", applicantId)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[updateApplicantStatus] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function bulkMoveApplicants(companyId: string, applicantIds: string[], groupId: string) {
+export async function bulkMoveApplicants(
+  companyId: string,
+  jobId: string,
+  applicantIds: string[],
+  groupId: string
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("applicants")
     .update({ group_id: groupId })
     .in("id", applicantIds)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[bulkMoveApplicants] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function bulkDeleteApplicants(companyId: string, applicantIds: string[]) {
+export async function bulkDeleteApplicants(
+  companyId: string,
+  jobId: string,
+  applicantIds: string[]
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("applicants")
     .delete()
     .in("id", applicantIds)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[bulkDeleteApplicants] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function createGroup(companyId: string, boardId: string, name: string, color?: string) {
+export async function createGroup(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  name: string,
+  color?: string
+) {
   const supabase = await createClient();
 
   // Default colors cycle (Monday-style)
@@ -188,21 +224,39 @@ export async function createGroup(companyId: string, boardId: string, name: stri
     .order("sort_order", { ascending: false })
     .limit(1);
 
-  if (readErr) throw new Error(readErr.message);
+  if (readErr) {
+    console.error("[createGroup] Error reading existing groups:", readErr);
+    throw new Error(readErr.message);
+  }
 
   const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
   const groupColor = color || defaultColors[nextSort % defaultColors.length];
 
   const { error } = await supabase
     .from("board_groups")
-    .insert({ company_id: companyId, board_id: boardId, name, sort_order: nextSort, color: groupColor });
+    .insert({
+      company_id: companyId,
+      board_id: boardId,
+      name,
+      sort_order: nextSort,
+      color: groupColor,
+    });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[createGroup] Error creating group:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function toggleGroupCollapse(companyId: string, boardId: string, groupId: string, isCollapsed: boolean) {
+export async function toggleGroupCollapse(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  groupId: string,
+  isCollapsed: boolean
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -212,12 +266,21 @@ export async function toggleGroupCollapse(companyId: string, boardId: string, gr
     .eq("company_id", companyId)
     .eq("board_id", boardId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[toggleGroupCollapse] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function updateGroupColor(companyId: string, boardId: string, groupId: string, color: string) {
+export async function updateGroupColor(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  groupId: string,
+  color: string
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -227,23 +290,27 @@ export async function updateGroupColor(companyId: string, boardId: string, group
     .eq("company_id", companyId)
     .eq("board_id", boardId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[updateGroupColor] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
 // ===== Board Column Actions =====
 
 export async function createBoardColumn(
   companyId: string,
+  jobId: string,
   name: string,
   columnType: "text" | "number" | "date" | "file" | "status",
   afterColumnId?: string
 ) {
   const supabase = await createClient();
 
-  // Get or create the canonical Applicants board
-  const boardId = await getOrCreateApplicantsBoard(companyId);
+  // Get or create the job-scoped Applicants board
+  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
 
   let targetSortOrder: number;
 
@@ -254,6 +321,7 @@ export async function createBoardColumn(
       .select("sort_order")
       .eq("id", afterColumnId)
       .eq("company_id", companyId)
+      .eq("board_id", boardId)
       .single();
 
     if (afterColumn) {
@@ -264,6 +332,7 @@ export async function createBoardColumn(
         .from("board_columns")
         .select("sort_order")
         .eq("company_id", companyId)
+        .eq("board_id", boardId)
         .order("sort_order", { ascending: false })
         .limit(1);
       targetSortOrder = (existing?.[0]?.sort_order ?? 0) + 1;
@@ -274,10 +343,14 @@ export async function createBoardColumn(
       .from("board_columns")
       .select("sort_order")
       .eq("company_id", companyId)
+      .eq("board_id", boardId)
       .order("sort_order", { ascending: false })
       .limit(1);
 
-    if (readErr) throw new Error(readErr.message);
+    if (readErr) {
+      console.error("[createBoardColumn] Error reading existing columns:", readErr);
+      throw new Error(readErr.message);
+    }
     targetSortOrder = (existing?.[0]?.sort_order ?? 0) + 1;
   }
 
@@ -295,17 +368,24 @@ export async function createBoardColumn(
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[createBoardColumn] Error creating column:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
   return data;
 }
 
-export async function duplicateBoardColumn(companyId: string, columnId: string) {
+export async function duplicateBoardColumn(
+  companyId: string,
+  jobId: string,
+  columnId: string
+) {
   const supabase = await createClient();
 
-  // Get or create the canonical Applicants board
-  const boardId = await getOrCreateApplicantsBoard(companyId);
+  // Get or create the job-scoped Applicants board
+  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
 
   // Get the source column
   const { data: sourceColumn, error: readErr } = await supabase
@@ -313,9 +393,13 @@ export async function duplicateBoardColumn(companyId: string, columnId: string) 
     .select("*")
     .eq("id", columnId)
     .eq("company_id", companyId)
+    .eq("board_id", boardId)
     .single();
 
-  if (readErr || !sourceColumn) throw new Error("Column not found");
+  if (readErr || !sourceColumn) {
+    console.error("[duplicateBoardColumn] Column not found:", readErr);
+    throw new Error("Column not found");
+  }
 
   // Create duplicate with incremented sort order
   const { data: newColumn, error } = await supabase
@@ -332,7 +416,10 @@ export async function duplicateBoardColumn(companyId: string, columnId: string) 
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[duplicateBoardColumn] Error duplicating column:", error);
+    throw new Error(error.message);
+  }
 
   // If it's a status column, duplicate the labels
   if (sourceColumn.type === "status" && newColumn) {
@@ -342,23 +429,30 @@ export async function duplicateBoardColumn(companyId: string, columnId: string) 
       .eq("column_id", columnId);
 
     if (labels && labels.length > 0) {
-      await supabase.from("board_status_labels").insert(
-        labels.map((label) => ({
-          column_id: newColumn.id,
-          label: label.label,
-          color: label.color,
-          sort_order: label.sort_order,
-        }))
-      );
+      const { error: labelError } = await supabase
+        .from("board_status_labels")
+        .insert(
+          labels.map((label) => ({
+            column_id: newColumn.id,
+            label: label.label,
+            color: label.color,
+            sort_order: label.sort_order,
+          }))
+        );
+
+      if (labelError) {
+        console.error("[duplicateBoardColumn] Error duplicating status labels:", labelError);
+      }
     }
   }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
   return newColumn;
 }
 
 export async function updateBoardColumn(
   companyId: string,
+  jobId: string,
   columnId: string,
   updates: { name?: string; sort_order?: number }
 ) {
@@ -370,12 +464,19 @@ export async function updateBoardColumn(
     .eq("id", columnId)
     .eq("company_id", companyId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[updateBoardColumn] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function deleteBoardColumn(companyId: string, columnId: string) {
+export async function deleteBoardColumn(
+  companyId: string,
+  jobId: string,
+  columnId: string
+) {
   const supabase = await createClient();
 
   // Prevent deletion of system columns
@@ -396,15 +497,19 @@ export async function deleteBoardColumn(companyId: string, columnId: string) {
     .eq("id", columnId)
     .eq("company_id", companyId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[deleteBoardColumn] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
 // ===== Status Label Actions =====
 
 export async function createStatusLabel(
   companyId: string,
+  jobId: string,
   columnId: string,
   label: string,
   color: string
@@ -419,7 +524,10 @@ export async function createStatusLabel(
     .order("sort_order", { ascending: false })
     .limit(1);
 
-  if (readErr) throw new Error(readErr.message);
+  if (readErr) {
+    console.error("[createStatusLabel] Error reading existing labels:", readErr);
+    throw new Error(readErr.message);
+  }
 
   const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
 
@@ -434,14 +542,18 @@ export async function createStatusLabel(
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[createStatusLabel] Error creating status label:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
   return data;
 }
 
 export async function updateStatusLabel(
   companyId: string,
+  jobId: string,
   labelId: string,
   updates: { label?: string; color?: string }
 ) {
@@ -452,12 +564,19 @@ export async function updateStatusLabel(
     .update(updates)
     .eq("id", labelId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[updateStatusLabel] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function deleteStatusLabel(companyId: string, labelId: string) {
+export async function deleteStatusLabel(
+  companyId: string,
+  jobId: string,
+  labelId: string
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -465,15 +584,19 @@ export async function deleteStatusLabel(companyId: string, labelId: string) {
     .delete()
     .eq("id", labelId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[deleteStatusLabel] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
 // ===== Board Cell Actions =====
 
 export async function updateBoardCell(
   companyId: string,
+  jobId: string,
   applicantId: string,
   columnId: string,
   columnType: "text" | "number" | "date" | "status",
@@ -520,62 +643,97 @@ export async function updateBoardCell(
       onConflict: "applicant_id,column_id",
     });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[updateBoardCell] Error:", error);
+    throw new Error(error.message);
+  }
 
   // TRIGGER AUTOMATION: Detect status change and dispatch
   if (columnType === "status" && oldStatusLabelId !== value) {
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: company } = await supabase.from("companies").select("account_id").eq("id", companyId).single();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: company } = await supabase
+        .from("companies")
+        .select("account_id")
+        .eq("id", companyId)
+        .single();
 
-    // Non-blocking dispatch
-    fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/.*$/, '') || 'http://localhost:3000'}/api/automations/dispatch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accountId: company?.account_id,
-        companyId,
-        applicantId,
-        columnId,
-        oldStatusLabelId,
-        newStatusLabelId: value,
-        userId: user?.id,
-      }),
-    }).catch((err) => console.error('Failed to dispatch automation:', err));
+      // Non-blocking dispatch
+      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/.*$/, '') || 'http://localhost:3000';
+      await fetch(`${baseUrl}/api/automations/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: company?.account_id,
+          companyId,
+          applicantId,
+          columnId,
+          oldStatusLabelId,
+          newStatusLabelId: value,
+          userId: user?.id,
+        }),
+      }).catch((err) => console.error('[updateBoardCell] Failed to dispatch automation:', err));
+    } catch (automationError) {
+      console.error('[updateBoardCell] Error in automation dispatch:', automationError);
+      // Don't throw - automation errors should not block the cell update
+    }
   }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
+
 // ===== Row (Applicant) Actions =====
 
-export async function moveApplicant(companyId: string, applicantId: string, groupId: string) {
+export async function moveApplicant(
+  companyId: string,
+  jobId: string,
+  applicantId: string,
+  groupId: string
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("applicants")
     .update({ group_id: groupId })
     .eq("id", applicantId)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[moveApplicant] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function deleteApplicant(companyId: string, applicantId: string) {
+export async function deleteApplicant(
+  companyId: string,
+  jobId: string,
+  applicantId: string
+) {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("applicants")
     .delete()
     .eq("id", applicantId)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[deleteApplicant] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
-export async function duplicateApplicant(companyId: string, applicantId: string) {
+export async function duplicateApplicant(
+  companyId: string,
+  jobId: string,
+  applicantId: string
+) {
   const supabase = await createClient();
 
   // Get source applicant
@@ -584,9 +742,13 @@ export async function duplicateApplicant(companyId: string, applicantId: string)
     .select("*")
     .eq("id", applicantId)
     .eq("company_id", companyId)
+    .eq("job_id", jobId)
     .single();
 
-  if (readErr || !source) throw new Error("Applicant not found");
+  if (readErr || !source) {
+    console.error("[duplicateApplicant] Applicant not found:", readErr);
+    throw new Error("Applicant not found");
+  }
 
   // Create duplicate
   const { data: newApplicant, error } = await supabase
@@ -599,6 +761,7 @@ export async function duplicateApplicant(companyId: string, applicantId: string)
       status: source.status,
       group_id: source.group_id,
       job_id: source.job_id,
+      board_id: source.board_id,
       resume_path: source.resume_path,
       // NOTE: `applicants.position` is an INTEGER in Postgres, so it cannot store fractional values.
       // Place the duplicate immediately after the source row.
@@ -607,7 +770,10 @@ export async function duplicateApplicant(companyId: string, applicantId: string)
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[duplicateApplicant] Error creating duplicate:", error);
+    throw new Error(error.message);
+  }
 
   // Duplicate cell values
   const { data: cells } = await supabase
@@ -616,24 +782,31 @@ export async function duplicateApplicant(companyId: string, applicantId: string)
     .eq("applicant_id", applicantId);
 
   if (cells && cells.length > 0 && newApplicant) {
-    await supabase.from("board_cells").insert(
-      cells.map((cell) => ({
-        applicant_id: newApplicant.id,
-        column_id: cell.column_id,
-        value_text: cell.value_text,
-        value_number: cell.value_number,
-        value_date: cell.value_date,
-        value_status_label_id: cell.value_status_label_id,
-      }))
-    );
+    const { error: cellsError } = await supabase
+      .from("board_cells")
+      .insert(
+        cells.map((cell) => ({
+          applicant_id: newApplicant.id,
+          column_id: cell.column_id,
+          value_text: cell.value_text,
+          value_number: cell.value_number,
+          value_date: cell.value_date,
+          value_status_label_id: cell.value_status_label_id,
+        }))
+      );
+
+    if (cellsError) {
+      console.error("[duplicateApplicant] Error duplicating cells:", cellsError);
+    }
   }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
   return newApplicant;
 }
 
 export async function reorderApplicants(
   companyId: string,
+  jobId: string,
   applicantId: string,
   newPosition: number,
   groupId: string | null
@@ -644,15 +817,20 @@ export async function reorderApplicants(
     .from("applicants")
     .update({ position: newPosition, group_id: groupId })
     .eq("id", applicantId)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[reorderApplicants] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
 
 export async function reorderColumns(
   companyId: string,
+  jobId: string,
   columnId: string,
   newSortOrder: number
 ) {
@@ -664,7 +842,10 @@ export async function reorderColumns(
     .eq("id", columnId)
     .eq("company_id", companyId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("[reorderColumns] Error:", error);
+    throw new Error(error.message);
+  }
 
-  revalidatePath(dashPath(companyId));
+  revalidatePath(dashPath(companyId, jobId));
 }
