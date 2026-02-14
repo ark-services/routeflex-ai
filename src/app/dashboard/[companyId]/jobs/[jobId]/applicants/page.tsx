@@ -1,6 +1,5 @@
 import ApplicantsBoard from "./ApplicantsBoard";
 import { createClient } from "@/lib/supabase/server";
-import { seedDefaultBoardColumns } from "./actions";
 import { redirect } from "next/navigation";
 
 export default async function ApplicantsPage({
@@ -46,20 +45,18 @@ export default async function ApplicantsPage({
 
   if (!job) redirect(`/dashboard/${companyId}`);
 
-  // Seed default columns if needed
-  await seedDefaultBoardColumns(companyId, jobId);
-
-  // Get the board ID for this job
+  // Get the job-specific board (created during job creation)
   const { data: board } = await supabase
     .from("boards")
     .select("id")
     .eq("company_id", companyId)
-    .or('name.eq.Applicants,name.ilike.%Applicants%')
+    .eq("job_id", jobId)
+    .eq("name", "Applicants")
     .order("created_at", { ascending: true })
     .limit(1)
     .single();
 
-  if (!board) throw new Error("Applicants board not found");
+  if (!board) throw new Error("Applicants board not found. Please recreate the job.");
 
   const { data: groups, error: groupErr } = await supabase
     .from("board_groups")
@@ -122,17 +119,38 @@ export default async function ApplicantsPage({
   }
 
   return (
-    <div className="h-full">
-      <ApplicantsBoard
-        companyId={companyId}
-        jobId={jobId}
-        boardId={board.id}
-        groups={(groups ?? []) as any}
-        applicants={(applicants ?? []) as any}
-        columns={(columns ?? []) as any}
-        statusLabels={statusLabels}
-        cells={cells}
-      />
+    <div className="h-full flex flex-col">
+      {/* Navigation */}
+      <div className="bg-white border-b px-6 py-3">
+        <div className="flex items-center gap-4">
+          <a
+            href={`/dashboard/${companyId}/jobs/${jobId}/applicants`}
+            className="text-sm font-medium text-gray-900 border-b-2 border-blue-600 pb-2"
+          >
+            Applicants Board
+          </a>
+          <a
+            href={`/dashboard/${companyId}/jobs/${jobId}/form`}
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 pb-2"
+          >
+            Application Form
+          </a>
+        </div>
+      </div>
+
+      {/* Board */}
+      <div className="flex-1 overflow-hidden">
+        <ApplicantsBoard
+          companyId={companyId}
+          jobId={jobId}
+          boardId={board.id}
+          groups={(groups ?? []) as any}
+          applicants={(applicants ?? []) as any}
+          columns={(columns ?? []) as any}
+          statusLabels={statusLabels}
+          cells={cells}
+        />
+      </div>
     </div>
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { createJob } from "./actions";
+import { addJob } from "@/app/dashboard/[companyId]/jobs/actions";
 
 interface CreateJobModalProps {
   open: boolean;
@@ -21,51 +21,32 @@ export function CreateJobModal({
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [terminal, setTerminal] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
     console.log("[CreateJobModal] Starting job creation...");
 
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    formData.append("companyId", companyId);
+
     try {
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("location", location);
-      formData.append("terminal", terminal);
-      formData.append("companyId", companyId);
-
-      const result = await createJob(formData);
-
-      if (result.error) {
-        console.error("[CreateJobModal] Error:", result.error);
-        setError(result.error);
-      } else if (result.jobId) {
-        console.log("[CreateJobModal] Job created successfully:", result.jobId);
-        console.log("[CreateJobModal] Navigating to /dashboard/" + companyId + "/jobs/" + result.jobId + "/applicants");
-
+      // Call addJob which handles everything and redirects
+      startTransition(() => {
+        addJob(formData);
+        // Clean up modal state
         setTitle("");
         setLocation("");
         setTerminal("");
         onClose();
-
-        // Navigate to the new job's applicants page
-        router.push(`/dashboard/${companyId}/jobs/${result.jobId}/applicants`);
-
-        // Refresh to ensure server components re-fetch with the new job
-        router.refresh();
-
-        console.log("[CreateJobModal] Navigation and refresh complete");
-      }
-    } catch (err) {
+      });
+    } catch (err: any) {
       console.error("[CreateJobModal] Exception:", err);
-      setError("Failed to create job");
-    } finally {
-      setLoading(false);
+      setError(err.message || "Failed to create job");
     }
   };
 
@@ -83,6 +64,7 @@ export function CreateJobModal({
             </label>
             <Input
               id="job-title"
+              name="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Senior Driver"
@@ -97,6 +79,7 @@ export function CreateJobModal({
             </label>
             <Input
               id="location"
+              name="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="San Francisco, CA"
@@ -109,6 +92,7 @@ export function CreateJobModal({
             </label>
             <Input
               id="terminal"
+              name="terminal"
               value={terminal}
               onChange={(e) => setTerminal(e.target.value)}
               placeholder="SFO1"
@@ -124,12 +108,12 @@ export function CreateJobModal({
               type="button"
               variant="secondary"
               onClick={onClose}
-              disabled={loading}
+              disabled={isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create job"}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Creating..." : "Create job"}
             </Button>
           </div>
         </form>

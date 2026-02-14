@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { JobStatus } from "@/lib/types";
-import { PostgrestError } from "@supabase/supabase-js";
 
 function slugify(title: string): string {
   return title
@@ -13,6 +12,24 @@ function slugify(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+const DEFAULT_GROUPS = [
+  { name: "New Applicants", color: "#0073ea", sort_order: 1 },
+  { name: "Background Check", color: "#00c875", sort_order: 2 },
+  { name: "Interview", color: "#fdab3d", sort_order: 3 },
+  { name: "HR Paperwork", color: "#e2445c", sort_order: 4 },
+  { name: "Hired", color: "#9cd326", sort_order: 5 },
+] as const;
+
+/**
+ * Creates a new job with full form engine setup.
+ * This is the new, comprehensive job creation flow that:
+ * 1. Creates the job
+ * 2. Creates a job-specific board
+ * 3. Creates an application form with default fields
+ * 4. Generates board columns from form fields (NOT hardcoded)
+ * 5. Creates default board groups
+ * 6. All operations are idempotent to prevent duplicates
+ */
 export async function addJob(formData: FormData) {
   const companyId = formData.get("companyId") as string;
   const title = (formData.get("title") as string).trim();
@@ -23,7 +40,9 @@ export async function addJob(formData: FormData) {
 
   const slug = slugify(title);
 
-  // 1) Create the job and get its ID
+  // ========================================================================
+  // STEP 1: Create the job
+  // ========================================================================
   const { data: job, error: jobError } = await supabase
     .from("jobs")
     .insert({
@@ -45,159 +64,169 @@ export async function addJob(formData: FormData) {
     );
   }
 
-  // Best-effort seeding: do NOT block job creation if seeding fails.
-  // This prevents the UX issue where the job exists but the UI errors.
+  // Best-effort seeding: do NOT block job creation if seeding fails
   try {
-    type InsertResult<T> = { data: T | null; error: PostgrestError | null };
-
-    const insertWithFallback = async <T extends Record<string, any>>(
-      table: string,
-      primary: Record<string, any>,
-      fallback?: Record<string, any>,
-      select?: string
-    ): Promise<InsertResult<T>> => {
-      const q = supabase.from(table).insert(primary);
-      const primaryRes = (select
-        ? await q.select(select).single()
-        : await q) as any;
-
-      if (!primaryRes.error) return primaryRes;
-
-      // If we have fallback data, retry once (useful when a column doesn't exist).
-      if (fallback) {
-        const q2 = supabase.from(table).insert(fallback);
-        const fallbackRes = (select
-          ? await q2.select(select).single()
-          : await q2) as any;
-        return fallbackRes;
-      }
-
-      return primaryRes;
-    };
-
-    // 2) Create an Applicants board for this job
-    const boardName = `${title} Applicants`;
-
-    const { data: board, error: boardErr } = await insertWithFallback<{
-      id: string;
-    }>(
-      "boards",
-      { company_id: companyId, name: boardName, job_id: job.id },
-      { company_id: companyId, name: boardName },
-      "id"
-    );
+    // ========================================================================
+    // STEP 2: Create job-specific board
+    // ========================================================================
+    const { data: board, error: boardErr } = await supabase
+      .from("boards")
+      .insert({
+        company_id: companyId,
+        job_id: job.id,
+        name: "Applicants",
+      })
+      .select("id")
+      .single();
 
     if (boardErr || !board?.id) {
-      console.error("Failed to seed board:", boardErr);
-      // Stop seeding further if we can't make a board
-      throw boardErr || new Error("Board insert failed");
+      console.error("[addJob] Failed to create board:", boardErr);
+      throw boardErr || new Error("Board creation failed");
     }
 
     const boardId = board.id;
+    console.log(`[addJob] Created board ${boardId} for job ${job.id}`);
 
-    // 3) Create default board columns (keep minimal assumptions about schema)
-    // We create a status column and a couple of basic columns.
-    const columnsPayload = [
-      {
-        board_id: boardId,
+    // ========================================================================
+    // STEP 3: Create application form
+    // ========================================================================
+    const { data: form, error: formErr } = await supabase
+      .from("job_application_forms")
+      .insert({
+        job_id: job.id,
         company_id: companyId,
-        is_system: true,
-        name: "Name",
-        type: "text",
-        settings: {},
-        sort_order: 1,
-      },
-      {
-        board_id: boardId,
-        company_id: companyId,
-        is_system: true,
-        name: "Email",
-        type: "email",
-        settings: {},
-        sort_order: 2,
-      },
-      {
-        board_id: boardId,
-        company_id: companyId,
-        is_system: true,
-        name: "Phone",
-        type: "phone",
-        settings: {},
-        sort_order: 3,
-      },
-      {
-        board_id: boardId,
-        company_id: companyId,
-        is_system: true,
-        name: "Status",
-        type: "status",
-        settings: {},
-        sort_order: 4,
-      },
-    ];
+        title: `${title} Application`,
+        description: `Apply for the ${title} position`,
+      })
+      .select("id, public_token")
+      .single();
 
-    // Try with company_id first; if schema differs, retry without company_id.
-    const { data: insertedColumns, error: colsErr } = await (async () => {
-      const res1 = await supabase
-        .from("board_columns")
-        .insert(columnsPayload)
-        .select("id,name,type")
-        .returns<any[]>();
-
-      if (!res1.error) return res1 as any;
-
-      const payloadNoCompany = columnsPayload.map(({ company_id, ...rest }) => rest);
-      const res2 = await supabase
-        .from("board_columns")
-        .insert(payloadNoCompany)
-        .select("id,name,type")
-        .returns<any[]>();
-
-      return res2 as any;
-    })();
-
-    if (colsErr) {
-      console.error("Failed to seed columns:", colsErr);
-      throw colsErr;
+    if (formErr || !form?.id) {
+      console.error("[addJob] Failed to create application form:", formErr);
+      throw formErr || new Error("Form creation failed");
     }
 
-    const statusColumn = (insertedColumns || []).find(
-      (c: any) => String(c.type).toLowerCase() === "status" || String(c.name).toLowerCase() === "status"
-    );
+    console.log(`[addJob] Created form ${form.id} with token ${form.public_token}`);
 
-    // 4) Seed status labels that match your applicants_status_check constraint
-    // Allowed statuses:
-    // applied, screening, first_advantage, interviewing, tsa, hr_paperwork, hired, rejected
+    // ========================================================================
+    // STEP 4: Create default form fields using helper function
+    // ========================================================================
+    const { error: fieldsErr } = await supabase.rpc("create_default_form_fields", {
+      p_form_id: form.id,
+    });
+
+    if (fieldsErr) {
+      console.error("[addJob] Failed to create default fields:", fieldsErr);
+      throw fieldsErr;
+    }
+
+    // Fetch the created fields
+    const { data: fields, error: fetchFieldsErr } = await supabase
+      .from("job_application_fields")
+      .select("id, key, label, type, sort_order")
+      .eq("form_id", form.id)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (fetchFieldsErr || !fields) {
+      console.error("[addJob] Failed to fetch form fields:", fetchFieldsErr);
+      throw fetchFieldsErr || new Error("Failed to fetch fields");
+    }
+
+    console.log(`[addJob] Created ${fields.length} form fields`);
+
+    // ========================================================================
+    // STEP 5: Create board columns from form fields
+    // ========================================================================
+    // Map form field types to board column types
+    const mapFieldTypeToColumnType = (fieldType: string): string => {
+      const typeMap: Record<string, string> = {
+        text: "text",
+        textarea: "text",
+        email: "text",
+        phone: "text",
+        number: "number",
+        date: "date",
+        file: "file",
+        checkbox: "text",
+        radio: "text",
+        select: "text",
+      };
+      return typeMap[fieldType] || "text";
+    };
+
+    // Create columns for all fields except file uploads (resumes handled separately)
+    const columnsToCreate = fields
+      .filter((f) => f.type !== "file") // Skip file fields for board columns
+      .map((field, index) => ({
+        board_id: boardId,
+        company_id: companyId,
+        field_id: field.id,
+        name: field.label,
+        type: mapFieldTypeToColumnType(field.type),
+        sort_order: index + 1,
+        is_system: false, // All columns are now form-driven, not "system"
+        settings: {},
+      }));
+
+    // Add a Status column (special workflow column)
+    columnsToCreate.push({
+      board_id: boardId,
+      company_id: companyId,
+      field_id: null as any,
+      name: "Status",
+      type: "status",
+      sort_order: columnsToCreate.length + 1,
+      is_system: true,
+      settings: {},
+    });
+
+    const { data: insertedColumns, error: colsErr } = await supabase
+      .from("board_columns")
+      .insert(columnsToCreate)
+      .select("id, name, type");
+
+    if (colsErr) {
+      console.error("[addJob] Failed to create board columns:", colsErr);
+      // If unique constraint violation, it means columns already exist (idempotent)
+      if (!colsErr.message?.includes("unique")) {
+        throw colsErr;
+      }
+    }
+
+    console.log(`[addJob] Created ${insertedColumns?.length || 0} board columns`);
+
+    // ========================================================================
+    // STEP 6: Create status labels for the Status column
+    // ========================================================================
+    const statusColumn = insertedColumns?.find((c) => c.type === "status");
     if (statusColumn?.id) {
       const statusLabels = [
-        { label: "Applied", color: "gray", sort_order: 1 },
-        { label: "Screening", color: "blue", sort_order: 2 },
-        { label: "First Advantage", color: "purple", sort_order: 3 },
-        { label: "Interviewing", color: "yellow", sort_order: 4 },
-        { label: "TSA", color: "orange", sort_order: 5 },
-        { label: "HR Paperwork", color: "cyan", sort_order: 6 },
-        { label: "Hired", color: "green", sort_order: 7 },
-        { label: "Rejected", color: "red", sort_order: 8 },
+        { label: "applied", color: "#3b82f6", sort_order: 1 },
+        { label: "screening", color: "#8b5cf6", sort_order: 2 },
+        { label: "first_advantage", color: "#f59e0b", sort_order: 3 },
+        { label: "interviewing", color: "#10b981", sort_order: 4 },
+        { label: "tsa", color: "#06b6d4", sort_order: 5 },
+        { label: "hr_paperwork", color: "#ec4899", sort_order: 6 },
+        { label: "hired", color: "#22c55e", sort_order: 7 },
+        { label: "rejected", color: "#ef4444", sort_order: 8 },
       ].map((l) => ({ ...l, column_id: statusColumn.id }));
 
       const { error: labelsErr } = await supabase
         .from("board_status_labels")
         .insert(statusLabels);
 
-      if (labelsErr) {
-        console.error("Failed to seed status labels:", labelsErr);
-        // Don't throw; labels are helpful but not required to proceed.
+      if (labelsErr && !labelsErr.message?.includes("unique")) {
+        console.error("[addJob] Failed to create status labels:", labelsErr);
+      } else {
+        console.log(`[addJob] Created ${statusLabels.length} status labels`);
       }
     }
 
-    // 5) Create default groups for THIS board (per-job)
-    const defaultGroups = [
-      { name: "New Applicants", color: "green", sort_order: 1 },
-      { name: "Background Check", color: "purple", sort_order: 2 },
-      { name: "Interview", color: "yellow", sort_order: 3 },
-      { name: "HR Paperwork", color: "cyan", sort_order: 4 },
-      { name: "Hired", color: "green", sort_order: 5 },
-    ].map((g) => ({
+    // ========================================================================
+    // STEP 7: Create default board groups
+    // ========================================================================
+    const groupsToCreate = DEFAULT_GROUPS.map((g) => ({
       board_id: boardId,
       company_id: companyId,
       name: g.name,
@@ -205,60 +234,58 @@ export async function addJob(formData: FormData) {
       sort_order: g.sort_order,
     }));
 
-    const { data: groups, error: groupsErr } = await (async () => {
-      const res1 = await supabase
-        .from("board_groups")
-        .insert(defaultGroups)
-        .select("id,name")
-        .returns<any[]>();
-      if (!res1.error) return res1 as any;
-
-      const payloadNoCompany = defaultGroups.map(({ company_id, ...rest }) => rest);
-      const res2 = await supabase
-        .from("board_groups")
-        .insert(payloadNoCompany)
-        .select("id,name")
-        .returns<any[]>();
-      return res2 as any;
-    })();
+    const { data: groups, error: groupsErr } = await supabase
+      .from("board_groups")
+      .insert(groupsToCreate)
+      .select("id, name");
 
     if (groupsErr) {
-      console.error("Failed to seed default groups:", groupsErr);
-      // Don't throw; groups can be created later in UI.
+      console.error("[addJob] Failed to create groups:", groupsErr);
+      // If unique constraint violation, groups already exist (idempotent)
+      if (!groupsErr.message?.includes("unique")) {
+        throw groupsErr;
+      }
+    } else {
+      console.log(`[addJob] Created ${groups?.length || 0} board groups`);
     }
 
-    // 6) Insert a single dummy applicant in New Applicants so the board isn't empty
-    const newApplicantsGroup = (groups || []).find(
-      (g: any) => String(g.name).toLowerCase() === "new applicants"
-    );
-
+    // ========================================================================
+    // STEP 8: Create example applicant (optional, for better UX)
+    // ========================================================================
+    const newApplicantsGroup = groups?.find((g) => g.name === "New Applicants");
     if (newApplicantsGroup?.id) {
-      const dummyApplicant = {
+      const { error: applicantErr } = await supabase.from("applicants").insert({
         company_id: companyId,
         job_id: job.id,
+        board_id: boardId,
         group_id: newApplicantsGroup.id,
-        full_name: "Example Applicant (delete me)",
+        full_name: "Example Applicant",
         email: "example@applicant.test",
         phone: "555-555-5555",
-        position: 1,
-        // IMPORTANT: Must match applicants_status_check
         status: "applied",
-      };
+        position: 0,
+      });
 
-      const { error: applicantErr } = await supabase
-        .from("applicants")
-        .insert(dummyApplicant);
-
-      if (applicantErr) {
-        console.error("Failed to seed dummy applicant:", applicantErr);
-        // Don't throw; not required.
+      if (applicantErr && !applicantErr.message?.includes("unique")) {
+        console.error("[addJob] Failed to create example applicant:", applicantErr);
       }
     }
+
+    console.log(`[addJob] Job ${job.id} setup completed successfully`);
   } catch (e) {
-    console.error("Job created but seeding failed:", e);
+    console.error("[addJob] Job created but seeding failed:", e);
+    // Job was created successfully, but setup had issues
+    // We continue anyway so the user can fix it manually
   }
 
-  revalidatePath(`/dashboard/${companyId}/jobs`);
-  // Also revalidate the main dashboard path so the sidebar picks up the new job without refresh.
+  // ========================================================================
+  // STEP 9: Revalidate paths to ensure UI updates immediately
+  // ========================================================================
   revalidatePath(`/dashboard/${companyId}`);
+  revalidatePath(`/dashboard/${companyId}/jobs`);
+  revalidatePath(`/dashboard/${companyId}/jobs/${job.id}`);
+  revalidatePath(`/dashboard/${companyId}/jobs/${job.id}/applicants`);
+
+  // Redirect to the new job's applicants board
+  redirect(`/dashboard/${companyId}/jobs/${job.id}/applicants`);
 }

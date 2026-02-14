@@ -53,87 +53,8 @@ export async function getOrCreateApplicantsBoard(
   return newBoard.id;
 }
 
-// ===== Seed Default Board Columns =====
-
-/**
- * Seeds default system columns for a job's applicant board.
- * Uses the job-scoped Applicants board from the boards table.
- * Creates: Name, Email, Phone, Status columns + default status labels.
- */
-export async function seedDefaultBoardColumns(companyId: string, jobId: string) {
-  const supabase = await createClient();
-
-  // Get or create the job-scoped Applicants board
-  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
-
-  // Check if columns already exist for this board
-  const { data: existing } = await supabase
-    .from("board_columns")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("board_id", boardId)
-    .limit(1);
-
-  if (existing && existing.length > 0) {
-    return; // Already seeded for this board
-  }
-
-  // Create system columns
-  const systemColumns = [
-    { name: "Name", type: "text", sort_order: 1 },
-    { name: "Email", type: "text", sort_order: 2 },
-    { name: "Phone", type: "text", sort_order: 3 },
-    { name: "Status", type: "status", sort_order: 4 },
-  ];
-
-  const { data: insertedColumns, error: colError } = await supabase
-    .from("board_columns")
-    .insert(
-      systemColumns.map((col) => ({
-        board_id: boardId,
-        company_id: companyId,
-        name: col.name,
-        type: col.type,
-        sort_order: col.sort_order,
-        is_system: true,
-        settings: {},
-      }))
-    )
-    .select();
-
-  if (colError) {
-    console.error("[seedDefaultBoardColumns] Failed to seed board columns:", colError);
-    return;
-  }
-
-  // Find the Status column and seed default labels
-  const statusColumn = insertedColumns?.find((c) => c.type === "status");
-  if (!statusColumn) return;
-
-  // Use lowercase status values to match applicants.status field constraint
-  const defaultLabels = [
-    { label: "applied", color: "#3b82f6", sort_order: 1 },
-    { label: "screening", color: "#8b5cf6", sort_order: 2 },
-    { label: "interview", color: "#f59e0b", sort_order: 3 },
-    { label: "offer", color: "#10b981", sort_order: 4 },
-    { label: "rejected", color: "#ef4444", sort_order: 5 },
-  ];
-
-  const { error: labelError } = await supabase
-    .from("board_status_labels")
-    .insert(
-      defaultLabels.map((lbl) => ({
-        column_id: statusColumn.id,
-        label: lbl.label,
-        color: lbl.color,
-        sort_order: lbl.sort_order,
-      }))
-    );
-
-  if (labelError) {
-    console.error("[seedDefaultBoardColumns] Failed to seed status labels:", labelError);
-  }
-}
+// Note: Board columns and groups are now created during job creation
+// via the form engine. See /jobs/actions.ts addJob() function.
 
 export async function updateApplicantStatus(
   companyId: string,

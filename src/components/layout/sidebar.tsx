@@ -42,15 +42,8 @@ export function Sidebar({
   const handleViewApplicationPage = () => {
     if (!currentJob) return;
 
-    // Get the current company's slug
-    const currentCompany = companies.find((c) => c.id === companyId);
-    if (!currentCompany) return;
-
-    const companySlug = currentCompany.slug;
-    const jobSlug = currentJob.slug;
-
-    // Open in new tab
-    window.open(`/apply/${companySlug}/${jobSlug}`, '_blank');
+    // Navigate to the Application Form page where the Share Form button is
+    router.push(`/dashboard/${companyId}/jobs/${currentJobId}/form`);
     setApplicantsMenuOpen(false);
   };
 
