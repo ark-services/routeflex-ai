@@ -295,7 +295,7 @@ export default function ApplicantsBoard({
     if (!name) return;
 
     startTransition(async () => {
-      await createGroup(companyId, boardId, name);
+      await createGroup(companyId, jobId, boardId, name);
       setNewGroupName("");
     });
   }
