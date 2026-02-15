@@ -57,19 +57,32 @@ export function AutomationOverlay({
     automations.length > 0 ? "manage" : "create"
   );
   const [key, setKey] = useState(0);
+  const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
 
   // Reset to manage tab when automations change (after create)
   useEffect(() => {
-    if (automations.length > 0) {
+    if (automations.length > 0 && !editingAutomation) {
       setActiveTab("manage");
     }
-  }, [automations.length]);
+  }, [automations.length, editingAutomation]);
 
   if (!isOpen) return null;
 
   const handleCreated = () => {
+    setEditingAutomation(null);
     setActiveTab("manage");
     setKey(k => k + 1); // Force re-render
+  };
+
+  const handleEdit = (automation: Automation) => {
+    setEditingAutomation(automation);
+    setActiveTab("create");
+    setKey(k => k + 1); // Force re-render with new editing data
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAutomation(null);
+    setActiveTab("manage");
   };
 
   return (
@@ -131,6 +144,7 @@ export function AutomationOverlay({
               jobId={jobId}
               automations={automations}
               triggers={triggers}
+              onEdit={handleEdit}
             />
           )}
           {activeTab === "create" && (
@@ -141,6 +155,8 @@ export function AutomationOverlay({
               triggers={triggers}
               groups={groups}
               onCreated={handleCreated}
+              editingAutomation={editingAutomation}
+              onCancelEdit={handleCancelEdit}
             />
           )}
         </div>

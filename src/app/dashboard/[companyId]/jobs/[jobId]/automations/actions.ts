@@ -265,3 +265,207 @@ export async function getAutomationTriggers() {
 
   return data || [];
 }
+
+/**
+ * Get board columns with metadata for this job (for interactive UI pickers)
+ */
+export async function getJobBoardColumns(companyId: string, jobId: string) {
+  const supabase = await createClient();
+
+  // Get board for this job
+  const { data: board } = await supabase
+    .from("boards")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .single();
+
+  if (!board) return [];
+
+  // Get columns
+  const { data: columns } = await supabase
+    .from("board_columns")
+    .select("id, name, type, sort_order, settings")
+    .eq("board_id", board.id)
+    .order("sort_order", { ascending: true });
+
+  if (!columns) return [];
+
+  // For status columns, fetch their labels
+  const statusColumnIds = columns
+    .filter((c) => c.type === "status")
+    .map((c) => c.id);
+
+  let statusLabels: any[] = [];
+  if (statusColumnIds.length > 0) {
+    const { data: labels } = await supabase
+      .from("board_status_labels")
+      .select("id, column_id, label, color, sort_order")
+      .in("column_id", statusColumnIds)
+      .order("sort_order", { ascending: true });
+
+    statusLabels = labels || [];
+  }
+
+  // Merge labels into columns
+  return columns.map((col) => ({
+    ...col,
+    labels:
+      col.type === "status"
+        ? statusLabels.filter((l) => l.column_id === col.id)
+        : [],
+  }));
+}
+
+/**
+ * Update an existing automation
+ */
+export async function updateJobAutomation(
+  companyId: string,
+  jobId: string,
+  automationId: string,
+  input: {
+    name: string;
+    trigger_key: string;
+    filter?: Record<string, any>;
+    actions: Array<{
+      type: string;
+      config: Record<string, any>;
+      sort_order?: number;
+    }>;
+  }
+) {
+  const supabase = await createClient();
+
+  // Update automation metadata
+  const { error: updateError } = await supabase
+    .from("automations")
+    .update({
+      name: input.name,
+      trigger_key: input.trigger_key,
+      filter: input.filter || {},
+    })
+    .eq("id", automationId)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  // Delete old actions
+  const { error: deleteError } = await supabase
+    .from("automation_actions")
+    .delete()
+    .eq("automation_id", automationId)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+
+  // Insert new actions
+  if (input.actions && input.actions.length > 0) {
+    const actionsToInsert = input.actions.map((action, index) => ({
+      automation_id: automationId,
+      company_id: companyId,
+      job_id: jobId,
+      type: action.type,
+      config: action.config,
+      sort_order: action.sort_order ?? index,
+    }));
+
+    const { error: actionsError } = await supabase
+      .from("automation_actions")
+      .insert(actionsToInsert);
+
+    if (actionsError) {
+      throw new Error(actionsError.message);
+    }
+  }
+
+  revalidatePath(jobPath(companyId, jobId));
+}
+
+/**
+ * Duplicate an existing automation
+ */
+export async function duplicateJobAutomation(
+  companyId: string,
+  jobId: string,
+  automationId: string
+) {
+  const supabase = await createClient();
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Fetch source automation
+  const { data: source, error: fetchError } = await supabase
+    .from("automations")
+    .select(`
+      id,
+      name,
+      trigger_key,
+      filter,
+      automation_actions (
+        id,
+        type,
+        config,
+        sort_order
+      )
+    `)
+    .eq("id", automationId)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .single();
+
+  if (fetchError || !source) {
+    throw new Error("Automation not found");
+  }
+
+  // Create duplicate automation
+  const { data: newAutomation, error: createError } = await supabase
+    .from("automations")
+    .insert({
+      company_id: companyId,
+      job_id: jobId,
+      name: `${source.name} (Copy)`,
+      trigger_key: source.trigger_key,
+      filter: source.filter,
+      created_by: user.id,
+    })
+    .select()
+    .single();
+
+  if (createError || !newAutomation) {
+    throw new Error(createError?.message || "Failed to duplicate automation");
+  }
+
+  // Duplicate actions
+  if (source.automation_actions && source.automation_actions.length > 0) {
+    const actionsToInsert = source.automation_actions.map((action: any) => ({
+      automation_id: newAutomation.id,
+      company_id: companyId,
+      job_id: jobId,
+      type: action.type,
+      config: action.config,
+      sort_order: action.sort_order,
+    }));
+
+    const { error: actionsError } = await supabase
+      .from("automation_actions")
+      .insert(actionsToInsert);
+
+    if (actionsError) {
+      // Rollback automation if actions fail
+      await supabase.from("automations").delete().eq("id", newAutomation.id);
+      throw new Error(actionsError.message);
+    }
+  }
+
+  revalidatePath(jobPath(companyId, jobId));
+  return newAutomation;
+}
