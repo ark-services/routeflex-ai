@@ -22,7 +22,7 @@ export function DeleteConfirmationModal({
   title,
   description,
   itemName,
-  confirmText = "DELETE",
+  confirmText,
   onDelete,
   onSuccess
 }: DeleteConfirmationModalProps) {
@@ -31,8 +31,10 @@ export function DeleteConfirmationModal({
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
+  const requiresConfirmation = confirmText && confirmText.length > 0;
+
   const handleDelete = () => {
-    if (confirmation !== confirmText) {
+    if (requiresConfirmation && confirmation !== confirmText) {
       setError(`Please type "${confirmText}" to confirm`);
       return;
     }
@@ -79,25 +81,29 @@ export function DeleteConfirmationModal({
             <p className="text-sm text-stone-700 mb-2">
               Are you sure you want to delete <span className="font-semibold">{itemName}</span>?
             </p>
-            <p className="text-sm text-stone-600 mb-3">
-              Type <span className="font-mono font-semibold">{confirmText}</span> to confirm:
-            </p>
-            <input
-              type="text"
-              value={confirmation}
-              onChange={(e) => {
-                setConfirmation(e.target.value);
-                setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isPending && confirmation === confirmText) {
-                  handleDelete();
-                }
-              }}
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              disabled={isPending}
-              autoFocus
-            />
+            {requiresConfirmation && (
+              <>
+                <p className="text-sm text-stone-600 mb-3">
+                  Type <span className="font-mono font-semibold">{confirmText}</span> to confirm:
+                </p>
+                <input
+                  type="text"
+                  value={confirmation}
+                  onChange={(e) => {
+                    setConfirmation(e.target.value);
+                    setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isPending && confirmation === confirmText) {
+                      handleDelete();
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  disabled={isPending}
+                  autoFocus
+                />
+              </>
+            )}
           </div>
 
           {error && (
@@ -116,7 +122,7 @@ export function DeleteConfirmationModal({
             </button>
             <button
               onClick={handleDelete}
-              disabled={isPending || confirmation !== confirmText}
+              disabled={isPending || (requiresConfirmation ? confirmation !== confirmText : false)}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? "Deleting..." : "Delete"}

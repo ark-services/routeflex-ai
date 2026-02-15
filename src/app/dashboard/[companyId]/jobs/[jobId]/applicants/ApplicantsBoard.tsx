@@ -11,6 +11,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -40,7 +41,11 @@ import {
   duplicateApplicant,
   reorderApplicants,
   reorderColumns,
+  renameGroup,
+  deleteGroup,
+  reorderGroups,
 } from "./actions";
+import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
 
 type Group = {
   id: string;
@@ -69,6 +74,7 @@ type BoardColumn = {
   type: "text" | "number" | "date" | "file" | "status";
   is_system: boolean;
   sort_order: number;
+  is_hidden?: boolean;
 };
 
 type StatusLabel = {
@@ -151,9 +157,28 @@ export default function ApplicantsBoard({
   // Group color picker
   const [colorPickerGroupId, setColorPickerGroupId] = useState<string | null>(null);
 
+  // Hidden columns dropdown
+  const [showHiddenColumnsMenu, setShowHiddenColumnsMenu] = useState(false);
+
+  // Group editing state
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroupValue, setEditingGroupValue] = useState("");
+
+  // Group menu state
+  const [groupMenuOpen, setGroupMenuOpen] = useState<string | null>(null);
+
+  // Delete confirmation
+  const [deleteGroupModalOpen, setDeleteGroupModalOpen] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
+
+  // Drag state
+  const [isDraggingGroup, setIsDraggingGroup] = useState(false);
+  const [groupsBeforeDrag, setGroupsBeforeDrag] = useState<Group[]>([]);
+
   // Local state for optimistic updates
   const [localColumns, setLocalColumns] = useState(columns);
   const [localApplicants, setLocalApplicants] = useState(applicants);
+  const [localGroups, setLocalGroups] = useState(groups);
 
   // Avoid hydration mismatches with DnD/table markup by rendering after mount
   const [mounted, setMounted] = useState(false);
@@ -169,6 +194,19 @@ export default function ApplicantsBoard({
   useMemo(() => {
     setLocalApplicants(applicants);
   }, [applicants]);
+
+  useMemo(() => {
+    setLocalGroups(groups);
+  }, [groups]);
+
+  // Filter out hidden columns for display
+  const visibleColumns = useMemo(() => {
+    return localColumns.filter((col) => !col.is_hidden);
+  }, [localColumns]);
+
+  const hiddenColumns = useMemo(() => {
+    return localColumns.filter((col) => col.is_hidden);
+  }, [localColumns]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -279,10 +317,67 @@ export default function ApplicantsBoard({
     return map;
   }, [statusLabels]);
 
+  function handleDragStart(event: DragStartEvent) {
+    const { active } = event;
+
+    // Detect group dragging and collapse groups
+    if (active.id.toString().startsWith("group-")) {
+      setIsDraggingGroup(true);
+      setGroupsBeforeDrag(localGroups);
+
+      // Collapse all groups for better UX during drag
+      startTransition(async () => {
+        for (const g of localGroups) {
+          if (!g.is_collapsed) {
+            await toggleGroupCollapse(companyId, jobId, boardId, g.id, true);
+          }
+        }
+      });
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      // Reset drag state
+      if (isDraggingGroup) {
+        setIsDraggingGroup(false);
+      }
+      return;
+    }
+
+    // Handle group reordering
+    if (active.id.toString().startsWith("group-")) {
+      const oldIndex = localGroups.findIndex((g) => `group-${g.id}` === active.id);
+      const newIndex = localGroups.findIndex((g) => `group-${g.id}` === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(localGroups, oldIndex, newIndex);
+        setLocalGroups(newOrder);
+
+        // Persist to DB and restore collapse state
+        startTransition(async () => {
+          await reorderGroups(
+            companyId,
+            jobId,
+            boardId,
+            newOrder.map((g) => g.id)
+          );
+
+          // Restore pre-drag collapse state for each group
+          for (const beforeGroup of groupsBeforeDrag) {
+            if (!beforeGroup.is_collapsed) {
+              // Group was expanded before drag, restore it
+              await toggleGroupCollapse(companyId, jobId, boardId, beforeGroup.id, false);
+            }
+          }
+        });
+      }
+
+      setIsDraggingGroup(false);
+      return;
+    }
 
     // Handle column reordering
     if (active.id.toString().startsWith("col-")) {
@@ -332,6 +427,23 @@ export default function ApplicantsBoard({
           });
         }
       }
+    }
+  }
+
+  function handleDragCancel() {
+    // Restore pre-drag collapse state
+    if (isDraggingGroup) {
+      setIsDraggingGroup(false);
+
+      // Restore collapse state for each group
+      startTransition(async () => {
+        for (const beforeGroup of groupsBeforeDrag) {
+          const currentGroup = localGroups.find((g) => g.id === beforeGroup.id);
+          if (currentGroup && currentGroup.is_collapsed !== beforeGroup.is_collapsed) {
+            await toggleGroupCollapse(companyId, jobId, boardId, beforeGroup.id, beforeGroup.is_collapsed);
+          }
+        }
+      });
     }
   }
 
@@ -394,6 +506,27 @@ export default function ApplicantsBoard({
     });
   }
 
+  function onRenameGroup(groupId: string) {
+    const name = editingGroupValue.trim();
+    if (!name) return;
+
+    startTransition(async () => {
+      await renameGroup(companyId, jobId, boardId, groupId, name);
+      setEditingGroupId(null);
+      setEditingGroupValue("");
+    });
+  }
+
+  function onDeleteGroup() {
+    if (!groupToDelete) return;
+
+    startTransition(async () => {
+      await deleteGroup(companyId, jobId, boardId, groupToDelete.id);
+      setDeleteGroupModalOpen(false);
+      setGroupToDelete(null);
+    });
+  }
+
   function onAddColumn() {
     const name = newColumnName.trim();
     if (!name) return;
@@ -424,6 +557,24 @@ export default function ApplicantsBoard({
     startTransition(async () => {
       await deleteBoardColumn(companyId, jobId, columnId);
     });
+  }
+
+  function onHideColumn(columnId: string) {
+    startTransition(async () => {
+      await updateBoardColumn(companyId, jobId, columnId, { is_hidden: true });
+    });
+  }
+
+  function onShowColumn(columnId: string) {
+    startTransition(async () => {
+      await updateBoardColumn(companyId, jobId, columnId, { is_hidden: false });
+    });
+  }
+
+  function onAddColumnRight(afterColumnId: string) {
+    setShowAddColumnModal(true);
+    // We'll need to track which column to add after
+    // For now, just open the modal - we can enhance this later
   }
 
   function onMoveApplicant(applicantId: string, groupId: string) {
@@ -480,51 +631,102 @@ export default function ApplicantsBoard({
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
       <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden bg-stone-50">
+        {/* Hidden Columns Control */}
+        {hiddenColumns.length > 0 && (
+          <div className="px-6 py-3 border-b border-stone-200 bg-white">
+            <div className="relative inline-block">
+              <button
+                onClick={() => setShowHiddenColumnsMenu(!showHiddenColumnsMenu)}
+                className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+              >
+                <span>Hidden Columns ({hiddenColumns.length})</span>
+                <span className="text-xs">▼</span>
+              </button>
+              {showHiddenColumnsMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowHiddenColumnsMenu(false)}
+                  />
+                  <div className="absolute left-0 top-full mt-2 w-64 rounded-lg border border-stone-200 bg-white shadow-lg z-20">
+                    <div className="py-1 max-h-64 overflow-y-auto">
+                      {hiddenColumns.map((col) => (
+                        <button
+                          key={col.id}
+                          onClick={() => {
+                            onShowColumn(col.id);
+                            setShowHiddenColumnsMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
+                        >
+                          {col.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Board content - single horizontal scroll */}
         <div className="flex-1 overflow-auto">
           <div className="min-w-max p-6">
             {/* Groups */}
             <div className="space-y-4">
-              {/* Render regular groups */}
-              {groups.map((g) => {
-                const rows = applicantsByGroup.get(g.id) ?? [];
-                return (
-                  <section key={g.id} className="space-y-2">
-                    {/* Group header with color */}
-                    <div className="flex items-center gap-3 px-2">
-                      <button
-                        onClick={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
-                        className="text-stone-600 hover:text-stone-900 text-sm"
-                      >
-                        {g.is_collapsed ? "▶" : "▼"}
-                      </button>
-                      <div className="relative">
-                        <button
-                          onClick={() => setColorPickerGroupId(colorPickerGroupId === g.id ? null : g.id)}
-                          className="h-4 w-4 rounded cursor-pointer hover:ring-2 hover:ring-stone-300 transition"
-                          style={{ backgroundColor: g.color }}
-                        />
-                        {/* Color picker dropdown */}
-                        {colorPickerGroupId === g.id && (
-                          <div className="absolute left-0 top-6 z-50 rounded-lg border border-stone-200 bg-white p-3 shadow-xl">
-                            <div className="grid grid-cols-8 gap-2">
-                              {PRESET_COLORS.map((color) => (
-                                <button
-                                  key={color}
-                                  onClick={() => onUpdateGroupColor(g.id, color)}
-                                  className="h-6 w-6 rounded border border-stone-200 hover:scale-110 transition-transform"
-                                  style={{ backgroundColor: color }}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <h2 className="text-base font-semibold text-stone-900">{g.name}</h2>
-                      <span className="text-sm text-stone-400">({rows.length})</span>
-                    </div>
+              {/* Wrap groups in SortableContext */}
+              <SortableContext
+                items={localGroups.map((g) => `group-${g.id}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {/* Render regular groups */}
+                {localGroups.map((g) => {
+                  const rows = applicantsByGroup.get(g.id) ?? [];
+                  return (
+                    <section key={g.id} className="space-y-2">
+                      {/* Sortable Group header */}
+                      <SortableGroupHeader
+                        group={g}
+                        rowCount={rows.length}
+                        isCollapsed={g.is_collapsed}
+                        onToggleCollapse={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
+                        colorPickerOpen={colorPickerGroupId === g.id}
+                        onColorPickerToggle={() => setColorPickerGroupId(colorPickerGroupId === g.id ? null : g.id)}
+                        onColorChange={(color) => onUpdateGroupColor(g.id, color)}
+                        isEditing={editingGroupId === g.id}
+                        editValue={editingGroupValue}
+                        onStartEdit={() => {
+                          setEditingGroupId(g.id);
+                          setEditingGroupValue(g.name);
+                        }}
+                        onSaveEdit={() => onRenameGroup(g.id)}
+                        onCancelEdit={() => {
+                          setEditingGroupId(null);
+                          setEditingGroupValue("");
+                        }}
+                        onChange={setEditingGroupValue}
+                        menuOpen={groupMenuOpen === g.id}
+                        onMenuToggle={() => setGroupMenuOpen(groupMenuOpen === g.id ? null : g.id)}
+                        onRename={() => {
+                          setEditingGroupId(g.id);
+                          setEditingGroupValue(g.name);
+                          setGroupMenuOpen(null);
+                        }}
+                        onDelete={() => {
+                          setGroupToDelete(g);
+                          setDeleteGroupModalOpen(true);
+                          setGroupMenuOpen(null);
+                        }}
+                      />
 
                     {/* Group table */}
                     {!g.is_collapsed && (
@@ -536,10 +738,10 @@ export default function ApplicantsBoard({
 
                               {/* Sortable columns */}
                               <SortableContext
-                                items={localColumns.map((c) => `col-${c.id}`)}
+                                items={visibleColumns.map((c) => `col-${c.id}`)}
                                 strategy={horizontalListSortingStrategy}
                               >
-                                {localColumns.map((col) => (
+                                {visibleColumns.map((col) => (
                                   <SortableColumnHeader
                                     key={col.id}
                                     column={col}
@@ -556,6 +758,8 @@ export default function ApplicantsBoard({
                                     }}
                                     onChange={setEditingColumnValue}
                                     onDelete={() => onDeleteColumn(col.id)}
+                                    onHide={() => onHideColumn(col.id)}
+                                    onAddRight={() => onAddColumnRight(col.id)}
                                   />
                                 ))}
                               </SortableContext>
@@ -581,7 +785,7 @@ export default function ApplicantsBoard({
                           <tbody>
                             {rows.length === 0 ? (
                               <tr>
-                                <td colSpan={localColumns.length + 5} className="px-4 py-8 text-sm text-stone-400 text-center">
+                                <td colSpan={visibleColumns.length + 5} className="px-4 py-8 text-sm text-stone-400 text-center">
                                   No applicants in this group yet.
                                 </td>
                               </tr>
@@ -594,7 +798,7 @@ export default function ApplicantsBoard({
                                   <SortableRow
                                     key={a.id}
                                     applicant={a}
-                                    columns={localColumns}
+                                    columns={visibleColumns}
                                     selected={!!selected[a.id]}
                                     onToggle={() => toggleRow(a.id)}
                                     getCellValue={(col) => getCellValue(a, col)}
@@ -615,9 +819,10 @@ export default function ApplicantsBoard({
                         </table>
                       </div>
                     )}
-                  </section>
-                );
-              })}
+                    </section>
+                  );
+                })}
+              </SortableContext>
 
               {/* Render orphaned applicants group if it exists */}
               {applicantsByGroup.has('__orphaned__') && (() => {
@@ -644,7 +849,7 @@ export default function ApplicantsBoard({
                         <thead className="bg-stone-50/80">
                           <tr className="border-b border-stone-200">
                             <th className="sticky left-0 z-10 w-10 bg-stone-50/80 px-4 py-2"></th>
-                            {localColumns.map((col) => (
+                            {visibleColumns.map((col) => (
                               <th key={col.id} className="px-4 py-2 text-xs font-medium text-stone-700 border-r border-stone-200">
                                 {col.name}
                               </th>
@@ -814,6 +1019,25 @@ export default function ApplicantsBoard({
             </div>
           </div>
         )}
+
+        {/* Delete Group Modal */}
+        {groupToDelete && (
+          <DeleteConfirmationModal
+            open={deleteGroupModalOpen}
+            onClose={() => {
+              setDeleteGroupModalOpen(false);
+              setGroupToDelete(null);
+            }}
+            title="Delete Group"
+            description="All applicants in this group will be moved to the first remaining group."
+            itemName={groupToDelete.name}
+            onDelete={async () => {
+              if (!groupToDelete) return { error: "No group selected" };
+              await deleteGroup(companyId, jobId, boardId, groupToDelete.id);
+              return { success: true };
+            }}
+          />
+        )}
       </div>
     </DndContext>
   );
@@ -830,6 +1054,8 @@ function SortableColumnHeader({
   onCancelEdit,
   onChange,
   onDelete,
+  onHide,
+  onAddRight,
 }: {
   column: BoardColumn;
   isEditing: boolean;
@@ -839,9 +1065,12 @@ function SortableColumnHeader({
   onCancelEdit: () => void;
   onChange: (val: string) => void;
   onDelete: () => void;
+  onHide: () => void;
+  onAddRight: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `col-${column.id}`,
+    disabled: isEditing,
   });
 
   const style = {
@@ -850,11 +1079,28 @@ function SortableColumnHeader({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Calculate menu position when it opens
+  useEffect(() => {
+    if (menuOpen && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      });
+    } else {
+      setMenuPosition(null);
+    }
+  }, [menuOpen]);
+
   return (
     <th
       ref={setNodeRef}
       style={style}
-      className="px-4 py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0"
+      className="group px-4 py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0"
       {...attributes}
     >
       <div className="flex items-center gap-2">
@@ -869,9 +1115,21 @@ function SortableColumnHeader({
             }}
             className="h-7 w-32 rounded border border-stone-300 px-2 text-xs outline-none focus:border-stone-500"
             autoFocus
+            onFocus={(e) => e.target.select()}
           />
         ) : (
           <>
+            {/* Kebab menu button on LEFT */}
+            {!column.is_system && (
+              <button
+                ref={menuButtonRef}
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="opacity-0 group-hover:opacity-100 text-stone-600 hover:text-stone-900 transition-opacity text-xs font-bold"
+              >
+                ⋮
+              </button>
+            )}
+
             <button
               onClick={onStartEdit}
               className="text-left hover:text-stone-900 cursor-text"
@@ -890,6 +1148,63 @@ function SortableColumnHeader({
           </>
         )}
       </div>
+
+      {/* Render menu in a portal */}
+      {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+        <>
+          {/* Backdrop to close menu when clicking outside */}
+          <div
+            className="fixed inset-0 z-[998]"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div
+            className="fixed z-[999] w-48 rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+            style={{
+              top: `${menuPosition.top}px`,
+              left: `${menuPosition.left}px`,
+            }}
+          >
+            <button
+              onClick={() => {
+                onHide();
+                setMenuOpen(false);
+              }}
+              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+            >
+              Hide column
+            </button>
+            <button
+              onClick={() => {
+                onAddRight();
+                setMenuOpen(false);
+              }}
+              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+            >
+              Add column to right
+            </button>
+            <button
+              onClick={() => {
+                onStartEdit();
+                setMenuOpen(false);
+              }}
+              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+            >
+              Rename column
+            </button>
+            <div className="my-1 border-t border-stone-100" />
+            <button
+              onClick={() => {
+                onDelete();
+                setMenuOpen(false);
+              }}
+              className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+            >
+              Delete column
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
     </th>
   );
 }
@@ -1087,6 +1402,189 @@ function SortableRow({
     >
       {cellEls}
     </tr>
+  );
+}
+
+// ===== Sortable Group Header =====
+
+function SortableGroupHeader({
+  group,
+  rowCount,
+  isCollapsed,
+  onToggleCollapse,
+  colorPickerOpen,
+  onColorPickerToggle,
+  onColorChange,
+  isEditing,
+  editValue,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onChange,
+  menuOpen,
+  onMenuToggle,
+  onRename,
+  onDelete,
+}: {
+  group: Group;
+  rowCount: number;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+  colorPickerOpen: boolean;
+  onColorPickerToggle: () => void;
+  onColorChange: (color: string) => void;
+  isEditing: boolean;
+  editValue: string;
+  onStartEdit: () => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onChange: (val: string) => void;
+  menuOpen: boolean;
+  onMenuToggle: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `group-${group.id}`,
+    disabled: isEditing,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Calculate menu position when it opens
+  useEffect(() => {
+    if (menuOpen && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      });
+    } else {
+      setMenuPosition(null);
+    }
+  }, [menuOpen]);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-3 px-2"
+      {...attributes}
+    >
+      {/* Drag handle */}
+      <button
+        {...listeners}
+        className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 text-sm transition-opacity"
+      >
+        ⋮⋮
+      </button>
+
+      {/* Collapse toggle */}
+      <button
+        onClick={onToggleCollapse}
+        className="text-stone-600 hover:text-stone-900 text-sm"
+      >
+        {isCollapsed ? "▶" : "▼"}
+      </button>
+
+      {/* Color picker */}
+      <div className="relative">
+        <button
+          onClick={onColorPickerToggle}
+          className="h-4 w-4 rounded cursor-pointer hover:ring-2 hover:ring-stone-300 transition"
+          style={{ backgroundColor: group.color }}
+        />
+        {/* Color picker dropdown */}
+        {colorPickerOpen && (
+          <div className="absolute left-0 top-6 z-50 rounded-lg border border-stone-200 bg-white p-3 shadow-xl">
+            <div className="grid grid-cols-8 gap-2">
+              {PRESET_COLORS.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => onColorChange(color)}
+                  className="h-6 w-6 rounded border border-stone-200 hover:scale-110 transition-transform"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Inline editable name */}
+      {isEditing ? (
+        <input
+          value={editValue}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onSaveEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSaveEdit();
+            if (e.key === "Escape") onCancelEdit();
+          }}
+          className="h-7 w-48 rounded border border-stone-300 px-2 text-sm outline-none focus:border-stone-500"
+          autoFocus
+          onFocus={(e) => e.target.select()}
+        />
+      ) : (
+        <button
+          onClick={onStartEdit}
+          className="text-base font-semibold text-stone-900 hover:text-stone-700 cursor-text"
+        >
+          {group.name}
+        </button>
+      )}
+
+      <span className="text-sm text-stone-400">({rowCount})</span>
+
+      {/* Kebab menu button */}
+      <button
+        ref={menuButtonRef}
+        onClick={onMenuToggle}
+        className="opacity-0 group-hover:opacity-100 ml-2 text-stone-600 hover:text-stone-900 transition-opacity text-sm font-bold"
+      >
+        ⋮
+      </button>
+
+      {/* Render menu in a portal to escape overflow/z-index issues */}
+      {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+        <>
+          {/* Backdrop to close menu when clicking outside */}
+          <div
+            className="fixed inset-0 z-[998]"
+            onClick={onMenuToggle}
+          />
+          <div
+            className="fixed z-[999] w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+            style={{
+              top: `${menuPosition.top}px`,
+              left: `${menuPosition.left}px`,
+            }}
+          >
+            <button
+              onClick={onRename}
+              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+            >
+              Rename
+            </button>
+            <div className="my-1 border-t border-stone-100" />
+            <button
+              onClick={onDelete}
+              className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
+    </div>
   );
 }
 

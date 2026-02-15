@@ -304,6 +304,147 @@ export async function updateGroupColor(
   revalidatePath(dashPath(companyId, jobId));
 }
 
+export async function renameGroup(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  groupId: string,
+  name: string
+) {
+  const supabase = await createClient();
+
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new Error("Group name cannot be empty");
+  }
+
+  // Check for duplicate name within same board
+  const { data: existingGroup } = await supabase
+    .from("board_groups")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("board_id", boardId)
+    .eq("name", trimmedName)
+    .neq("id", groupId)
+    .maybeSingle();
+
+  if (existingGroup) {
+    throw new Error("A group with this name already exists");
+  }
+
+  const { error } = await supabase
+    .from("board_groups")
+    .update({ name: trimmedName })
+    .eq("id", groupId)
+    .eq("company_id", companyId)
+    .eq("board_id", boardId);
+
+  if (error) {
+    console.error("[renameGroup] Error:", error);
+    throw new Error(error.message);
+  }
+
+  revalidatePath(dashPath(companyId, jobId));
+}
+
+export async function deleteGroup(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  groupId: string
+) {
+  const supabase = await createClient();
+
+  // Fetch all groups for board (sorted by sort_order)
+  const { data: groups, error: fetchError } = await supabase
+    .from("board_groups")
+    .select("id, sort_order")
+    .eq("company_id", companyId)
+    .eq("board_id", boardId)
+    .order("sort_order", { ascending: true });
+
+  if (fetchError) {
+    console.error("[deleteGroup] Error fetching groups:", fetchError);
+    throw new Error(fetchError.message);
+  }
+
+  // Prevent deletion if only 1 group remains
+  if (!groups || groups.length <= 1) {
+    throw new Error("Cannot delete the last group");
+  }
+
+  // Find first group that isn't being deleted (target group)
+  const targetGroup = groups.find((g) => g.id !== groupId);
+  if (!targetGroup) {
+    throw new Error("No target group found for applicant migration");
+  }
+
+  // Move all applicants from deleted group to target group
+  const { error: moveError } = await supabase
+    .from("applicants")
+    .update({ group_id: targetGroup.id })
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .eq("group_id", groupId);
+
+  if (moveError) {
+    console.error("[deleteGroup] Error moving applicants:", moveError);
+    throw new Error(moveError.message);
+  }
+
+  // Delete the group
+  const { error: deleteError } = await supabase
+    .from("board_groups")
+    .delete()
+    .eq("id", groupId)
+    .eq("company_id", companyId)
+    .eq("board_id", boardId);
+
+  if (deleteError) {
+    console.error("[deleteGroup] Error deleting group:", deleteError);
+    throw new Error(deleteError.message);
+  }
+
+  // Renormalize sort_order for remaining groups (0, 1, 2, ...)
+  const remainingGroups = groups.filter((g) => g.id !== groupId);
+  for (let i = 0; i < remainingGroups.length; i++) {
+    await supabase
+      .from("board_groups")
+      .update({ sort_order: i })
+      .eq("id", remainingGroups[i].id)
+      .eq("company_id", companyId)
+      .eq("board_id", boardId);
+  }
+
+  revalidatePath(dashPath(companyId, jobId));
+}
+
+export async function reorderGroups(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  groupIds: string[]
+) {
+  const supabase = await createClient();
+
+  // Update each group's sort_order based on array index
+  for (let i = 0; i < groupIds.length; i++) {
+    const { error } = await supabase
+      .from("board_groups")
+      .update({ sort_order: i })
+      .eq("id", groupIds[i])
+      .eq("company_id", companyId)
+      .eq("board_id", boardId);
+
+    if (error) {
+      console.error("[reorderGroups] Error updating group sort_order:", error);
+      throw new Error(error.message);
+    }
+  }
+
+  revalidatePath(dashPath(companyId, jobId));
+}
+
 // ===== Board Column Actions =====
 
 export async function createBoardColumn(
@@ -460,7 +601,7 @@ export async function updateBoardColumn(
   companyId: string,
   jobId: string,
   columnId: string,
-  updates: { name?: string; sort_order?: number }
+  updates: { name?: string; sort_order?: number; is_hidden?: boolean }
 ) {
   const supabase = await createClient();
 
