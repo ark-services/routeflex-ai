@@ -182,35 +182,65 @@ export default function ApplicantsBoard({
       applicantGroupIds: localApplicants.map(a => ({
         id: a.id,
         name: a.full_name,
-        group_id: a.group_id
+        group_id: a.group_id,
+        board_id: a.board_id,
       })),
+      expectedBoardId: boardId,
     });
 
+    // Track orphaned applicants
+    const orphanedApplicants: ApplicantRow[] = [];
+
     // Assign applicants to groups
-    let orphanedCount = 0;
     for (const a of localApplicants) {
       if (!a.group_id) {
-        console.warn('[ApplicantsBoard] Applicant has no group_id:', a.id, a.full_name);
-        orphanedCount++;
+        console.warn('[ApplicantsBoard] Applicant has no group_id:', {
+          id: a.id,
+          name: a.full_name,
+          board_id: a.board_id,
+        });
+        orphanedApplicants.push(a);
         continue;
       }
 
       if (!map.has(a.group_id)) {
-        console.warn('[ApplicantsBoard] Applicant group_id not in groups list:', {
+        console.error('[ApplicantsBoard] CRITICAL: Applicant group_id not in groups list:', {
           applicantId: a.id,
           applicantName: a.full_name,
-          groupId: a.group_id,
+          applicantBoardId: a.board_id,
+          applicantGroupId: a.group_id,
+          expectedBoardId: boardId,
           availableGroups: Array.from(map.keys()),
+          availableGroupNames: groups.map(g => ({ id: g.id, name: g.name })),
         });
-        orphanedCount++;
+        orphanedApplicants.push(a);
         continue;
       }
 
       map.get(a.group_id)!.push(a);
     }
 
-    if (orphanedCount > 0) {
-      console.error(`[ApplicantsBoard] ${orphanedCount} applicants could not be assigned to groups!`);
+    // CRITICAL FIX: If we have orphaned applicants, create a fallback "Orphaned Applicants" group
+    // so they still render instead of being dropped
+    if (orphanedApplicants.length > 0) {
+      console.error(
+        `[ApplicantsBoard] ${orphanedApplicants.length} applicants are orphaned (group_id mismatch)!`,
+        'Creating fallback "Orphaned Applicants" group to prevent data loss.'
+      );
+
+      // Create a synthetic group for orphaned applicants
+      const orphanedGroupId = '__orphaned__';
+      map.set(orphanedGroupId, orphanedApplicants);
+
+      // Add warning message to help user understand the issue
+      console.error(
+        '[ApplicantsBoard] BOARD MISMATCH DETECTED:',
+        '\n  Problem: Applicants have group_ids that do not match the current board\'s groups.',
+        '\n  Likely cause: Multiple boards exist for this job, or applicants reference an old/deleted board.',
+        '\n  Fix: Run this SQL to check for duplicate boards:',
+        `\n    SELECT id, name, job_id, created_at FROM boards WHERE job_id = '${jobId}' ORDER BY created_at;`,
+        '\n  These applicants will show in "⚠️ Orphaned Applicants" group until the board mismatch is resolved.'
+      );
     }
 
     // Sort by position
@@ -222,13 +252,13 @@ export default function ApplicantsBoard({
     console.log('[ApplicantsBoard] Final applicant distribution:',
       Array.from(map.entries()).map(([groupId, apps]) => ({
         groupId,
-        groupName: groups.find(g => g.id === groupId)?.name,
+        groupName: groupId === '__orphaned__' ? '⚠️ Orphaned Applicants' : groups.find(g => g.id === groupId)?.name,
         count: apps.length,
       }))
     );
 
     return map;
-  }, [groups, localApplicants]);
+  }, [groups, localApplicants, boardId, jobId]);
 
   const cellsByApplicantAndColumn = useMemo(() => {
     const map = new Map<string, BoardCell>();
@@ -455,6 +485,7 @@ export default function ApplicantsBoard({
           <div className="min-w-max p-6">
             {/* Groups */}
             <div className="space-y-4">
+              {/* Render regular groups */}
               {groups.map((g) => {
                 const rows = applicantsByGroup.get(g.id) ?? [];
                 return (
@@ -585,6 +616,69 @@ export default function ApplicantsBoard({
                   </section>
                 );
               })}
+
+              {/* Render orphaned applicants group if it exists */}
+              {applicantsByGroup.has('__orphaned__') && (() => {
+                const orphanedRows = applicantsByGroup.get('__orphaned__') ?? [];
+                return (
+                  <section key="__orphaned__" className="space-y-2">
+                    {/* Orphaned group header with warning styling */}
+                    <div className="flex items-center gap-3 px-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                      <div className="h-4 w-4 rounded" style={{ backgroundColor: '#ef4444' }} />
+                      <h2 className="text-base font-semibold text-red-900">⚠️ Orphaned Applicants</h2>
+                      <span className="text-sm text-red-600">({orphanedRows.length})</span>
+                      <span className="text-xs text-red-600 ml-auto">
+                        Board mismatch - check console for details
+                      </span>
+                    </div>
+
+                    {/* Orphaned group table */}
+                    <div className="overflow-visible rounded-lg border-2 border-red-300 bg-red-50/30">
+                      <div className="bg-red-100 p-3 text-sm text-red-800 border-b border-red-200">
+                        <strong>⚠️ Warning:</strong> These applicants have group_ids that don't match any group in the current board.
+                        This usually means multiple boards exist for this job. Check the browser console for diagnostic information.
+                      </div>
+                      <table className="w-full text-left border-collapse bg-white">
+                        <thead className="bg-stone-50/80">
+                          <tr className="border-b border-stone-200">
+                            <th className="sticky left-0 z-10 w-10 bg-stone-50/80 px-4 py-2"></th>
+                            {localColumns.map((col) => (
+                              <th key={col.id} className="px-4 py-2 text-xs font-medium text-stone-700 border-r border-stone-200">
+                                {col.name}
+                              </th>
+                            ))}
+                            <th className="px-4 py-2"></th>
+                            <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Job</th>
+                            <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Applied</th>
+                            <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Resume</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orphanedRows.map((a) => (
+                            <SortableRow
+                              key={a.id}
+                              applicant={a}
+                              columns={localColumns}
+                              selected={!!selected[a.id]}
+                              onToggle={() => toggleRow(a.id)}
+                              getCellValue={(col) => getCellValue(a, col)}
+                              onUpdateCell={(colId, colType, val) => onUpdateCell(a.id, colId, colType, val)}
+                              labelsByColumn={labelsByColumn}
+                              onEditLabels={setEditLabelsColumnId}
+                              rowMenuOpen={rowMenuOpen === a.id}
+                              setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
+                              groups={groups}
+                              onMove={(groupId) => onMoveApplicant(a.id, groupId)}
+                              onDuplicate={() => onDuplicateApplicant(a.id)}
+                              onDelete={() => onDeleteApplicant(a.id)}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                );
+              })()}
 
               {/* Add new group */}
               <div className="flex items-center gap-3 pt-4 px-2">

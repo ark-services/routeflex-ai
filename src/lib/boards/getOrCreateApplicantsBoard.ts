@@ -53,15 +53,33 @@ export async function getOrCreateApplicantsBoard(
     );
 
     // ========================================================================
-    // STEP 1: Try to get existing board
+    // STEP 1: Try to get existing board (CRITICAL: order by created_at to always get the FIRST one)
+    // This ensures we always return the same board even if duplicates exist
     // ========================================================================
-    const { data: existingBoard, error: fetchError } = await supabase
+    const { data: existingBoards, error: fetchError } = await supabase
       .from("boards")
-      .select("id")
+      .select("id, created_at")
       .eq("company_id", companyId)
       .eq("job_id", jobId)
       .eq("name", "Applicants")
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    // Check for duplicates and warn
+    const { count: duplicateCount } = await supabase
+      .from("boards")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId)
+      .eq("job_id", jobId)
+      .eq("name", "Applicants");
+
+    if (duplicateCount && duplicateCount > 1) {
+      console.warn(
+        `[getOrCreateApplicantsBoard] WARNING: ${duplicateCount} duplicate Applicants boards found for job ${jobId}. Using oldest board.`
+      );
+    }
+
+    const existingBoard = existingBoards && existingBoards.length > 0 ? existingBoards[0] : null;
 
     if (fetchError) {
       console.error(
@@ -238,7 +256,13 @@ export async function getOrCreateApplicantsBoard(
       }
 
       console.log(
-        `[getOrCreateApplicantsBoard] Success - board ${boardId} with ${allGroups?.length || 0} groups`
+        `[getOrCreateApplicantsBoard] Success - board ${boardId} with ${allGroups?.length || 0} groups`,
+        {
+          boardId,
+          groupDetails: (allGroups || []).map(g => ({ id: g.id, name: g.name })),
+          companyId,
+          jobId,
+        }
       );
 
       return {
@@ -252,7 +276,13 @@ export async function getOrCreateApplicantsBoard(
     // SUCCESS: Return existing board and groups
     // ========================================================================
     console.log(
-      `[getOrCreateApplicantsBoard] Success - board ${boardId} with ${existingGroups.length} groups`
+      `[getOrCreateApplicantsBoard] Success - board ${boardId} with ${existingGroups.length} groups`,
+      {
+        boardId,
+        groupDetails: existingGroups.map(g => ({ id: g.id, name: g.name })),
+        companyId,
+        jobId,
+      }
     );
 
     return {
