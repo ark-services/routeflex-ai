@@ -179,7 +179,7 @@ export default async function ApplicantsPage({
     allApplicants: applicants || [],
   });
 
-  // CRITICAL DEBUG: If count is 0, run diagnostic queries
+  // CRITICAL DEBUG: If count is 0, run diagnostic queries only if there's a problem
   if (!applicants || applicants.length === 0) {
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -203,21 +203,25 @@ export default async function ApplicantsPage({
       .select("id", { count: "exact", head: true })
       .eq("job_id", jobId);
 
-    console.error('[Applicants Page] ZERO APPLICANTS DIAGNOSTIC:', {
-      filters: { companyId, jobId },
-      currentUser: user?.id,
-      userMembership: membership,
-      companyData: companyCheck,
-      applicantCountViaRLS: applicantCount,
-      membershipMatches: membership?.account_id === companyCheck?.account_id,
-      possibleIssues: {
-        noAuth: !user?.id,
-        noMembership: !membership,
-        wrongCompany: membership?.account_id !== companyCheck?.account_id,
-        rlsBlocking: applicantCount === 0,
-        noDataExists: applicantCount === null,
-      },
-    });
+    // Only log if there's an actual problem (not just "no applicants yet")
+    const hasProblem = !user?.id || !membership ||
+                       membership?.account_id !== companyCheck?.account_id ||
+                       (applicantCount !== null && applicantCount !== 0);
+
+    if (hasProblem) {
+      console.warn('[Applicants Page] Zero applicants diagnostic:', {
+        companyId,
+        jobId,
+        userId: user?.id,
+        userRole: membership?.role,
+        accountMatch: membership?.account_id === companyCheck?.account_id,
+        applicantCountViaRLS: applicantCount,
+        issue: !user?.id ? 'No auth' :
+               !membership ? 'No membership' :
+               membership?.account_id !== companyCheck?.account_id ? 'Account mismatch' :
+               'RLS may be blocking',
+      });
+    }
   }
 
   // ============================================================================

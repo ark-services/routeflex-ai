@@ -759,6 +759,7 @@ export default function ApplicantsBoard({
         {editLabelsColumnId && (
           <StatusLabelsEditor
             companyId={companyId}
+            jobId={jobId}
             columnId={editLabelsColumnId}
             labels={labelsByColumn.get(editLabelsColumnId) ?? []}
             onClose={() => setEditLabelsColumnId(null)}
@@ -1283,11 +1284,13 @@ function CellRenderer({
 
 function StatusLabelsEditor({
   companyId,
+  jobId,
   columnId,
   labels,
   onClose,
 }: {
   companyId: string;
+  jobId: string;
   columnId: string;
   labels: StatusLabel[];
   onClose: () => void;
@@ -1303,7 +1306,7 @@ function StatusLabelsEditor({
     if (!newLabel.trim()) return;
 
     startTransition(async () => {
-      await createStatusLabel(companyId, columnId, newLabel.trim(), newColor);
+      await createStatusLabel(companyId, jobId, columnId, newLabel.trim(), newColor);
       setNewLabel("");
       setNewColor("#6b7280");
     });
@@ -1313,7 +1316,7 @@ function StatusLabelsEditor({
     if (!editLabelValue.trim()) return;
 
     startTransition(async () => {
-      await updateStatusLabel(companyId, labelId, {
+      await updateStatusLabel(companyId, jobId, labelId, {
         label: editLabelValue.trim(),
         color: editLabelColor,
       });
@@ -1326,7 +1329,7 @@ function StatusLabelsEditor({
     if (!ok) return;
 
     startTransition(async () => {
-      await deleteStatusLabel(companyId, labelId);
+      await deleteStatusLabel(companyId, jobId, labelId);
     });
   }
 

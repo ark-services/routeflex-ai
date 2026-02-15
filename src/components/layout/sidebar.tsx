@@ -5,6 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, MoreVertical } from "lucide-react";
 import type { Job, Company } from "@/lib/types";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
+import { renameJob, duplicateJob, deleteJob } from "./job-actions";
+import { RenameModal } from "@/components/modals/rename-modal";
+import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
 
 interface SidebarProps {
   companyId: string;
@@ -24,6 +27,9 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [jobSelectOpen, setJobSelectOpen] = useState(false);
   const [applicantsMenuOpen, setApplicantsMenuOpen] = useState(false);
+  const [jobActionsMenuOpen, setJobActionsMenuOpen] = useState(false);
+  const [renameJobModalOpen, setRenameJobModalOpen] = useState(false);
+  const [deleteJobModalOpen, setDeleteJobModalOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const params = useParams();
@@ -90,6 +96,44 @@ export function Sidebar({
     });
   };
 
+  // Job Actions Handlers
+  const handleRenameJobSubmit = async (newTitle: string) => {
+    if (!currentJob) return { error: "No job selected" };
+    return await renameJob(companyId, currentJob.id, newTitle);
+  };
+
+  const handleDuplicateJobClick = () => {
+    if (!currentJob) return;
+    if (!confirm(`Duplicate "${currentJob.title}"? This will copy the job structure (board and form) but NOT applicant data.`)) return;
+
+    startTransition(async () => {
+      const result = await duplicateJob(companyId, currentJob.id);
+      if (result.error) {
+        alert(result.error);
+      } else if (result.success && result.jobId) {
+        // Navigate to the new job
+        router.push(`/dashboard/${companyId}/jobs/${result.jobId}/applicants`);
+        router.refresh();
+      }
+      setJobActionsMenuOpen(false);
+    });
+  };
+
+  const handleDeleteJobSubmit = async () => {
+    if (!currentJob) return { error: "No job selected" };
+    const result = await deleteJob(companyId, currentJob.id);
+    if (result.success) {
+      // After delete, redirect to first available job or company dashboard
+      const remainingJobs = jobs.filter(j => j.id !== currentJob.id);
+      if (remainingJobs.length > 0) {
+        router.push(`/dashboard/${companyId}/jobs/${remainingJobs[0].id}/applicants`);
+      } else {
+        router.push(`/dashboard/${companyId}`);
+      }
+    }
+    return result;
+  };
+
   if (collapsed) {
     return (
       <div className="w-16 border-r border-stone-200 bg-stone-50/50 flex flex-col items-center py-4">
@@ -139,16 +183,32 @@ export function Sidebar({
 
           {/* Job Selector */}
           {hasJobs ? (
-            <div className="relative">
+            <div className="relative group">
+              {/* Main job selector button */}
               <button
                 onClick={() => setJobSelectOpen(!jobSelectOpen)}
-                className="w-full text-left rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors flex items-center justify-between"
+                className="w-full text-left rounded-lg border border-stone-200 bg-white px-3 py-2 pr-10 text-sm text-stone-700 hover:bg-stone-50 transition-colors flex items-center justify-between"
               >
                 <span className="truncate">
                   {currentJob?.title || "Select job"}
                 </span>
                 <ChevronDown className="h-4 w-4 text-stone-400 flex-shrink-0 ml-2" />
               </button>
+
+              {/* Kebab button positioned absolutely */}
+              {currentJob && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setJobActionsMenuOpen(!jobActionsMenuOpen);
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-stone-200 rounded transition-opacity z-10"
+                  title="Job actions"
+                >
+                  <MoreVertical className="h-3 w-3 text-stone-600" />
+                </button>
+              )}
 
               {jobSelectOpen && (
                 <>
@@ -171,6 +231,48 @@ export function Sidebar({
                           <div className="truncate">{job.title}</div>
                         </button>
                       ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Job Actions Dropdown */}
+              {jobActionsMenuOpen && currentJob && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setJobActionsMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-1 w-56 rounded-lg border border-stone-200 bg-white shadow-lg z-20">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setRenameJobModalOpen(true);
+                          setJobActionsMenuOpen(false);
+                        }}
+                        disabled={isPending}
+                        className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                      >
+                        Rename
+                      </button>
+                      <button
+                        onClick={handleDuplicateJobClick}
+                        disabled={isPending}
+                        className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
+                      >
+                        Duplicate
+                      </button>
+                      <div className="my-1 border-t border-stone-100" />
+                      <button
+                        onClick={() => {
+                          setDeleteJobModalOpen(true);
+                          setJobActionsMenuOpen(false);
+                        }}
+                        disabled={isPending}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </>
@@ -268,6 +370,29 @@ export function Sidebar({
           )}
         </div>
       </div>
+
+      {/* Job Action Modals */}
+      {currentJob && (
+        <>
+          <RenameModal
+            open={renameJobModalOpen}
+            onClose={() => setRenameJobModalOpen(false)}
+            title="Rename Job"
+            currentName={currentJob.title}
+            onRename={handleRenameJobSubmit}
+          />
+
+          <DeleteConfirmationModal
+            open={deleteJobModalOpen}
+            onClose={() => setDeleteJobModalOpen(false)}
+            title="Delete Job"
+            description="This will permanently delete the job and all associated applicants, board data, and application forms."
+            itemName={currentJob.title}
+            confirmText="DELETE"
+            onDelete={handleDeleteJobSubmit}
+          />
+        </>
+      )}
     </div>
   );
 }

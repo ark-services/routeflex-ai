@@ -8,6 +8,7 @@ interface TopBarProps {
   currentCompanyId: string;
   userEmail: string;
   accountId: string | null;
+  userRole: string;
   isAdmin: boolean;
   canCreateCompany: boolean;
   onCreateCompany: () => void;
@@ -18,6 +19,7 @@ export function TopBar({
   currentCompanyId,
   userEmail,
   accountId,
+  userRole,
   isAdmin,
   canCreateCompany,
   onCreateCompany,
@@ -37,6 +39,8 @@ export function TopBar({
           currentCompanyId={currentCompanyId}
           canCreateCompany={canCreateCompany}
           onCreateCompany={onCreateCompany}
+          accountId={accountId || ""}
+          userRole={userRole}
         />
         <UserMenu
           userEmail={userEmail}

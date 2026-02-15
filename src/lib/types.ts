@@ -2,6 +2,7 @@ export interface Company {
   id: string;
   name: string;
   slug?: string;
+  account_id?: string;
   created_at: string;
 }
 

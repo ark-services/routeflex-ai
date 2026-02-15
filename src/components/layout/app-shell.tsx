@@ -13,6 +13,7 @@ interface AppShellProps {
   jobs: Job[];
   userEmail: string;
   accountId: string | null;
+  userRole: string;
   isAdmin: boolean;
   canCreateCompany: boolean;
   canCreateJob: boolean;
@@ -25,6 +26,7 @@ export function AppShell({
   jobs,
   userEmail,
   accountId,
+  userRole,
   isAdmin,
   canCreateCompany,
   canCreateJob,
@@ -40,6 +42,7 @@ export function AppShell({
         currentCompanyId={currentCompanyId}
         userEmail={userEmail}
         accountId={accountId}
+        userRole={userRole}
         isAdmin={isAdmin}
         canCreateCompany={canCreateCompany}
         onCreateCompany={() => setShowCreateCompany(true)}

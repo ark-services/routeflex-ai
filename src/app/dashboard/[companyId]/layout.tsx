@@ -30,7 +30,7 @@ export default async function DashboardLayout({
 
   const { data: companiesData } = await supabase
     .from("companies")
-    .select("id, name, slug, account_id")
+    .select("id, name, slug, account_id, created_at")
     .in(
       "account_id",
       accountIds.length ? accountIds : ["00000000-0000-0000-0000-000000000000"]
@@ -68,6 +68,7 @@ export default async function DashboardLayout({
       jobs={jobs}
       userEmail={user.email || ""}
       accountId={currentCompany.account_id as string}
+      userRole={userRole as string}
       isAdmin={isAdmin}
       canCreateCompany={canCreateCompany}
       canCreateJob={canCreateJob}

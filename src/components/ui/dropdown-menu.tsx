@@ -2,7 +2,11 @@
 
 import { type ReactNode, useState, useRef, useEffect } from "react";
 
-export function DropdownMenu({ children }: { children: ReactNode }) {
+export function DropdownMenu({
+  children
+}: {
+  children: ReactNode | ((props: { open: boolean; setOpen: (open: boolean) => void }) => ReactNode)
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
