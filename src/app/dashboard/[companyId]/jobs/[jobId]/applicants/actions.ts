@@ -87,17 +87,123 @@ export async function bulkMoveApplicants(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  // Get current user info for debugging
+  const { data: { user } } = await supabase.auth.getUser();
+
+  console.log('[bulkMoveApplicants] Called with:', {
+    userId: user?.id,
+    userEmail: user?.email,
+    companyId,
+    jobId,
+    applicantIds,
+    requestedCount: applicantIds.length,
+    targetGroupId: groupId,
+  });
+
+  // First, check which applicants exist and are visible
+  const { data: existingApplicants, error: checkError } = await supabase
     .from("applicants")
-    .update({ group_id: groupId })
+    .select("id, full_name, group_id")
+    .in("id", applicantIds);
+
+  console.log('[bulkMoveApplicants] Pre-move check:', {
+    requestedCount: applicantIds.length,
+    foundCount: existingApplicants?.length || 0,
+    applicants: existingApplicants?.map(a => ({ id: a.id, name: a.full_name, currentGroup: a.group_id })),
+    checkError: checkError?.message,
+  });
+
+  if (checkError) {
+    console.error('[bulkMoveApplicants] Pre-move check failed:', checkError);
+  }
+
+  // Verify user permissions
+  const { data: membership } = await supabase
+    .from("account_memberships")
+    .select("role, account_id")
+    .eq("user_id", user?.id || '')
+    .maybeSingle();
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("account_id")
+    .eq("id", companyId)
+    .maybeSingle();
+
+  console.log('[bulkMoveApplicants] Permission check:', {
+    userMembership: membership,
+    companyAccount: company?.account_id,
+    hasPermission: membership?.account_id === company?.account_id,
+    userRole: membership?.role,
+  });
+
+  // Verify target group exists
+  const { data: targetGroup } = await supabase
+    .from("board_groups")
+    .select("id, name")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  console.log('[bulkMoveApplicants] Target group check:', {
+    groupId,
+    groupExists: !!targetGroup,
+    groupName: targetGroup?.name,
+  });
+
+  if (!targetGroup) {
+    throw new Error(`Target group ${groupId} not found`);
+  }
+
+  // Attempt move with row count
+  const { error, count } = await supabase
+    .from("applicants")
+    .update({ group_id: groupId }, { count: 'exact' })
     .in("id", applicantIds)
     .eq("company_id", companyId)
     .eq("job_id", jobId);
 
   if (error) {
-    console.error("[bulkMoveApplicants] Error:", error);
-    throw new Error(error.message);
+    console.error("[bulkMoveApplicants] Supabase Error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    throw new Error(`Bulk move failed: ${error.message}`);
   }
+
+  console.log('[bulkMoveApplicants] Move result:', {
+    movedCount: count,
+    requestedCount: applicantIds.length,
+    success: count === applicantIds.length,
+    targetGroup: targetGroup.name,
+  });
+
+  if (count === 0) {
+    console.error('[bulkMoveApplicants] CRITICAL: No rows updated!', {
+      applicantsExist: existingApplicants && existingApplicants.length > 0,
+      requestedIds: applicantIds,
+      foundIds: existingApplicants?.map(a => a.id),
+      targetGroupId: groupId,
+      possibleCauses: [
+        'RLS UPDATE policy blocking (check migration 00027)',
+        'company_id or job_id mismatch in WHERE clause',
+        'Applicants already deleted',
+        'Target group belongs to different board/company',
+      ],
+    });
+    throw new Error('Failed to move applicants. You may not have update permissions, or the applicants/group do not exist.');
+  }
+
+  if (count !== applicantIds.length) {
+    console.warn('[bulkMoveApplicants] Partial move:', {
+      requested: applicantIds.length,
+      moved: count,
+      missing: applicantIds.length - (count || 0),
+    });
+  }
+
+  console.log(`[bulkMoveApplicants] ✓ Successfully moved ${count} applicant(s) to ${targetGroup.name}`);
 
   revalidatePath(dashPath(companyId, jobId));
 }
@@ -834,33 +940,70 @@ export async function updateBoardCell(
 
   console.log('[updateBoardCell] Success:', data);
 
-  // TRIGGER AUTOMATION: Detect status change and dispatch
+  // TRIGGER AUTOMATION: Detect status change and fire Monday.com-style trigger
   if (columnType === "status" && oldStatusLabelId !== value) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: company } = await supabase
-        .from("companies")
-        .select("account_id")
-        .eq("id", companyId)
+      // Import fireJobTrigger dynamically to avoid circular dependencies
+      const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
+
+      // Get column name for logging
+      const { data: column } = await supabase
+        .from("board_columns")
+        .select("name, board_id")
+        .eq("id", columnId)
         .single();
 
-      // Non-blocking dispatch
-      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/.*$/, '') || 'http://localhost:3000';
-      await fetch(`${baseUrl}/api/automations/dispatch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accountId: company?.account_id,
-          companyId,
-          applicantId,
-          columnId,
-          oldStatusLabelId,
-          newStatusLabelId: value,
-          userId: user?.id,
-        }),
-      }).catch((err) => console.error('[updateBoardCell] Failed to dispatch automation:', err));
+      // Get label text for old and new values
+      let oldLabel: string | null = null;
+      let newLabel: string | null = null;
+
+      if (oldStatusLabelId) {
+        const { data: oldLabelData } = await supabase
+          .from("board_status_labels")
+          .select("label")
+          .eq("id", oldStatusLabelId)
+          .single();
+        oldLabel = oldLabelData?.label || null;
+      }
+
+      if (value) {
+        const { data: newLabelData } = await supabase
+          .from("board_status_labels")
+          .select("label")
+          .eq("id", value)
+          .single();
+        newLabel = newLabelData?.label || null;
+      }
+
+      // Fire the board.status_changes_to trigger
+      await fireJobTrigger(supabase, {
+        companyId,
+        jobId,
+        trigger_key: "board.status_changes_to",
+        subject_type: "applicant",
+        subject_id: applicantId,
+        payload: {
+          company_id: companyId,
+          job_id: jobId,
+          board_id: column?.board_id,
+          applicant_id: applicantId,
+          column_id: columnId,
+          column_name: column?.name || "Unknown Column",
+          old_value: oldStatusLabelId,
+          new_value: value,
+          old_label: oldLabel,
+          new_label: newLabel,
+        },
+      });
+
+      console.log('[updateBoardCell] Automation trigger fired:', {
+        trigger: 'board.status_changes_to',
+        column: column?.name,
+        oldLabel,
+        newLabel,
+      });
     } catch (automationError) {
-      console.error('[updateBoardCell] Error in automation dispatch:', automationError);
+      console.error('[updateBoardCell] Error firing automation:', automationError);
       // Don't throw - automation errors should not block the cell update
     }
   }
@@ -878,17 +1021,124 @@ export async function moveApplicant(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  // Get current user info for debugging
+  const { data: { user } } = await supabase.auth.getUser();
+
+  console.log('[moveApplicant] Called with:', {
+    userId: user?.id,
+    userEmail: user?.email,
+    companyId,
+    jobId,
+    applicantId,
+    targetGroupId: groupId,
+  });
+
+  // First, check if the applicant exists and is visible
+  const { data: existingApplicant, error: checkError } = await supabase
     .from("applicants")
-    .update({ group_id: groupId })
+    .select("id, full_name, group_id, company_id, job_id")
+    .eq("id", applicantId)
+    .maybeSingle();
+
+  console.log('[moveApplicant] Pre-move check:', {
+    found: !!existingApplicant,
+    applicant: existingApplicant,
+    checkError: checkError?.message,
+  });
+
+  if (checkError) {
+    console.error('[moveApplicant] Pre-move check failed:', checkError);
+  }
+
+  if (!existingApplicant) {
+    console.error('[moveApplicant] Applicant not found or no SELECT permission');
+    throw new Error('Applicant not found or you do not have permission to view it.');
+  }
+
+  // Verify user is a company member
+  const { data: membership } = await supabase
+    .from("account_memberships")
+    .select("role, account_id")
+    .eq("user_id", user?.id || '')
+    .maybeSingle();
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("account_id")
+    .eq("id", companyId)
+    .maybeSingle();
+
+  console.log('[moveApplicant] Permission check:', {
+    userMembership: membership,
+    companyAccount: company?.account_id,
+    hasPermission: membership?.account_id === company?.account_id,
+    userRole: membership?.role,
+  });
+
+  // Verify target group exists
+  const { data: targetGroup } = await supabase
+    .from("board_groups")
+    .select("id, name, board_id")
+    .eq("id", groupId)
+    .maybeSingle();
+
+  console.log('[moveApplicant] Target group check:', {
+    groupId,
+    groupExists: !!targetGroup,
+    groupName: targetGroup?.name,
+    boardId: targetGroup?.board_id,
+  });
+
+  if (!targetGroup) {
+    throw new Error(`Target group ${groupId} not found`);
+  }
+
+  // Attempt move with row count
+  const { error, count } = await supabase
+    .from("applicants")
+    .update({ group_id: groupId }, { count: 'exact' })
     .eq("id", applicantId)
     .eq("company_id", companyId)
     .eq("job_id", jobId);
 
   if (error) {
-    console.error("[moveApplicant] Error:", error);
-    throw new Error(error.message);
+    console.error("[moveApplicant] Supabase Error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    throw new Error(`Move failed: ${error.message}`);
   }
+
+  console.log('[moveApplicant] Move result:', {
+    movedCount: count,
+    success: count === 1,
+    fromGroup: existingApplicant.group_id,
+    toGroup: groupId,
+    targetGroupName: targetGroup.name,
+  });
+
+  if (count === 0) {
+    console.error('[moveApplicant] CRITICAL: No rows updated despite SELECT permission!', {
+      applicantExists: !!existingApplicant,
+      filters: { id: applicantId, company_id: companyId, job_id: jobId },
+      targetGroupId: groupId,
+      possibleCauses: [
+        'RLS UPDATE policy blocking (user not company member - check migration 00027)',
+        'company_id or job_id mismatch between request and database',
+        'Applicant deleted by concurrent request',
+        'Target group belongs to different board/company',
+      ],
+    });
+    throw new Error('Failed to move applicant. You may not have update permissions.');
+  }
+
+  console.log('[moveApplicant] ✓ Successfully moved applicant:', {
+    name: existingApplicant.full_name,
+    fromGroup: existingApplicant.group_id,
+    toGroup: targetGroup.name,
+  });
 
   revalidatePath(dashPath(companyId, jobId));
 }
@@ -1077,17 +1327,86 @@ export async function reorderApplicants(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  // Get current user info for debugging
+  const { data: { user } } = await supabase.auth.getUser();
+
+  console.log('[reorderApplicants] Called with:', {
+    userId: user?.id,
+    userEmail: user?.email,
+    companyId,
+    jobId,
+    applicantId,
+    newPosition,
+    groupId,
+  });
+
+  // First, check if the applicant exists
+  const { data: existingApplicant, error: checkError } = await supabase
     .from("applicants")
-    .update({ position: newPosition, group_id: groupId })
+    .select("id, full_name, position, group_id")
+    .eq("id", applicantId)
+    .maybeSingle();
+
+  console.log('[reorderApplicants] Pre-reorder check:', {
+    found: !!existingApplicant,
+    applicant: existingApplicant,
+    checkError: checkError?.message,
+  });
+
+  if (checkError) {
+    console.error('[reorderApplicants] Pre-reorder check failed:', checkError);
+  }
+
+  if (!existingApplicant) {
+    console.error('[reorderApplicants] Applicant not found or no SELECT permission');
+    throw new Error('Applicant not found or you do not have permission to view it.');
+  }
+
+  // Attempt reorder with row count
+  const { error, count } = await supabase
+    .from("applicants")
+    .update({ position: newPosition, group_id: groupId }, { count: 'exact' })
     .eq("id", applicantId)
     .eq("company_id", companyId)
     .eq("job_id", jobId);
 
   if (error) {
-    console.error("[reorderApplicants] Error:", error);
-    throw new Error(error.message);
+    console.error("[reorderApplicants] Supabase Error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    throw new Error(`Reorder failed: ${error.message}`);
   }
+
+  console.log('[reorderApplicants] Reorder result:', {
+    updatedCount: count,
+    success: count === 1,
+    oldPosition: existingApplicant.position,
+    newPosition,
+    oldGroup: existingApplicant.group_id,
+    newGroup: groupId,
+  });
+
+  if (count === 0) {
+    console.error('[reorderApplicants] CRITICAL: No rows updated despite SELECT permission!', {
+      applicantExists: !!existingApplicant,
+      filters: { id: applicantId, company_id: companyId, job_id: jobId },
+      possibleCauses: [
+        'RLS UPDATE policy blocking (user not company member - check migration 00027)',
+        'company_id or job_id mismatch',
+        'Applicant deleted by concurrent request',
+      ],
+    });
+    throw new Error('Failed to reorder applicant. You may not have update permissions.');
+  }
+
+  console.log('[reorderApplicants] ✓ Successfully reordered applicant:', {
+    name: existingApplicant.full_name,
+    position: `${existingApplicant.position} → ${newPosition}`,
+    group: groupId || '(no group)',
+  });
 
   revalidatePath(dashPath(companyId, jobId));
 }
