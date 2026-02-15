@@ -113,7 +113,14 @@ export default async function ApplicantsPage({
 
   // ============================================================================
   // Fetch applicants for this job
+  // CRITICAL: Only filter by job_id and company_id (source of truth)
+  // Do NOT filter by board_id, status, or any other field
   // ============================================================================
+  console.log('[Applicants Page] Fetching applicants with filters:', {
+    company_id: companyId,
+    job_id: jobId,
+  });
+
   const { data: applicants, error: appErr } = await supabase
     .from("applicants")
     .select(
@@ -122,6 +129,18 @@ export default async function ApplicantsPage({
     .eq("company_id", companyId)
     .eq("job_id", jobId)
     .order("position", { ascending: true });
+
+  console.log('[Applicants Page] Raw Supabase response:', {
+    hasData: !!applicants,
+    hasError: !!appErr,
+    dataLength: applicants?.length,
+    error: appErr ? {
+      message: appErr.message,
+      code: appErr.code,
+      details: appErr.details,
+      hint: appErr.hint,
+    } : null,
+  });
 
   if (appErr) {
     console.error('[Applicants Page] ERROR fetching applicants:', {
@@ -146,14 +165,60 @@ export default async function ApplicantsPage({
 
   console.log('[Applicants Page] Applicants fetched:', {
     count: applicants?.length || 0,
-    sample: applicants?.slice(0, 3).map(a => ({
+    companyId,
+    jobId,
+    sample: applicants?.slice(0, 5).map(a => ({
       id: a.id,
       name: a.full_name,
+      email: a.email,
       group_id: a.group_id,
       board_id: a.board_id,
       position: a.position,
+      status: a.status,
     })) || [],
+    allApplicants: applicants || [],
   });
+
+  // CRITICAL DEBUG: If count is 0, run diagnostic queries
+  if (!applicants || applicants.length === 0) {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Check if user has access to this company
+    const { data: membership } = await supabase
+      .from("account_memberships")
+      .select("role, account_id")
+      .eq("user_id", user?.id || '')
+      .maybeSingle();
+
+    // Check if company exists and matches
+    const { data: companyCheck } = await supabase
+      .from("companies")
+      .select("id, account_id")
+      .eq("id", companyId)
+      .maybeSingle();
+
+    // Try to count applicants (RLS might still block this)
+    const { count: applicantCount } = await supabase
+      .from("applicants")
+      .select("id", { count: "exact", head: true })
+      .eq("job_id", jobId);
+
+    console.error('[Applicants Page] ZERO APPLICANTS DIAGNOSTIC:', {
+      filters: { companyId, jobId },
+      currentUser: user?.id,
+      userMembership: membership,
+      companyData: companyCheck,
+      applicantCountViaRLS: applicantCount,
+      membershipMatches: membership?.account_id === companyCheck?.account_id,
+      possibleIssues: {
+        noAuth: !user?.id,
+        noMembership: !membership,
+        wrongCompany: membership?.account_id !== companyCheck?.account_id,
+        rlsBlocking: applicantCount === 0,
+        noDataExists: applicantCount === null,
+      },
+    });
+  }
 
   // ============================================================================
   // Fetch board columns (filter by board_id for this job's board)
