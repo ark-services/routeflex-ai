@@ -103,19 +103,36 @@ export default async function ApplicantsPage({
 
   const { board, groups } = boardResult;
 
+  console.log('[Applicants Page] Board and groups loaded:', {
+    boardId: board.id,
+    groupCount: groups.length,
+    groupNames: groups.map(g => ({ id: g.id, name: g.name })),
+    companyId,
+    jobId,
+  });
+
   // ============================================================================
   // Fetch applicants for this job
   // ============================================================================
   const { data: applicants, error: appErr } = await supabase
     .from("applicants")
     .select(
-      "id,full_name,email,phone,status,created_at,resume_path,group_id,position,job_id"
+      "id,full_name,email,phone,status,created_at,resume_path,group_id,position,job_id,board_id"
     )
     .eq("company_id", companyId)
     .eq("job_id", jobId)
     .order("position", { ascending: true });
 
   if (appErr) {
+    console.error('[Applicants Page] ERROR fetching applicants:', {
+      error: appErr,
+      message: appErr.message,
+      code: appErr.code,
+      details: appErr.details,
+      hint: appErr.hint,
+      companyId,
+      jobId,
+    });
     const isDev = process.env.NODE_ENV === "development";
     return (
       <ErrorPanel
@@ -127,14 +144,30 @@ export default async function ApplicantsPage({
     );
   }
 
+  console.log('[Applicants Page] Applicants fetched:', {
+    count: applicants?.length || 0,
+    sample: applicants?.slice(0, 3).map(a => ({
+      id: a.id,
+      name: a.full_name,
+      group_id: a.group_id,
+      board_id: a.board_id,
+      position: a.position,
+    })) || [],
+  });
+
   // ============================================================================
-  // Fetch board columns
+  // Fetch board columns (filter by board_id for this job's board)
   // ============================================================================
   const { data: columns, error: colErr } = await supabase
     .from("board_columns")
     .select("id,board_id,name,type,is_system,sort_order")
-    .eq("company_id", companyId)
+    .eq("board_id", board.id)
     .order("sort_order", { ascending: true });
+
+  console.log('[Applicants Page] Columns fetched:', {
+    count: columns?.length || 0,
+    columnNames: columns?.map(c => c.name) || [],
+  });
 
   if (colErr) {
     const isDev = process.env.NODE_ENV === "development";
@@ -202,7 +235,18 @@ export default async function ApplicantsPage({
       );
     }
     cells = cellData ?? [];
+    console.log('[Applicants Page] Cells fetched:', {
+      count: cells.length,
+    });
   }
+
+  console.log('[Applicants Page] Final data summary:', {
+    boardId: board.id,
+    groups: groups.length,
+    applicants: applicants?.length || 0,
+    columns: columns?.length || 0,
+    cells: cells.length,
+  });
 
   return (
     <div className="h-full flex flex-col">

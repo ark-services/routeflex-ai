@@ -3,6 +3,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { uploadResume } from "@/lib/storage/resumeUpload";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
+import { revalidatePath } from "next/cache";
 
 /**
  * Submit a public job application.
@@ -320,8 +321,18 @@ export async function submitApplication(
 
     console.log('[Application Submit] SUCCESS:', {
       applicantId: applicant.id,
-      fieldsInserted: insertedCount
+      fieldsInserted: insertedCount,
+      companyId: form.company_id,
+      jobId: jobId,
     });
+
+    // Revalidate the applicants board page so new applicant shows immediately
+    try {
+      revalidatePath(`/dashboard/${form.company_id}/jobs/${jobId}/applicants`);
+      console.log('[Application Submit] Revalidated applicants board path');
+    } catch (revalError) {
+      console.error('[Application Submit] Revalidation error (non-fatal):', revalError);
+    }
 
     return { success: true, applicantId: applicant.id };
   } catch (error) {
