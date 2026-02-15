@@ -111,6 +111,23 @@ export default function ApplicantsBoard({
   statusLabels: StatusLabel[];
   cells: BoardCell[];
 }) {
+  // CRITICAL: Log props received to debug filtering
+  console.log('[ApplicantsBoard] Component rendered with props:', {
+    companyId,
+    jobId,
+    boardId,
+    groupsCount: groups.length,
+    applicantsCount: applicants.length,
+    columnsCount: columns.length,
+    cellsCount: cells.length,
+    applicantsPreview: applicants.slice(0, 3).map(a => ({
+      id: a.id,
+      name: a.full_name,
+      group_id: a.group_id,
+    })),
+    groupsPreview: groups.map(g => ({ id: g.id, name: g.name })),
+  });
+
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [isPending, startTransition] = useTransition();
   const [newGroupName, setNewGroupName] = useState("");
@@ -169,96 +186,80 @@ export default function ApplicantsBoard({
   );
 
   const applicantsByGroup = useMemo(() => {
-    const map = new Map<string, ApplicantRow[]>();
-
-    // Initialize map with all groups
-    for (const g of groups) map.set(g.id, []);
-
-    // Log for debugging
-    console.log('[ApplicantsBoard] Grouping applicants:', {
+    console.log('[ApplicantsBoard] Starting grouping with:', {
       totalApplicants: localApplicants.length,
       totalGroups: groups.length,
-      groupIds: groups.map(g => ({ id: g.id, name: g.name })),
-      applicantGroupIds: localApplicants.map(a => ({
+      applicants: localApplicants.map(a => ({
         id: a.id,
         name: a.full_name,
         group_id: a.group_id,
-        board_id: a.board_id,
       })),
-      expectedBoardId: boardId,
+      groups: groups.map(g => ({ id: g.id, name: g.name })),
     });
 
-    // Track orphaned applicants
+    const map = new Map<string, ApplicantRow[]>();
+
+    // Initialize map with all groups
+    for (const g of groups) {
+      map.set(g.id, []);
+    }
+
+    // CRITICAL: Group ALL applicants, never drop any
+    // If group_id doesn't match any group, put in orphaned section
     const orphanedApplicants: ApplicantRow[] = [];
 
-    // Assign applicants to groups
     for (const a of localApplicants) {
-      if (!a.group_id) {
-        console.warn('[ApplicantsBoard] Applicant has no group_id:', {
+      // If no group_id or group doesn't exist, put in orphaned
+      if (!a.group_id || !map.has(a.group_id)) {
+        console.warn('[ApplicantsBoard] Orphaned applicant (no matching group):', {
           id: a.id,
           name: a.full_name,
-          board_id: a.board_id,
+          group_id: a.group_id,
+          reason: !a.group_id ? 'NULL group_id' : 'group_id not in groups list',
         });
         orphanedApplicants.push(a);
-        continue;
+      } else {
+        // Normal case: group_id matches a known group
+        map.get(a.group_id)!.push(a);
       }
-
-      if (!map.has(a.group_id)) {
-        console.error('[ApplicantsBoard] CRITICAL: Applicant group_id not in groups list:', {
-          applicantId: a.id,
-          applicantName: a.full_name,
-          applicantBoardId: a.board_id,
-          applicantGroupId: a.group_id,
-          expectedBoardId: boardId,
-          availableGroups: Array.from(map.keys()),
-          availableGroupNames: groups.map(g => ({ id: g.id, name: g.name })),
-        });
-        orphanedApplicants.push(a);
-        continue;
-      }
-
-      map.get(a.group_id)!.push(a);
     }
 
-    // CRITICAL FIX: If we have orphaned applicants, create a fallback "Orphaned Applicants" group
-    // so they still render instead of being dropped
+    // Add orphaned applicants to synthetic group
     if (orphanedApplicants.length > 0) {
+      map.set('__orphaned__', orphanedApplicants);
       console.error(
-        `[ApplicantsBoard] ${orphanedApplicants.length} applicants are orphaned (group_id mismatch)!`,
-        'Creating fallback "Orphaned Applicants" group to prevent data loss.'
-      );
-
-      // Create a synthetic group for orphaned applicants
-      const orphanedGroupId = '__orphaned__';
-      map.set(orphanedGroupId, orphanedApplicants);
-
-      // Add warning message to help user understand the issue
-      console.error(
-        '[ApplicantsBoard] BOARD MISMATCH DETECTED:',
-        '\n  Problem: Applicants have group_ids that do not match the current board\'s groups.',
-        '\n  Likely cause: Multiple boards exist for this job, or applicants reference an old/deleted board.',
-        '\n  Fix: Run this SQL to check for duplicate boards:',
-        `\n    SELECT id, name, job_id, created_at FROM boards WHERE job_id = '${jobId}' ORDER BY created_at;`,
-        '\n  These applicants will show in "⚠️ Orphaned Applicants" group until the board mismatch is resolved.'
+        `[ApplicantsBoard] ${orphanedApplicants.length} orphaned applicants will render in '⚠️ Orphaned Applicants' section`
       );
     }
 
-    // Sort by position
-    for (const [, rows] of map) {
+    // Sort all groups by position
+    for (const rows of map.values()) {
       rows.sort((a, b) => a.position - b.position);
     }
 
-    // Log final distribution
-    console.log('[ApplicantsBoard] Final applicant distribution:',
-      Array.from(map.entries()).map(([groupId, apps]) => ({
+    // Final count
+    const totalGrouped = Array.from(map.values()).reduce((sum, rows) => sum + rows.length, 0);
+    console.log('[ApplicantsBoard] Grouping complete:', {
+      inputApplicants: localApplicants.length,
+      outputApplicants: totalGrouped,
+      distribution: Array.from(map.entries()).map(([groupId, apps]) => ({
         groupId,
-        groupName: groupId === '__orphaned__' ? '⚠️ Orphaned Applicants' : groups.find(g => g.id === groupId)?.name,
+        groupName: groupId === '__orphaned__' ? '⚠️ Orphaned' : groups.find(g => g.id === groupId)?.name,
         count: apps.length,
-      }))
-    );
+      })),
+    });
+
+    // SANITY CHECK: Ensure we didn't lose any applicants
+    if (totalGrouped !== localApplicants.length) {
+      console.error('[ApplicantsBoard] CRITICAL BUG: Lost applicants during grouping!', {
+        input: localApplicants.length,
+        output: totalGrouped,
+        lost: localApplicants.length - totalGrouped,
+      });
+    }
 
     return map;
-  }, [groups, localApplicants, boardId, jobId]);
+  }, [groups, localApplicants]);
 
   const cellsByApplicantAndColumn = useMemo(() => {
     const map = new Map<string, BoardCell>();
