@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 
 const ALLOWED_APPLICANT_STATUSES = new Set([
   "applied",
@@ -234,6 +235,16 @@ export async function updateApplicantStatus(companyId: string, applicantId: stri
   const normalized = normalizeApplicantStatus(status);
   const supabase = await createClient();
 
+  // Get old status before update
+  const { data: applicant } = await supabase
+    .from("applicants")
+    .select("status, job_id, board_id")
+    .eq("id", applicantId)
+    .eq("company_id", companyId)
+    .single();
+
+  const oldStatus = applicant?.status;
+
   const { error } = await supabase
     .from("applicants")
     .update({ status: normalized })
@@ -242,11 +253,37 @@ export async function updateApplicantStatus(companyId: string, applicantId: stri
 
   if (error) throw new Error(error.message);
 
+  // Fire trigger
+  if (oldStatus && oldStatus !== normalized && applicant?.job_id) {
+    await fireJobTrigger(supabase, {
+      companyId,
+      jobId: applicant.job_id,
+      trigger_key: "applicant.status_changed",
+      subject_type: "applicant",
+      subject_id: applicantId,
+      payload: {
+        company_id: companyId,
+        job_id: applicant.job_id,
+        board_id: applicant?.board_id,
+        applicant_id: applicantId,
+        from_status: oldStatus,
+        to_status: normalized,
+      },
+    });
+  }
+
   revalidatePath(dashPath(companyId));
 }
 
 export async function bulkMoveApplicants(companyId: string, applicantIds: string[], groupId: string) {
   const supabase = await createClient();
+
+  // Get applicants before move
+  const { data: applicants } = await supabase
+    .from("applicants")
+    .select("id, group_id, job_id, board_id")
+    .in("id", applicantIds)
+    .eq("company_id", companyId);
 
   const { error } = await supabase
     .from("applicants")
@@ -255,6 +292,29 @@ export async function bulkMoveApplicants(companyId: string, applicantIds: string
     .eq("company_id", companyId);
 
   if (error) throw new Error(error.message);
+
+  // Fire triggers for each moved applicant
+  if (applicants) {
+    for (const applicant of applicants) {
+      if (applicant.group_id !== groupId && applicant.job_id) {
+        await fireJobTrigger(supabase, {
+          companyId,
+          jobId: applicant.job_id,
+          trigger_key: "applicant.moved_group",
+          subject_type: "applicant",
+          subject_id: applicant.id,
+          payload: {
+            company_id: companyId,
+            job_id: applicant.job_id,
+            board_id: applicant.board_id,
+            applicant_id: applicant.id,
+            from_group_id: applicant.group_id,
+            to_group_id: groupId,
+          },
+        });
+      }
+    }
+  }
 
   revalidatePath(dashPath(companyId));
 }
@@ -293,11 +353,38 @@ export async function createGroup(companyId: string, boardId: string, name: stri
   const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
   const groupColor = color || defaultColors[nextSort % defaultColors.length];
 
-  const { error } = await supabase
+  const { data: newGroup, error } = await supabase
     .from("board_groups")
-    .insert({ company_id: companyId, board_id: boardId, name, sort_order: nextSort, color: groupColor });
+    .insert({ company_id: companyId, board_id: boardId, name, sort_order: nextSort, color: groupColor })
+    .select()
+    .single();
 
   if (error) throw new Error(error.message);
+
+  // Fire trigger - get job_id from board
+  if (newGroup) {
+    const { data: board } = await supabase
+      .from("boards")
+      .select("job_id")
+      .eq("id", boardId)
+      .single();
+
+    if (board?.job_id) {
+      await fireJobTrigger(supabase, {
+        companyId,
+        jobId: board.job_id,
+        trigger_key: "group.created",
+        subject_type: "board_group",
+        subject_id: newGroup.id,
+        payload: {
+          company_id: companyId,
+          job_id: board.job_id,
+          board_id: boardId,
+          group_id: newGroup.id,
+        },
+      });
+    }
+  }
 
   revalidatePath(dashPath(companyId));
 }
@@ -397,6 +484,31 @@ export async function createBoardColumn(
 
   if (error) throw new Error(error.message);
 
+  // Fire trigger - get job_id from board
+  if (data) {
+    const { data: board } = await supabase
+      .from("boards")
+      .select("job_id")
+      .eq("id", boardId)
+      .single();
+
+    if (board?.job_id) {
+      await fireJobTrigger(supabase, {
+        companyId,
+        jobId: board.job_id,
+        trigger_key: "column.created",
+        subject_type: "board_column",
+        subject_id: data.id,
+        payload: {
+          company_id: companyId,
+          job_id: board.job_id,
+          board_id: boardId,
+          column_id: data.id,
+        },
+      });
+    }
+  }
+
   revalidatePath(dashPath(companyId));
   return data;
 }
@@ -464,6 +576,19 @@ export async function updateBoardColumn(
 ) {
   const supabase = await createClient();
 
+  // Get old column data if renaming
+  let oldName: string | undefined;
+  if (updates.name) {
+    const { data: column } = await supabase
+      .from("board_columns")
+      .select("name, board_id")
+      .eq("id", columnId)
+      .eq("company_id", companyId)
+      .single();
+
+    oldName = column?.name;
+  }
+
   const { error } = await supabase
     .from("board_columns")
     .update(updates)
@@ -471,6 +596,41 @@ export async function updateBoardColumn(
     .eq("company_id", companyId);
 
   if (error) throw new Error(error.message);
+
+  // Fire trigger if renamed - get job_id from board
+  if (updates.name && oldName && oldName !== updates.name) {
+    const { data: column } = await supabase
+      .from("board_columns")
+      .select("board_id")
+      .eq("id", columnId)
+      .single();
+
+    if (column?.board_id) {
+      const { data: board } = await supabase
+        .from("boards")
+        .select("job_id")
+        .eq("id", column.board_id)
+        .single();
+
+      if (board?.job_id) {
+        await fireJobTrigger(supabase, {
+          companyId,
+          jobId: board.job_id,
+          trigger_key: "column.renamed",
+          subject_type: "board_column",
+          subject_id: columnId,
+          payload: {
+            company_id: companyId,
+            job_id: board.job_id,
+            board_id: column.board_id,
+            column_id: columnId,
+            old_name: oldName,
+            new_name: updates.name,
+          },
+        });
+      }
+    }
+  }
 
   revalidatePath(dashPath(companyId));
 }
@@ -481,7 +641,7 @@ export async function deleteBoardColumn(companyId: string, columnId: string) {
   // Prevent deletion of system columns
   const { data: column } = await supabase
     .from("board_columns")
-    .select("is_system")
+    .select("is_system, board_id")
     .eq("id", columnId)
     .eq("company_id", companyId)
     .single();
@@ -490,6 +650,8 @@ export async function deleteBoardColumn(companyId: string, columnId: string) {
     throw new Error("Cannot delete system columns");
   }
 
+  const boardId = column?.board_id;
+
   const { error } = await supabase
     .from("board_columns")
     .delete()
@@ -497,6 +659,31 @@ export async function deleteBoardColumn(companyId: string, columnId: string) {
     .eq("company_id", companyId);
 
   if (error) throw new Error(error.message);
+
+  // Fire trigger - get job_id from board
+  if (boardId) {
+    const { data: board } = await supabase
+      .from("boards")
+      .select("job_id")
+      .eq("id", boardId)
+      .single();
+
+    if (board?.job_id) {
+      await fireJobTrigger(supabase, {
+        companyId,
+        jobId: board.job_id,
+        trigger_key: "column.deleted",
+        subject_type: "board_column",
+        subject_id: columnId,
+        payload: {
+          company_id: companyId,
+          job_id: board.job_id,
+          board_id: boardId,
+          column_id: columnId,
+        },
+      });
+    }
+  }
 
   revalidatePath(dashPath(companyId));
 }
@@ -622,25 +809,28 @@ export async function updateBoardCell(
 
   if (error) throw new Error(error.message);
 
-  // TRIGGER AUTOMATION: Detect status change and dispatch
-  if (columnType === "status" && oldStatusLabelId !== value) {
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: company } = await supabase.from("companies").select("account_id").eq("id", companyId).single();
+  // Fire trigger for cell update
+  const { data: applicant } = await supabase
+    .from("applicants")
+    .select("job_id, board_id")
+    .eq("id", applicantId)
+    .single();
 
-    // Non-blocking dispatch
-    fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/.*$/, '') || 'http://localhost:3000'}/api/automations/dispatch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accountId: company?.account_id,
-        companyId,
-        applicantId,
-        columnId,
-        oldStatusLabelId,
-        newStatusLabelId: value,
-        userId: user?.id,
-      }),
-    }).catch((err) => console.error('Failed to dispatch automation:', err));
+  if (applicant?.job_id) {
+    await fireJobTrigger(supabase, {
+      companyId,
+      jobId: applicant.job_id,
+      trigger_key: "board.column_changed",
+      subject_type: "applicant",
+      subject_id: applicantId,
+      payload: {
+        company_id: companyId,
+        job_id: applicant.job_id,
+        board_id: applicant?.board_id,
+        applicant_id: applicantId,
+        column_id: columnId,
+      },
+    });
   }
 
   revalidatePath(dashPath(companyId));
@@ -650,6 +840,16 @@ export async function updateBoardCell(
 export async function moveApplicant(companyId: string, applicantId: string, groupId: string) {
   const supabase = await createClient();
 
+  // Get applicant before move
+  const { data: applicant } = await supabase
+    .from("applicants")
+    .select("group_id, job_id, board_id")
+    .eq("id", applicantId)
+    .eq("company_id", companyId)
+    .single();
+
+  const oldGroupId = applicant?.group_id;
+
   const { error } = await supabase
     .from("applicants")
     .update({ group_id: groupId })
@@ -657,6 +857,25 @@ export async function moveApplicant(companyId: string, applicantId: string, grou
     .eq("company_id", companyId);
 
   if (error) throw new Error(error.message);
+
+  // Fire trigger
+  if (oldGroupId && oldGroupId !== groupId && applicant?.job_id) {
+    await fireJobTrigger(supabase, {
+      companyId,
+      jobId: applicant.job_id,
+      trigger_key: "applicant.moved_group",
+      subject_type: "applicant",
+      subject_id: applicantId,
+      payload: {
+        company_id: companyId,
+        job_id: applicant.job_id,
+        board_id: applicant?.board_id,
+        applicant_id: applicantId,
+        from_group_id: oldGroupId,
+        to_group_id: groupId,
+      },
+    });
+  }
 
   revalidatePath(dashPath(companyId));
 }

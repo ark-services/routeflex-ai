@@ -2,6 +2,7 @@ import ApplicantsBoard from "./ApplicantsBoard";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
+import { AutomateButton } from "./AutomateButton";
 
 function ErrorPanel({
   title,
@@ -420,6 +421,43 @@ export default async function ApplicantsPage({
     cells: cells.length,
   });
 
+  // ============================================================================
+  // Fetch automations for this job
+  // ============================================================================
+  const { data: automations } = await supabase
+    .from("automations")
+    .select(`
+      id,
+      name,
+      is_enabled,
+      trigger_key,
+      filter,
+      created_at,
+      updated_at,
+      automation_actions (
+        id,
+        type,
+        config,
+        sort_order
+      )
+    `)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false });
+
+  // Fetch trigger types
+  const { data: triggers } = await supabase
+    .from("automation_triggers")
+    .select("*")
+    .order("key");
+
+  // Fetch groups for automation config
+  const { data: groupsForAutomation } = await supabase
+    .from("board_groups")
+    .select("id, name, color")
+    .eq("board_id", board.id)
+    .order("sort_order", { ascending: true });
+
   // Critical debug: Check if applicant group_ids match actual group ids
   if (applicants && applicants.length > 0 && groups && groups.length > 0) {
     const groupIds = new Set(groups.map(g => g.id));
@@ -453,19 +491,30 @@ export default async function ApplicantsPage({
     <div className="h-full flex flex-col">
       {/* Navigation */}
       <div className="bg-white border-b px-6 py-3">
-        <div className="flex items-center gap-4">
-          <a
-            href={`/dashboard/${companyId}/jobs/${jobId}/applicants`}
-            className="text-sm font-medium text-gray-900 border-b-2 border-blue-600 pb-2"
-          >
-            Applicants Board
-          </a>
-          <a
-            href={`/dashboard/${companyId}/jobs/${jobId}/form`}
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 pb-2"
-          >
-            Application Form
-          </a>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <a
+              href={`/dashboard/${companyId}/jobs/${jobId}/applicants`}
+              className="text-sm font-medium text-gray-900 border-b-2 border-blue-600 pb-2"
+            >
+              Applicants Board
+            </a>
+            <a
+              href={`/dashboard/${companyId}/jobs/${jobId}/form`}
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 pb-2"
+            >
+              Application Form
+            </a>
+          </div>
+
+          {/* Automate Button */}
+          <AutomateButton
+            companyId={companyId}
+            jobId={jobId}
+            automations={automations || []}
+            triggers={triggers || []}
+            groups={groupsForAutomation || []}
+          />
         </div>
       </div>
 

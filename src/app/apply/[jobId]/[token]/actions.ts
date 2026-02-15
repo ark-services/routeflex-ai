@@ -4,6 +4,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { uploadResume } from "@/lib/storage/resumeUpload";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { revalidatePath } from "next/cache";
+import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 
 /**
  * Submit a public job application.
@@ -325,6 +326,46 @@ export async function submitApplication(
       companyId: form.company_id,
       jobId: jobId,
     });
+
+    // Fire automation trigger: form.submitted and applicant.created
+    try {
+      // Fire form.submitted trigger
+      await fireJobTrigger(supabase, {
+        companyId: form.company_id,
+        jobId: jobId,
+        trigger_key: "form.submitted",
+        subject_type: "applicant",
+        subject_id: applicant.id,
+        payload: {
+          company_id: form.company_id,
+          job_id: jobId,
+          board_id: board.id,
+          applicant_id: applicant.id,
+          form_id: form.form_id,
+          group_id: newApplicantsGroup.id,
+        },
+      });
+
+      // Fire applicant.created trigger
+      await fireJobTrigger(supabase, {
+        companyId: form.company_id,
+        jobId: jobId,
+        trigger_key: "applicant.created",
+        subject_type: "applicant",
+        subject_id: applicant.id,
+        payload: {
+          company_id: form.company_id,
+          job_id: jobId,
+          board_id: board.id,
+          applicant_id: applicant.id,
+          group_id: newApplicantsGroup.id,
+        },
+      });
+
+      console.log('[Application Submit] Triggered form.submitted and applicant.created automations');
+    } catch (triggerError) {
+      console.error('[Application Submit] Trigger error (non-fatal):', triggerError);
+    }
 
     // Revalidate the applicants board page so new applicant shows immediately
     try {
