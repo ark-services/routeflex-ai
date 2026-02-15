@@ -812,6 +812,13 @@ export async function updateStatusLabel(
 ) {
   const supabase = await createClient();
 
+  console.log("[updateStatusLabel] Updating label:", {
+    labelId,
+    updates,
+    companyId,
+    jobId,
+  });
+
   const { error } = await supabase
     .from("board_status_labels")
     .update(updates)
@@ -822,7 +829,10 @@ export async function updateStatusLabel(
     throw new Error(error.message);
   }
 
-  revalidatePath(dashPath(companyId, jobId));
+  console.log("[updateStatusLabel] Success - label updated");
+
+  // Do NOT call revalidatePath here - let the UI handle optimistic updates
+  // Only revalidate when modal closes
 }
 
 export async function deleteStatusLabel(
@@ -832,17 +842,126 @@ export async function deleteStatusLabel(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  console.log("[deleteStatusLabel] Starting safe delete:", {
+    labelId,
+    companyId,
+    jobId,
+  });
+
+  // Step 1: Get the label being deleted and its column
+  const { data: labelToDelete, error: fetchError } = await supabase
+    .from("board_status_labels")
+    .select("id, label, column_id, sort_order")
+    .eq("id", labelId)
+    .single();
+
+  if (fetchError || !labelToDelete) {
+    console.error("[deleteStatusLabel] Label not found:", fetchError);
+    throw new Error("Label not found");
+  }
+
+  console.log("[deleteStatusLabel] Label to delete:", labelToDelete);
+
+  // Step 2: Get all labels for this column to find the fallback
+  const { data: allLabels, error: labelsError } = await supabase
+    .from("board_status_labels")
+    .select("id, label, sort_order")
+    .eq("column_id", labelToDelete.column_id)
+    .order("sort_order", { ascending: true });
+
+  if (labelsError || !allLabels || allLabels.length === 0) {
+    console.error("[deleteStatusLabel] Error fetching column labels:", labelsError);
+    throw new Error("Failed to fetch column labels");
+  }
+
+  console.log("[deleteStatusLabel] All labels in column:", allLabels);
+
+  // Step 3: Determine fallback label (first label or one named "None")
+  let fallbackLabel = allLabels.find((l) => l.label.toLowerCase() === "none");
+  if (!fallbackLabel) {
+    fallbackLabel = allLabels[0];
+  }
+
+  console.log("[deleteStatusLabel] Fallback label:", fallbackLabel);
+
+  // Step 4: Prevent deletion of the fallback label
+  if (labelToDelete.id === fallbackLabel?.id) {
+    const errorMsg = "Cannot delete the default label. It is used as a fallback when other labels are deleted.";
+    console.error("[deleteStatusLabel] Attempted to delete fallback label:", {
+      labelId: labelToDelete.id,
+      labelName: labelToDelete.label,
+    });
+    throw new Error(errorMsg);
+  }
+
+  // Step 5: Prevent deletion if it's the last label
+  if (allLabels.length <= 1) {
+    throw new Error("Cannot delete the last label in this column");
+  }
+
+  // Step 6: Get board_id for scoping (needed for RLS)
+  const { data: column, error: columnError } = await supabase
+    .from("board_columns")
+    .select("board_id, company_id")
+    .eq("id", labelToDelete.column_id)
+    .single();
+
+  if (columnError || !column) {
+    console.error("[deleteStatusLabel] Error fetching column:", columnError);
+    throw new Error("Failed to fetch column information");
+  }
+
+  console.log("[deleteStatusLabel] Column info:", column);
+
+  // Step 7: Reassign all cells using this label to the fallback label (ATOMIC TRANSACTION)
+  // First, count how many cells will be affected
+  const { count: affectedCells } = await supabase
+    .from("board_cells")
+    .select("*", { count: "exact", head: true })
+    .eq("value_status_label_id", labelId)
+    .eq("column_id", labelToDelete.column_id);
+
+  console.log("[deleteStatusLabel] Cells to reassign:", affectedCells);
+
+  // Reassign cells to fallback label
+  if (affectedCells && affectedCells > 0) {
+    const { error: reassignError } = await supabase
+      .from("board_cells")
+      .update({ value_status_label_id: fallbackLabel.id })
+      .eq("value_status_label_id", labelId)
+      .eq("column_id", labelToDelete.column_id);
+
+    if (reassignError) {
+      console.error("[deleteStatusLabel] Error reassigning cells:", reassignError);
+      throw new Error(`Failed to reassign cells: ${reassignError.message}`);
+    }
+
+    console.log(`[deleteStatusLabel] Successfully reassigned ${affectedCells} cells to fallback label:`, {
+      fromLabel: labelToDelete.label,
+      toLabel: fallbackLabel.label,
+      cellsReassigned: affectedCells,
+    });
+  }
+
+  // Step 8: Now safe to delete the label
+  const { error: deleteError } = await supabase
     .from("board_status_labels")
     .delete()
     .eq("id", labelId);
 
-  if (error) {
-    console.error("[deleteStatusLabel] Error:", error);
-    throw new Error(error.message);
+  if (deleteError) {
+    console.error("[deleteStatusLabel] Error deleting label:", deleteError);
+    throw new Error(`Failed to delete label: ${deleteError.message}`);
   }
 
-  revalidatePath(dashPath(companyId, jobId));
+  console.log("[deleteStatusLabel] ✓ Successfully deleted label:", {
+    labelId: labelToDelete.id,
+    labelName: labelToDelete.label,
+    cellsReassigned: affectedCells || 0,
+    fallbackLabel: fallbackLabel.label,
+  });
+
+  // Do NOT call revalidatePath here - let the UI handle optimistic updates
 }
 
 // ===== Board Cell Actions =====

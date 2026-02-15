@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import type React from "react";
 import {
   DndContext,
@@ -40,6 +40,9 @@ import {
   reorderApplicants,
   reorderColumns,
 } from "./actions";
+import { statusColorArray } from "@/lib/brand-colors";
+import { StatusDropdown } from "@/components/ui/status-dropdown";
+import { ColorPicker } from "@/components/ui/color-picker";
 
 type Group = {
   id: string;
@@ -87,10 +90,7 @@ type BoardCell = {
   value_status_label_id: string | null;
 };
 
-const PRESET_COLORS = [
-  "#0073ea", "#00c875", "#fdab3d", "#e2445c", "#9cd326", "#784bd1", "#579bfc", "#ff642e",
-  "#ef4444", "#f97316", "#f59e0b", "#22c55e", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899",
-];
+const PRESET_COLORS = statusColorArray.map(c => c.value);
 
 export default function ApplicantsBoard({
   companyId,
@@ -985,49 +985,20 @@ function CellRenderer({
   }
 
   if (column.type === "status") {
-    const selectedLabel = labels.find((l) => l.id === value);
-
     return (
-      <div className="relative">
-        <select
-          value={value ?? ""}
-          onChange={(e) => {
-            const val = e.target.value;
-            if (val === "__edit_labels__") {
-              onEditLabels();
-            } else {
-              startTransition(() => onUpdate(val || null));
-            }
-          }}
-          className="h-8 w-full appearance-none rounded border border-transparent px-2 pr-6 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
-          style={{
-            backgroundColor: selectedLabel?.color ? `${selectedLabel.color}20` : "transparent",
-            color: selectedLabel?.color ?? "#000",
-          }}
-        >
-          <option value="">—</option>
-          {labels.map((label) => (
-            <option key={label.id} value={label.id}>
-              {label.label}
-            </option>
-          ))}
-          <option disabled>──────</option>
-          <option value="__edit_labels__">✏️ Edit labels</option>
-        </select>
-        {selectedLabel && (
-          <div
-            className="pointer-events-none absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full"
-            style={{ backgroundColor: selectedLabel.color }}
-          />
-        )}
-      </div>
+      <StatusDropdown
+        value={value}
+        labels={labels}
+        onChange={(val) => startTransition(() => onUpdate(val))}
+        onEditLabels={onEditLabels}
+      />
     );
   }
 
   return <span className="text-stone-300">—</span>;
 }
 
-// ===== Status Labels Editor =====
+// ===== Status Labels Editor (Monday.com-style inline editing) =====
 
 function StatusLabelsEditor({
   companyId,
@@ -1042,126 +1013,271 @@ function StatusLabelsEditor({
 }) {
   const [isPending, startTransition] = useTransition();
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
-  const [editLabelValue, setEditLabelValue] = useState("");
-  const [editLabelColor, setEditLabelColor] = useState("#6b7280");
+  const [localLabels, setLocalLabels] = useState<StatusLabel[]>(labels);
+  const [editValues, setEditValues] = useState<Record<string, { label: string; color: string }>>({});
   const [newLabel, setNewLabel] = useState("");
-  const [newColor, setNewColor] = useState("#6b7280");
+  const [newColor, setNewColor] = useState("#4F46E5");
+  const [showColorPickerForId, setShowColorPickerForId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize local state ONLY when modal opens or columnId changes
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (!initializedRef.current) {
+      setLocalLabels(labels);
+      const values: Record<string, { label: string; color: string }> = {};
+      labels.forEach((label) => {
+        values[label.id] = { label: label.label, color: label.color };
+      });
+      setEditValues(values);
+      initializedRef.current = true;
+    }
+  }, [columnId]);
+
+  function onUpdateLabel(labelId: string) {
+    const values = editValues[labelId];
+    if (!values?.label.trim()) return;
+
+    // Immediately update local state
+    setLocalLabels((prev) =>
+      prev.map((label) =>
+        label.id === labelId
+          ? { ...label, label: values.label.trim(), color: values.color }
+          : label
+      )
+    );
+
+    startTransition(async () => {
+      try {
+        await updateStatusLabel(companyId, labelId, {
+          label: values.label.trim(),
+          color: values.color,
+        });
+        setEditingLabelId(null);
+        setError(null);
+      } catch (err) {
+        setLocalLabels((prev) =>
+          prev.map((label) =>
+            label.id === labelId
+              ? labels.find((l) => l.id === labelId) || label
+              : label
+          )
+        );
+        setError(err instanceof Error ? err.message : "Failed to update label");
+      }
+    });
+  }
+
+  function onDeleteLabel(labelId: string) {
+    const labelToDelete = localLabels.find((l) => l.id === labelId);
+    if (!labelToDelete) return;
+
+    const isFallback = labelToDelete.label.toLowerCase() === "none" || localLabels[0]?.id === labelId;
+
+    if (isFallback) {
+      setError("Cannot delete the default label. It is used as a fallback when other labels are deleted.");
+      return;
+    }
+
+    const ok = confirm(`Delete "${labelToDelete.label}"?`);
+    if (!ok) return;
+
+    setLocalLabels((prev) => prev.filter((label) => label.id !== labelId));
+
+    startTransition(async () => {
+      try {
+        await deleteStatusLabel(companyId, labelId);
+        setError(null);
+      } catch (err) {
+        setLocalLabels((prev) => [...prev, labelToDelete].sort((a, b) => a.sort_order - b.sort_order));
+        setError(err instanceof Error ? err.message : "Failed to delete label");
+      }
+    });
+  }
 
   function onAddLabel() {
     if (!newLabel.trim()) return;
 
     startTransition(async () => {
-      await createStatusLabel(companyId, columnId, newLabel.trim(), newColor);
-      setNewLabel("");
-      setNewColor("#6b7280");
+      try {
+        const created = await createStatusLabel(companyId, columnId, newLabel.trim(), newColor);
+        if (created) {
+          setLocalLabels((prev) => [...prev, created]);
+        }
+        setNewLabel("");
+        setNewColor("#4F46E5");
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to create label");
+      }
     });
   }
 
-  function onUpdateLabel(labelId: string) {
-    if (!editLabelValue.trim()) return;
-
-    startTransition(async () => {
-      await updateStatusLabel(companyId, labelId, {
-        label: editLabelValue.trim(),
-        color: editLabelColor,
-      });
-      setEditingLabelId(null);
-    });
-  }
-
-  function onDeleteLabel(labelId: string) {
-    const ok = confirm("Delete this label?");
-    if (!ok) return;
-
-    startTransition(async () => {
-      await deleteStatusLabel(companyId, labelId);
-    });
-  }
+  const fallbackLabel = localLabels.find((l) => l.label.toLowerCase() === "none") || localLabels[0];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl border border-stone-200 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-lg rounded-[10px] border border-stone-200 bg-white p-6 shadow-2xl">
         <h3 className="text-lg font-semibold text-stone-900">Edit Status Labels</h3>
 
-        <div className="mt-4 max-h-96 space-y-2 overflow-y-auto">
-          {labels.map((label) => (
-            <div key={label.id} className="flex items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 p-3">
-              {editingLabelId === label.id ? (
-                <>
+        {/* Error message */}
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+            {error}
+          </div>
+        )}
+
+        {/* Labels list - all inline editable */}
+        <div className="mt-6 space-y-2 max-h-96 overflow-y-auto">
+          {localLabels.map((label) => {
+            const isFallback = fallbackLabel?.id === label.id;
+            return (
+            <div key={label.id} className="group">
+              <div className="flex items-center gap-3 p-2 rounded-[10px] hover:bg-stone-50 transition-colors">
+                {/* Color swatch - clickable */}
+                <button
+                  type="button"
+                  onClick={() => setShowColorPickerForId(showColorPickerForId === label.id ? null : label.id)}
+                  className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
+                  style={{ backgroundColor: editValues[label.id]?.color || label.color }}
+                  title="Change color"
+                />
+
+                {/* Inline editable text field */}
+                <div className="flex-1 flex items-center gap-2">
                   <input
-                    type="color"
-                    value={editLabelColor}
-                    onChange={(e) => setEditLabelColor(e.target.value)}
-                    className="h-8 w-8 cursor-pointer rounded border-0"
-                  />
-                  <input
-                    value={editLabelValue}
-                    onChange={(e) => setEditLabelValue(e.target.value)}
-                    className="flex-1 rounded-lg border border-stone-300 px-2 py-1 text-sm outline-none"
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => onUpdateLabel(label.id)}
-                    className="rounded-lg bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-800"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditingLabelId(null)}
-                    className="rounded-lg border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="h-4 w-4 rounded-full" style={{ backgroundColor: label.color }} />
-                  <span className="flex-1 text-sm font-medium text-stone-900">{label.label}</span>
-                  <button
-                    onClick={() => {
-                      setEditingLabelId(label.id);
-                      setEditLabelValue(label.label);
-                      setEditLabelColor(label.color);
+                    type="text"
+                    value={editValues[label.id]?.label || label.label}
+                    onChange={(e) => {
+                      setEditValues((prev) => ({
+                        ...prev,
+                        [label.id]: {
+                          ...prev[label.id],
+                          label: e.target.value,
+                        },
+                      }));
                     }}
-                    className="text-sm text-stone-600 hover:text-stone-900"
+                    onFocus={() => setEditingLabelId(label.id)}
+                    onBlur={() => {
+                      if (editingLabelId === label.id) {
+                        onUpdateLabel(label.id);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        onUpdateLabel(label.id);
+                        e.currentTarget.blur();
+                      }
+                      if (e.key === 'Escape') {
+                        setEditValues((prev) => ({
+                          ...prev,
+                          [label.id]: { label: label.label, color: label.color },
+                        }));
+                        setEditingLabelId(null);
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="flex-1 px-2 py-1 text-sm font-medium text-stone-900 bg-transparent border border-transparent rounded-lg hover:border-stone-200 focus:border-blue-500 focus:bg-white outline-none transition-colors"
+                    placeholder="Label name"
+                  />
+                  {isFallback && (
+                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                      Default
+                    </span>
+                  )}
+                </div>
+
+                {/* Delete button - disabled for fallback */}
+                {!isFallback && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteLabel(label.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1.5 text-stone-400 hover:text-red-600 transition-all"
+                    title="Delete label"
                   >
-                    Edit
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
-                  <button onClick={() => onDeleteLabel(label.id)} className="text-sm text-red-600 hover:text-red-800">
-                    Delete
-                  </button>
-                </>
+                )}
+              </div>
+
+              {/* Inline color picker */}
+              {showColorPickerForId === label.id && (
+                <div className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]">
+                  <ColorPicker
+                    value={editValues[label.id]?.color || label.color}
+                    onChange={(color) => {
+                      setEditValues((prev) => ({
+                        ...prev,
+                        [label.id]: {
+                          ...prev[label.id],
+                          color,
+                        },
+                      }));
+                      onUpdateLabel(label.id);
+                      setShowColorPickerForId(null);
+                    }}
+                    inline
+                  />
+                </div>
               )}
             </div>
-          ))}
+          );
+          })}
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-lg border-2 border-dashed border-stone-300 p-3">
-          <input
-            type="color"
-            value={newColor}
-            onChange={(e) => setNewColor(e.target.value)}
-            className="h-8 w-8 cursor-pointer rounded border-0"
+        {/* Add new label */}
+        <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-stone-300 bg-stone-50">
+          <button
+            type="button"
+            onClick={() => setShowColorPickerForId('new')}
+            className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
+            style={{ backgroundColor: newColor }}
+            title="Choose color"
           />
           <input
+            type="text"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
-            placeholder="New label name"
-            className="flex-1 rounded-lg border border-stone-300 px-2 py-1 text-sm outline-none"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && newLabel.trim()) {
+                onAddLabel();
+              }
+            }}
+            placeholder="Add new label"
+            className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg outline-none focus:border-blue-500 transition-colors"
           />
           <button
+            type="button"
             onClick={onAddLabel}
             disabled={isPending || !newLabel.trim()}
-            className="rounded-lg bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-800 disabled:opacity-60"
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             Add
           </button>
         </div>
 
+        {/* Inline color picker for new label */}
+        {showColorPickerForId === 'new' && (
+          <div className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]">
+            <ColorPicker
+              value={newColor}
+              onChange={(color) => {
+                setNewColor(color);
+                setShowColorPickerForId(null);
+              }}
+              inline
+            />
+          </div>
+        )}
+
+        {/* Footer */}
         <div className="mt-6 flex items-center justify-end">
           <button
+            type="button"
             onClick={onClose}
-            className="h-9 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800"
+            className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors shadow-sm"
           >
             Done
           </button>
