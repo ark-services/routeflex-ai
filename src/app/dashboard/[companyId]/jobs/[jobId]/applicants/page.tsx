@@ -222,10 +222,11 @@ export default async function ApplicantsPage({
 
   // ============================================================================
   // Fetch board columns (filter by board_id for this job's board)
+  // CRITICAL: Include field_id to map applicant_field_values to columns
   // ============================================================================
   const { data: columns, error: colErr } = await supabase
     .from("board_columns")
-    .select("id,board_id,name,type,is_system,sort_order")
+    .select("id,board_id,name,type,is_system,sort_order,field_id")
     .eq("board_id", board.id)
     .order("sort_order", { ascending: true });
 
@@ -277,31 +278,133 @@ export default async function ApplicantsPage({
 
   // ============================================================================
   // Fetch all cell values for applicants
+  // CRITICAL: Merge data from TWO sources:
+  // 1. board_cells (manual edits on the board)
+  // 2. applicant_field_values (form submissions) mapped via field_id → column_id
   // ============================================================================
   const applicantIds = (applicants ?? []).map((a) => a.id);
   let cells: any[] = [];
+
   if (applicantIds.length > 0) {
-    const { data: cellData, error: cellErr } = await supabase
+    // Fetch manual board edits from board_cells
+    const { data: boardCellData, error: boardCellErr } = await supabase
       .from("board_cells")
       .select(
         "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id"
       )
       .in("applicant_id", applicantIds);
 
-    if (cellErr) {
+    if (boardCellErr) {
       const isDev = process.env.NODE_ENV === "development";
       return (
         <ErrorPanel
           title="Data Error"
-          message="Failed to load cell data"
-          technicalDetails={cellErr.message}
+          message="Failed to load board cell data"
+          technicalDetails={boardCellErr.message}
           showDetails={isDev}
         />
       );
     }
-    cells = cellData ?? [];
-    console.log('[Applicants Page] Cells fetched:', {
+
+    // Fetch form submission data from applicant_field_values
+    const { data: fieldValueData, error: fieldValueErr } = await supabase
+      .from("applicant_field_values")
+      .select(
+        "applicant_id,field_id,value_text,value_number,value_bool,value_date,value_file_path"
+      )
+      .in("applicant_id", applicantIds);
+
+    if (fieldValueErr) {
+      const isDev = process.env.NODE_ENV === "development";
+      return (
+        <ErrorPanel
+          title="Data Error"
+          message="Failed to load applicant field values"
+          technicalDetails={fieldValueErr.message}
+          showDetails={isDev}
+        />
+      );
+    }
+
+    console.log('[Applicants Page] Data fetched:', {
+      boardCells: boardCellData?.length || 0,
+      fieldValues: fieldValueData?.length || 0,
+    });
+
+    // Build a map of field_id → column_id for transformation
+    const fieldToColumnMap = new Map<string, string>();
+    for (const col of columns ?? []) {
+      if (col.field_id) {
+        fieldToColumnMap.set(col.field_id, col.id);
+      }
+    }
+
+    console.log('[Applicants Page] Field to column mapping:', {
+      mappingCount: fieldToColumnMap.size,
+      mappings: Array.from(fieldToColumnMap.entries()).map(([fieldId, colId]) => ({
+        fieldId,
+        columnId: colId,
+        columnName: columns?.find(c => c.id === colId)?.name,
+      })),
+    });
+
+    // Transform applicant_field_values into board cell format
+    const unmappedFieldIds = new Set<string>();
+    const transformedFieldValues = (fieldValueData ?? [])
+      .map((fv) => {
+        const columnId = fieldToColumnMap.get(fv.field_id);
+        if (!columnId) {
+          unmappedFieldIds.add(fv.field_id);
+          return null;
+        }
+
+        return {
+          applicant_id: fv.applicant_id,
+          column_id: columnId,
+          value_text: fv.value_text,
+          value_number: fv.value_number,
+          value_date: fv.value_date,
+          value_status_label_id: null, // field values don't have status labels
+        };
+      })
+      .filter((v): v is NonNullable<typeof v> => v !== null);
+
+    console.log('[Applicants Page] Transformed field values:', {
+      totalFieldValues: fieldValueData?.length || 0,
+      transformedCount: transformedFieldValues.length,
+      unmappedFieldsCount: unmappedFieldIds.size,
+      sample: transformedFieldValues.slice(0, 3),
+    });
+
+    // Log unmapped fields if any (these are fields that exist in the form but not as board columns)
+    if (unmappedFieldIds.size > 0) {
+      console.warn('[Applicants Page] Some form fields are not mapped to board columns:', {
+        unmappedFieldIds: Array.from(unmappedFieldIds),
+        note: 'These fields have data but no corresponding column. Create columns for these fields or they will be hidden.',
+      });
+    }
+
+    // Merge board_cells and transformed field values
+    // board_cells take precedence (manual edits override form values)
+    const cellMap = new Map<string, any>();
+
+    // Add transformed field values first
+    for (const cell of transformedFieldValues) {
+      const key = `${cell.applicant_id}::${cell.column_id}`;
+      cellMap.set(key, cell);
+    }
+
+    // Override with manual board edits
+    for (const cell of boardCellData ?? []) {
+      const key = `${cell.applicant_id}::${cell.column_id}`;
+      cellMap.set(key, cell);
+    }
+
+    cells = Array.from(cellMap.values());
+
+    console.log('[Applicants Page] Final merged cells:', {
       count: cells.length,
+      sample: cells.slice(0, 3),
     });
   }
 

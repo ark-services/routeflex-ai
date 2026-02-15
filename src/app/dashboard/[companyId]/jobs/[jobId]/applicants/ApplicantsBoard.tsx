@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, useRef } from "react";
+import { createPortal } from "react-dom";
 import type React from "react";
 import {
   DndContext,
@@ -295,7 +296,7 @@ export default function ApplicantsBoard({
         // Persist to DB
         startTransition(async () => {
           for (let i = 0; i < newOrder.length; i++) {
-            await reorderColumns(companyId, newOrder[i].id, i);
+            await reorderColumns(companyId, jobId, newOrder[i].id, i);
           }
         });
       }
@@ -327,7 +328,7 @@ export default function ApplicantsBoard({
 
           // Persist to DB
           startTransition(async () => {
-            await reorderApplicants(companyId, activeRowId, newIndex, activeRow.group_id);
+            await reorderApplicants(companyId, jobId, activeRowId, newIndex, activeRow.group_id);
           });
         }
       }
@@ -357,7 +358,7 @@ export default function ApplicantsBoard({
     if (!ok) return;
 
     startTransition(async () => {
-      await bulkDeleteApplicants(companyId, selectedIds);
+      await bulkDeleteApplicants(companyId, jobId, selectedIds);
       clearSelection();
     });
   }
@@ -365,7 +366,7 @@ export default function ApplicantsBoard({
   function onMoveToGroup(groupId: string) {
     if (selectedIds.length === 0) return;
     startTransition(async () => {
-      await bulkMoveApplicants(companyId, selectedIds, groupId);
+      await bulkMoveApplicants(companyId, jobId, selectedIds, groupId);
       clearSelection();
     });
   }
@@ -382,13 +383,13 @@ export default function ApplicantsBoard({
 
   function onToggleGroupCollapse(groupId: string, currentCollapsed: boolean) {
     startTransition(async () => {
-      await toggleGroupCollapse(companyId, boardId, groupId, !currentCollapsed);
+      await toggleGroupCollapse(companyId, jobId, boardId, groupId, !currentCollapsed);
     });
   }
 
   function onUpdateGroupColor(groupId: string, color: string) {
     startTransition(async () => {
-      await updateGroupColor(companyId, boardId, groupId, color);
+      await updateGroupColor(companyId, jobId, boardId, groupId, color);
       setColorPickerGroupId(null);
     });
   }
@@ -398,7 +399,7 @@ export default function ApplicantsBoard({
     if (!name) return;
 
     startTransition(async () => {
-      await createBoardColumn(companyId, name, newColumnType);
+      await createBoardColumn(companyId, jobId, name, newColumnType);
       setShowAddColumnModal(false);
       setNewColumnName("");
       setNewColumnType("text");
@@ -410,7 +411,7 @@ export default function ApplicantsBoard({
     if (!name) return;
 
     startTransition(async () => {
-      await updateBoardColumn(companyId, columnId, { name });
+      await updateBoardColumn(companyId, jobId, columnId, { name });
       setEditingColumnId(null);
       setEditingColumnValue("");
     });
@@ -421,13 +422,13 @@ export default function ApplicantsBoard({
     if (!ok) return;
 
     startTransition(async () => {
-      await deleteBoardColumn(companyId, columnId);
+      await deleteBoardColumn(companyId, jobId, columnId);
     });
   }
 
   function onMoveApplicant(applicantId: string, groupId: string) {
     startTransition(async () => {
-      await moveApplicant(companyId, applicantId, groupId);
+      await moveApplicant(companyId, jobId, applicantId, groupId);
       setRowMenuOpen(null);
     });
   }
@@ -437,14 +438,14 @@ export default function ApplicantsBoard({
     if (!ok) return;
 
     startTransition(async () => {
-      await deleteApplicant(companyId, applicantId);
+      await deleteApplicant(companyId, jobId, applicantId);
       setRowMenuOpen(null);
     });
   }
 
   function onDuplicateApplicant(applicantId: string) {
     startTransition(async () => {
-      await duplicateApplicant(companyId, applicantId);
+      await duplicateApplicant(companyId, jobId, applicantId);
       setRowMenuOpen(null);
     });
   }
@@ -470,7 +471,7 @@ export default function ApplicantsBoard({
 
   function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status", value: any) {
     startTransition(async () => {
-      await updateBoardCell(companyId, applicantId, columnId, columnType, value);
+      await updateBoardCell(companyId, jobId, applicantId, columnId, columnType, value);
     });
   }
 
@@ -935,7 +936,23 @@ function SortableRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
   const cellEls: React.ReactNode[] = [];
+
+  // Calculate menu position when it opens
+  useEffect(() => {
+    if (rowMenuOpen && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+      });
+    } else {
+      setMenuPosition(null);
+    }
+  }, [rowMenuOpen]);
 
   // Sticky left cell (checkbox + row menu)
   cellEls.push(
@@ -946,38 +963,54 @@ function SortableRow({
       <div className="flex items-center gap-2">
         <div className="relative">
           <button
+            ref={menuButtonRef}
             onClick={() => setRowMenuOpen(!rowMenuOpen)}
             className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-stone-700 transition text-sm"
           >
             ⋮
           </button>
-          {rowMenuOpen ? (
-            <div className="absolute left-0 top-6 z-50 w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl">
-              <div className="px-3 py-1 text-xs font-medium text-stone-400">Move to</div>
-              {groups.map((g) => (
+          {/* Render menu in a portal to escape table overflow/z-index issues */}
+          {rowMenuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+            <>
+              {/* Backdrop to close menu when clicking outside */}
+              <div
+                className="fixed inset-0 z-[998]"
+                onClick={() => setRowMenuOpen(false)}
+              />
+              <div
+                className="fixed z-[999] w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+                style={{
+                  top: `${menuPosition.top}px`,
+                  left: `${menuPosition.left}px`,
+                }}
+              >
+                <div className="px-3 py-1 text-xs font-medium text-stone-400">Move to</div>
+                {groups.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => onMove(g.id)}
+                    className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+                  >
+                    {g.name}
+                  </button>
+                ))}
+                <div className="my-1 border-t border-stone-100" />
                 <button
-                  key={g.id}
-                  onClick={() => onMove(g.id)}
+                  onClick={onDuplicate}
                   className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
                 >
-                  {g.name}
+                  Duplicate
                 </button>
-              ))}
-              <div className="my-1 border-t border-stone-100" />
-              <button
-                onClick={onDuplicate}
-                className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-              >
-                Duplicate
-              </button>
-              <button
-                onClick={onDelete}
-                className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
-              >
-                Delete
-              </button>
-            </div>
-          ) : null}
+                <button
+                  onClick={onDelete}
+                  className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              </div>
+            </>,
+            document.body
+          )}
         </div>
 
         <input
@@ -1075,6 +1108,51 @@ function CellRenderer({
 }) {
   const [isPending, startTransition] = useTransition();
 
+  // Local edit state - only save on blur/enter
+  const [localValue, setLocalValue] = useState(value);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Update local value when prop changes (from server)
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalValue(value);
+    }
+  }, [value, isEditing]);
+
+  // Commit the edit to server
+  const commitEdit = () => {
+    if (localValue !== value) {
+      console.log('[CellRenderer] Committing edit:', {
+        applicantId: applicant.id,
+        columnId: column.id,
+        columnName: column.name,
+        oldValue: value,
+        newValue: localValue,
+      });
+      startTransition(() => onUpdate(localValue));
+    }
+    setIsEditing(false);
+  };
+
+  // Cancel edit and revert to original value
+  const cancelEdit = () => {
+    setLocalValue(value);
+    setIsEditing(false);
+  };
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit();
+      (e.target as HTMLInputElement).blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
   if (column.is_system) {
     if (column.type === "text") {
       return <span className="text-sm text-stone-700">{value || "—"}</span>;
@@ -1095,36 +1173,66 @@ function CellRenderer({
 
   if (column.type === "text") {
     return (
-      <input
-        type="text"
-        value={value ?? ""}
-        onChange={(e) => startTransition(() => onUpdate(e.target.value))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
-        placeholder="—"
-      />
+      <div className="relative">
+        <input
+          type="text"
+          value={localValue ?? ""}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onFocus={() => setIsEditing(true)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          placeholder="—"
+        />
+        {isPending && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          </div>
+        )}
+      </div>
     );
   }
 
   if (column.type === "number") {
     return (
-      <input
-        type="number"
-        value={value ?? ""}
-        onChange={(e) => startTransition(() => onUpdate(e.target.value ? parseFloat(e.target.value) : null))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
-        placeholder="—"
-      />
+      <div className="relative">
+        <input
+          type="number"
+          value={localValue ?? ""}
+          onChange={(e) => setLocalValue(e.target.value ? parseFloat(e.target.value) : null)}
+          onFocus={() => setIsEditing(true)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          placeholder="—"
+        />
+        {isPending && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          </div>
+        )}
+      </div>
     );
   }
 
   if (column.type === "date") {
     return (
-      <input
-        type="date"
-        value={value ?? ""}
-        onChange={(e) => startTransition(() => onUpdate(e.target.value))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
-      />
+      <div className="relative">
+        <input
+          type="date"
+          value={localValue ?? ""}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onFocus={() => setIsEditing(true)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        />
+        {isPending && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          </div>
+        )}
+      </div>
     );
   }
 

@@ -109,17 +109,102 @@ export async function bulkDeleteApplicants(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  // Get current user info for debugging
+  const { data: { user } } = await supabase.auth.getUser();
+
+  console.log('[bulkDeleteApplicants] Called with:', {
+    userId: user?.id,
+    userEmail: user?.email,
+    companyId,
+    jobId,
+    applicantIds,
+    requestedCount: applicantIds.length,
+  });
+
+  // First, check which applicants exist and are visible
+  const { data: existingApplicants, error: checkError } = await supabase
     .from("applicants")
-    .delete()
+    .select("id, full_name")
+    .in("id", applicantIds);
+
+  console.log('[bulkDeleteApplicants] Pre-delete check:', {
+    requestedCount: applicantIds.length,
+    foundCount: existingApplicants?.length || 0,
+    applicants: existingApplicants?.map(a => ({ id: a.id, name: a.full_name })),
+    checkError: checkError?.message,
+  });
+
+  if (checkError) {
+    console.error('[bulkDeleteApplicants] Pre-delete check failed:', checkError);
+  }
+
+  // Verify user permissions
+  const { data: membership } = await supabase
+    .from("account_memberships")
+    .select("role, account_id")
+    .eq("user_id", user?.id || '')
+    .maybeSingle();
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("account_id")
+    .eq("id", companyId)
+    .maybeSingle();
+
+  console.log('[bulkDeleteApplicants] Permission check:', {
+    userMembership: membership,
+    companyAccount: company?.account_id,
+    hasPermission: membership?.account_id === company?.account_id,
+    userRole: membership?.role,
+  });
+
+  // Attempt delete
+  const { error, count } = await supabase
+    .from("applicants")
+    .delete({ count: 'exact' })
     .in("id", applicantIds)
     .eq("company_id", companyId)
     .eq("job_id", jobId);
 
   if (error) {
-    console.error("[bulkDeleteApplicants] Error:", error);
-    throw new Error(error.message);
+    console.error("[bulkDeleteApplicants] Supabase Error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    throw new Error(`Bulk delete failed: ${error.message}`);
   }
+
+  console.log('[bulkDeleteApplicants] Delete result:', {
+    deletedCount: count,
+    requestedCount: applicantIds.length,
+    success: count === applicantIds.length,
+  });
+
+  if (count === 0) {
+    console.error('[bulkDeleteApplicants] CRITICAL: No rows deleted!', {
+      applicantsExist: existingApplicants && existingApplicants.length > 0,
+      requestedIds: applicantIds,
+      foundIds: existingApplicants?.map(a => a.id),
+      possibleCauses: [
+        'RLS DELETE policy blocking (user not admin/owner - check migration 00022)',
+        'company_id or job_id mismatch',
+        'Applicants already deleted',
+      ],
+    });
+    throw new Error('Failed to delete applicants. You may not have delete permissions.');
+  }
+
+  if (count !== applicantIds.length) {
+    console.warn('[bulkDeleteApplicants] Partial delete:', {
+      requested: applicantIds.length,
+      deleted: count,
+      missing: applicantIds.length - (count || 0),
+    });
+  }
+
+  console.log(`[bulkDeleteApplicants] Successfully deleted ${count} applicant(s)`);
 
   revalidatePath(dashPath(companyId, jobId));
 }
@@ -523,6 +608,35 @@ export async function updateBoardCell(
   columnType: "text" | "number" | "date" | "status",
   value: any
 ) {
+  // UUID validation regex
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  // Log all parameters for debugging
+  console.log('[updateBoardCell] Called with parameters:', {
+    companyId,
+    jobId,
+    applicantId,
+    columnId,
+    columnType,
+    value,
+  });
+
+  // Validate UUID parameters
+  const uuidParams = [
+    { name: 'companyId', value: companyId },
+    { name: 'jobId', value: jobId },
+    { name: 'applicantId', value: applicantId },
+    { name: 'columnId', value: columnId },
+  ];
+
+  for (const param of uuidParams) {
+    if (!UUID_REGEX.test(param.value)) {
+      const error = `Invalid UUID for ${param.name}: "${param.value}". Expected UUID format but got ${typeof param.value}.`;
+      console.error('[updateBoardCell] Validation Error:', error);
+      throw new Error(error);
+    }
+  }
+
   const supabase = await createClient();
 
   // For status columns, fetch old value before update
@@ -558,16 +672,26 @@ export async function updateBoardCell(
     cellData.value_status_label_id = value;
   }
 
-  const { error } = await supabase
+  console.log('[updateBoardCell] Upserting cell data:', cellData);
+
+  const { error, data } = await supabase
     .from("board_cells")
     .upsert(cellData, {
       onConflict: "applicant_id,column_id",
-    });
+    })
+    .select();
 
   if (error) {
-    console.error("[updateBoardCell] Error:", error);
+    console.error("[updateBoardCell] Supabase Error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
     throw new Error(error.message);
   }
+
+  console.log('[updateBoardCell] Success:', data);
 
   // TRIGGER AUTOMATION: Detect status change and dispatch
   if (columnType === "status" && oldStatusLabelId !== value) {
@@ -635,17 +759,95 @@ export async function deleteApplicant(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  // Get current user info for debugging
+  const { data: { user } } = await supabase.auth.getUser();
+
+  console.log('[deleteApplicant] Called with:', {
+    userId: user?.id,
+    userEmail: user?.email,
+    companyId,
+    jobId,
+    applicantId,
+  });
+
+  // First, check if the applicant exists and verify permissions
+  const { data: existingApplicant, error: checkError } = await supabase
     .from("applicants")
-    .delete()
+    .select("id, company_id, job_id, full_name")
+    .eq("id", applicantId)
+    .maybeSingle();
+
+  console.log('[deleteApplicant] Pre-delete check:', {
+    found: !!existingApplicant,
+    applicant: existingApplicant,
+    checkError: checkError?.message,
+  });
+
+  if (checkError) {
+    console.error('[deleteApplicant] Pre-delete check failed:', checkError);
+  }
+
+  if (!existingApplicant) {
+    console.error('[deleteApplicant] Applicant not found or no SELECT permission');
+    throw new Error('Applicant not found or you do not have permission to view it.');
+  }
+
+  // Verify user is a company member
+  const { data: membership } = await supabase
+    .from("account_memberships")
+    .select("role, account_id")
+    .eq("user_id", user?.id || '')
+    .maybeSingle();
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("account_id")
+    .eq("id", companyId)
+    .maybeSingle();
+
+  console.log('[deleteApplicant] Permission check:', {
+    userMembership: membership,
+    companyAccount: company?.account_id,
+    hasPermission: membership?.account_id === company?.account_id,
+  });
+
+  // Attempt delete
+  const { error, count } = await supabase
+    .from("applicants")
+    .delete({ count: 'exact' })
     .eq("id", applicantId)
     .eq("company_id", companyId)
     .eq("job_id", jobId);
 
   if (error) {
-    console.error("[deleteApplicant] Error:", error);
-    throw new Error(error.message);
+    console.error("[deleteApplicant] Supabase Error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    throw new Error(`Delete failed: ${error.message}`);
   }
+
+  console.log('[deleteApplicant] Delete result:', {
+    deletedCount: count,
+    success: count === 1,
+  });
+
+  if (count === 0) {
+    console.error('[deleteApplicant] CRITICAL: No rows deleted despite SELECT permission!', {
+      applicantExists: !!existingApplicant,
+      filters: { id: applicantId, company_id: companyId, job_id: jobId },
+      possibleCauses: [
+        'RLS DELETE policy blocking (user not admin/owner)',
+        'company_id or job_id mismatch',
+        'Applicant deleted by concurrent request',
+      ],
+    });
+    throw new Error('Failed to delete applicant. You may not have delete permissions.');
+  }
+
+  console.log('[deleteApplicant] Successfully deleted applicant:', existingApplicant.full_name);
 
   revalidatePath(dashPath(companyId, jobId));
 }
