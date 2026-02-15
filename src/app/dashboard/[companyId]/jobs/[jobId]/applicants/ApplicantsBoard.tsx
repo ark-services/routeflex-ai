@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import type React from "react";
 import {
@@ -25,6 +26,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   bulkDeleteApplicants,
   bulkMoveApplicants,
+  bulkUpdateStatusCells,
   createBoardColumn,
   createGroup,
   createStatusLabel,
@@ -44,6 +46,7 @@ import {
   renameGroup,
   deleteGroup,
   reorderGroups,
+  quickCreateApplicant,
 } from "./actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
 import { statusColorArray } from "@/lib/brand-colors";
@@ -135,6 +138,7 @@ export default function ApplicantsBoard({
     groupsPreview: groups.map(g => ({ id: g.id, name: g.name })),
   });
 
+  const router = useRouter();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [isPending, startTransition] = useTransition();
   const [newGroupName, setNewGroupName] = useState("");
@@ -471,7 +475,7 @@ export default function ApplicantsBoard({
 
     startTransition(async () => {
       await bulkDeleteApplicants(companyId, jobId, selectedIds);
-      clearSelection();
+      clearSelection(); // Clear selection since deleted rows no longer exist
     });
   }
 
@@ -479,7 +483,7 @@ export default function ApplicantsBoard({
     if (selectedIds.length === 0) return;
     startTransition(async () => {
       await bulkMoveApplicants(companyId, jobId, selectedIds, groupId);
-      clearSelection();
+      // Keep selection after bulk move so user can perform multiple actions
     });
   }
 
@@ -620,9 +624,55 @@ export default function ApplicantsBoard({
     return null;
   }
 
+  function onQuickCreateApplicant(groupId: string) {
+    startTransition(async () => {
+      try {
+        await quickCreateApplicant(companyId, jobId, groupId, boardId);
+      } catch (error) {
+        console.error("[onQuickCreateApplicant] Error:", error);
+        alert("Failed to create applicant. Please try again.");
+      }
+    });
+  }
+
   function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status", value: any) {
     startTransition(async () => {
-      await updateBoardCell(companyId, jobId, applicantId, columnId, columnType, value);
+      // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
+      // update all selected rows with the new status value
+      if (columnType === "status" && selectedIds.length > 1 && selected[applicantId]) {
+        console.log('[onUpdateCell] Bulk status update triggered:', {
+          applicantId,
+          columnId,
+          statusLabelId: value,
+          selectedCount: selectedIds.length,
+          selectedIds,
+        });
+
+        try {
+          const result = await bulkUpdateStatusCells(
+            companyId,
+            jobId,
+            selectedIds,
+            columnId,
+            value
+          );
+
+          console.log('[onUpdateCell] Bulk update result:', result);
+
+          if (result.failed > 0) {
+            // Show partial failure warning
+            alert(`Updated ${result.successful} of ${selectedIds.length} applicants. ${result.failed} failed.`);
+          }
+
+          // Keep selection after bulk status update for multiple operations
+        } catch (error) {
+          console.error('[onUpdateCell] Bulk update failed:', error);
+          alert('Failed to update selected applicants. Please try again.');
+        }
+      } else {
+        // Single cell update
+        await updateBoardCell(companyId, jobId, applicantId, columnId, columnType, value);
+      }
     });
   }
 
@@ -815,6 +865,23 @@ export default function ApplicantsBoard({
                                 ))}
                               </SortableContext>
                             )}
+
+                            {/* "+ Add item" row - Monday.com style inline creation */}
+                            <tr
+                              onClick={() => onQuickCreateApplicant(g.id)}
+                              className="border-t border-stone-200 hover:bg-blue-50/30 cursor-pointer transition-colors group/addrow"
+                            >
+                              <td className="sticky left-0 z-10 bg-white group-hover/addrow:bg-blue-50/30 px-4 py-3 border-r border-stone-100">
+                                <div className="flex items-center gap-2 text-stone-400 group-hover/addrow:text-blue-600 transition-colors">
+                                  <span className="text-sm font-semibold">+</span>
+                                </div>
+                              </td>
+                              <td colSpan={visibleColumns.length + 4} className="px-4 py-3">
+                                <span className="text-sm text-stone-400 group-hover/addrow:text-blue-600 font-medium transition-colors">
+                                  Add item
+                                </span>
+                              </td>
+                            </tr>
                           </tbody>
                         </table>
                       </div>
@@ -967,7 +1034,11 @@ export default function ApplicantsBoard({
             jobId={jobId}
             columnId={editLabelsColumnId}
             labels={labelsByColumn.get(editLabelsColumnId) ?? []}
-            onClose={() => setEditLabelsColumnId(null)}
+            onClose={() => {
+              setEditLabelsColumnId(null);
+              // Refresh to get updated label colors from server
+              router.refresh();
+            }}
           />
         )}
 
@@ -1788,15 +1859,18 @@ function StatusLabelsEditor({
     }
   }, [columnId]); // Only re-initialize if columnId changes
 
-  function onUpdateLabel(labelId: string) {
+  function onUpdateLabel(labelId: string, overrideColor?: string) {
     const values = editValues[labelId];
     if (!values?.label.trim()) return;
+
+    // Use override color if provided (for immediate color picker updates)
+    const finalColor = overrideColor || values.color;
 
     // Immediately update local state for instant feedback
     setLocalLabels((prev) =>
       prev.map((label) =>
         label.id === labelId
-          ? { ...label, label: values.label.trim(), color: values.color }
+          ? { ...label, label: values.label.trim(), color: finalColor }
           : label
       )
     );
@@ -1806,7 +1880,7 @@ function StatusLabelsEditor({
       try {
         await updateStatusLabel(companyId, jobId, labelId, {
           label: values.label.trim(),
-          color: values.color,
+          color: finalColor,
         });
         setEditingLabelId(null);
         setError(null);
@@ -1976,10 +2050,14 @@ function StatusLabelsEditor({
                           color,
                         },
                       }));
-                      onUpdateLabel(label.id);
+                      // Pass color as override to avoid race condition with async state update
+                      onUpdateLabel(label.id, color);
                       setShowColorPickerForId(null);
                     }}
                     inline
+                    disabledColors={localLabels
+                      .filter((l) => l.id !== label.id)
+                      .map((l) => editValues[l.id]?.color || l.color)}
                   />
                 </div>
               )}
@@ -2029,6 +2107,7 @@ function StatusLabelsEditor({
                 setShowColorPickerForId(null);
               }}
               inline
+              disabledColors={localLabels.map((l) => editValues[l.id]?.color || l.color)}
             />
           </div>
         )}

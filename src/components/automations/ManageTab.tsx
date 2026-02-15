@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MoreVertical, Power, PowerOff, Trash2, Copy, Pencil } from "lucide-react";
 import {
   toggleJobAutomation,
@@ -46,8 +47,10 @@ export function ManageTab({
   triggers,
   onEdit,
 }: ManageTabProps) {
+  const router = useRouter();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleToggle = async (automationId: string, currentEnabled: boolean) => {
     try {
@@ -90,19 +93,60 @@ export function ManageTab({
     return triggers.find((t) => t.key === key)?.name || key;
   };
 
+  // Filter automations by search query
+  const filteredAutomations = automations.filter((automation) => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    const nameMatch = automation.name.toLowerCase().includes(query);
+    const triggerMatch = automation.trigger_key.toLowerCase().includes(query);
+    const triggerNameMatch = getTriggerName(automation.trigger_key).toLowerCase().includes(query);
+
+    // Also search action types
+    const actionTypeMatch = automation.automation_actions.some((action) =>
+      action.type.toLowerCase().includes(query)
+    );
+
+    // Search in action type labels (human-readable)
+    const actionLabelMatch = automation.automation_actions.some((action) => {
+      const labelMap: Record<string, string> = {
+        'move_group': 'move to group',
+        'set_status': 'set status',
+        'change_status': 'change status',
+        'delete_item': 'delete item',
+        'set_date': 'set date',
+        'set_number': 'set number',
+        'inc_dec': 'increment decrement',
+        'webhook': 'webhook',
+        'send_email': 'send email',
+        'send_slack': 'send slack',
+      };
+      return (labelMap[action.type] || action.type).includes(query);
+    });
+
+    return nameMatch || triggerMatch || triggerNameMatch || actionTypeMatch || actionLabelMatch;
+  });
+
   return (
     <div className="p-6">
-      {/* Search bar placeholder */}
+      {/* Search bar */}
       <div className="mb-6">
         <input
           type="text"
-          placeholder="Search automations..."
+          placeholder="Search automations by name or trigger..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        {searchQuery && (
+          <p className="text-xs text-gray-500 mt-1">
+            Showing {filteredAutomations.length} of {automations.length} automations
+          </p>
+        )}
       </div>
 
       {/* Automations List */}
-      {automations.length === 0 ? (
+      {filteredAutomations.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <div className="mb-4">
             <svg
@@ -119,14 +163,18 @@ export function ManageTab({
               />
             </svg>
           </div>
-          <p className="text-gray-500 text-lg font-medium">No automations yet</p>
+          <p className="text-gray-500 text-lg font-medium">
+            {searchQuery ? 'No matching automations' : 'No automations yet'}
+          </p>
           <p className="text-gray-400 text-sm mt-2">
-            Click the "Create" tab to build your first automation recipe
+            {searchQuery
+              ? 'Try a different search term'
+              : 'Click the "Create" tab to build your first automation recipe'}
           </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {automations.map((automation) => (
+          {filteredAutomations.map((automation) => (
             <div
               key={automation.id}
               className={`border-2 rounded-lg p-5 transition-all ${
@@ -216,7 +264,7 @@ export function ManageTab({
                         <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
                           <button
                             onClick={() => {
-                              onEdit(automation);
+                              router.push(`/dashboard/${companyId}/jobs/${jobId}/automations/${automation.id}`);
                               setOpenMenuId(null);
                             }}
                             className="w-full px-4 py-2.5 text-left text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-t-lg transition-colors"

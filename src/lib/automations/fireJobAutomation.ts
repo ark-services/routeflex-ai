@@ -150,26 +150,123 @@ export async function fireJobTrigger(
 
       let runStatus: 'success' | 'failed' = 'success';
       let runError: string | undefined;
+      let actionsAttempted = 0;
+      let actionsSucceeded = 0;
+      let actionsFailed = 0;
+      const actionResults: any[] = [];
+      const runStartTime = Date.now();
 
       for (const action of actions) {
+        actionsAttempted++;
         console.log('[fireJobTrigger] Executing action:', {
           type: action.type,
           config: action.config,
         });
 
+        const actionStartTime = Date.now();
         try {
           const result = await executeAction(supabase, companyId, jobId, action, payload);
+          const actionDuration = Date.now() - actionStartTime;
           console.log('[fireJobTrigger] Action result:', result);
 
           if (!result.success) {
+            actionsFailed++;
+            actionResults.push({
+              action_id: action.id,
+              type: action.type,
+              status: 'failed',
+              error: result.error,
+              duration_ms: actionDuration,
+            });
             runStatus = 'failed';
             runError = result.error || 'Action execution failed';
             console.error('[fireJobTrigger] ✗ Action failed:', runError);
             break; // Stop on first failure
           }
 
+          actionsSucceeded++;
+          actionResults.push({
+            action_id: action.id,
+            type: action.type,
+            status: 'success',
+            duration_ms: actionDuration,
+          });
           console.log('[fireJobTrigger] ✓ Action succeeded');
+
+          // ============================================================
+          // METERING: Track successful action execution for quota
+          // ============================================================
+          try {
+            console.log('[fireJobTrigger] 💰 Starting metering for successful action...');
+
+            // Get account_id from company
+            const { data: company, error: companyError } = await supabase
+              .from('companies')
+              .select('account_id')
+              .eq('id', companyId)
+              .single();
+
+            if (companyError) {
+              console.error('[fireJobTrigger] ❌ Failed to fetch company for metering:', companyError);
+            } else if (!company?.account_id) {
+              console.error('[fireJobTrigger] ❌ No account_id found for company:', companyId);
+            } else {
+              console.log('[fireJobTrigger] Found account_id:', company.account_id);
+
+              // Record 1 unit of action usage (only for successful actions)
+              const meteringParams = {
+                p_account_id: company.account_id,
+                p_units: 1,
+                p_source: 'automation',
+                p_rule_id: automation.id,
+                p_action_id: action.id,
+                p_applicant_id: payload.applicant_id || null,
+                p_company_id: companyId,
+                p_status: 'completed',
+                p_metadata: {
+                  automation_name: automation.name,
+                  action_type: action.type,
+                  trigger_key,
+                }
+              };
+
+              console.log('[fireJobTrigger] Calling record_action_usage RPC...');
+              console.log('[fireJobTrigger] RPC params:', JSON.stringify(meteringParams, null, 2));
+
+              const { data: meteringResult, error: meteringError } = await supabase.rpc('record_action_usage', meteringParams);
+
+              if (meteringError) {
+                console.error('[fireJobTrigger] ❌ Metering RPC error (non-fatal):', meteringError);
+                console.error('[fireJobTrigger] Error details:', {
+                  message: meteringError.message,
+                  details: meteringError.details,
+                  hint: meteringError.hint,
+                  code: meteringError.code,
+                  stack: meteringError.stack,
+                });
+                console.error('[fireJobTrigger] Full error object:', JSON.stringify(meteringError, null, 2));
+                // Don't fail automation on metering error
+              } else {
+                console.log('[fireJobTrigger] ✓✓✓ SUCCESS! Metering RPC completed');
+                console.log('[fireJobTrigger] Ledger ID returned:', meteringResult);
+                console.log('[fireJobTrigger] This means the action was counted toward quota');
+              }
+            }
+          } catch (meteringErr) {
+            console.error('[fireJobTrigger] ❌ Metering exception (non-fatal):', meteringErr);
+            // Continue execution even if metering fails
+          }
+          // ============================================================
         } catch (err: any) {
+          const actionDuration = Date.now() - actionStartTime;
+          actionsFailed++;
+          actionResults.push({
+            action_id: action.id,
+            type: action.type,
+            status: 'failed',
+            error: err.message,
+            duration_ms: actionDuration,
+          });
           runStatus = 'failed';
           runError = err.message || 'Unexpected error during action execution';
           console.error('[fireJobTrigger] ✗ Action threw error:', err);
@@ -177,11 +274,16 @@ export async function fireJobTrigger(
         }
       }
 
+      const totalDuration = Date.now() - runStartTime;
+
       console.log('[fireJobTrigger] Final run status:', runStatus);
-      console.log('[fireJobTrigger] Actions executed:', actions.length);
+      console.log('[fireJobTrigger] Actions attempted:', actionsAttempted);
+      console.log('[fireJobTrigger] Actions succeeded:', actionsSucceeded);
+      console.log('[fireJobTrigger] Actions failed:', actionsFailed);
+      console.log('[fireJobTrigger] Total duration:', totalDuration, 'ms');
       console.log('[fireJobTrigger] Run error:', runError || 'none');
 
-      // Log automation run
+      // Log automation run with detailed metrics
       const { error: insertError } = await supabase.from('automation_runs').insert({
         company_id: companyId,
         job_id: jobId,
@@ -193,6 +295,11 @@ export async function fireJobTrigger(
         status: runStatus,
         error: runError,
         skip_reason: null, // Not skipped if we got here
+        actions_attempted: actionsAttempted,
+        actions_succeeded: actionsSucceeded,
+        actions_failed: actionsFailed,
+        duration_ms: totalDuration,
+        action_results: actionResults,
       });
 
       if (insertError) {

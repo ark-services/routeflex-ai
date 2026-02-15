@@ -65,21 +65,44 @@ export const brandColors = {
 
 /**
  * Curated status label color palette
- * Muted but rich colors matching Monday.com's label selector
- * 11 colors total - clean, consistent, professional
+ * Monday.com-style palette with 25 unique colors
+ * Ensures each label gets a distinct color until all are used
  */
 export const STATUS_COLOR_PALETTE = [
+  // Row 1: Blues & Purples
   { name: 'Indigo', value: '#4F46E5' },
   { name: 'Blue', value: '#2563EB' },
+  { name: 'Sky', value: '#0284C7' },
+  { name: 'Cyan', value: '#0891B2' },
+  { name: 'Purple', value: '#7C3AED' },
+  { name: 'Violet', value: '#8B5CF6' },
+
+  // Row 2: Greens & Teals
   { name: 'Teal', value: '#0D9488' },
+  { name: 'Emerald', value: '#059669' },
   { name: 'Green', value: '#16A34A' },
+  { name: 'Lime', value: '#65A30D' },
+  { name: 'Mint', value: '#10B981' },
+  { name: 'Seafoam', value: '#14B8A6' },
+
+  // Row 3: Yellows & Oranges
+  { name: 'Yellow', value: '#EAB308' },
   { name: 'Amber', value: '#F59E0B' },
   { name: 'Orange', value: '#F97316' },
+  { name: 'Coral', value: '#FB923C' },
+
+  // Row 4: Reds & Pinks
   { name: 'Red', value: '#DC2626' },
+  { name: 'Rose', value: '#E11D48' },
   { name: 'Pink', value: '#DB2777' },
-  { name: 'Purple', value: '#7C3AED' },
+  { name: 'Fuchsia', value: '#C026D3' },
+
+  // Row 5: Neutrals
   { name: 'Slate', value: '#475569' },
   { name: 'Gray', value: '#6B7280' },
+  { name: 'Stone', value: '#78716C' },
+  { name: 'Zinc', value: '#71717A' },
+  { name: 'Neutral', value: '#737373' },
 ] as const;
 
 /**

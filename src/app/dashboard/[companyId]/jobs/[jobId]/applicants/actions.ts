@@ -769,17 +769,27 @@ export async function createStatusLabel(
 ) {
   const supabase = await createClient();
 
-  // Get next sort order
+  // Get all existing labels for this column
   const { data: existing, error: readErr } = await supabase
     .from("board_status_labels")
-    .select("sort_order")
+    .select("id, sort_order, color")
     .eq("column_id", columnId)
-    .order("sort_order", { ascending: false })
-    .limit(1);
+    .order("sort_order", { ascending: false });
 
   if (readErr) {
     console.error("[createStatusLabel] Error reading existing labels:", readErr);
     throw new Error(readErr.message);
+  }
+
+  // Check if we've reached the 25-label limit
+  if (existing && existing.length >= 25) {
+    throw new Error("Maximum of 25 status labels reached for this column. Please delete an existing label to add a new one.");
+  }
+
+  // Check if color is already in use
+  const colorInUse = existing?.some((l) => l.color === color);
+  if (colorInUse) {
+    throw new Error("This color is already used by another label. Please choose a different color.");
   }
 
   const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
@@ -797,6 +807,12 @@ export async function createStatusLabel(
 
   if (error) {
     console.error("[createStatusLabel] Error creating status label:", error);
+
+    // Check if it's a unique constraint violation
+    if (error.code === '23505') {
+      throw new Error("This color is already used by another label. Please choose a different color.");
+    }
+
     throw new Error(error.message);
   }
 
@@ -812,27 +828,92 @@ export async function updateStatusLabel(
 ) {
   const supabase = await createClient();
 
-  console.log("[updateStatusLabel] Updating label:", {
+  console.log("[updateStatusLabel] ========================================");
+  console.log("[updateStatusLabel] Input:", {
     labelId,
     updates,
     companyId,
     jobId,
   });
 
-  const { error } = await supabase
+  // Fetch the label first to get column_id for scoping
+  const { data: existingLabel, error: fetchError } = await supabase
+    .from("board_status_labels")
+    .select("id, column_id, label, color")
+    .eq("id", labelId)
+    .single();
+
+  if (fetchError || !existingLabel) {
+    console.error("[updateStatusLabel] Failed to fetch label:", fetchError);
+    throw new Error("Label not found");
+  }
+
+  console.log("[updateStatusLabel] Existing label before update:", existingLabel);
+
+  // If updating color, check for uniqueness constraint
+  if (updates.color && updates.color !== existingLabel.color) {
+    const { data: existingColorLabel } = await supabase
+      .from("board_status_labels")
+      .select("id, label")
+      .eq("column_id", existingLabel.column_id)
+      .eq("color", updates.color)
+      .neq("id", labelId)
+      .maybeSingle();
+
+    if (existingColorLabel) {
+      console.error("[updateStatusLabel] Color already in use:", {
+        color: updates.color,
+        existingLabelId: existingColorLabel.id,
+        existingLabelName: existingColorLabel.label,
+      });
+      throw new Error(`This color is already used by "${existingColorLabel.label}". Please choose a different color.`);
+    }
+  }
+
+  // Get column and board info for permission verification
+  const { data: column } = await supabase
+    .from("board_columns")
+    .select("board_id, company_id")
+    .eq("id", existingLabel.column_id)
+    .single();
+
+  console.log("[updateStatusLabel] Column info:", column);
+
+  // Perform update and return data to confirm it worked
+  const { data: updatedLabel, error, count } = await supabase
     .from("board_status_labels")
     .update(updates)
-    .eq("id", labelId);
+    .eq("id", labelId)
+    .select("id, label, color, column_id, sort_order")
+    .single();
 
   if (error) {
-    console.error("[updateStatusLabel] Error:", error);
+    console.error("[updateStatusLabel] Supabase Error:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      labelId,
+      updates,
+    });
+
+    // Check if it's a unique constraint violation
+    if (error.code === '23505') {
+      throw new Error("This color is already used by another label in this column. Please choose a different color.");
+    }
+
     throw new Error(error.message);
   }
 
-  console.log("[updateStatusLabel] Success - label updated");
+  console.log("[updateStatusLabel] ✓ Update successful");
+  console.log("[updateStatusLabel] Updated label:", updatedLabel);
+  console.log("[updateStatusLabel] Rows affected:", count || 1);
+  console.log("[updateStatusLabel] ========================================");
 
-  // Do NOT call revalidatePath here - let the UI handle optimistic updates
-  // Only revalidate when modal closes
+  // Revalidate the path so the board reflects changes when modal closes
+  revalidatePath(dashPath(companyId, jobId));
+
+  return updatedLabel;
 }
 
 export async function deleteStatusLabel(
@@ -1128,6 +1209,173 @@ export async function updateBoardCell(
   }
 
   revalidatePath(dashPath(companyId, jobId));
+}
+
+/**
+ * Bulk update status cells for multiple applicants
+ * Triggers automation for each applicant individually
+ */
+export async function bulkUpdateStatusCells(
+  companyId: string,
+  jobId: string,
+  applicantIds: string[],
+  columnId: string,
+  statusLabelId: string
+) {
+  console.log('[bulkUpdateStatusCells] Called with:', {
+    companyId,
+    jobId,
+    applicantIds,
+    applicantCount: applicantIds.length,
+    columnId,
+    statusLabelId,
+  });
+
+  const supabase = await createClient();
+
+  // Get column info for automation triggers
+  const { data: column } = await supabase
+    .from("board_columns")
+    .select("name, board_id, type")
+    .eq("id", columnId)
+    .single();
+
+  if (!column) {
+    throw new Error("Column not found");
+  }
+
+  if (column.type !== "status") {
+    throw new Error("Column is not a status column");
+  }
+
+  // Get the new label text
+  const { data: newLabelData } = await supabase
+    .from("board_status_labels")
+    .select("label")
+    .eq("id", statusLabelId)
+    .single();
+
+  const newLabel = newLabelData?.label || null;
+
+  console.log('[bulkUpdateStatusCells] Column and label info:', {
+    columnName: column.name,
+    boardId: column.board_id,
+    newLabel,
+  });
+
+  // Process each applicant individually to:
+  // 1. Get the old status value
+  // 2. Update the cell
+  // 3. Fire automation trigger
+  const results = [];
+  const errors = [];
+
+  for (const applicantId of applicantIds) {
+    try {
+      // Fetch old value
+      const { data: existingCell } = await supabase
+        .from("board_cells")
+        .select("value_status_label_id")
+        .eq("applicant_id", applicantId)
+        .eq("column_id", columnId)
+        .single();
+
+      const oldStatusLabelId = existingCell?.value_status_label_id ?? null;
+
+      // Get old label text
+      let oldLabel: string | null = null;
+      if (oldStatusLabelId) {
+        const { data: oldLabelData } = await supabase
+          .from("board_status_labels")
+          .select("label")
+          .eq("id", oldStatusLabelId)
+          .single();
+        oldLabel = oldLabelData?.label || null;
+      }
+
+      // Update cell
+      const cellData = {
+        applicant_id: applicantId,
+        column_id: columnId,
+        value_text: null,
+        value_number: null,
+        value_date: null,
+        value_status_label_id: statusLabelId,
+      };
+
+      const { error: updateError } = await supabase
+        .from("board_cells")
+        .upsert(cellData, {
+          onConflict: "applicant_id,column_id",
+        });
+
+      if (updateError) {
+        errors.push({ applicantId, error: updateError.message });
+        console.error(`[bulkUpdateStatusCells] Failed to update applicant ${applicantId}:`, updateError);
+        continue;
+      }
+
+      // Fire automation trigger (only if status actually changed)
+      if (oldStatusLabelId !== statusLabelId) {
+        try {
+          const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
+
+          await fireJobTrigger(supabase, {
+            companyId,
+            jobId,
+            trigger_key: "board.status_changes_to",
+            subject_type: "applicant",
+            subject_id: applicantId,
+            payload: {
+              company_id: companyId,
+              job_id: jobId,
+              board_id: column.board_id,
+              applicant_id: applicantId,
+              column_id: columnId,
+              column_name: column.name,
+              old_value: oldStatusLabelId,
+              new_value: statusLabelId,
+              old_label: oldLabel,
+              new_label: newLabel,
+            },
+          });
+
+          console.log(`[bulkUpdateStatusCells] Automation fired for applicant ${applicantId}:`, {
+            oldLabel,
+            newLabel,
+          });
+        } catch (automationError) {
+          console.error(`[bulkUpdateStatusCells] Automation error for applicant ${applicantId}:`, automationError);
+          // Continue - don't block on automation errors
+        }
+      }
+
+      results.push({ applicantId, success: true });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      errors.push({ applicantId, error: errorMsg });
+      console.error(`[bulkUpdateStatusCells] Error processing applicant ${applicantId}:`, err);
+    }
+  }
+
+  console.log('[bulkUpdateStatusCells] Bulk update complete:', {
+    total: applicantIds.length,
+    successful: results.length,
+    failed: errors.length,
+    errors: errors.length > 0 ? errors : undefined,
+  });
+
+  if (errors.length === applicantIds.length) {
+    throw new Error("All bulk updates failed");
+  }
+
+  revalidatePath(dashPath(companyId, jobId));
+
+  return {
+    successful: results.length,
+    failed: errors.length,
+    errors,
+  };
 }
 
 // ===== Row (Applicant) Actions =====
@@ -1550,4 +1798,56 @@ export async function reorderColumns(
   }
 
   revalidatePath(dashPath(companyId, jobId));
+}
+
+/**
+ * Quick create applicant with minimal data directly in a group.
+ * Monday.com-style inline item creation.
+ */
+export async function quickCreateApplicant(
+  companyId: string,
+  jobId: string,
+  groupId: string,
+  boardId: string
+) {
+  const supabase = await createClient();
+
+  // Get highest position in group
+  const { data: existingRows } = await supabase
+    .from("applicants")
+    .select("position")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .eq("group_id", groupId)
+    .order("position", { ascending: false })
+    .limit(1);
+
+  const nextPosition = (existingRows?.[0]?.position ?? -1) + 1;
+
+  // Create minimal applicant
+  const { data: newApplicant, error } = await supabase
+    .from("applicants")
+    .insert({
+      company_id: companyId,
+      job_id: jobId,
+      board_id: boardId,
+      group_id: groupId,
+      full_name: "New Applicant",
+      email: null,
+      phone: null,
+      status: "applied", // Must match check constraint: applied|reviewing|interviewing|offer|hired|rejected
+      position: nextPosition,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[quickCreateApplicant] Error:", error);
+    throw new Error(error.message);
+  }
+
+  console.log("[quickCreateApplicant] Created:", newApplicant);
+
+  revalidatePath(dashPath(companyId, jobId));
+  return newApplicant;
 }
