@@ -170,14 +170,63 @@ export default function ApplicantsBoard({
 
   const applicantsByGroup = useMemo(() => {
     const map = new Map<string, ApplicantRow[]>();
+
+    // Initialize map with all groups
     for (const g of groups) map.set(g.id, []);
+
+    // Log for debugging
+    console.log('[ApplicantsBoard] Grouping applicants:', {
+      totalApplicants: localApplicants.length,
+      totalGroups: groups.length,
+      groupIds: groups.map(g => ({ id: g.id, name: g.name })),
+      applicantGroupIds: localApplicants.map(a => ({
+        id: a.id,
+        name: a.full_name,
+        group_id: a.group_id
+      })),
+    });
+
+    // Assign applicants to groups
+    let orphanedCount = 0;
     for (const a of localApplicants) {
-      if (a.group_id && map.has(a.group_id)) map.get(a.group_id)!.push(a);
+      if (!a.group_id) {
+        console.warn('[ApplicantsBoard] Applicant has no group_id:', a.id, a.full_name);
+        orphanedCount++;
+        continue;
+      }
+
+      if (!map.has(a.group_id)) {
+        console.warn('[ApplicantsBoard] Applicant group_id not in groups list:', {
+          applicantId: a.id,
+          applicantName: a.full_name,
+          groupId: a.group_id,
+          availableGroups: Array.from(map.keys()),
+        });
+        orphanedCount++;
+        continue;
+      }
+
+      map.get(a.group_id)!.push(a);
     }
+
+    if (orphanedCount > 0) {
+      console.error(`[ApplicantsBoard] ${orphanedCount} applicants could not be assigned to groups!`);
+    }
+
     // Sort by position
     for (const [, rows] of map) {
       rows.sort((a, b) => a.position - b.position);
     }
+
+    // Log final distribution
+    console.log('[ApplicantsBoard] Final applicant distribution:',
+      Array.from(map.entries()).map(([groupId, apps]) => ({
+        groupId,
+        groupName: groups.find(g => g.id === groupId)?.name,
+        count: apps.length,
+      }))
+    );
+
     return map;
   }, [groups, localApplicants]);
 

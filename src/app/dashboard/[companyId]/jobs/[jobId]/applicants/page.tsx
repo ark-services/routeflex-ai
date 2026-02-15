@@ -248,6 +248,35 @@ export default async function ApplicantsPage({
     cells: cells.length,
   });
 
+  // Critical debug: Check if applicant group_ids match actual group ids
+  if (applicants && applicants.length > 0 && groups && groups.length > 0) {
+    const groupIds = new Set(groups.map(g => g.id));
+    const applicantGroupIds = applicants.map(a => a.group_id);
+    const unmatchedApplicants = applicants.filter(a => a.group_id && !groupIds.has(a.group_id));
+
+    if (unmatchedApplicants.length > 0) {
+      console.error('[Applicants Page] CRITICAL: Applicants with group_ids that do not match any group:', {
+        unmatchedCount: unmatchedApplicants.length,
+        unmatchedApplicants: unmatchedApplicants.map(a => ({
+          id: a.id,
+          name: a.full_name,
+          group_id: a.group_id,
+        })),
+        availableGroupIds: Array.from(groupIds),
+        availableGroupNames: groups.map(g => ({ id: g.id, name: g.name })),
+      });
+    } else {
+      console.log('[Applicants Page] ✅ All applicant group_ids match available groups');
+    }
+
+    const groupDistribution = groups.map(g => ({
+      groupId: g.id,
+      groupName: g.name,
+      applicantCount: applicants.filter(a => a.group_id === g.id).length,
+    }));
+    console.log('[Applicants Page] Expected applicant distribution by group:', groupDistribution);
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Navigation */}
