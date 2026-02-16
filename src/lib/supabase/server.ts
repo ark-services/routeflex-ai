@@ -2,9 +2,6 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function createClient() {
-  // In Next.js App Router, `cookies()` is synchronous.
-  // If the server-side Supabase client can't read cookies correctly,
-  // Server Components will behave like the user is logged out.
   const cookieStore = cookies();
 
   return createServerClient(
