@@ -5,7 +5,14 @@ export async function createClient() {
   // In newer Next.js versions, `cookies()` can be async and returns a Promise.
   const cookieStore = await cookies();
 
-  return createServerClient(
+  const allCookies = cookieStore.getAll();
+  console.log("DEBUG: Cookies exist:", allCookies.length > 0);
+  console.log(
+    "DEBUG: Cookie names:",
+    allCookies.map((c) => c.name).join(", ")
+  );
+
+  const client = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -27,4 +34,17 @@ export async function createClient() {
       },
     }
   );
+
+  // Debug: Check auth immediately after client creation
+  const {
+    data: { user },
+    error,
+  } = await client.auth.getUser();
+  console.log("DEBUG: getUser() result:", {
+    userId: user?.id || null,
+    email: user?.email || null,
+    error: error?.message || null,
+  });
+
+  return client;
 }
