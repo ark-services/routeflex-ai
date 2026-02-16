@@ -81,6 +81,12 @@ type BoardColumn = {
   is_system: boolean;
   sort_order: number;
   is_hidden?: boolean;
+  settings?: {
+    ui?: {
+      collapsed?: boolean;
+      width?: number;
+    };
+  };
 };
 
 type StatusLabel = {
@@ -148,6 +154,7 @@ export default function ApplicantsBoard({
   const [newColumnName, setNewColumnName] = useState("");
   const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status">("text");
   const [addColumnError, setAddColumnError] = useState<string | null>(null);
+  const [addAfterColumnId, setAddAfterColumnId] = useState<string | null>(null);
 
   // Status labels editor
   const [editLabelsColumnId, setEditLabelsColumnId] = useState<string | null>(null);
@@ -535,7 +542,13 @@ export default function ApplicantsBoard({
     setAddColumnError(null);
 
     startTransition(async () => {
-      const result = await createBoardColumn(companyId, jobId, name, newColumnType);
+      const result = await createBoardColumn(
+        companyId,
+        jobId,
+        name,
+        newColumnType,
+        addAfterColumnId || undefined
+      );
 
       if (!result.success) {
         setAddColumnError(result.error || "Failed to create column");
@@ -546,6 +559,7 @@ export default function ApplicantsBoard({
       setNewColumnName("");
       setNewColumnType("text");
       setAddColumnError(null);
+      setAddAfterColumnId(null);
     });
   }
 
@@ -564,9 +578,21 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onHideColumn(columnId: string) {
+  function onToggleMinimizeColumn(columnId: string) {
+    const column = localColumns.find((col) => col.id === columnId);
+    if (!column) return;
+
+    const isCurrentlyCollapsed = column.settings?.ui?.collapsed || false;
+    const newSettings = {
+      ...column.settings,
+      ui: {
+        ...column.settings?.ui,
+        collapsed: !isCurrentlyCollapsed,
+      },
+    };
+
     startTransition(async () => {
-      await updateBoardColumn(companyId, jobId, columnId, { is_hidden: true });
+      await updateBoardColumn(companyId, jobId, columnId, { settings: newSettings });
     });
   }
 
@@ -577,9 +603,8 @@ export default function ApplicantsBoard({
   }
 
   function onAddColumnRight(afterColumnId: string) {
+    setAddAfterColumnId(afterColumnId);
     setShowAddColumnModal(true);
-    // We'll need to track which column to add after
-    // For now, just open the modal - we can enhance this later
   }
 
   function onMoveApplicant(applicantId: string, groupId: string) {
@@ -798,7 +823,7 @@ export default function ApplicantsBoard({
                                     column={col}
                                     onSaveEdit={(newName) => onSaveColumnName(col.id, newName)}
                                     onDelete={() => onDeleteColumn(col.id)}
-                                    onHide={() => onHideColumn(col.id)}
+                                    onToggleMinimize={() => onToggleMinimizeColumn(col.id)}
                                     onAddRight={() => onAddColumnRight(col.id)}
                                   />
                                 ))}
@@ -1007,6 +1032,7 @@ export default function ApplicantsBoard({
                     setNewColumnName("");
                     setNewColumnType("text");
                     setAddColumnError(null);
+                    setAddAfterColumnId(null);
                   }}
                   className="h-9 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 hover:bg-stone-50"
                 >
@@ -1116,13 +1142,13 @@ export default function ApplicantsBoard({
 function SortableColumnHeader({
   column,
   onDelete,
-  onHide,
+  onToggleMinimize,
   onAddRight,
   onSaveEdit,
 }: {
   column: BoardColumn;
   onDelete: () => void;
-  onHide: () => void;
+  onToggleMinimize: () => void;
   onAddRight: () => void;
   onSaveEdit: (newName: string) => void;
 }) {
@@ -1131,9 +1157,11 @@ function SortableColumnHeader({
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const isCollapsed = column.settings?.ui?.collapsed || false;
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `col-${column.id}`,
-    disabled: isEditing,
+    disabled: isEditing || isCollapsed,
   });
 
   const style = {
@@ -1209,62 +1237,79 @@ function SortableColumnHeader({
     <th
       ref={setNodeRef}
       style={style}
-      className="group px-4 py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0"
+      className={`group py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0 ${
+        isCollapsed ? "px-1 w-12" : "px-4"
+      }`}
       {...attributes}
     >
-      <div className="flex items-center gap-2">
-        {isEditing ? (
-          <input
-            ref={inputRef}
-            type="text"
-            value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
-            onBlur={commitEdit}
-            onKeyDown={handleKeyDown}
-            onMouseDown={(e) => {
-              // Prevent event from bubbling to parent that might interfere
+      {isCollapsed ? (
+        <div className="flex items-center justify-center">
+          <button
+            onClick={(e) => {
               e.stopPropagation();
+              onToggleMinimize();
             }}
-            className="h-7 w-32 rounded border border-stone-300 px-2 text-xs outline-none focus:border-blue-500"
-          />
-        ) : (
-          <>
-            {/* Kebab menu button on LEFT */}
-            {!column.is_system && (
-              <button
-                ref={menuButtonRef}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(!menuOpen);
-                }}
-                className="opacity-0 group-hover:opacity-100 text-stone-600 hover:text-stone-900 transition-opacity text-xs font-bold"
-              >
-                ⋮
-              </button>
-            )}
-
-            <button
-              onClick={(e) => {
-                e.preventDefault();
+            className="text-stone-600 hover:text-stone-900 cursor-pointer text-sm"
+            title={`Expand ${column.name}`}
+          >
+            ↔
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={localValue}
+              onChange={(e) => setLocalValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              onMouseDown={(e) => {
+                // Prevent event from bubbling to parent that might interfere
                 e.stopPropagation();
-                setIsEditing(true);
               }}
-              className="text-left hover:text-stone-900 cursor-text"
-              disabled={column.is_system}
-            >
-              {column.name}
-            </button>
-            {!column.is_system && (
+              className="h-7 w-32 rounded border border-stone-300 px-2 text-xs outline-none focus:border-blue-500"
+            />
+          ) : (
+            <>
+              {/* Kebab menu button on LEFT */}
+              {!column.is_system && (
+                <button
+                  ref={menuButtonRef}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(!menuOpen);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 text-stone-600 hover:text-stone-900 transition-opacity text-xs font-bold"
+                >
+                  ⋮
+                </button>
+              )}
+
               <button
-                {...listeners}
-                className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}
+                className="text-left hover:text-stone-900 cursor-text"
+                disabled={column.is_system}
               >
-                ⋮⋮
+                {column.name}
               </button>
-            )}
-          </>
-        )}
-      </div>
+              {!column.is_system && (
+                <button
+                  {...listeners}
+                  className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600"
+                >
+                  ⋮⋮
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Render menu in a portal */}
       {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
@@ -1283,12 +1328,12 @@ function SortableColumnHeader({
           >
             <button
               onClick={() => {
-                onHide();
+                onToggleMinimize();
                 setMenuOpen(false);
               }}
               className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
             >
-              Hide column
+              Minimize column
             </button>
             <button
               onClick={() => {
@@ -1465,8 +1510,12 @@ function SortableRow({
 
   // Dynamic board columns
   for (const col of columns) {
+    const isCollapsed = col.settings?.ui?.collapsed || false;
     cellEls.push(
-      <td key={col.id} className="px-4 py-2 border-r border-stone-100 last:border-r-0">
+      <td
+        key={col.id}
+        className={`py-2 border-r border-stone-100 last:border-r-0 ${isCollapsed ? "px-1 w-12" : "px-4"}`}
+      >
         <CellRenderer
           applicant={applicant}
           column={col}
@@ -1723,6 +1772,12 @@ function CellRenderer({
   onEditLabels: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
+
+  // If column is collapsed, show minimal content
+  const isCollapsed = column.settings?.ui?.collapsed || false;
+  if (isCollapsed) {
+    return <span className="text-xs text-stone-400">—</span>;
+  }
 
   // Local edit state - only save on blur/enter
   const [localValue, setLocalValue] = useState(value);

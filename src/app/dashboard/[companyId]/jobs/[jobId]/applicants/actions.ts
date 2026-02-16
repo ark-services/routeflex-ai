@@ -578,7 +578,28 @@ export async function createBoardColumn(
       .single();
 
     if (afterColumn) {
-      targetSortOrder = afterColumn.sort_order + 0.5;
+      // Shift all columns to the right by +1
+      // Fetch columns that need to be shifted
+      const { data: columnsToShift } = await supabase
+        .from("board_columns")
+        .select("id, sort_order")
+        .eq("board_id", boardId)
+        .eq("company_id", companyId)
+        .gt("sort_order", afterColumn.sort_order)
+        .order("sort_order", { ascending: false }); // Shift from highest to lowest to avoid conflicts
+
+      // Update each column's sort_order
+      if (columnsToShift && columnsToShift.length > 0) {
+        for (const col of columnsToShift) {
+          await supabase
+            .from("board_columns")
+            .update({ sort_order: col.sort_order + 1 })
+            .eq("id", col.id)
+            .eq("company_id", companyId);
+        }
+      }
+
+      targetSortOrder = afterColumn.sort_order + 1;
     } else {
       // Fallback to end
       const { data: existing } = await supabase
@@ -731,7 +752,7 @@ export async function updateBoardColumn(
   companyId: string,
   jobId: string,
   columnId: string,
-  updates: { name?: string; sort_order?: number; is_hidden?: boolean }
+  updates: { name?: string; sort_order?: number; is_hidden?: boolean; settings?: any }
 ) {
   const supabase = await createClient();
 
