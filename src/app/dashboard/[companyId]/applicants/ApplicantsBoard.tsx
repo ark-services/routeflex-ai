@@ -731,7 +731,6 @@ function SortableColumnHeader({
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
         inputRef.current?.focus({ preventScroll: true });
-        inputRef.current?.select();
         // Allow saving after a brief delay to prevent immediate blur from saving
         setTimeout(() => {
           canSaveRef.current = true;
