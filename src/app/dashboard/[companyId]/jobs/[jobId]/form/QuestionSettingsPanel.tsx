@@ -82,9 +82,9 @@ export default function QuestionSettingsPanel({
   const supportsOptions = ["radio", "checkbox", "select"].includes(field.type);
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 h-full overflow-y-auto flex flex-col">
+    <div className="w-80 bg-white border-l border-gray-200 sticky top-0 h-screen flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900">Question Settings</h3>
         <button
           onClick={onClose}
@@ -96,8 +96,8 @@ export default function QuestionSettingsPanel({
         </button>
       </div>
 
-      {/* Settings Content */}
-      <div className="flex-1 px-6 py-4 space-y-6">
+      {/* Settings Content (scrollable) */}
+      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
         {/* Field Key (readonly) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -210,8 +210,8 @@ export default function QuestionSettingsPanel({
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+      {/* Footer - Sticky at bottom */}
+      <div className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0">
         <Button
           variant="secondary"
           onClick={onClose}

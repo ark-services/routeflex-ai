@@ -6,6 +6,7 @@ import FieldCard from "./FieldCard";
 import FieldTypePicker from "./FieldTypePicker";
 import QuestionSettingsPanel from "./QuestionSettingsPanel";
 import FormBuilderSidebar from "./FormBuilderSidebar";
+import Toast from "./Toast";
 
 type FormField = {
   id: string;
@@ -43,6 +44,7 @@ export default function FormBuilder({
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [addFieldAt, setAddFieldAt] = useState<number | null>(null);
   const [publicUrl, setPublicUrl] = useState<string>("");
+  const [showToast, setShowToast] = useState(false);
 
   // Set publicUrl on client side only to avoid SSR "window is not defined" error
   useEffect(() => {
@@ -57,7 +59,8 @@ export default function FormBuilder({
       return;
     }
     navigator.clipboard.writeText(publicUrl);
-    alert("Link copied to clipboard!");
+    setShowToast(true);
+    setShowShareModal(false);
   };
 
   const handleAddFieldType = async (type: string) => {
@@ -281,43 +284,66 @@ export default function FormBuilder({
         />
       )}
 
-      {/* Share Modal */}
+      {/* Share Modal - Monday Style */}
       {showShareModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Share Application Form
+        <div
+          className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+          onClick={() => setShowShareModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Share Form
               </h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-5">
               <p className="text-sm text-gray-600 mb-4">
-                Share this link with candidates to apply for this position:
+                This form is public and available to anyone with the link
               </p>
+
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={publicUrl}
                   readOnly
-                  className="flex-1 px-3 py-2 border rounded-md bg-gray-50 text-sm"
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <button
                   onClick={handleCopyLink}
                   disabled={!publicUrl}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
-                  Copy Link
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy link
                 </button>
               </div>
             </div>
-            <div className="bg-gray-50 px-6 py-3 flex justify-end rounded-b-lg">
-              <button
-                onClick={() => setShowShareModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-md"
-              >
-                Close
-              </button>
-            </div>
           </div>
         </div>
+      )}
+
+      {/* Success Toast */}
+      {showToast && (
+        <Toast
+          message="Form link copied to clipboard"
+          onClose={() => setShowToast(false)}
+        />
       )}
     </div>
   );

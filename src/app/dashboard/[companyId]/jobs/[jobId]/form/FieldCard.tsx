@@ -202,8 +202,20 @@ export default function FieldCard({
         }
       `}
     >
+      {/* Field Type and Required Indicators (top-right stack) */}
+      <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+        <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+          {field.type}
+        </span>
+        {field.required && (
+          <Badge className="bg-red-50 text-red-700 border border-red-200">
+            Required
+          </Badge>
+        )}
+      </div>
+
       {/* Field Label */}
-      <div className="mb-2 flex items-start gap-3">
+      <div className="mb-2 pr-20">
         {isEditingLabel ? (
           <input
             ref={labelInputRef}
@@ -219,7 +231,7 @@ export default function FieldCard({
                 setIsEditingLabel(false);
               }
             }}
-            className="flex-1 text-lg font-semibold text-gray-900 border-b-2 border-blue-500 focus:outline-none px-1 -mx-1"
+            className="w-full text-lg font-semibold text-gray-900 border-b-2 border-blue-500 focus:outline-none px-1 -mx-1"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
@@ -228,16 +240,10 @@ export default function FieldCard({
               e.stopPropagation();
               setIsEditingLabel(true);
             }}
-            className="flex-1 text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-text px-1 -mx-1 rounded hover:bg-gray-50"
+            className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-text px-1 -mx-1 rounded hover:bg-gray-50"
           >
             {field.label}
           </h3>
-        )}
-
-        {field.required && (
-          <Badge className="bg-red-50 text-red-700 border border-red-200">
-            Required
-          </Badge>
         )}
       </div>
 
@@ -326,13 +332,6 @@ export default function FieldCard({
           </button>
         </div>
       )}
-
-      {/* Field Type Indicator (subtle) */}
-      <div className="absolute top-4 right-4">
-        <span className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-          {field.type}
-        </span>
-      </div>
     </div>
   );
 }
