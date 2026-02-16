@@ -55,6 +55,10 @@ export async function addJob(formData: FormData) {
 
   const slug = slugify(title);
 
+  console.log("[addJob] ============================================");
+  console.log("[addJob] Starting job creation with template:", template);
+  console.log("[addJob] ============================================");
+
   // ========================================================================
   // STEP 1: Create the job
   // ========================================================================
@@ -145,8 +149,10 @@ export async function addJob(formData: FormData) {
     // ========================================================================
     // STEP 4: Create default form fields using helper function
     // ========================================================================
+    console.log(`[addJob] Creating form fields for template: ${template}`);
     const { error: fieldsErr } = await supabase.rpc("create_default_form_fields", {
       p_form_id: form.id,
+      p_template: template,
     });
 
     if (fieldsErr) {
@@ -235,25 +241,39 @@ export async function addJob(formData: FormData) {
     // ========================================================================
     const statusColumn = insertedColumns?.find((c) => c.type === "status");
     if (statusColumn?.id) {
-      const statusLabels = [
-        { label: "applied", color: "#3b82f6", sort_order: 1 },
-        { label: "screening", color: "#8b5cf6", sort_order: 2 },
-        { label: "first_advantage", color: "#f59e0b", sort_order: 3 },
-        { label: "interviewing", color: "#10b981", sort_order: 4 },
-        { label: "tsa", color: "#06b6d4", sort_order: 5 },
-        { label: "hr_paperwork", color: "#ec4899", sort_order: 6 },
-        { label: "hired", color: "#22c55e", sort_order: 7 },
-        { label: "rejected", color: "#ef4444", sort_order: 8 },
-      ].map((l) => ({ ...l, column_id: statusColumn.id }));
+      // Define status labels based on template
+      const statusLabels = template === "scratch"
+        ? [
+            { label: "New", color: "#3b82f6", sort_order: 1 },        // blue
+            { label: "In Progress", color: "#eab308", sort_order: 2 }, // yellow
+            { label: "Complete", color: "#22c55e", sort_order: 3 },   // green
+          ]
+        : [
+            { label: "applied", color: "#3b82f6", sort_order: 1 },
+            { label: "screening", color: "#8b5cf6", sort_order: 2 },
+            { label: "first_advantage", color: "#f59e0b", sort_order: 3 },
+            { label: "interviewing", color: "#10b981", sort_order: 4 },
+            { label: "tsa", color: "#06b6d4", sort_order: 5 },
+            { label: "hr_paperwork", color: "#ec4899", sort_order: 6 },
+            { label: "hired", color: "#22c55e", sort_order: 7 },
+            { label: "rejected", color: "#ef4444", sort_order: 8 },
+          ];
+
+      const statusLabelsWithColumn = statusLabels.map((l) => ({
+        ...l,
+        column_id: statusColumn.id
+      }));
+
+      console.log(`[addJob] Creating ${statusLabelsWithColumn.length} status labels for template: ${template}`);
 
       const { error: labelsErr } = await supabase
         .from("board_status_labels")
-        .insert(statusLabels);
+        .insert(statusLabelsWithColumn);
 
       if (labelsErr && !labelsErr.message?.includes("unique")) {
         console.error("[addJob] Failed to create status labels:", labelsErr);
       } else {
-        console.log(`[addJob] Created ${statusLabels.length} status labels`);
+        console.log(`[addJob] Created ${statusLabelsWithColumn.length} status labels`);
       }
     }
 
