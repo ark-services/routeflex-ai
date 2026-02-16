@@ -13,15 +13,53 @@ export async function GET() {
       supabase.auth.getSession(),
     ]);
 
+    const user = userData.user;
+
+    // Query memberships
+    const {
+      data: membershipsData,
+      error: membershipsError,
+    } = await supabase
+      .from("account_memberships")
+      .select("*")
+      .eq("user_id", user?.id ?? "");
+
+    console.log("DEBUG memberships:", {
+      data: membershipsData,
+      error: membershipsError,
+      count: membershipsData?.length ?? 0,
+    });
+
+    // Query companies if we have memberships
+    let companiesData = null;
+    let companiesError = null;
+
+    if (membershipsData && membershipsData.length > 0) {
+      const accountId = membershipsData[0].account_id;
+      const companiesResult = await supabase
+        .from("companies")
+        .select("*")
+        .eq("account_id", accountId);
+
+      companiesData = companiesResult.data;
+      companiesError = companiesResult.error;
+
+      console.log("DEBUG companies:", {
+        data: companiesData,
+        error: companiesError,
+        count: companiesData?.length ?? 0,
+      });
+    }
+
     return NextResponse.json({
       timestamp: new Date().toISOString(),
-      user: userData.user
+      user: user
         ? {
-            id: userData.user.id,
-            email: userData.user.email,
-            role: userData.user.role,
-            aud: userData.user.aud,
-            created_at: userData.user.created_at,
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            aud: user.aud,
+            created_at: user.created_at,
           }
         : null,
       session: sessionData.session
@@ -31,6 +69,16 @@ export async function GET() {
             expires_in: sessionData.session.expires_in,
           }
         : null,
+      memberships: {
+        data: membershipsData,
+        error: membershipsError ? membershipsError.message : null,
+        count: membershipsData?.length ?? 0,
+      },
+      companies: {
+        data: companiesData,
+        error: companiesError ? companiesError.message : null,
+        count: companiesData?.length ?? 0,
+      },
       errors: {
         user: userError ? userError.message : null,
         session: sessionError ? sessionError.message : null,
