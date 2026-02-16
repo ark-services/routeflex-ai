@@ -151,6 +151,7 @@ export default function ApplicantsBoard({
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
   const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status">("text");
+  const [addColumnError, setAddColumnError] = useState<string | null>(null);
 
   // Status labels editor
   const [editLabelsColumnId, setEditLabelsColumnId] = useState<string | null>(null);
@@ -535,11 +536,20 @@ export default function ApplicantsBoard({
     const name = newColumnName.trim();
     if (!name) return;
 
+    setAddColumnError(null);
+
     startTransition(async () => {
-      await createBoardColumn(companyId, jobId, name, newColumnType);
+      const result = await createBoardColumn(companyId, jobId, name, newColumnType);
+
+      if (!result.success) {
+        setAddColumnError(result.error || "Failed to create column");
+        return;
+      }
+
       setShowAddColumnModal(false);
       setNewColumnName("");
       setNewColumnType("text");
+      setAddColumnError(null);
     });
   }
 
@@ -984,11 +994,17 @@ export default function ApplicantsBoard({
                   <label className="block text-sm font-medium text-stone-700">Column name</label>
                   <input
                     value={newColumnName}
-                    onChange={(e) => setNewColumnName(e.target.value)}
+                    onChange={(e) => {
+                      setNewColumnName(e.target.value);
+                      setAddColumnError(null);
+                    }}
                     placeholder="e.g. Interview Score"
                     className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
                     autoFocus
                   />
+                  {addColumnError && (
+                    <p className="mt-1.5 text-xs text-red-600">{addColumnError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-stone-700">Column type</label>
@@ -1010,6 +1026,7 @@ export default function ApplicantsBoard({
                     setShowAddColumnModal(false);
                     setNewColumnName("");
                     setNewColumnType("text");
+                    setAddColumnError(null);
                   }}
                   className="h-9 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 hover:bg-stone-50"
                 >

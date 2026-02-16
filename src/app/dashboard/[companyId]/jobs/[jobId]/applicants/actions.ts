@@ -623,11 +623,29 @@ export async function createBoardColumn(
 
   if (error) {
     console.error("[createBoardColumn] Error creating column:", error);
-    throw new Error(error.message);
+
+    // Handle duplicate column name error
+    if (error.code === "23505" || error.message?.includes("board_columns_board_name_idx")) {
+      return {
+        success: false,
+        error: "A column with this name already exists on this board.",
+        code: 409,
+      };
+    }
+
+    // Other errors
+    return {
+      success: false,
+      error: error.message,
+      code: 500,
+    };
   }
 
   revalidatePath(dashPath(companyId, jobId));
-  return data;
+  return {
+    success: true,
+    data,
+  };
 }
 
 export async function duplicateBoardColumn(
@@ -671,6 +689,12 @@ export async function duplicateBoardColumn(
 
   if (error) {
     console.error("[duplicateBoardColumn] Error duplicating column:", error);
+
+    // Handle duplicate column name error
+    if (error.code === "23505" || error.message?.includes("board_columns_board_name_idx")) {
+      throw new Error("A column with this name already exists on this board.");
+    }
+
     throw new Error(error.message);
   }
 

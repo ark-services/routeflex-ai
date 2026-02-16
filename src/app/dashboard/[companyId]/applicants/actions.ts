@@ -482,7 +482,23 @@ export async function createBoardColumn(
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Handle duplicate column name error
+    if (error.code === "23505" || error.message?.includes("board_columns_board_name_idx")) {
+      return {
+        success: false,
+        error: "A column with this name already exists on this board.",
+        code: 409,
+      };
+    }
+
+    // Other errors
+    return {
+      success: false,
+      error: error.message,
+      code: 500,
+    };
+  }
 
   // Fire trigger - get job_id from board
   if (data) {
@@ -510,7 +526,10 @@ export async function createBoardColumn(
   }
 
   revalidatePath(dashPath(companyId));
-  return data;
+  return {
+    success: true,
+    data,
+  };
 }
 
 export async function duplicateBoardColumn(companyId: string, columnId: string) {
@@ -544,7 +563,13 @@ export async function duplicateBoardColumn(companyId: string, columnId: string) 
     .select()
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Handle duplicate column name error
+    if (error.code === "23505" || error.message?.includes("board_columns_board_name_idx")) {
+      throw new Error("A column with this name already exists on this board.");
+    }
+    throw new Error(error.message);
+  }
 
   // If it's a status column, duplicate the labels
   if (sourceColumn.type === "status" && newColumn) {
