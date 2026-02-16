@@ -722,19 +722,23 @@ function SortableColumnHeader({
   };
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const isEditingRef = useRef(false);
+  const canSaveRef = useRef(false);
 
   // Focus input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
-      isEditingRef.current = true;
+      canSaveRef.current = false;
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
         inputRef.current?.focus({ preventScroll: true });
         inputRef.current?.select();
+        // Allow saving after a brief delay to prevent immediate blur from saving
+        setTimeout(() => {
+          canSaveRef.current = true;
+        }, 100);
       });
     } else {
-      isEditingRef.current = false;
+      canSaveRef.current = false;
     }
   }, [isEditing]);
 
@@ -752,8 +756,8 @@ function SortableColumnHeader({
             value={editValue}
             onChange={(e) => onChange(e.target.value)}
             onBlur={(e) => {
-              // Only save if we were actually editing (prevents immediate blur on mount)
-              if (isEditingRef.current) {
+              // Only save if enough time has passed (prevents immediate blur)
+              if (canSaveRef.current) {
                 onSaveEdit();
               }
             }}
