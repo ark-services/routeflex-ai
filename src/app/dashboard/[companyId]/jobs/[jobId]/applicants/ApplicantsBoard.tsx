@@ -1301,7 +1301,7 @@ function SortableColumnHeader({
             </button>
             <button
               onClick={() => {
-                onStartEdit();
+                setIsEditing(true);
                 setMenuOpen(false);
               }}
               className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
