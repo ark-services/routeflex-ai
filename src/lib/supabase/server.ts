@@ -2,7 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function createClient() {
-  const cookieStore = cookies();
+  // In newer Next.js versions, `cookies()` can be async and returns a Promise.
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,7 +16,8 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
+              // `cookies()` is read-only in Server Components; this will work in Route Handlers / Server Actions.
+              (cookieStore as any).set(name, value, options);
             });
           } catch {
             // Server Components can't set cookies.
