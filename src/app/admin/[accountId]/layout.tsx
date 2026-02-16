@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/rbac";
 import { Header } from "@/components/header";
-import Link from "next/link";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
 export default async function AdminLayout({
   children,
@@ -12,29 +12,17 @@ export default async function AdminLayout({
   const { accountId } = await params;
   const membership = await requireAdmin(accountId);
 
-  const navLinks = [
-    { href: `/admin/${accountId}`, label: "Overview" },
-    { href: `/admin/${accountId}/users`, label: "Users" },
-    { href: `/admin/${accountId}/automations`, label: "Automations" },
-    { href: `/admin/${accountId}/integrations`, label: "Integrations" },
-  ];
-
   return (
-    <div className="mx-auto max-w-5xl px-6 sm:px-8">
-      <Header companyName={membership.account.name} />
-      <section className="space-y-8 pb-16">
-        <div className="border-b border-stone-200/60 pb-4">
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900 mb-4">Admin Center</h1>
-          <nav className="flex gap-6">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="text-sm text-stone-500 hover:text-stone-900">
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+    <div className="min-h-screen bg-stone-50">
+      <div className="mx-auto max-w-7xl px-6 sm:px-8">
+        <Header companyName={membership.account.name} />
+        <div className="flex gap-8 pb-16">
+          <AdminSidebar accountId={accountId} />
+          <main className="flex-1 min-w-0">
+            {children}
+          </main>
         </div>
-        {children}
-      </section>
+      </div>
     </div>
   );
 }

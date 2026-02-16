@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/rbac";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Puzzle } from "lucide-react";
 
 export default async function IntegrationsPage({ params }: { params: Promise<{ accountId: string }> }) {
   const { accountId } = await params;
@@ -8,23 +8,20 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ a
 
   return (
     <div className="space-y-6">
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-stone-900 mb-4">Gmail Integration</h2>
-        <p className="text-sm text-stone-600 mb-4">Connect your Gmail account to send automated emails.</p>
-        <Button>Connect Gmail</Button>
-        <p className="text-xs text-stone-400 mt-2">OAuth flow not yet implemented</p>
-      </Card>
+      <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Integrations</h1>
 
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-stone-900 mb-4">Twilio SMS</h2>
-        <p className="text-sm text-stone-600 mb-4">Configure Twilio credentials to send SMS.</p>
-        <p className="text-xs text-stone-400">Form not yet implemented</p>
-      </Card>
-
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold text-stone-900 mb-4">Slack Notifications</h2>
-        <p className="text-sm text-stone-600 mb-4">Add Slack webhook URL for notifications.</p>
-        <p className="text-xs text-stone-400">Form not yet implemented</p>
+      <Card className="p-12">
+        <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto">
+          <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mb-4">
+            <Puzzle className="w-8 h-8 text-purple-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-stone-900 mb-2">
+            Integrations Coming Soon
+          </h2>
+          <p className="text-sm text-stone-600">
+            Connect RouteFlex with your favorite tools and services to streamline your workflow.
+          </p>
+        </div>
       </Card>
     </div>
   );

@@ -89,6 +89,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
+      <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Overview</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-6">
           <div className="text-sm font-medium text-stone-500 mb-1">Automations</div>
