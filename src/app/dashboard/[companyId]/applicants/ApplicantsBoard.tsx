@@ -721,6 +721,23 @@ function SortableColumnHeader({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isEditingRef = useRef(false);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      isEditingRef.current = true;
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      });
+    } else {
+      isEditingRef.current = false;
+    }
+  }, [isEditing]);
+
   return (
     <th
       ref={setNodeRef}
@@ -731,20 +748,38 @@ function SortableColumnHeader({
       <div className="flex items-center gap-2">
         {isEditing ? (
           <input
+            ref={inputRef}
             value={editValue}
             onChange={(e) => onChange(e.target.value)}
-            onBlur={onSaveEdit}
+            onBlur={(e) => {
+              // Only save if we were actually editing (prevents immediate blur on mount)
+              if (isEditingRef.current) {
+                onSaveEdit();
+              }
+            }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") onSaveEdit();
-              if (e.key === "Escape") onCancelEdit();
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onSaveEdit();
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                onCancelEdit();
+              }
+            }}
+            onMouseDown={(e) => {
+              // Prevent blur when clicking inside the input
+              e.stopPropagation();
             }}
             className="h-7 w-32 rounded border border-stone-300 px-2 text-xs outline-none focus:border-stone-500"
-            autoFocus
           />
         ) : (
           <>
             <button
-              onClick={onStartEdit}
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartEdit();
+              }}
               className="text-left hover:text-stone-900 cursor-text"
               disabled={column.is_system}
             >
