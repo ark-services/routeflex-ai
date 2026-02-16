@@ -1192,7 +1192,7 @@ function SortableColumnHeader({
       isEditingRef.current = true;
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
-        inputRef.current?.focus();
+        inputRef.current?.focus({ preventScroll: true });
         inputRef.current?.select();
       });
     } else {
@@ -1250,6 +1250,7 @@ function SortableColumnHeader({
 
             <button
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onStartEdit();
               }}
