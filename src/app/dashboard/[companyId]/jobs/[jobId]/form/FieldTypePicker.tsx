@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactElement } from "react";
 
 type FieldType = {
   value: string;
   label: string;
   description: string;
-  icon: JSX.Element;
+  icon: ReactElement;
 };
 
 const fieldTypes: FieldType[] = [

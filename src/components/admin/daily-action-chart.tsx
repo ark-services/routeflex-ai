@@ -13,8 +13,9 @@ export function DailyActionChart({ data }: { data: DailyActionData[] }) {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const formatTooltipDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+  const formatTooltipDate = (label: any) => {
+    if (typeof label !== "string") return "";
+    const date = new Date(label);
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -64,7 +65,7 @@ export function DailyActionChart({ data }: { data: DailyActionData[] }) {
               fontSize: "12px",
             }}
             labelFormatter={formatTooltipDate}
-            formatter={(value: number) => [value, "Actions"]}
+            formatter={(value: number | undefined) => [value ?? 0, "Actions"]}
           />
           <Bar
             dataKey="actions"

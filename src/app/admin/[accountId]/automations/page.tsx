@@ -22,10 +22,12 @@ export default async function AdminAutomationsPage({ params }: { params: Promise
   const supabase = await createClient();
 
   // Get current period data
-  const { data: period } = await supabase
+  const { data: periodData } = await supabase
     .rpc("get_or_create_action_period", { p_account_id: accountId })
     .returns<ActionPeriod>()
     .single();
+
+  const period = periodData as ActionPeriod | null;
 
   const actionsUsed = period?.used_units ?? 0;
   const quotaUnits = period?.quota_units ?? 0;
