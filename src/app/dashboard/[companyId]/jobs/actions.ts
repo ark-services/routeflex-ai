@@ -209,18 +209,6 @@ export async function addJob(formData: FormData) {
         settings: {},
       }));
 
-    // Add a Status column (special workflow column)
-    columnsToCreate.push({
-      board_id: boardId,
-      company_id: companyId,
-      field_id: null as any,
-      name: "Status",
-      type: "status",
-      sort_order: columnsToCreate.length + 1,
-      is_system: true,
-      settings: {},
-    });
-
     const { data: insertedColumns, error: colsErr } = await supabase
       .from("board_columns")
       .insert(columnsToCreate)
@@ -234,55 +222,17 @@ export async function addJob(formData: FormData) {
       }
     }
 
-    console.log(`[addJob] Created ${insertedColumns?.length || 0} board columns`);
+    console.log(
+      `[addJob] Created ${insertedColumns?.length || 0} board columns for template "${template}":`,
+      insertedColumns?.map(c => c.name)
+    );
 
     // ========================================================================
-    // STEP 6: Create status labels for the Status column
-    // ========================================================================
-    const statusColumn = insertedColumns?.find((c) => c.type === "status");
-    if (statusColumn?.id) {
-      // Define status labels based on template
-      const statusLabels = template === "scratch"
-        ? [
-            { label: "New", color: "#3b82f6", sort_order: 1 },        // blue
-            { label: "In Progress", color: "#eab308", sort_order: 2 }, // yellow
-            { label: "Complete", color: "#22c55e", sort_order: 3 },   // green
-          ]
-        : [
-            { label: "applied", color: "#3b82f6", sort_order: 1 },
-            { label: "screening", color: "#8b5cf6", sort_order: 2 },
-            { label: "first_advantage", color: "#f59e0b", sort_order: 3 },
-            { label: "interviewing", color: "#10b981", sort_order: 4 },
-            { label: "tsa", color: "#06b6d4", sort_order: 5 },
-            { label: "hr_paperwork", color: "#ec4899", sort_order: 6 },
-            { label: "hired", color: "#22c55e", sort_order: 7 },
-            { label: "rejected", color: "#ef4444", sort_order: 8 },
-          ];
-
-      const statusLabelsWithColumn = statusLabels.map((l) => ({
-        ...l,
-        column_id: statusColumn.id
-      }));
-
-      console.log(`[addJob] Creating ${statusLabelsWithColumn.length} status labels for template: ${template}`);
-
-      const { error: labelsErr } = await supabase
-        .from("board_status_labels")
-        .insert(statusLabelsWithColumn);
-
-      if (labelsErr && !labelsErr.message?.includes("unique")) {
-        console.error("[addJob] Failed to create status labels:", labelsErr);
-      } else {
-        console.log(`[addJob] Created ${statusLabelsWithColumn.length} status labels`);
-      }
-    }
-
-    // ========================================================================
-    // STEP 7: Board groups already created by getOrCreateApplicantsBoard
+    // STEP 6: Board groups already created by getOrCreateApplicantsBoard
     // ========================================================================
 
     // ========================================================================
-    // STEP 8: Create example applicant (optional, for better UX)
+    // STEP 7: Create example applicant (optional, for better UX)
     // ========================================================================
     // Use first group for example applicant (works for any template)
     const firstGroup = boardResult.groups[0];
@@ -312,7 +262,7 @@ export async function addJob(formData: FormData) {
   }
 
   // ========================================================================
-  // STEP 9: Revalidate paths to ensure UI updates immediately
+  // STEP 8: Revalidate paths to ensure UI updates immediately
   // ========================================================================
   revalidatePath(`/dashboard/${companyId}`);
   revalidatePath(`/dashboard/${companyId}/jobs`);
