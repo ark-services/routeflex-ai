@@ -839,18 +839,13 @@ export default function ApplicantsBoard({
                                   +
                                 </button>
                               </th>
-
-                              {/* Fixed columns */}
-                              <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Job</th>
-                              <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Applied</th>
-                              <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Resume</th>
                             </tr>
                           </thead>
 
                           <tbody>
                             {rows.length === 0 ? (
                               <tr>
-                                <td colSpan={visibleColumns.length + 5} className="px-4 py-8 text-sm text-stone-400 text-center">
+                                <td colSpan={visibleColumns.length + 2} className="px-4 py-8 text-sm text-stone-400 text-center">
                                   No applicants in this group yet.
                                 </td>
                               </tr>
@@ -891,7 +886,7 @@ export default function ApplicantsBoard({
                                   <span className="text-sm font-semibold">+</span>
                                 </div>
                               </td>
-                              <td colSpan={visibleColumns.length + 4} className="px-4 py-3">
+                              <td colSpan={visibleColumns.length + 1} className="px-4 py-3">
                                 <span className="text-sm text-stone-400 group-hover/addrow:text-blue-600 font-medium transition-colors">
                                   Add item
                                 </span>
@@ -937,9 +932,6 @@ export default function ApplicantsBoard({
                               </th>
                             ))}
                             <th className="px-4 py-2"></th>
-                            <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Job</th>
-                            <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Applied</th>
-                            <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Resume</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1530,34 +1522,6 @@ function SortableRow({
 
   // Empty cell for + button column
   cellEls.push(<td key="__plus__" className="px-4 py-2" />);
-
-  // Fixed columns
-  cellEls.push(
-    <td key="__job__" className="px-4 py-2 text-sm text-stone-600 border-r border-stone-100">
-      {applicant.jobs?.title ?? "—"}
-    </td>
-  );
-  cellEls.push(
-    <td key="__applied__" className="px-4 py-2 text-sm text-stone-600 border-r border-stone-100">
-      {new Date(applicant.created_at).toLocaleDateString()}
-    </td>
-  );
-  cellEls.push(
-    <td key="__resume__" className="px-4 py-2 text-sm">
-      {applicant.resume_path ? (
-        <a
-          href={`/api/resumes/view?applicantId=${applicant.id}`}
-          target="_blank"
-          rel="noreferrer"
-          className="text-blue-600 hover:underline"
-        >
-          View
-        </a>
-      ) : (
-        <span className="text-stone-300">—</span>
-      )}
-    </td>
-  );
 
   return (
     <tr
