@@ -13,6 +13,28 @@ function slugify(title: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+// Job template types and configurations
+type JobTemplate = "fedex_pd" | "scratch";
+
+type GroupConfig = {
+  name: string;
+  color: string;
+  sort_order: number;
+};
+
+// Template to group configurations mapping
+const TEMPLATE_GROUPS: Record<JobTemplate, GroupConfig[]> = {
+  fedex_pd: [
+    { name: "New Applicants", color: "#0073ea", sort_order: 1 },
+    { name: "Background Check", color: "#00c875", sort_order: 2 },
+    { name: "Interview", color: "#fdab3d", sort_order: 3 },
+    { name: "HR Paperwork", color: "#e2445c", sort_order: 4 },
+  ],
+  scratch: [
+    { name: "New Group", color: "#0073ea", sort_order: 1 },
+  ],
+};
+
 /**
  * Creates a new job with full form engine setup.
  * This is the new, comprehensive job creation flow that:
@@ -20,14 +42,14 @@ function slugify(title: string): string {
  * 2. Creates a job-specific board
  * 3. Creates an application form with default fields
  * 4. Generates board columns from form fields (NOT hardcoded)
- * 5. Creates default board groups
+ * 5. Creates board groups based on selected template
  * 6. All operations are idempotent to prevent duplicates
  */
 export async function addJob(formData: FormData) {
   const companyId = formData.get("companyId") as string;
   const title = (formData.get("title") as string).trim();
   const location = (formData.get("location") as string).trim();
-  const terminal = (formData.get("terminal") as string).trim();
+  const template = (formData.get("template") as JobTemplate) || "fedex_pd";
   const status = ((formData.get("status") as JobStatus) || "open") as JobStatus;
   const supabase = await createClient();
 
@@ -44,7 +66,6 @@ export async function addJob(formData: FormData) {
       title,
       slug,
       location,
-      terminal,
       status,
     })
     .select("id")
@@ -56,11 +77,7 @@ export async function addJob(formData: FormData) {
   });
 
   if (jobError || !job) {
-    redirect(
-      `/dashboard/${companyId}/jobs?error=${encodeURIComponent(
-        jobError?.message || "Failed to create job"
-      )}`
-    );
+    throw new Error(jobError?.message || "Failed to create job");
   }
 
   // Best-effort seeding: do NOT block job creation if seeding fails
@@ -68,10 +85,12 @@ export async function addJob(formData: FormData) {
     // ========================================================================
     // STEP 2: Create job-specific board (using idempotent helper)
     // ========================================================================
+    const templateGroups = TEMPLATE_GROUPS[template];
     const boardResult = await getOrCreateApplicantsBoard(
       supabase,
       companyId,
-      job.id
+      job.id,
+      templateGroups
     );
 
     if (!boardResult.success) {
@@ -245,15 +264,14 @@ export async function addJob(formData: FormData) {
     // ========================================================================
     // STEP 8: Create example applicant (optional, for better UX)
     // ========================================================================
-    const newApplicantsGroup = boardResult.groups.find(
-      (g) => g.name === "New Applicants"
-    );
-    if (newApplicantsGroup?.id) {
+    // Use first group for example applicant (works for any template)
+    const firstGroup = boardResult.groups[0];
+    if (firstGroup?.id) {
       const { error: applicantErr } = await supabase.from("applicants").insert({
         company_id: companyId,
         job_id: job.id,
         board_id: boardId,
-        group_id: newApplicantsGroup.id,
+        group_id: firstGroup.id,
         full_name: "Example Applicant",
         email: "example@applicant.test",
         phone: "555-555-5555",
@@ -281,6 +299,10 @@ export async function addJob(formData: FormData) {
   revalidatePath(`/dashboard/${companyId}/jobs/${job.id}`);
   revalidatePath(`/dashboard/${companyId}/jobs/${job.id}/applicants`);
 
-  // Redirect to the new job's applicants board
-  redirect(`/dashboard/${companyId}/jobs/${job.id}/applicants`);
+  // Return the redirect URL for client-side navigation
+  // (avoids NEXT_REDIRECT error being caught in client components)
+  return {
+    success: true,
+    redirectUrl: `/dashboard/${companyId}/jobs/${job.id}/applicants`,
+  };
 }

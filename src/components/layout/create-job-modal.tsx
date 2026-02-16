@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ interface CreateJobModalProps {
   companyId: string;
 }
 
+type JobTemplate = "fedex_pd" | "scratch";
+
 export function CreateJobModal({
   open,
   onClose,
@@ -20,99 +22,144 @@ export function CreateJobModal({
 }: CreateJobModalProps) {
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
-  const [terminal, setTerminal] = useState("");
+  const [template, setTemplate] = useState<JobTemplate>("fedex_pd");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setTitle("");
+      setLocation("");
+      setTemplate("fedex_pd");
+      setError("");
+    }
+  }, [open]);
+
+  const isFormValid = title.trim().length > 0 && location.trim().length > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid || isPending) return;
+
     setError("");
 
-    console.log("[CreateJobModal] Starting job creation...");
-
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const formData = new FormData();
     formData.append("companyId", companyId);
+    formData.append("title", title.trim());
+    formData.append("location", location.trim());
+    formData.append("template", template);
 
-    try {
-      // Call addJob which handles everything and redirects
-      startTransition(() => {
-        addJob(formData);
-        // Clean up modal state
-        setTitle("");
-        setLocation("");
-        setTerminal("");
-        onClose();
-      });
-    } catch (err: any) {
-      console.error("[CreateJobModal] Exception:", err);
-      setError(err.message || "Failed to create job");
-    }
+    startTransition(async () => {
+      try {
+        const result = await addJob(formData);
+        if (result.success && result.redirectUrl) {
+          // Close modal first for smooth UX
+          onClose();
+          // Navigate to the new job
+          router.push(result.redirectUrl);
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to create job. Please try again.");
+      }
+    });
   };
 
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Create new job</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold">Create new job</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-2">
           <div>
-            <label htmlFor="job-title" className="block text-sm font-medium text-stone-700 mb-2">
-              Job title
-            </label>
             <Input
-              id="job-title"
               name="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Senior Driver"
+              placeholder="Job title"
               required
               autoFocus
+              disabled={isPending}
+              className="h-12 text-base"
             />
           </div>
 
           <div>
-            <label htmlFor="location" className="block text-sm font-medium text-stone-700 mb-2">
-              Location
-            </label>
             <Input
-              id="location"
               name="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="San Francisco, CA"
+              placeholder="Location"
+              required
+              disabled={isPending}
+              className="h-12 text-base"
             />
           </div>
 
           <div>
-            <label htmlFor="terminal" className="block text-sm font-medium text-stone-700 mb-2">
-              Terminal
+            <label className="block text-sm font-medium text-stone-900 mb-3">
+              Job Template
             </label>
-            <Input
-              id="terminal"
-              name="terminal"
-              value={terminal}
-              onChange={(e) => setTerminal(e.target.value)}
-              placeholder="SFO1"
-            />
+            <div className="space-y-2">
+              <label className="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors hover:bg-stone-50 has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
+                <input
+                  type="radio"
+                  name="template"
+                  value="fedex_pd"
+                  checked={template === "fedex_pd"}
+                  onChange={(e) => setTemplate(e.target.value as JobTemplate)}
+                  disabled={isPending}
+                  className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-stone-900">FedEx P&D Template</div>
+                  <div className="text-sm text-stone-600">Includes New Applicants, Background Check, Interview, and HR Paperwork groups</div>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors hover:bg-stone-50 has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
+                <input
+                  type="radio"
+                  name="template"
+                  value="scratch"
+                  checked={template === "scratch"}
+                  onChange={(e) => setTemplate(e.target.value as JobTemplate)}
+                  disabled={isPending}
+                  className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-stone-900">Start from Scratch</div>
+                  <div className="text-sm text-stone-600">Begin with a single empty group</div>
+                </div>
+              </label>
+            </div>
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
+              {error}
+            </div>
           )}
 
-          <div className="flex gap-3 justify-end">
+          <div className="flex gap-3 justify-end pt-2">
             <Button
               type="button"
-              variant="secondary"
+              variant="tertiary"
               onClick={onClose}
               disabled={isPending}
+              className="px-6"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={!isFormValid || isPending}
+              className="px-6"
+            >
               {isPending ? "Creating..." : "Create job"}
             </Button>
           </div>

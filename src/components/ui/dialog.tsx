@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 export function Dialog({
   open,
@@ -12,55 +12,62 @@ export function Dialog({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
+  // Handle Escape key
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
+    if (!open) return;
 
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
     if (open) {
-      dialog.showModal();
+      document.body.style.overflow = "hidden";
     } else {
-      dialog.close();
+      document.body.style.overflow = "";
     }
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleClose = () => onClose();
-    dialog.addEventListener("close", handleClose);
-    return () => dialog.removeEventListener("close", handleClose);
-  }, [onClose]);
+  if (!open) return null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className="rounded-lg shadow-lg backdrop:bg-black/50 backdrop:backdrop-blur-sm p-0 max-w-md w-full"
-      onClick={(e) => {
-        const dialog = dialogRef.current;
-        if (dialog && e.target === dialog) {
-          onClose();
-        }
-      }}
-    >
-      {children}
-    </dialog>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal content */}
+      <div className="relative z-10 w-full max-w-md">
+        {children}
+      </div>
+    </div>
   );
 }
 
-export function DialogContent({ children }: { children: ReactNode }) {
-  return <div className="bg-white rounded-lg p-6">{children}</div>;
+export function DialogContent({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`bg-white rounded-xl p-8 ${className}`}>{children}</div>;
 }
 
 export function DialogHeader({ children }: { children: ReactNode }) {
   return <div className="mb-4">{children}</div>;
 }
 
-export function DialogTitle({ children }: { children: ReactNode }) {
+export function DialogTitle({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className="text-xl font-semibold tracking-tight text-stone-900">
+    <h2 className={`text-xl font-semibold tracking-tight text-stone-900 ${className}`}>
       {children}
     </h2>
   );

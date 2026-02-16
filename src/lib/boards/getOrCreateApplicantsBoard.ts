@@ -1,11 +1,17 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
-const DEFAULT_GROUPS = [
+type GroupConfig = {
+  name: string;
+  color: string;
+  sort_order: number;
+};
+
+const DEFAULT_GROUPS: GroupConfig[] = [
   { name: "New Applicants", color: "#0073ea", sort_order: 1 },
   { name: "Background Check", color: "#00c875", sort_order: 2 },
   { name: "Interview", color: "#fdab3d", sort_order: 3 },
   { name: "HR Paperwork", color: "#e2445c", sort_order: 4 },
-] as const;
+];
 
 export type Board = {
   id: string;
@@ -32,7 +38,7 @@ export type GetOrCreateBoardResult =
     };
 
 /**
- * Gets or creates an "Applicants" board for a job with default groups.
+ * Gets or creates an "Applicants" board for a job with specified groups.
  * This is idempotent and self-healing - it will create missing boards/groups automatically.
  * Uses select-then-insert pattern with duplicate key retry instead of upsert to avoid
  * PostgREST onConflict inference issues.
@@ -40,13 +46,16 @@ export type GetOrCreateBoardResult =
  * @param supabase - Supabase client (must be authenticated)
  * @param companyId - Company ID
  * @param jobId - Job ID
+ * @param customGroups - Optional custom groups configuration (defaults to DEFAULT_GROUPS)
  * @returns Board and groups, or error
  */
 export async function getOrCreateApplicantsBoard(
   supabase: SupabaseClient,
   companyId: string,
-  jobId: string
+  jobId: string,
+  customGroups?: GroupConfig[]
 ): Promise<GetOrCreateBoardResult> {
+  const groupsToUse = customGroups || DEFAULT_GROUPS;
   try {
     console.log(
       `[getOrCreateApplicantsBoard] Starting for job ${jobId}, company ${companyId}`
@@ -195,21 +204,18 @@ export async function getOrCreateApplicantsBoard(
     }
 
     // ========================================================================
-    // STEP 4: Create missing default groups (idempotent)
+    // STEP 4: Create groups ONLY if board is brand new (no existing groups)
+    // This ensures template selection is honored and not overridden on page refresh
     // ========================================================================
-    const existingGroupNames = new Set(
-      (existingGroups || []).map((g) => g.name)
-    );
-    const groupsToCreate = DEFAULT_GROUPS.filter(
-      (g) => !existingGroupNames.has(g.name)
-    );
+    const hasExistingGroups = existingGroups && existingGroups.length > 0;
 
-    if (groupsToCreate.length > 0) {
+    // Only create groups if this is a completely new board with no groups
+    if (!hasExistingGroups) {
       console.log(
-        `[getOrCreateApplicantsBoard] Creating ${groupsToCreate.length} missing groups...`
+        `[getOrCreateApplicantsBoard] Board has no groups, creating ${groupsToUse.length} groups...`
       );
 
-      const groupInserts = groupsToCreate.map((g) => ({
+      const groupInserts = groupsToUse.map((g) => ({
         board_id: boardId,
         company_id: companyId,
         name: g.name,
@@ -217,7 +223,7 @@ export async function getOrCreateApplicantsBoard(
         sort_order: g.sort_order,
       }));
 
-      // Insert missing groups (ignore duplicates from race conditions)
+      // Insert groups (ignore duplicates from race conditions)
       const { error: createGroupsError } = await supabase
         .from("board_groups")
         .insert(groupInserts)
