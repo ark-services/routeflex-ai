@@ -3,6 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui/card";
 import { ActionQuotaMeter } from "@/components/admin/action-quota-meter";
 
+type ActionPeriod = {
+  account_id: string;
+  period_start: string;
+  period_end: string;
+  quota_units: number;
+  used_units: number;
+};
+
 export default async function AdminOverviewPage({ params }: { params: Promise<{ accountId: string }> }) {
   const { accountId } = await params;
   const membership = await requireAdmin(accountId);
@@ -11,10 +19,28 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   // Get current billing period data
   const { data: period, error: periodError } = await supabase
     .rpc("get_or_create_action_period", { p_account_id: accountId })
+    .returns<ActionPeriod>()
     .single();
 
   console.log('[AdminOverview] Period data:', period);
-  console.log('[AdminOverview] Period error:', periodError);
+
+  if (periodError) {
+    console.error('[AdminOverview] ❌ CRITICAL: Failed to fetch period data');
+    console.error('[AdminOverview] Error:', periodError);
+    console.error('[AdminOverview] Error details:', {
+      message: periodError.message,
+      details: periodError.details,
+      hint: periodError.hint,
+      code: periodError.code,
+    });
+    // This should NOT happen after migration 00036 - get_or_create_action_period is now SECURITY DEFINER
+    throw new Error(`Failed to fetch billing period: ${periodError.message}`);
+  }
+
+  if (!period) {
+    console.error('[AdminOverview] ❌ CRITICAL: Period data is null (should not happen)');
+    throw new Error('Failed to fetch billing period: no data returned');
+  }
 
   // First get all company IDs for this account
   const { data: companies } = await supabase
@@ -30,20 +56,15 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
     .select("id", { count: "exact", head: true })
     .in("company_id", companyIds);
 
-  // Use period data with proper defaults
-  const periodData = period || {
-    quota_units: 3000,
-    used_units: 0,
-    period_start: new Date().toISOString(),
-    period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // +30 days
-  };
-
+  // Use real period data (typed)
+  const periodData: ActionPeriod = period;
   const actionsRemaining = periodData.quota_units - periodData.used_units;
 
-  console.log('[AdminOverview] Final period data:', {
+  console.log('[AdminOverview] ✓ Period data loaded successfully:', {
     quota: periodData.quota_units,
     used: periodData.used_units,
     remaining: actionsRemaining,
+    period_start: periodData.period_start,
     period_end: periodData.period_end,
   });
 

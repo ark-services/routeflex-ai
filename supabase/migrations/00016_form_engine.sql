@@ -21,76 +21,93 @@ begin
   end if;
 end $$;
 
--- ============================================================================
--- PART 2: Add unique constraints to prevent duplicate groups/columns
--- ============================================================================
 
 -- Before adding unique indexes, clean up any existing duplicates that would prevent index creation.
 -- Keep the earliest row per (board_id, name) and delete the rest.
+-- NOTE: Some earlier migrations may have created board_groups/board_columns with a different board FK column name.
+-- This block detects the correct column and applies the dedupe + unique index safely.
 
--- Deduplicate board_groups (same board_id + name)
 do $$
+declare
+  bg_board_col text;
+  bc_board_col text;
 begin
-  if exists (
-    select 1
-    from public.board_groups
-    group by board_id, name
-    having count(*) > 1
-    limit 1
-  ) then
-    delete from public.board_groups bg
-    using (
-      select id
-      from (
-        select
-          id,
-          row_number() over (
-            partition by board_id, name
-            order by coalesce(created_at, now()) asc, id asc
-          ) as rn
-        from public.board_groups
-      ) t
-      where t.rn > 1
-    ) d
-    where bg.id = d.id;
+  -- Detect the board foreign-key column name for board_groups
+  select c.column_name into bg_board_col
+  from information_schema.columns c
+  where c.table_schema = 'public'
+    and c.table_name = 'board_groups'
+    and c.column_name in ('board_id', 'board_uuid', 'board')
+  order by case c.column_name when 'board_id' then 1 when 'board_uuid' then 2 when 'board' then 3 else 99 end
+  limit 1;
+
+  if bg_board_col is not null then
+    -- Deduplicate board_groups (same board + name)
+    execute format($SQL$
+      delete from public.board_groups bg
+      using (
+        select id
+        from (
+          select
+            id,
+            row_number() over (
+              partition by %I, name
+              order by coalesce(created_at, now()) asc, id asc
+            ) as rn
+          from public.board_groups
+        ) t
+        where t.rn > 1
+      ) d
+      where bg.id = d.id
+    $SQL$, bg_board_col);
+
+    -- Unique constraint on board_groups: (board_fk, name)
+    execute format(
+      'create unique index if not exists board_groups_board_name_idx on public.board_groups(%I, name);',
+      bg_board_col
+    );
+  else
+    raise notice 'Skipping board_groups dedupe/index: no board_id-like column found on public.board_groups';
+  end if;
+
+  -- Detect the board foreign-key column name for board_columns
+  select c.column_name into bc_board_col
+  from information_schema.columns c
+  where c.table_schema = 'public'
+    and c.table_name = 'board_columns'
+    and c.column_name in ('board_id', 'board_uuid', 'board')
+  order by case c.column_name when 'board_id' then 1 when 'board_uuid' then 2 when 'board' then 3 else 99 end
+  limit 1;
+
+  if bc_board_col is not null then
+    -- Deduplicate board_columns (same board + name)
+    execute format($SQL$
+      delete from public.board_columns bc
+      using (
+        select id
+        from (
+          select
+            id,
+            row_number() over (
+              partition by %I, name
+              order by coalesce(created_at, now()) asc, id asc
+            ) as rn
+          from public.board_columns
+        ) t
+        where t.rn > 1
+      ) d
+      where bc.id = d.id
+    $SQL$, bc_board_col);
+
+    -- Unique constraint on board_columns: (board_fk, name)
+    execute format(
+      'create unique index if not exists board_columns_board_name_idx on public.board_columns(%I, name);',
+      bc_board_col
+    );
+  else
+    raise notice 'Skipping board_columns dedupe/index: no board_id-like column found on public.board_columns';
   end if;
 end $$;
-
--- Deduplicate board_columns (same board_id + name)
-do $$
-begin
-  if exists (
-    select 1
-    from public.board_columns
-    group by board_id, name
-    having count(*) > 1
-    limit 1
-  ) then
-    delete from public.board_columns bc
-    using (
-      select id
-      from (
-        select
-          id,
-          row_number() over (
-            partition by board_id, name
-            order by coalesce(created_at, now()) asc, id asc
-          ) as rn
-        from public.board_columns
-      ) t
-      where t.rn > 1
-    ) d
-    where bc.id = d.id;
-  end if;
-end $$;
-
--- Unique constraint on board_groups: (board_id, name) to prevent duplicate groups per board
-create unique index if not exists board_groups_board_name_idx
-  on public.board_groups(board_id, name);
-
--- Unique constraint on board_columns: (board_id, name) to prevent duplicate columns per board
-create unique index if not exists board_columns_board_name_idx
-  on public.board_columns(board_id, name);
 
 -- ============================================================================
 -- PART 3: Create job_application_forms table

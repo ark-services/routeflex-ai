@@ -91,9 +91,7 @@ export default async function Home() {
               You do not have access to any company yet. Please ask an account
               administrator to add you.
             </p>
-            <p className="text-sm text-stone-400">
-              Signed in as {user.email}
-            </p>
+            <p className="text-sm text-stone-400">Signed in as {user.email}</p>
             <form action={logout} className="pt-2">
               <Button variant="secondary">Log out</Button>
             </form>

@@ -1,3 +1,6 @@
+-- Ensure pgcrypto exists (Supabase typically installs it in the `extensions` schema)
+create extension if not exists pgcrypto with schema extensions;
+
 -- Create accounts table (billing entity)
 create table public.accounts (
   id uuid primary key default gen_random_uuid(),
@@ -32,12 +35,15 @@ create table public.account_invites (
   email text not null,
   role text not null default 'member' check (role in ('admin', 'member', 'viewer')),
   invited_by uuid not null references auth.users(id) on delete cascade,
-  token text not null unique default encode(gen_random_bytes(32), 'hex'),
+  token text not null unique default encode(extensions.gen_random_bytes(32), 'hex'),
   expires_at timestamptz not null default (now() + interval '7 days'),
   accepted_at timestamptz,
-  created_at timestamptz not null default now(),
-  unique (account_id, email) where accepted_at is null
+  created_at timestamptz not null default now()
 );
+
+create unique index account_invites_unique_pending_invite
+on public.account_invites (account_id, email)
+where accepted_at is null;
 
 -- Enable RLS
 alter table public.accounts enable row level security;
