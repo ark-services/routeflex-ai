@@ -5,6 +5,16 @@ export async function createClient() {
   // In newer Next.js versions, `cookies()` can be async and returns a Promise.
   const cookieStore = await cookies();
 
+  // Debug Supabase environment
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseUrlAlt = process.env.SUPABASE_URL || "";
+  const projectRef = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || "unknown";
+  console.log("DEBUG: Supabase environment:", {
+    NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
+    SUPABASE_URL: supabaseUrlAlt,
+    projectRef,
+  });
+
   const allCookies = cookieStore.getAll();
   console.log("DEBUG: Cookies exist:", allCookies.length > 0);
   console.log(

@@ -53,6 +53,11 @@ export async function GET() {
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),
+      environment: {
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || null,
+        SUPABASE_URL: process.env.SUPABASE_URL || null,
+        NODE_ENV: process.env.NODE_ENV || null,
+      },
       user: user
         ? {
             id: user.id,

@@ -75,6 +75,7 @@ export async function duplicateJob(companyId: string, jobId: string) {
   const supabase = await createClient();
 
   // Create new job with (Copy) suffix, status = "paused"
+  console.log("[duplicateJob] Inserting job:", { company_id: companyId, title: `${auth.job.title} (Copy)` });
   const { data: newJob, error: jobError } = await supabase
     .from("jobs")
     .insert({
@@ -88,6 +89,11 @@ export async function duplicateJob(companyId: string, jobId: string) {
     })
     .select()
     .single();
+
+  console.log("[duplicateJob] Insert result:", {
+    data: newJob,
+    error: jobError ? { message: jobError.message, code: jobError.code, details: jobError.details } : null,
+  });
 
   if (jobError || !newJob) {
     console.error("[duplicateJob] Failed to create job:", jobError);

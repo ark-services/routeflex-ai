@@ -36,6 +36,7 @@ export async function addJob(formData: FormData) {
   // ========================================================================
   // STEP 1: Create the job
   // ========================================================================
+  console.log("[addJob] Inserting job:", { company_id: companyId, title });
   const { data: job, error: jobError } = await supabase
     .from("jobs")
     .insert({
@@ -48,6 +49,11 @@ export async function addJob(formData: FormData) {
     })
     .select("id")
     .single();
+
+  console.log("[addJob] Insert result:", {
+    data: job,
+    error: jobError ? { message: jobError.message, code: jobError.code, details: jobError.details } : null,
+  });
 
   if (jobError || !job) {
     redirect(
