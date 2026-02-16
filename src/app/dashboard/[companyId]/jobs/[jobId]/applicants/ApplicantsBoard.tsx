@@ -143,10 +143,6 @@ export default function ApplicantsBoard({
   const [isPending, startTransition] = useTransition();
   const [newGroupName, setNewGroupName] = useState("");
 
-  // Column editing state
-  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
-  const [editingColumnValue, setEditingColumnValue] = useState("");
-
   // Add column modal
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
@@ -553,14 +549,9 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onSaveColumnName(columnId: string) {
-    const name = editingColumnValue.trim();
-    if (!name) return;
-
+  function onSaveColumnName(columnId: string, newName: string) {
     startTransition(async () => {
-      await updateBoardColumn(companyId, jobId, columnId, { name });
-      setEditingColumnId(null);
-      setEditingColumnValue("");
+      await updateBoardColumn(companyId, jobId, columnId, { name: newName });
     });
   }
 
@@ -805,18 +796,7 @@ export default function ApplicantsBoard({
                                   <SortableColumnHeader
                                     key={col.id}
                                     column={col}
-                                    isEditing={editingColumnId === col.id}
-                                    editValue={editingColumnValue}
-                                    onStartEdit={() => {
-                                      setEditingColumnId(col.id);
-                                      setEditingColumnValue(col.name);
-                                    }}
-                                    onSaveEdit={() => onSaveColumnName(col.id)}
-                                    onCancelEdit={() => {
-                                      setEditingColumnId(null);
-                                      setEditingColumnValue("");
-                                    }}
-                                    onChange={setEditingColumnValue}
+                                    onSaveEdit={(newName) => onSaveColumnName(col.id, newName)}
                                     onDelete={() => onDeleteColumn(col.id)}
                                     onHide={() => onHideColumn(col.id)}
                                     onAddRight={() => onAddColumnRight(col.id)}
@@ -1135,27 +1115,22 @@ export default function ApplicantsBoard({
 
 function SortableColumnHeader({
   column,
-  isEditing,
-  editValue,
-  onStartEdit,
-  onSaveEdit,
-  onCancelEdit,
-  onChange,
   onDelete,
   onHide,
   onAddRight,
+  onSaveEdit,
 }: {
   column: BoardColumn;
-  isEditing: boolean;
-  editValue: string;
-  onStartEdit: () => void;
-  onSaveEdit: () => void;
-  onCancelEdit: () => void;
-  onChange: (val: string) => void;
   onDelete: () => void;
   onHide: () => void;
   onAddRight: () => void;
+  onSaveEdit: (newName: string) => void;
 }) {
+  // Local edit state - matches CellRenderer pattern exactly
+  const [localValue, setLocalValue] = useState(column.name);
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `col-${column.id}`,
     disabled: isEditing,
@@ -1170,8 +1145,52 @@ function SortableColumnHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const canSaveRef = useRef(false);
+
+  // Update local value when column name changes from server
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalValue(column.name);
+    }
+  }, [column.name, isEditing]);
+
+  // Commit the edit to server (same pattern as CellRenderer)
+  const commitEdit = () => {
+    const trimmed = localValue.trim();
+    if (trimmed && trimmed !== column.name) {
+      onSaveEdit(trimmed);
+    } else {
+      setLocalValue(column.name); // Revert if empty or unchanged
+    }
+    setIsEditing(false);
+  };
+
+  // Cancel edit and revert to original value
+  const cancelEdit = () => {
+    setLocalValue(column.name);
+    setIsEditing(false);
+  };
+
+  // Handle keyboard shortcuts (same as CellRenderer)
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit();
+      (e.target as HTMLInputElement).blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus({ preventScroll: true });
+      });
+    }
+  }, [isEditing]);
 
   // Calculate menu position when it opens
   useEffect(() => {
@@ -1186,23 +1205,6 @@ function SortableColumnHeader({
     }
   }, [menuOpen]);
 
-  // Focus input when entering edit mode
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      canSaveRef.current = false;
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        inputRef.current?.focus({ preventScroll: true });
-        // Allow saving after a brief delay to prevent immediate blur from saving
-        setTimeout(() => {
-          canSaveRef.current = true;
-        }, 100);
-      });
-    } else {
-      canSaveRef.current = false;
-    }
-  }, [isEditing]);
-
   return (
     <th
       ref={setNodeRef}
@@ -1214,29 +1216,16 @@ function SortableColumnHeader({
         {isEditing ? (
           <input
             ref={inputRef}
-            value={editValue}
-            onChange={(e) => onChange(e.target.value)}
-            onBlur={(e) => {
-              // Only save if enough time has passed (prevents immediate blur)
-              if (canSaveRef.current) {
-                onSaveEdit();
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onSaveEdit();
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                onCancelEdit();
-              }
-            }}
+            type="text"
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={handleKeyDown}
             onMouseDown={(e) => {
-              // Prevent blur when clicking inside the input
+              // Prevent event from bubbling to parent that might interfere
               e.stopPropagation();
             }}
-            className="h-7 w-32 rounded border border-stone-300 px-2 text-xs outline-none focus:border-stone-500"
+            className="h-7 w-32 rounded border border-stone-300 px-2 text-xs outline-none focus:border-blue-500"
           />
         ) : (
           <>
@@ -1244,7 +1233,10 @@ function SortableColumnHeader({
             {!column.is_system && (
               <button
                 ref={menuButtonRef}
-                onClick={() => setMenuOpen(!menuOpen)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
+                }}
                 className="opacity-0 group-hover:opacity-100 text-stone-600 hover:text-stone-900 transition-opacity text-xs font-bold"
               >
                 ⋮
@@ -1255,7 +1247,7 @@ function SortableColumnHeader({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onStartEdit();
+                setIsEditing(true);
               }}
               className="text-left hover:text-stone-900 cursor-text"
               disabled={column.is_system}
