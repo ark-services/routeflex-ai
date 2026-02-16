@@ -195,19 +195,17 @@ export async function addJob(formData: FormData) {
       return typeMap[fieldType] || "text";
     };
 
-    // Create columns for all fields except file uploads (resumes handled separately)
-    const columnsToCreate = fields
-      .filter((f) => f.type !== "file") // Skip file fields for board columns
-      .map((field, index) => ({
-        board_id: boardId,
-        company_id: companyId,
-        field_id: field.id,
-        name: field.label,
-        type: mapFieldTypeToColumnType(field.type),
-        sort_order: index + 1,
-        is_system: false, // All columns are now form-driven, not "system"
-        settings: {},
-      }));
+    // Create columns from all form fields (including file uploads)
+    const columnsToCreate = fields.map((field, index) => ({
+      board_id: boardId,
+      company_id: companyId,
+      field_id: field.id,
+      name: field.label,
+      type: mapFieldTypeToColumnType(field.type),
+      sort_order: index + 1,
+      is_system: false, // All columns are now form-driven, not "system"
+      settings: {},
+    }));
 
     const { data: insertedColumns, error: colsErr } = await supabase
       .from("board_columns")

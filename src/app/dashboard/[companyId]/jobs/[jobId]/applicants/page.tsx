@@ -366,7 +366,7 @@ export default async function ApplicantsPage({
         return {
           applicant_id: fv.applicant_id,
           column_id: columnId,
-          value_text: fv.value_text,
+          value_text: fv.value_text || fv.value_file_path, // Use value_text for files too
           value_number: fv.value_number,
           value_date: fv.value_date,
           value_status_label_id: null, // field values don't have status labels

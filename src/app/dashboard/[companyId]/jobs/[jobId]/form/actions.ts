@@ -85,28 +85,26 @@ export async function createFormField(
 
   if (error) throw new Error(error.message);
 
-  // Create corresponding board column (if not a file field)
-  if (field.type !== "file") {
-    const { data: board } = await supabase
-      .from("boards")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("job_id", jobId)
-      .single();
+  // Create corresponding board column
+  const { data: board } = await supabase
+    .from("boards")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .single();
 
-    if (board) {
-      const columnType = mapFieldTypeToColumnType(field.type);
-      await supabase.from("board_columns").insert({
-        board_id: board.id,
-        company_id: companyId,
-        field_id: data.id,
-        name: field.label,
-        type: columnType,
-        sort_order: nextSortOrder,
-        is_system: false,
-        settings: {},
-      });
-    }
+  if (board) {
+    const columnType = mapFieldTypeToColumnType(field.type);
+    await supabase.from("board_columns").insert({
+      board_id: board.id,
+      company_id: companyId,
+      field_id: data.id,
+      name: field.label,
+      type: columnType,
+      sort_order: nextSortOrder,
+      is_system: false,
+      settings: {},
+    });
   }
 
   revalidatePath(dashPath(companyId, jobId));

@@ -647,6 +647,7 @@ export default function ApplicantsBoard({
     if (column.type === "number") return cell.value_number;
     if (column.type === "date") return cell.value_date;
     if (column.type === "status") return cell.value_status_label_id;
+    if (column.type === "file") return cell.value_text; // File path stored as text
     return null;
   }
 
@@ -1879,6 +1880,22 @@ function CellRenderer({
         onChange={(val) => startTransition(() => onUpdate(val))}
         onEditLabels={onEditLabels}
       />
+    );
+  }
+
+  if (column.type === "file") {
+    if (!value) {
+      return <span className="text-stone-300">—</span>;
+    }
+    return (
+      <a
+        href={`/api/resumes/view?applicantId=${applicant.id}`}
+        target="_blank"
+        rel="noreferrer"
+        className="text-blue-600 hover:underline text-sm"
+      >
+        View
+      </a>
     );
   }
 
