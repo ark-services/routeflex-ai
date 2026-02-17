@@ -753,9 +753,38 @@ export default function ApplicantsBoard({
     if (column.type === "location") return cell.value_text;
     if (column.type === "file") {
       if (!cell.value_file_path && !cell.value_text) return null;
-      let metadata: { name: string; size: number; type: string } | null = null;
-      try { if (cell.value_text) metadata = JSON.parse(cell.value_text); } catch {}
-      return { path: cell.value_file_path, metadata };
+      if (cell.value_text) {
+        try {
+          const parsed = JSON.parse(cell.value_text);
+          if (Array.isArray(parsed)) return parsed as StoredFile[];
+          // Old format: { name, size, type } metadata object — wrap into array
+          if (parsed && typeof parsed === "object" && "name" in parsed) {
+            return [{
+              id: cell.value_file_path || parsed.name,
+              name: parsed.name,
+              path: cell.value_file_path || "",
+              bucket: "files",
+              type: parsed.type || "",
+              size: parsed.size || 0,
+              createdAt: new Date().toISOString(),
+            }] as StoredFile[];
+          }
+        } catch {}
+      }
+      // Bare path only (no metadata) — synthesize a minimal StoredFile
+      if (cell.value_file_path) {
+        const name = cell.value_file_path.split("/").pop() || "File";
+        return [{
+          id: cell.value_file_path,
+          name,
+          path: cell.value_file_path,
+          bucket: "files",
+          type: "",
+          size: 0,
+          createdAt: new Date().toISOString(),
+        }] as StoredFile[];
+      }
+      return null;
     }
     return null;
   }
@@ -2086,10 +2115,15 @@ function SortableGroupHeader({
 // The hidden <input type="file"> is always in the DOM (never conditionally
 // rendered) to avoid hydration mismatches and SSR issues.
 
-type FileValue = {
-  path: string | null;
-  metadata: { name: string; size: number; type: string } | null;
-} | null;
+type StoredFile = {
+  id: string;        // stable key — uuid or path for legacy records
+  name: string;      // original filename
+  path: string;      // supabase storage path
+  bucket: string;    // always "files"
+  type: string;      // MIME type
+  size: number;      // bytes
+  createdAt: string; // ISO timestamp
+};
 
 // Tiny inline SVG icons — one per file-type family.
 function FileSvgIcon({ type }: { type: string }) {
@@ -2129,6 +2163,302 @@ function FileSvgIcon({ type }: { type: string }) {
   );
 }
 
+// ===== FileViewer =====
+// Full-screen carousel viewer for one or more StoredFile items.
+// Fetches short-lived signed URLs on demand, caches them in a ref.
+
+function FileViewer({
+  files,
+  initialIndex,
+  onClose,
+  onDelete,
+}: {
+  files: StoredFile[];
+  initialIndex: number;
+  onClose: () => void;
+  onDelete: (fileId: string) => void;
+}) {
+  const [index, setIndex] = useState(initialIndex);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string | null>>({});
+  const [loadingUrl, setLoadingUrl] = useState(false);
+  const [zoom, setZoom] = useState(1);
+
+  const current = files[index];
+
+  // Fetch a signed URL for a given file path (cached in state)
+  async function fetchSignedUrl(file: StoredFile) {
+    if (signedUrls[file.id] !== undefined) return; // already fetched or failed
+    setLoadingUrl(true);
+    try {
+      const params = new URLSearchParams({ path: file.path, bucket: file.bucket || "files" });
+      const res = await fetch(`/api/board/signed-url?${params}`);
+      const data = await res.json();
+      setSignedUrls((prev) => ({ ...prev, [file.id]: res.ok ? data.url : null }));
+    } catch {
+      setSignedUrls((prev) => ({ ...prev, [file.id]: null }));
+    } finally {
+      setLoadingUrl(false);
+    }
+  }
+
+  // Fetch URL whenever current file changes; prefetch adjacent files
+  useEffect(() => {
+    if (!current) return;
+    setZoom(1); // reset zoom on file change
+    fetchSignedUrl(current);
+    if (files[index + 1]) fetchSignedUrl(files[index + 1]);
+    if (files[index - 1]) fetchSignedUrl(files[index - 1]);
+  }, [index, files.length]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight" && index < files.length - 1) setIndex((i) => i + 1);
+      if (e.key === "ArrowLeft" && index > 0) setIndex((i) => i - 1);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [index, files.length, onClose]);
+
+  const url = current ? signedUrls[current.id] : undefined;
+  const isImage = current?.type.startsWith("image/") ?? false;
+  const isPDF = current?.type === "application/pdf";
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* Header */}
+      <div
+        className="flex flex-shrink-0 items-center justify-between border-b border-white/10 bg-black/60 px-4 py-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* File name + count */}
+        <div className="flex min-w-0 items-center gap-2">
+          {current && <FileSvgIcon type={current.type} />}
+          <span className="truncate text-sm font-medium text-white">{current?.name ?? "File"}</span>
+          {files.length > 1 && (
+            <span className="ml-1 flex-shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/60">
+              {index + 1} / {files.length}
+            </span>
+          )}
+        </div>
+
+        {/* Action bar */}
+        <div className="ml-4 flex flex-shrink-0 items-center gap-1">
+          {/* Zoom (images only) */}
+          {isImage && (
+            <>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
+                className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                title="Zoom out"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
+                className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                title="Zoom in"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                </svg>
+              </button>
+              {zoom !== 1 && (
+                <button
+                  type="button"
+                  onClick={() => setZoom(1)}
+                  className="rounded px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                  title="Reset zoom"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+              )}
+              <div className="mx-1 h-4 w-px bg-white/20" />
+            </>
+          )}
+          {/* Print */}
+          {url && (
+            <button
+              type="button"
+              onClick={() => {
+                const win = window.open(url, "_blank");
+                win?.print();
+              }}
+              className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              title="Print"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+            </button>
+          )}
+          {/* Download */}
+          {url && (
+            <a
+              href={url}
+              download={current?.name}
+              className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              title="Download"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </a>
+          )}
+          {/* Delete */}
+          {current && (
+            <button
+              type="button"
+              onClick={() => {
+                onDelete(current.id);
+                // If last file, close viewer; else advance index
+                if (files.length === 1) {
+                  onClose();
+                } else {
+                  setIndex((i) => Math.min(i, files.length - 2));
+                }
+              }}
+              className="rounded p-1.5 text-white/70 transition-colors hover:bg-red-500/80 hover:text-white"
+              title="Delete file"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+          <div className="mx-1 h-4 w-px bg-white/20" />
+          {/* Close */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Close"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Main content area */}
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Prev arrow */}
+        {index > 0 && (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => i - 1)}
+            className="absolute left-3 z-10 rounded-full bg-black/40 p-2 text-white/80 transition-colors hover:bg-black/70 hover:text-white"
+            aria-label="Previous file"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+
+        {/* File preview */}
+        <div className="flex h-full w-full items-center justify-center p-4">
+          {loadingUrl && !url ? (
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          ) : url === null ? (
+            <div className="flex flex-col items-center gap-4 text-white/60">
+              <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-sm">Unable to load file preview</p>
+            </div>
+          ) : isImage ? (
+            <img
+              src={url}
+              alt={current?.name}
+              style={{ transform: `scale(${zoom})`, transformOrigin: "center", transition: "transform 0.15s" }}
+              className="max-h-[80vh] max-w-full object-contain"
+            />
+          ) : isPDF ? (
+            <iframe src={url} className="h-[80vh] w-full max-w-4xl rounded" title={current?.name} />
+          ) : (
+            <div className="flex flex-col items-center gap-4">
+              {current && <FileSvgIcon type={current.type} />}
+              <p className="text-sm text-white/60">Preview not available for this file type.</p>
+              <a
+                href={url}
+                download={current?.name}
+                className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100"
+              >
+                Download {current?.name}
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Next arrow */}
+        {index < files.length - 1 && (
+          <button
+            type="button"
+            onClick={() => setIndex((i) => i + 1)}
+            className="absolute right-3 z-10 rounded-full bg-black/40 p-2 text-white/80 transition-colors hover:bg-black/70 hover:text-white"
+            aria-label="Next file"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Film strip dots (if multiple files) */}
+      {files.length > 1 && (
+        <div
+          className="flex flex-shrink-0 items-center justify-center gap-1.5 border-t border-white/10 bg-black/60 py-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {files.map((f, i) => (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setIndex(i)}
+              className={`h-2 rounded-full transition-all ${
+                i === index ? "w-5 bg-white" : "w-2 bg-white/30 hover:bg-white/60"
+              }`}
+              aria-label={`Go to file ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>,
+    document.body
+  );
+}
+
+// ===== FileCell =====
+//
+// Monday-style multi-file cell:
+//   • Empty: hover shows paperclip affordance, click opens file picker
+//   • 1 file: icon + truncated name; hover shows "+ Add" button
+//   • N files: first file icon + name + "+N" count badge; hover shows "+ Add"
+//   • Upload appends to the array (never overwrites)
+//   • Opens FileViewer on click for preview / delete / download / print
+//   • Drag-and-drop and Cmd/Ctrl+V paste append additional files
+//   • Hidden <input> always in DOM (no SSR/hydration issues)
+
 function FileCell({
   applicant,
   column,
@@ -2139,26 +2469,23 @@ function FileCell({
 }: {
   applicant: ApplicantRow;
   column: BoardColumn;
-  value: FileValue;
+  value: StoredFile[] | null;
   companyId: string;
   boardId: string;
   onUpdate: (val: any) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  // Local copy of value for instant optimistic feedback.
-  const [localValue, setLocalValue] = useState<FileValue>(value);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [localFiles, setLocalFiles] = useState<StoredFile[]>(value ?? []);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Always-present hidden file input — never conditionally rendered to avoid
-  // hydration mismatches between SSR (no file API) and client.
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync from server when the parent propagates a change (e.g., after optimistic
-  // update resolves or another cell on the row is saved).
+  // Sync from server when parent propagates a change
   useEffect(() => {
-    setLocalValue(value);
+    setLocalFiles(value ?? []);
   }, [value]);
 
   // ── Upload ────────────────────────────────────────────────────────────────
@@ -2178,8 +2505,19 @@ function FileCell({
       const res = await fetch("/api/board/upload-file", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error ?? "Upload failed");
-      const next: FileValue = { path: data.path, metadata: data.metadata };
-      setLocalValue(next);
+
+      const newFile: StoredFile = {
+        id: crypto.randomUUID(),
+        name: data.metadata?.name ?? file.name,
+        path: data.path,
+        bucket: "files",
+        type: data.metadata?.type ?? file.type,
+        size: data.metadata?.size ?? file.size,
+        createdAt: new Date().toISOString(),
+      };
+
+      const next = [...localFiles, newFile];
+      setLocalFiles(next);
       onUpdate(next);
       setUploadError(null);
     } catch (err) {
@@ -2193,8 +2531,7 @@ function FileCell({
     const file = e.target.files?.[0];
     if (file) {
       handleFileSelect(file);
-      // Reset so selecting the same file again still fires onChange.
-      e.target.value = "";
+      e.target.value = ""; // reset so same file can be re-selected
     }
   }
 
@@ -2202,12 +2539,12 @@ function FileCell({
     fileInputRef.current?.click();
   }
 
-  // ── Remove ────────────────────────────────────────────────────────────────
+  // ── Delete (from FileViewer) ───────────────────────────────────────────────
 
-  function handleRemove() {
-    setLocalValue(null);
-    onUpdate(null);
-    setUploadError(null);
+  function handleDelete(fileId: string) {
+    const next = localFiles.filter((f) => f.id !== fileId);
+    setLocalFiles(next);
+    onUpdate(next.length > 0 ? next : []);
   }
 
   // ── Drag-and-drop ─────────────────────────────────────────────────────────
@@ -2217,7 +2554,6 @@ function FileCell({
     setIsDragOver(true);
   }
   function handleDragLeave(e: React.DragEvent) {
-    // Only clear if truly leaving the cell (not entering a child element).
     if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
   }
   function handleDrop(e: React.DragEvent) {
@@ -2227,30 +2563,17 @@ function FileCell({
     if (file) handleFileSelect(file);
   }
 
-  // ── Paste (Cmd/Ctrl + V) ──────────────────────────────────────────────────
-  // Only upload if the pasted item is actually a file; silently ignore text/URLs.
+  // ── Paste ─────────────────────────────────────────────────────────────────
 
   function handlePaste(e: React.ClipboardEvent) {
     const fileItem = Array.from(e.clipboardData.items).find((i) => i.kind === "file");
-    if (!fileItem) return; // text or URL — ignore
+    if (!fileItem) return;
     e.preventDefault();
     const file = fileItem.getAsFile();
     if (file) handleFileSelect(file);
   }
 
-  // ── Derived display values ────────────────────────────────────────────────
-
-  const meta = localValue?.metadata ?? null;
-  const fileType = meta?.type ?? "";
-  const fileName = meta?.name ?? localValue?.path?.split("/").pop() ?? "File";
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const fileUrl = localValue?.path
-    ? `${supabaseUrl}/storage/v1/object/public/files/${localValue.path}`
-    : null;
-  const isImage = fileType.startsWith("image/");
-  const isPDF = fileType === "application/pdf";
-
-  // Hidden file input — always rendered (never gated on mounted/client check).
+  // Hidden file input — always in DOM
   const hiddenInput = (
     <input
       ref={fileInputRef}
@@ -2263,9 +2586,24 @@ function FileCell({
     />
   );
 
+  const firstFile = localFiles[0];
+  const extraCount = localFiles.length - 1;
+
+  // ── Uploading ─────────────────────────────────────────────────────────────
+
+  if (uploading) {
+    return (
+      <div className="flex h-8 w-full items-center gap-2 px-1">
+        {hiddenInput}
+        <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-stone-200 border-t-blue-500" />
+        <span className="truncate text-xs text-stone-500">Uploading…</span>
+      </div>
+    );
+  }
+
   // ── Empty state ───────────────────────────────────────────────────────────
 
-  if (!localValue && !uploading) {
+  if (localFiles.length === 0) {
     return (
       <div
         role="button"
@@ -2284,7 +2622,6 @@ function FileCell({
         }`}
       >
         {hiddenInput}
-        {/* Paperclip — visible on hover/drag/focus. Cell height is fixed at h-8 regardless. */}
         <svg
           className={`h-4 w-4 text-stone-400 transition-opacity ${
             isDragOver ? "opacity-100" : "opacity-0 group-hover/fcell:opacity-100 group-focus/fcell:opacity-100"
@@ -2297,24 +2634,9 @@ function FileCell({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
             d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
         </svg>
-        {/* Non-blocking inline error — shown inside the cell so row height stays fixed */}
         {uploadError && (
-          <span className="ml-1 truncate text-xs text-red-500" title={uploadError}>
-            {uploadError}
-          </span>
+          <span className="ml-1 truncate text-xs text-red-500" title={uploadError}>{uploadError}</span>
         )}
-      </div>
-    );
-  }
-
-  // ── Uploading state ───────────────────────────────────────────────────────
-
-  if (uploading) {
-    return (
-      <div className="flex h-8 w-full items-center gap-2 px-1">
-        {hiddenInput}
-        <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-stone-200 border-t-blue-500" />
-        <span className="truncate text-xs text-stone-500">Uploading…</span>
       </div>
     );
   }
@@ -2333,119 +2655,50 @@ function FileCell({
     >
       {hiddenInput}
 
-      {/* File icon + name — clicking opens the preview modal */}
+      {/* First file icon + name — clicking opens viewer at index 0 */}
       <button
         type="button"
-        onClick={() => setPreviewOpen(true)}
+        onClick={() => { setViewerIndex(0); setViewerOpen(true); }}
         className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-        title={fileName}
+        title={firstFile.name}
       >
-        <FileSvgIcon type={fileType} />
-        <span className="truncate text-xs text-stone-700">{fileName}</span>
+        <FileSvgIcon type={firstFile.type} />
+        <span className="truncate text-xs text-stone-700">{firstFile.name}</span>
+        {extraCount > 0 && (
+          <span className="ml-0.5 flex-shrink-0 rounded bg-stone-200 px-1 py-0.5 text-[10px] font-medium leading-none text-stone-600">
+            +{extraCount}
+          </span>
+        )}
       </button>
 
-      {/* Hover actions: replace and remove — only visible on hover to keep the cell clean */}
+      {/* Hover actions */}
       <div className="flex flex-shrink-0 items-center opacity-0 transition-opacity group-hover/fcell:opacity-100">
-        {/* Replace */}
+        {/* Add more */}
         <button
           type="button"
           onClick={openPicker}
           className="rounded p-0.5 text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
-          title="Replace file"
-          aria-label="Replace file"
+          title="Add file"
+          aria-label="Add file"
         >
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-          </svg>
-        </button>
-        {/* Remove */}
-        <button
-          type="button"
-          onClick={handleRemove}
-          className="rounded p-0.5 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-600"
-          title="Remove file"
-          aria-label="Remove file"
-        >
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </button>
       </div>
 
-      {/* Inline error badge — only after a failed re-upload attempt */}
       {uploadError && (
-        <span className="ml-1 flex-shrink-0 truncate text-xs text-red-500" title={uploadError}>!</span>
+        <span className="ml-1 flex-shrink-0 text-xs text-red-500" title={uploadError}>!</span>
       )}
 
-      {/* Preview modal — portalled to body so it's never clipped by table overflow */}
-      {previewOpen && fileUrl && createPortal(
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          onClick={() => setPreviewOpen(false)}
-        >
-          <div
-            className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal header */}
-            <div className="flex flex-shrink-0 items-center justify-between border-b border-stone-200 px-4 py-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <FileSvgIcon type={fileType} />
-                <span className="truncate text-sm font-medium text-stone-900">{fileName}</span>
-              </div>
-              <div className="ml-4 flex flex-shrink-0 items-center gap-2">
-                <a
-                  href={fileUrl}
-                  download={fileName}
-                  className="flex items-center gap-1 rounded-lg border border-stone-200 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:bg-stone-50"
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setPreviewOpen(false)}
-                  className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-900"
-                  aria-label="Close preview"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal body */}
-            <div className="min-h-0 flex-1 overflow-auto">
-              {isImage ? (
-                // Images: render inline so user can inspect without downloading.
-                <img src={fileUrl} alt={fileName} className="mx-auto max-w-full object-contain" />
-              ) : isPDF ? (
-                // PDFs: use an iframe — works in all modern browsers without plugins.
-                <iframe src={fileUrl} className="h-[80vh] w-full" title={fileName} />
-              ) : (
-                // Everything else: offer a download link.
-                <div className="flex flex-col items-center justify-center gap-4 py-16">
-                  <FileSvgIcon type={fileType} />
-                  <p className="text-sm text-stone-500">Preview not available for this file type.</p>
-                  <a
-                    href={fileUrl}
-                    download={fileName}
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
-                  >
-                    Download {fileName}
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
+      {/* File viewer */}
+      {viewerOpen && (
+        <FileViewer
+          files={localFiles}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerOpen(false)}
+          onDelete={handleDelete}
+        />
       )}
     </div>
   );

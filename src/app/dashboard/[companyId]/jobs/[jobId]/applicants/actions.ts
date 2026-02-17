@@ -1219,14 +1219,13 @@ export async function updateBoardCell(
     }
     cellData.value_text = value.trim();
   } else if (columnType === "file") {
-    // For file type, value should be an object with path and metadata
-    // { path: string, metadata: { name, size, type } }
-    if (value && typeof value === "object") {
-      cellData.value_file_path = value.path || null;
-      cellData.value_text = value.metadata ? JSON.stringify(value.metadata) : null;
+    // value is StoredFile[] — JSON-encode the array, store first path for backward compat
+    if (Array.isArray(value) && value.length > 0) {
+      cellData.value_text = JSON.stringify(value);
+      cellData.value_file_path = value[0].path;
     } else {
-      cellData.value_file_path = null;
       cellData.value_text = null;
+      cellData.value_file_path = null;
     }
   }
 
