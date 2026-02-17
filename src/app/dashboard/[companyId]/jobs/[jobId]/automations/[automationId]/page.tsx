@@ -15,6 +15,17 @@ export default async function EditAutomationPage({
   const { companyId, jobId, automationId } = await params;
   const supabase = await createClient();
 
+  // Get company to retrieve account_id
+  const { data: company } = await supabase
+    .from("companies")
+    .select("account_id")
+    .eq("id", companyId)
+    .single();
+
+  if (!company) {
+    notFound();
+  }
+
   // Fetch automation with actions
   const { data: automation, error } = await supabase
     .from("automations")
@@ -53,6 +64,7 @@ export default async function EditAutomationPage({
       <EditAutomationClient
         companyId={companyId}
         jobId={jobId}
+        accountId={company.account_id}
         automation={automation}
         triggers={triggers}
         groups={groups}

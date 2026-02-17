@@ -52,12 +52,14 @@ interface RunHistoryItem {
 export function EditAutomationClient({
   companyId,
   jobId,
+  accountId,
   automation,
   triggers,
   groups,
 }: {
   companyId: string;
   jobId: string;
+  accountId: string;
   automation: Automation;
   triggers: Trigger[];
   groups: Group[];
@@ -147,6 +149,7 @@ export function EditAutomationClient({
           <CreateTab
             companyId={companyId}
             jobId={jobId}
+            accountId={accountId}
             triggers={triggers}
             groups={groups}
             editingAutomation={automation}

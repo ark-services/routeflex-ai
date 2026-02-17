@@ -138,13 +138,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
 
     if (upsertError) {
-      console.error('Failed to store connection:', upsertError);
+      console.error('[OAuth callback-new] ❌ Failed to store connection:', upsertError);
+      const errorMsg = encodeURIComponent(upsertError.message || 'Unknown error');
       const redirectUrl = new URL(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state.accountId}/integrations`);
       redirectUrl.searchParams.set('error', 'storage_failed');
+      redirectUrl.searchParams.set('details', errorMsg);
       return NextResponse.redirect(redirectUrl.toString());
     }
 
     // Success - redirect to integrations page with success message
+    console.log('[OAuth callback-new] ✅ Successfully stored Gmail connection for user:', state.userId);
     const redirectUrl = new URL(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state.accountId}/integrations`);
     redirectUrl.searchParams.set('success', 'gmail_connected');
     redirectUrl.searchParams.set('email', emailAddress);
@@ -156,9 +159,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     return response;
   } catch (error: any) {
-    console.error('OAuth callback error:', error);
+    console.error('[OAuth callback-new] ❌ Exception:', error);
+    const errorMsg = encodeURIComponent(error.message || 'Unknown error');
     const redirectUrl = new URL(`${process.env.NEXT_PUBLIC_APP_URL}/admin`);
     redirectUrl.searchParams.set('error', 'callback_failed');
+    redirectUrl.searchParams.set('details', errorMsg);
     return NextResponse.redirect(redirectUrl.toString());
   }
 }

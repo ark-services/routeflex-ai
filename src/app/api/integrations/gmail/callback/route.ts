@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createClient } from '@/lib/supabase/server';
+import { integrationCredentialsHasMetadata } from '@/lib/db-schema-check';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams;
@@ -29,11 +30,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get email address for display
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
     const profile = await gmail.users.getProfile({ userId: 'me' });
+    const emailAddress = profile.data.emailAddress;
 
     const supabase = await createClient();
 
-    // Try to upsert with metadata first (if column exists)
-    let upsertError = null;
+    // Check if metadata column exists before attempting to use it
+    const hasMetadataColumn = await integrationCredentialsHasMetadata(supabase);
+
+    // Build base data that always works
     const baseData = {
       account_id: state,
       integration_type: 'gmail' as const,
@@ -41,37 +45,58 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       is_active: true,
     };
 
-    // First attempt: with metadata
-    const { error: errorWithMetadata } = await supabase
-      .from('integration_credentials')
-      .upsert({
-        ...baseData,
-        metadata: { email: profile.data.emailAddress },
-      }, {
-        onConflict: 'account_id,integration_type'
-      });
+    let upsertError = null;
 
-    // If metadata column doesn't exist, try without it
-    if (errorWithMetadata?.message?.includes('metadata')) {
-      console.warn('metadata column not found, retrying without it');
-      const { error: errorWithoutMetadata } = await supabase
+    if (hasMetadataColumn) {
+      // Try with metadata if column exists
+      console.log('[OAuth callback] metadata column exists, including in upsert');
+      const { error } = await supabase
+        .from('integration_credentials')
+        .upsert({
+          ...baseData,
+          metadata: { email: emailAddress },
+        }, {
+          onConflict: 'account_id,integration_type'
+        });
+      upsertError = error;
+    } else {
+      // Column doesn't exist, skip metadata
+      console.warn('[OAuth callback] ⚠️  metadata column does not exist, upserting without it');
+      const { error } = await supabase
         .from('integration_credentials')
         .upsert(baseData, {
           onConflict: 'account_id,integration_type'
         });
-      upsertError = errorWithoutMetadata;
-    } else {
-      upsertError = errorWithMetadata;
+      upsertError = error;
+    }
+
+    // Defensive fallback: if still failed with metadata error, retry without it
+    if (upsertError && upsertError.message?.includes('metadata')) {
+      console.warn('[OAuth callback] ⚠️  Retry without metadata after error:', upsertError.message);
+      const { error: fallbackError } = await supabase
+        .from('integration_credentials')
+        .upsert(baseData, {
+          onConflict: 'account_id,integration_type'
+        });
+      upsertError = fallbackError;
     }
 
     if (upsertError) {
-      console.error('Failed to store credentials:', upsertError);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=storage_failed`);
+      console.error('[OAuth callback] ❌ Failed to store credentials:', upsertError);
+      // Return readable error instead of just "storage_failed"
+      const errorMsg = encodeURIComponent(upsertError.message || 'Unknown error');
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=storage_failed&details=${errorMsg}`
+      );
     }
 
+    console.log('[OAuth callback] ✅ Successfully stored Gmail credentials for account:', state);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?gmail=connected`);
-  } catch (err) {
-    console.error('OAuth callback error:', err);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=oauth_failed`);
+  } catch (err: any) {
+    console.error('[OAuth callback] ❌ Exception:', err);
+    const errorMsg = encodeURIComponent(err.message || 'Unknown error');
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=oauth_failed&details=${errorMsg}`
+    );
   }
 }

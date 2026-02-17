@@ -39,6 +39,7 @@ interface AutomationOverlayProps {
   onClose: () => void;
   companyId: string;
   jobId: string;
+  accountId: string;
   automations: Automation[];
   triggers: Trigger[];
   groups: Group[];
@@ -48,6 +49,7 @@ export function AutomationOverlay({
   isOpen,
   onClose,
   companyId,
+  accountId,
   jobId,
   automations,
   triggers,
@@ -152,6 +154,7 @@ export function AutomationOverlay({
               key={`create-${key}`}
               companyId={companyId}
               jobId={jobId}
+              accountId={accountId}
               triggers={triggers}
               groups={groups}
               onCreated={handleCreated}

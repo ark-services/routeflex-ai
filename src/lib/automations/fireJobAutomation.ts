@@ -413,6 +413,12 @@ async function executeAction(
     case 'send_slack':
       return executeSendSlack(supabase, companyId, jobId, config, payload);
 
+    case 'email_gmail':
+      return executeEmailGmail(supabase, companyId, jobId, config, payload);
+
+    case 'send_email_gmail':
+      return executeSendEmailGmail(supabase, companyId, jobId, config, payload);
+
     default:
       return { success: false, error: `Unknown action type: ${type}` };
   }
@@ -1048,6 +1054,227 @@ async function executeSendSlack(
   } catch (err: any) {
     return { success: false, error: err.message };
   }
+}
+
+/**
+ * Action: email_gmail
+ * Config: { gmail_connection_id: uuid, recipient_column_id: uuid, subject: string, body: string }
+ *
+ * NOTE: Sends email via Gmail API using stored OAuth credentials
+ */
+async function executeEmailGmail(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const { gmail_connection_id, recipient_column_id, subject, body } = config;
+  const applicantId = payload.applicant_id || payload.subject_id;
+
+  // Validate config
+  if (!gmail_connection_id || !recipient_column_id || !subject || !body || !applicantId) {
+    return { success: false, error: 'Missing required config or applicant_id' };
+  }
+
+  // Get applicant data
+  const { data: applicant } = await supabase
+    .from('applicants')
+    .select('full_name, email, company_id')
+    .eq('id', applicantId)
+    .single();
+
+  if (!applicant) {
+    return { success: false, error: 'Applicant not found' };
+  }
+
+  // Get company and job data
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name, account_id')
+    .eq('id', companyId)
+    .single();
+
+  const { data: job } = await supabase
+    .from('jobs')
+    .select('title')
+    .eq('id', jobId)
+    .single();
+
+  // Get recipient email from board cell
+  const { data: recipientCell } = await supabase
+    .from('board_cells')
+    .select('value_text')
+    .eq('applicant_id', applicantId)
+    .eq('column_id', recipient_column_id)
+    .maybeSingle();
+
+  const recipientEmail = recipientCell?.value_text;
+  if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+    return { success: false, error: 'Invalid or missing recipient email' };
+  }
+
+  // Resolve variables
+  const context = {
+    applicant_name: applicant.full_name || 'N/A',
+    applicant_email: applicant.email || 'N/A',
+    company_name: company?.name || 'N/A',
+    job_title: job?.title || 'N/A',
+  };
+
+  const resolvedSubject = resolveVariables(subject, context);
+  const resolvedBody = resolveVariables(body, context);
+
+  // Get Gmail client
+  const { getGmailClient, sendGmailMessage } = await import('@/lib/gmail/client');
+  const gmailResult = await getGmailClient(supabase, company?.account_id || '');
+
+  if (!gmailResult) {
+    return { success: false, error: 'Gmail account not connected or expired' };
+  }
+
+  // Send email
+  const result = await sendGmailMessage(gmailResult.client, {
+    to: recipientEmail,
+    subject: resolvedSubject,
+    body: resolvedBody,
+  });
+
+  return result.success
+    ? { success: true }
+    : { success: false, error: result.error };
+}
+
+/**
+ * Action: send_email_gmail (per-user Gmail integration)
+ * Config: { connection_id: uuid, recipient_column_id: uuid, subject: string, body: string }
+ */
+async function executeSendEmailGmail(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const { connection_id, recipient_column_id, subject, body } = config;
+  const applicantId = payload.applicant_id || payload.subject_id;
+
+  // Validate config
+  if (!connection_id || !recipient_column_id || !subject || !applicantId) {
+    return { success: false, error: 'Missing required config fields' };
+  }
+
+  // Get applicant data
+  const { data: applicant } = await supabase
+    .from('applicants')
+    .select('full_name, email')
+    .eq('id', applicantId)
+    .single();
+
+  if (!applicant) {
+    return { success: false, error: 'Applicant not found' };
+  }
+
+  // Get company and job data for variables
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name')
+    .eq('id', companyId)
+    .single();
+
+  const { data: job } = await supabase
+    .from('jobs')
+    .select('title')
+    .eq('id', jobId)
+    .single();
+
+  // Get recipient email from board cell
+  const { data: recipientCell } = await supabase
+    .from('board_cells')
+    .select('value_text')
+    .eq('applicant_id', applicantId)
+    .eq('column_id', recipient_column_id)
+    .maybeSingle();
+
+  const recipientEmail = recipientCell?.value_text;
+
+  // Validate email
+  if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+    return { success: false, error: 'Invalid or missing recipient email' };
+  }
+
+  // Build variable context
+  const context: Record<string, any> = {
+    applicant_name: applicant.full_name || 'N/A',
+    applicant_email: applicant.email || 'N/A',
+    company_name: company?.name || 'N/A',
+    job_title: job?.title || 'N/A',
+  };
+
+  // Get all board columns for column variable substitution
+  const { data: allColumns } = await supabase
+    .from('board_columns')
+    .select('id, name')
+    .eq('company_id', companyId);
+
+  // Get all cell values for this applicant
+  const { data: allCells } = await supabase
+    .from('board_cells')
+    .select('column_id, value_text, value_number, value_date')
+    .eq('applicant_id', applicantId);
+
+  // Add column values to context
+  if (allColumns && allCells) {
+    for (const column of allColumns) {
+      const cell = allCells.find(c => c.column_id === column.id);
+      const columnKey = column.name.toLowerCase().replace(/\s+/g, '_');
+      if (cell) {
+        context[columnKey] = cell.value_text || cell.value_number || cell.value_date || '';
+      }
+    }
+  }
+
+  // Resolve variables in subject and body
+  const resolvedSubject = resolveVariables(subject, context);
+  const resolvedBody = resolveVariables(body || '', context);
+
+  // Get Gmail client for this connection
+  const { getGmailClientForConnection, sendEmail } = await import('@/lib/gmail-send');
+  const gmailClient = await getGmailClientForConnection(supabase, connection_id);
+
+  if (!gmailClient) {
+    return { success: false, error: 'Gmail connection expired or revoked' };
+  }
+
+  // Send email
+  const result = await sendEmail(gmailClient.gmail, {
+    to: recipientEmail,
+    subject: resolvedSubject,
+    body: resolvedBody,
+  });
+
+  // Log send (without full body for PII protection)
+  console.log('[executeSendEmailGmail] Email sent:', {
+    success: result.success,
+    from: gmailClient.emailAddress,
+    to: recipientEmail,
+    subject: resolvedSubject,
+    messageId: result.messageId,
+    error: result.error,
+  });
+
+  return result.success
+    ? { success: true }
+    : { success: false, error: result.error };
+}
+
+/**
+ * Helper: Resolve template variables in a string
+ */
+function resolveVariables(template: string, context: Record<string, any>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    return context[key]?.toString() || match;
+  });
 }
 
 /**

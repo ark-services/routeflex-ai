@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Plus, X, ChevronDown, Zap } from "lucide-react";
 import { createJobAutomation, updateJobAutomation, getJobBoardColumns } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
+import { EmailGmailEditor } from "./EmailGmailEditor";
+import { SendEmailGmailAction } from "./SendEmailGmailAction";
 
 interface Trigger {
   id: string;
@@ -52,6 +54,7 @@ interface Automation {
 interface CreateTabProps {
   companyId: string;
   jobId: string;
+  accountId: string;
   triggers: Trigger[];
   groups: Group[];
   onCreated: () => void;
@@ -62,6 +65,7 @@ interface CreateTabProps {
 export function CreateTab({
   companyId,
   jobId,
+  accountId,
   triggers,
   groups,
   onCreated,
@@ -178,6 +182,18 @@ export function CreateTab({
         alert("Please enter Slack webhook URL and message");
         return;
       }
+      if (action.type === "email_gmail") {
+        if (!action.config.gmail_connection_id || !action.config.recipient_column_id || !action.config.subject || !action.config.body) {
+          alert("Please configure all Gmail email fields");
+          return;
+        }
+      }
+      if (action.type === "send_email_gmail") {
+        if (!action.config.connection_id || !action.config.recipient_column_id || !action.config.subject) {
+          alert("Please configure Gmail account, recipient, and subject");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -269,6 +285,14 @@ export function CreateTab({
           return "send email";
         case "send_slack":
           return "send Slack notification";
+        case "email_gmail": {
+          const recipientCol = columns.find((c) => c.id === action.config.recipient_column_id);
+          return recipientCol ? `send email to ${recipientCol.name}` : "send Gmail email";
+        }
+        case "send_email_gmail": {
+          const recipientCol = columns.find((c) => c.id === action.config.recipient_column_id);
+          return recipientCol ? `send email to ${recipientCol.name}` : "send email";
+        }
         default:
           return action.type;
       }
@@ -335,6 +359,7 @@ export function CreateTab({
                   index={index}
                   columns={columns}
                   groups={groups}
+                  accountId={accountId}
                   onChange={(updates) => updateAction(index, updates)}
                   onRemove={() => removeAction(index)}
                 />
@@ -542,6 +567,7 @@ function ActionEditor({
   index,
   columns,
   groups,
+  accountId,
   onChange,
   onRemove,
 }: {
@@ -549,6 +575,7 @@ function ActionEditor({
   index: number;
   columns: Column[];
   groups: Group[];
+  accountId: string;
   onChange: (updates: Partial<Action>) => void;
   onRemove: () => void;
 }) {
@@ -561,6 +588,7 @@ function ActionEditor({
     { value: "inc_dec", label: "Increase/decrease value" },
     { value: "send_email", label: "Send email (stub)" },
     { value: "send_slack", label: "Send Slack notification" },
+    { value: "send_email_gmail", label: "Send Email (Gmail)" },
   ];
 
   return (
@@ -718,6 +746,24 @@ function ActionEditor({
 
         {action.type === "send_email" && (
           <span className="text-gray-500 text-sm">(Email integration stub - configure in code)</span>
+        )}
+
+        {action.type === "email_gmail" && (
+          <EmailGmailEditor
+            accountId={accountId}
+            action={action}
+            columns={columns}
+            onChange={onChange}
+          />
+        )}
+
+        {action.type === "send_email_gmail" && (
+          <SendEmailGmailAction
+            accountId={accountId}
+            action={action}
+            columns={columns}
+            onChange={onChange}
+          />
         )}
       </div>
     </div>

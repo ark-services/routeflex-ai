@@ -507,14 +507,26 @@ export default async function ApplicantsPage({
             </a>
           </div>
 
-          {/* Automate Button */}
-          <AutomateButton
-            companyId={companyId}
-            jobId={jobId}
-            automations={automations || []}
-            triggers={triggers || []}
-            groups={groupsForAutomation || []}
-          />
+          {/* Automate & Integrate Buttons */}
+          <div className="flex items-center gap-3">
+            <a
+              href={`/admin/${company.account_id}/integrations`}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center gap-2 text-sm font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Integrate
+            </a>
+            <AutomateButton
+              companyId={companyId}
+              jobId={jobId}
+              accountId={company.account_id}
+              automations={automations || []}
+              triggers={triggers || []}
+              groups={groupsForAutomation || []}
+            />
+          </div>
         </div>
       </div>
 

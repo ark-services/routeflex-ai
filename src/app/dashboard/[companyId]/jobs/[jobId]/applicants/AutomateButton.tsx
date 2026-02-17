@@ -7,6 +7,7 @@ import { AutomationOverlay } from "@/components/automations/AutomationOverlay";
 interface AutomateButtonProps {
   companyId: string;
   jobId: string;
+  accountId: string;
   automations: any[];
   triggers: any[];
   groups: any[];
@@ -15,6 +16,7 @@ interface AutomateButtonProps {
 export function AutomateButton({
   companyId,
   jobId,
+  accountId,
   automations,
   triggers,
   groups,
@@ -36,6 +38,7 @@ export function AutomateButton({
         onClose={() => setIsOpen(false)}
         companyId={companyId}
         jobId={jobId}
+        accountId={accountId}
         automations={automations}
         triggers={triggers}
         groups={groups}

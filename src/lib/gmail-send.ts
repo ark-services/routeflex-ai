@@ -1,0 +1,136 @@
+/**
+ * Gmail sending utilities with token refresh
+ */
+
+import { google, gmail_v1 } from 'googleapis';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { decrypt, encrypt } from './encryption';
+
+interface GmailClient {
+  gmail: gmail_v1.Gmail;
+  emailAddress: string;
+}
+
+/**
+ * Get Gmail client for a specific connection with automatic token refresh
+ */
+export async function getGmailClientForConnection(
+  supabase: SupabaseClient,
+  connectionId: string
+): Promise<GmailClient | null> {
+  // Fetch connection with encrypted tokens
+  const { data: connection, error } = await supabase
+    .from('gmail_connections')
+    .select('id, email_address, access_token, refresh_token, token_expiry')
+    .eq('id', connectionId)
+    .is('revoked_at', null)
+    .single();
+
+  if (error || !connection) {
+    console.error('[getGmailClientForConnection] Connection not found:', error);
+    return null;
+  }
+
+  try {
+    // Decrypt tokens
+    const accessToken = decrypt(connection.access_token);
+    const refreshToken = connection.refresh_token ? decrypt(connection.refresh_token) : null;
+
+    // Create OAuth2 client
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_OAUTH_CLIENT_ID,
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+      process.env.GOOGLE_OAUTH_REDIRECT_URI
+    );
+
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expiry_date: connection.token_expiry ? new Date(connection.token_expiry).getTime() : undefined,
+    });
+
+    // Set up token refresh handler
+    oauth2Client.on('tokens', async (tokens) => {
+      console.log('[getGmailClientForConnection] Refreshing tokens');
+
+      const updates: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (tokens.access_token) {
+        updates.access_token = encrypt(tokens.access_token);
+      }
+
+      if (tokens.refresh_token) {
+        updates.refresh_token = encrypt(tokens.refresh_token);
+      }
+
+      if (tokens.expiry_date) {
+        updates.token_expiry = new Date(tokens.expiry_date).toISOString();
+      }
+
+      await supabase
+        .from('gmail_connections')
+        .update(updates)
+        .eq('id', connectionId);
+    });
+
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+    return {
+      gmail,
+      emailAddress: connection.email_address,
+    };
+  } catch (err: any) {
+    console.error('[getGmailClientForConnection] Failed to initialize client:', err);
+    return null;
+  }
+}
+
+/**
+ * Send email via Gmail API
+ */
+export async function sendEmail(
+  gmail: gmail_v1.Gmail,
+  params: { to: string; subject: string; body: string; from?: string }
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  try {
+    // Build RFC 2822 formatted message
+    const messageParts = [
+      `To: ${params.to}`,
+      `Subject: ${params.subject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      params.body,
+    ];
+
+    const message = messageParts.join('\n');
+
+    // Base64url encode the message
+    const encodedMessage = Buffer.from(message)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    // Send via Gmail API
+    const response = await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedMessage,
+      },
+    });
+
+    return {
+      success: true,
+      messageId: response.data.id || undefined,
+    };
+  } catch (err: any) {
+    console.error('[sendEmail] Failed to send:', err);
+    return {
+      success: false,
+      error: err.message || 'Unknown error',
+    };
+  }
+}
