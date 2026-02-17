@@ -1,102 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
-import { createClient } from '@/lib/supabase/server';
-import { integrationCredentialsHasMetadata } from '@/lib/db-schema-check';
 
+/**
+ * DEPRECATED: Old Gmail OAuth callback route
+ *
+ * This route is deprecated and should not be used.
+ * Use /api/integrations/gmail/callback-new instead.
+ *
+ * This route relied on NEXT_PUBLIC_APP_URL which caused "Invalid URL" crashes
+ * when the environment variable was undefined.
+ *
+ * Canonical OAuth flow:
+ * - Start: /api/integrations/gmail/start
+ * - Callback: /api/integrations/gmail/callback-new
+ *
+ * This route also stored credentials in the old integration_credentials table
+ * instead of the per-user gmail_connections table.
+ */
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const searchParams = request.nextUrl.searchParams;
-  const code = searchParams.get('code');
-  const state = searchParams.get('state'); // account_id
-  const error = searchParams.get('error');
+  console.error('[Gmail OAuth /callback] ❌ DEPRECATED: This route should not be used');
+  console.error('[Gmail OAuth /callback]    The canonical callback is /api/integrations/gmail/callback-new');
+  console.error('[Gmail OAuth /callback]    Update GOOGLE_OAUTH_REDIRECT_URI to point to /callback-new');
 
-  if (error) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=oauth_denied`);
-  }
+  // Get base URL from request to avoid NEXT_PUBLIC_APP_URL issues
+  const baseUrl = request.nextUrl.origin;
 
-  if (!code || !state) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=oauth_failed`);
-  }
+  // Return error to user explaining the issue
+  const redirectUrl = new URL('/admin', baseUrl);
+  redirectUrl.searchParams.set('error', 'oauth_misconfigured');
+  redirectUrl.searchParams.set(
+    'details',
+    'OAuth callback route is deprecated. Update GOOGLE_OAUTH_REDIRECT_URI to use /callback-new'
+  );
 
-  try {
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/gmail/callback`
-    );
-
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
-
-    // Get email address for display
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-    const profile = await gmail.users.getProfile({ userId: 'me' });
-    const emailAddress = profile.data.emailAddress;
-
-    const supabase = await createClient();
-
-    // Check if metadata column exists before attempting to use it
-    const hasMetadataColumn = await integrationCredentialsHasMetadata(supabase);
-
-    // Build base data that always works
-    const baseData = {
-      account_id: state,
-      integration_type: 'gmail' as const,
-      credentials: tokens,
-      is_active: true,
-    };
-
-    let upsertError = null;
-
-    if (hasMetadataColumn) {
-      // Try with metadata if column exists
-      console.log('[OAuth callback] metadata column exists, including in upsert');
-      const { error } = await supabase
-        .from('integration_credentials')
-        .upsert({
-          ...baseData,
-          metadata: { email: emailAddress },
-        }, {
-          onConflict: 'account_id,integration_type'
-        });
-      upsertError = error;
-    } else {
-      // Column doesn't exist, skip metadata
-      console.warn('[OAuth callback] ⚠️  metadata column does not exist, upserting without it');
-      const { error } = await supabase
-        .from('integration_credentials')
-        .upsert(baseData, {
-          onConflict: 'account_id,integration_type'
-        });
-      upsertError = error;
-    }
-
-    // Defensive fallback: if still failed with metadata error, retry without it
-    if (upsertError && upsertError.message?.includes('metadata')) {
-      console.warn('[OAuth callback] ⚠️  Retry without metadata after error:', upsertError.message);
-      const { error: fallbackError } = await supabase
-        .from('integration_credentials')
-        .upsert(baseData, {
-          onConflict: 'account_id,integration_type'
-        });
-      upsertError = fallbackError;
-    }
-
-    if (upsertError) {
-      console.error('[OAuth callback] ❌ Failed to store credentials:', upsertError);
-      // Return readable error instead of just "storage_failed"
-      const errorMsg = encodeURIComponent(upsertError.message || 'Unknown error');
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=storage_failed&details=${errorMsg}`
-      );
-    }
-
-    console.log('[OAuth callback] ✅ Successfully stored Gmail credentials for account:', state);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?gmail=connected`);
-  } catch (err: any) {
-    console.error('[OAuth callback] ❌ Exception:', err);
-    const errorMsg = encodeURIComponent(err.message || 'Unknown error');
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/admin/${state}/integrations?error=oauth_failed&details=${errorMsg}`
-    );
-  }
+  return NextResponse.redirect(redirectUrl.toString());
 }

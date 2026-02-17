@@ -50,6 +50,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const baseUrl = getBaseUrl(request);
   console.log('[OAuth callback-new] Base URL:', baseUrl);
 
+  // CRITICAL: Validate required OAuth environment variables
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    const missing = [];
+    if (!clientId) missing.push('GOOGLE_OAUTH_CLIENT_ID');
+    if (!clientSecret) missing.push('GOOGLE_OAUTH_CLIENT_SECRET');
+    if (!redirectUri) missing.push('GOOGLE_OAUTH_REDIRECT_URI');
+
+    console.error('[OAuth callback-new] ❌ Missing required environment variables:', missing.join(', '));
+    console.error('[OAuth callback-new]    Token exchange will fail without these');
+
+    const redirectUrl = buildRedirectUrl(
+      baseUrl,
+      '/admin',
+      {
+        error: 'oauth_misconfigured',
+        details: `Missing env vars: ${missing.join(', ')}`
+      }
+    );
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  console.log('[OAuth callback-new] Configuration validated');
+  console.log(`  Client ID: ${clientId.substring(0, 20)}...`);
+  console.log(`  Redirect URI: ${redirectUri}`);
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
@@ -99,26 +128,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Exchange code for tokens
+    // Exchange code for tokens (using validated env vars)
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code,
-        client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
-        redirect_uri: process.env.GOOGLE_OAUTH_REDIRECT_URI!,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
     });
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.text();
-      console.error('Token exchange failed:', error);
+      console.error('[OAuth callback-new] ❌ Token exchange failed');
+      console.error(`  Status: ${tokenResponse.status} ${tokenResponse.statusText}`);
+      console.error(`  Response: ${error}`);
+      console.error(`  This usually indicates:`);
+      console.error(`    - Invalid authorization code (expired or already used)`);
+      console.error(`    - Mismatched redirect_uri (must match start route exactly)`);
+      console.error(`    - Invalid client_id or client_secret`);
+      console.error(`  Current redirect_uri: ${redirectUri}`);
+
       const redirectUrl = buildRedirectUrl(
         baseUrl,
         `/admin/${state.accountId}/integrations`,
-        { error: 'token_exchange_failed' }
+        { error: 'token_exchange_failed', details: tokenResponse.statusText }
       );
       return NextResponse.redirect(redirectUrl);
     }

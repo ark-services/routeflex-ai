@@ -1,44 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
-import { createClient } from '@/lib/supabase/server';
 
+/**
+ * DEPRECATED: Old Gmail OAuth route
+ *
+ * This route is deprecated and should not be used.
+ * Use /api/integrations/gmail/start instead.
+ *
+ * This route relied on NEXT_PUBLIC_APP_URL and GOOGLE_CLIENT_ID (old env vars)
+ * which caused configuration drift and "Invalid URL" errors.
+ *
+ * Canonical OAuth flow:
+ * - Start: /api/integrations/gmail/start
+ * - Callback: /api/integrations/gmail/callback-new
+ */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  console.warn('[Gmail OAuth /auth] ⚠️  DEPRECATED: This route should not be used');
+  console.warn('[Gmail OAuth /auth]    Use /api/integrations/gmail/start instead');
+
+  // Redirect to new start route
   const accountId = request.nextUrl.searchParams.get('account_id');
-  if (!accountId) {
-    return NextResponse.json({ error: 'account_id required' }, { status: 400 });
+  const newUrl = new URL('/api/integrations/gmail/start', request.nextUrl.origin);
+  if (accountId) {
+    newUrl.searchParams.set('account_id', accountId);
   }
 
-  // Verify user has admin access
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login`);
-  }
-
-  const { data: membership } = await supabase
-    .from('account_memberships')
-    .select('role')
-    .eq('account_id', accountId)
-    .eq('user_id', user.id)
-    .single();
-
-  if (!membership || membership.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  // Generate OAuth URL
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/gmail/callback`
-  );
-
-  const authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/gmail.send'],
-    state: accountId,
-    prompt: 'consent',
-  });
-
-  return NextResponse.redirect(authUrl);
+  console.log('[Gmail OAuth /auth] Redirecting to new route:', newUrl.toString());
+  return NextResponse.redirect(newUrl.toString());
 }
