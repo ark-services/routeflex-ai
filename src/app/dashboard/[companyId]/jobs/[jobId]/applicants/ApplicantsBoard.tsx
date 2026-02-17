@@ -53,6 +53,7 @@ import { statusColorArray } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { formatPhone } from "@/lib/validation/columnValidation";
+import type { BoardColumn as BaseBoardColumn, BoardCell, BoardStatusLabel } from "@/lib/types";
 
 type Group = {
   id: string;
@@ -75,12 +76,8 @@ type ApplicantRow = {
   position: number;
 };
 
-type BoardColumn = {
-  id: string;
-  name: string;
-  type: "text" | "number" | "date" | "file" | "status";
-  is_system: boolean;
-  sort_order: number;
+// Extend BoardColumn with job-specific UI fields
+type BoardColumn = BaseBoardColumn & {
   is_hidden?: boolean;
   settings?: {
     ui?: {
@@ -90,22 +87,9 @@ type BoardColumn = {
   };
 };
 
-type StatusLabel = {
-  id: string;
-  column_id: string;
-  label: string;
-  color: string;
-  sort_order: number;
-};
-
-type BoardCell = {
-  applicant_id: string;
-  column_id: string;
-  value_text: string | null;
-  value_number: number | null;
-  value_date: string | null;
-  value_status_label_id: string | null;
-};
+// Alias for compatibility
+type StatusLabel = BoardStatusLabel;
+// BoardCell imported from @/lib/types includes all value columns including value_file_path
 
 const PRESET_COLORS = statusColorArray.map(c => c.value);
 
