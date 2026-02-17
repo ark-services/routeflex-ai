@@ -52,6 +52,7 @@ import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation
 import { statusColorArray } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { formatPhone } from "@/lib/validation/columnValidation";
 
 type Group = {
   id: string;
@@ -152,7 +153,7 @@ export default function ApplicantsBoard({
   // Add column modal
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
-  const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status">("text");
+  const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location">("text");
   const [addColumnError, setAddColumnError] = useState<string | null>(null);
   const [addAfterColumnId, setAddAfterColumnId] = useState<string | null>(null);
 
@@ -647,6 +648,9 @@ export default function ApplicantsBoard({
     if (column.type === "number") return cell.value_number;
     if (column.type === "date") return cell.value_date;
     if (column.type === "status") return cell.value_status_label_id;
+    if (column.type === "email") return cell.value_text;
+    if (column.type === "phone") return cell.value_text;
+    if (column.type === "location") return cell.value_text;
     if (column.type === "file") return cell.value_text; // File path stored as text
     return null;
   }
@@ -1012,8 +1016,12 @@ export default function ApplicantsBoard({
                     className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
                   >
                     <option value="text">Text</option>
+                    <option value="email">Email</option>
+                    <option value="phone">Phone</option>
                     <option value="number">Number</option>
                     <option value="date">Date</option>
+                    <option value="location">Location</option>
+                    <option value="file">File</option>
                     <option value="status">Status</option>
                   </select>
                 </div>
@@ -1880,6 +1888,72 @@ function CellRenderer({
         onChange={(val) => startTransition(() => onUpdate(val))}
         onEditLabels={onEditLabels}
       />
+    );
+  }
+
+  if (column.type === "email") {
+    return (
+      <div className="relative">
+        <input
+          type="email"
+          value={localValue ?? ""}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onFocus={() => setIsEditing(true)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          placeholder="email@example.com"
+        />
+        {isPending && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (column.type === "phone") {
+    return (
+      <div className="relative">
+        <input
+          type="tel"
+          value={localValue ? formatPhone(localValue) : ""}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onFocus={() => setIsEditing(true)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          placeholder="(123) 456-7890"
+        />
+        {isPending && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (column.type === "location") {
+    return (
+      <div className="relative">
+        <input
+          type="text"
+          value={localValue ?? ""}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onFocus={() => setIsEditing(true)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          placeholder="City, State"
+        />
+        {isPending && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          </div>
+        )}
+      </div>
     );
   }
 

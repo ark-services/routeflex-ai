@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { validateEmail, validatePhone, validateLocation } from "@/lib/validation/columnValidation";
 
 function dashPath(companyId: string, jobId: string) {
   return `/dashboard/${companyId}/jobs/${jobId}/applicants`;
@@ -557,7 +558,7 @@ export async function createBoardColumn(
   companyId: string,
   jobId: string,
   name: string,
-  columnType: "text" | "number" | "date" | "file" | "status",
+  columnType: "text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location",
   afterColumnId?: string
 ) {
   const supabase = await createClient();
@@ -1097,7 +1098,7 @@ export async function updateBoardCell(
   jobId: string,
   applicantId: string,
   columnId: string,
-  columnType: "text" | "number" | "date" | "status",
+  columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file",
   value: any
 ) {
   // UUID validation regex
@@ -1152,6 +1153,7 @@ export async function updateBoardCell(
     value_number: null,
     value_date: null,
     value_status_label_id: null,
+    value_file_path: null,
   };
 
   if (columnType === "text") {
@@ -1162,6 +1164,38 @@ export async function updateBoardCell(
     cellData.value_date = value;
   } else if (columnType === "status") {
     cellData.value_status_label_id = value;
+  } else if (columnType === "email") {
+    // Validate email
+    const validation = validateEmail(value);
+    if (!validation.valid) {
+      throw new Error(validation.error || "Invalid email address");
+    }
+    cellData.value_text = value.trim();
+  } else if (columnType === "phone") {
+    // Validate and normalize phone
+    const validation = validatePhone(value);
+    if (!validation.valid) {
+      throw new Error(validation.error || "Invalid phone number");
+    }
+    // Store normalized digits
+    cellData.value_text = validation.normalized;
+  } else if (columnType === "location") {
+    // Validate location
+    const validation = validateLocation(value);
+    if (!validation.valid) {
+      throw new Error(validation.error || "Invalid location");
+    }
+    cellData.value_text = value.trim();
+  } else if (columnType === "file") {
+    // For file type, value should be an object with path and metadata
+    // { path: string, metadata: { name, size, type } }
+    if (value && typeof value === "object") {
+      cellData.value_file_path = value.path || null;
+      cellData.value_text = value.metadata ? JSON.stringify(value.metadata) : null;
+    } else {
+      cellData.value_file_path = null;
+      cellData.value_text = null;
+    }
   }
 
   console.log('[updateBoardCell] Upserting cell data:', cellData);

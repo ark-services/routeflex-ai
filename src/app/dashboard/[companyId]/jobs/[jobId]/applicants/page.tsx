@@ -295,7 +295,7 @@ export default async function ApplicantsPage({
     const { data: boardCellData, error: boardCellErr } = await supabase
       .from("board_cells")
       .select(
-        "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id"
+        "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id,value_file_path"
       )
       .in("applicant_id", applicantIds);
 
