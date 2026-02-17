@@ -401,9 +401,9 @@ export default function ApplicantsBoard({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden bg-stone-50">
+      <div className="flex flex-col h-full min-h-0 bg-stone-50">
         {/* Board content - single horizontal scroll */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto min-h-0">
           <div className="min-w-max p-6">
             {/* Groups */}
             <div className="space-y-4">

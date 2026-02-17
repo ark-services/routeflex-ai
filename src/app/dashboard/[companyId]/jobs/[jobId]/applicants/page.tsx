@@ -489,7 +489,7 @@ export default async function ApplicantsPage({
   return (
     <div className="h-full flex flex-col">
       {/* Board container: toolbar (search · filter · integrate · automate | views) + board */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
         <ApplicantsBoardContainer
           companyId={companyId}
           jobId={jobId}

@@ -37,7 +37,7 @@ export function AppShell({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50">
+    <div className="h-screen flex flex-col bg-stone-50">
       <TopBar
         companies={companies}
         currentCompanyId={currentCompanyId}
@@ -61,7 +61,7 @@ export function AppShell({
           onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
-        <main className="flex-1 overflow-auto min-w-0">
+        <main className="flex-1 overflow-auto min-w-0 min-h-0">
           {children}
         </main>
       </div>

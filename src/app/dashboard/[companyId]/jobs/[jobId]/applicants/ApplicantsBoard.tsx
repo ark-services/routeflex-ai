@@ -819,7 +819,7 @@ export default function ApplicantsBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex h-[calc(100dvh-7rem)] md:h-[calc(100vh-8rem)] flex-col overflow-hidden bg-stone-50">
+      <div className="flex flex-col h-full min-h-0 bg-stone-50">
         {/* Hidden Columns Control */}
         {hiddenColumns.length > 0 && (
           <div className="px-6 py-3 border-b border-stone-200 bg-white">
@@ -860,7 +860,7 @@ export default function ApplicantsBoard({
         )}
 
         {/* ====== MOBILE CARD VIEW (hidden on md+) ====== */}
-        <div className="md:hidden flex-1 overflow-auto">
+        <div className="md:hidden flex-1 overflow-auto min-h-0">
           <div className="p-3 space-y-6">
             {localGroups.map((g) => {
               const rows = applicantsByGroup.get(g.id) ?? [];
@@ -1058,7 +1058,7 @@ export default function ApplicantsBoard({
         </div>
 
         {/* ====== DESKTOP TABLE VIEW (hidden on mobile) ====== */}
-        <div className="hidden md:block flex-1 overflow-auto">
+        <div className="hidden md:block flex-1 overflow-auto min-h-0">
           <div className="min-w-max p-6">
             {/* Groups */}
             <div className="space-y-8">
