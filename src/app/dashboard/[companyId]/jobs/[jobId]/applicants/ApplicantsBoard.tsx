@@ -577,8 +577,19 @@ export default function ApplicantsBoard({
   }
 
   function handleAddNewGroup() {
+    // Pick the first unused "New Group / New Group 2 / …" name client-side.
+    // The server retry loop is the authoritative collision handler for concurrency;
+    // this just avoids the extra round-trips in the common single-user case.
+    const existingNames = new Set(localGroups.map((g) => g.name));
+    let candidateName = "New Group";
+    let suffix = 2;
+    while (existingNames.has(candidateName)) {
+      candidateName = `New Group ${suffix}`;
+      suffix++;
+    }
+
     startTransition(async () => {
-      const result = await createGroup(companyId, jobId, boardId, "New Group");
+      const result = await createGroup(companyId, jobId, boardId, candidateName);
       if (result?.data) {
         const newGroup: Group = { ...result.data, is_collapsed: false };
         setLocalGroups((prev) => [...prev, newGroup]);
@@ -850,13 +861,13 @@ export default function ApplicantsBoard({
 
         {/* ====== MOBILE CARD VIEW (hidden on md+) ====== */}
         <div className="md:hidden flex-1 overflow-auto">
-          <div className="p-3 space-y-4">
+          <div className="p-3 space-y-6">
             {localGroups.map((g) => {
               const rows = applicantsByGroup.get(g.id) ?? [];
               return (
                 <section
                   key={g.id}
-                  className="border-l-[3px] pl-2"
+                  className="border-l-[4px] pl-2 mb-6"
                   style={{ borderLeftColor: g.color }}
                 >
                   {/* Group header */}
@@ -1050,7 +1061,7 @@ export default function ApplicantsBoard({
         <div className="hidden md:block flex-1 overflow-auto">
           <div className="min-w-max p-6">
             {/* Groups */}
-            <div className="space-y-4">
+            <div className="space-y-8">
               {/* Wrap groups in SortableContext */}
               <SortableContext
                 items={localGroups.map((g) => `group-${g.id}`)}
@@ -1060,12 +1071,7 @@ export default function ApplicantsBoard({
                 {localGroups.map((g) => {
                   const rows = applicantsByGroup.get(g.id) ?? [];
                   return (
-                    <section
-                      key={g.id}
-                      className="border-l-[3px] pl-1"
-                      style={{ borderLeftColor: g.color }}
-                    >
-                      <div className="space-y-2">
+                    <section key={g.id}>
                       {/* Sortable Group header */}
                       <SortableGroupHeader
                         group={g}
@@ -1101,7 +1107,10 @@ export default function ApplicantsBoard({
 
                     {/* Group table */}
                     {!g.is_collapsed && (
-                      <div className="overflow-visible rounded-lg border border-stone-200 bg-white">
+                      <div
+                        className="overflow-visible rounded-lg border border-stone-200 bg-white border-l-[4px]"
+                        style={{ borderLeftColor: g.color }}
+                      >
                         <table className="w-full text-left border-collapse">
                           <thead className="bg-stone-50/80">
                             <tr className="border-b border-stone-200">
@@ -1191,7 +1200,6 @@ export default function ApplicantsBoard({
                         </table>
                       </div>
                     )}
-                      </div>
                     </section>
                   );
                 })}
@@ -1870,10 +1878,15 @@ function SortableGroupHeader({
     disabled: isEditing,
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
+  const dndTransform = CSS.Transform.toString(transform);
+  const style: React.CSSProperties = {
+    // Use `undefined` (not "") so browsers don't apply a no-op transform,
+    // which would break position:sticky.
+    transform: dndTransform || undefined,
     transition,
     opacity: isDragging ? 0.5 : 1,
+    // Left color strip — shows both in-flow and while sticky.
+    borderLeftColor: group.color,
   };
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -1918,7 +1931,10 @@ function SortableGroupHeader({
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-3 px-2 py-1"
+      className={`group flex items-center gap-3 px-3 py-2.5 bg-white
+        border-l-[4px] border-b border-stone-100
+        sticky top-0 z-10
+        ${isDragging ? "" : "shadow-[0_1px_0_0_rgb(0,0,0,0.04)]"}`}
       {...attributes}
     >
       {/* Drag handle */}
