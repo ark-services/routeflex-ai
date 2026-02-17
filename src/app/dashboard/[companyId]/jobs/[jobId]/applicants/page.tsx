@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
-import { AutomateButton } from "./AutomateButton";
 import { ApplicantsBoardContainer } from "./ApplicantsBoardContainer";
 import { getBoardViews } from "./view-actions";
 
@@ -489,28 +488,7 @@ export default async function ApplicantsPage({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Top bar: Automate & Integrate (moved out of the old tab row) */}
-      <div className="bg-white border-b px-4 sm:px-6 py-2 flex items-center justify-end gap-2 shrink-0">
-        <a
-          href={`/admin/${company.account_id}/integrations`}
-          className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center gap-1.5 text-sm font-medium"
-        >
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          <span className="hidden sm:inline">Integrate</span>
-        </a>
-        <AutomateButton
-          companyId={companyId}
-          jobId={jobId}
-          accountId={company.account_id}
-          automations={automations || []}
-          triggers={triggers || []}
-          groups={groupsForAutomation || []}
-        />
-      </div>
-
-      {/* Board container: toolbar (views + search + filter) + board */}
+      {/* Board container: toolbar (search · filter · integrate · automate | views) + board */}
       <div className="flex-1 overflow-hidden">
         <ApplicantsBoardContainer
           companyId={companyId}
@@ -522,6 +500,11 @@ export default async function ApplicantsPage({
           statusLabels={statusLabels}
           cells={cells}
           initialViews={initialViews as any}
+          integrationHref={`/admin/${company.account_id}/integrations`}
+          accountId={company.account_id}
+          automations={automations || []}
+          triggers={triggers || []}
+          boardGroups={groupsForAutomation || []}
         />
       </div>
     </div>

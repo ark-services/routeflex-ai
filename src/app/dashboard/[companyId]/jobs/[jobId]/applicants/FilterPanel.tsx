@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef, useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import type { ActiveFilter, FilterCondition } from "./view-actions";
 import type { BoardColumn, BoardStatusLabel } from "@/lib/types";
@@ -40,14 +40,14 @@ function conditionsForType(type: string): { value: FilterCondition; label: strin
     default: // text, email, phone, location
       return [
         { value: "contains", label: "contains" },
-        { value: "equals", label: "equals" },
+        { value: "equals", label: "is" },
         { value: "is_empty", label: "is empty" },
         { value: "is_not_empty", label: "is not empty" },
       ];
   }
 }
 
-// ─── Value input per column type ──────────────────────────────────────────────
+// ─── Value input ──────────────────────────────────────────────────────────────
 
 function ValueInput({
   column,
@@ -71,7 +71,7 @@ function ValueInput({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[120px]"
+        className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
       >
         <option value="">Select…</option>
         {labels.map((l) => (
@@ -90,7 +90,7 @@ function ValueInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Value"
-        className="h-8 w-28 rounded border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="h-8 w-28 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     );
   }
@@ -101,7 +101,7 @@ function ValueInput({
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     );
   }
@@ -112,23 +112,73 @@ function ValueInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder="Value"
-      className="h-8 min-w-[120px] rounded border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="h-8 min-w-[140px] rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
     />
   );
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ─── Save-as-view inline sub-form ─────────────────────────────────────────────
 
-interface FilterPanelProps {
+function SaveViewInline({
+  onSave,
+  onCancel,
+}: {
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus when rendered
+  setTimeout(() => inputRef.current?.focus(), 0);
+
+  const submit = () => {
+    const trimmed = name.trim();
+    if (trimmed) onSave(trimmed);
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        ref={inputRef}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") submit();
+          if (e.key === "Escape") onCancel();
+        }}
+        placeholder="View name…"
+        className="h-7 flex-1 min-w-0 rounded border border-stone-300 px-2 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      />
+      <button
+        onClick={submit}
+        disabled={!name.trim()}
+        className="h-7 px-2.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 shrink-0"
+      >
+        Save
+      </button>
+      <button
+        onClick={onCancel}
+        className="h-7 px-2 text-xs text-stone-500 hover:text-stone-700 shrink-0"
+      >
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+// ─── Main FilterPanel component ───────────────────────────────────────────────
+
+export interface FilterPanelProps {
   open: boolean;
   columns: BoardColumn[];
   statusLabels: BoardStatusLabel[];
   filters: ActiveFilter[];
   onFiltersChange: (filters: ActiveFilter[]) => void;
   onClose: () => void;
+  onSaveView: (name: string) => void;
+  isDirty: boolean;
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function FilterPanel({
   open,
@@ -137,44 +187,49 @@ export function FilterPanel({
   filters,
   onFiltersChange,
   onClose,
+  onSaveView,
+  isDirty,
 }: FilterPanelProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handler(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, onClose]);
+  const [savingView, setSavingView] = useState(false);
 
   if (!open) return null;
 
-  const addFilter = () => {
-    const firstCol = columns[0];
-    if (!firstCol) return;
-    const conditions = conditionsForType(firstCol.type);
-    onFiltersChange([
-      ...filters,
-      {
-        id: Math.random().toString(36).slice(2),
-        columnId: firstCol.id,
-        condition: conditions[0]?.value ?? "contains",
-        value: "",
-      },
-    ]);
-  };
+  // ── Ensure at least one filter row is visible ─────────────────────────────
+
+  // Seed the first filter row if none exist yet
+  const displayFilters =
+    filters.length === 0 && columns.length > 0
+      ? (() => {
+          const firstCol = columns[0];
+          const conds = conditionsForType(firstCol.type);
+          return [
+            {
+              id: "__seed__",
+              columnId: firstCol.id,
+              condition: conds[0]?.value ?? "contains",
+              value: "",
+            } as ActiveFilter,
+          ];
+        })()
+      : filters;
+
+  // Commit the seeded filter once the user touches it
+  function ensureSeeded(id: string) {
+    if (id === "__seed__" && filters.length === 0) {
+      // Re-materialise the seeded row into real state
+      onFiltersChange(displayFilters);
+    }
+  }
+
+  // ── Filter operations ─────────────────────────────────────────────────────
 
   const updateFilter = (id: string, patch: Partial<ActiveFilter>) => {
+    // If touching the seed row, write it as real first
+    const base = filters.length === 0 ? displayFilters : filters;
     onFiltersChange(
-      filters.map((f) => {
+      base.map((f) => {
         if (f.id !== id) return f;
-        const updated = { ...f, ...patch };
-        // Reset condition when column changes
+        const updated = { ...f, ...patch, id: f.id === "__seed__" ? Math.random().toString(36).slice(2) : f.id };
         if (patch.columnId && patch.columnId !== f.columnId) {
           const col = columns.find((c) => c.id === patch.columnId);
           const conds = col ? conditionsForType(col.type) : [];
@@ -190,125 +245,141 @@ export function FilterPanel({
     onFiltersChange(filters.filter((f) => f.id !== id));
   };
 
+  const addFilter = () => {
+    const firstCol = columns[0];
+    if (!firstCol) return;
+    const conditions = conditionsForType(firstCol.type);
+    onFiltersChange([
+      ...(filters.length === 0 ? [] : filters),
+      {
+        id: Math.random().toString(36).slice(2),
+        columnId: firstCol.id,
+        condition: conditions[0]?.value ?? "contains",
+        value: "",
+      },
+    ]);
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-
-      {/* Panel */}
-      <div
-        ref={panelRef}
-        className="relative bg-white rounded-xl shadow-2xl border border-stone-200 w-full max-w-2xl"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
-          <h2 className="text-sm font-semibold text-stone-900">
-            Advanced filters
-          </h2>
-          <div className="flex items-center gap-3">
-            {filters.length > 0 && (
-              <button
-                onClick={() => onFiltersChange([])}
-                className="text-xs text-stone-500 hover:text-red-600 transition-colors"
-              >
-                Clear all
-              </button>
-            )}
+    <div className="bg-white border-b border-stone-200 shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-100">
+        <span className="text-sm font-semibold text-stone-800">Filters</span>
+        <div className="flex items-center gap-3">
+          {filters.length > 0 && (
             <button
-              onClick={onClose}
-              className="p-1 hover:bg-stone-100 rounded transition-colors"
+              onClick={() => onFiltersChange([])}
+              className="text-xs text-stone-400 hover:text-red-500 transition-colors"
             >
-              <X className="h-4 w-4 text-stone-500" />
+              Clear all
             </button>
-          </div>
-        </div>
-
-        {/* Filter rows */}
-        <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
-          {filters.length === 0 && (
-            <p className="text-sm text-stone-400 text-center py-4">
-              No filters yet. Add one below.
-            </p>
           )}
-
-          {filters.map((f, idx) => {
-            const col = columns.find((c) => c.id === f.columnId) ?? null;
-            const conditions = col ? conditionsForType(col.type) : [];
-
-            return (
-              <div
-                key={f.id}
-                className="flex flex-wrap items-center gap-2 py-1"
-              >
-                {/* Index label */}
-                <span className="text-xs text-stone-400 w-8 text-right shrink-0">
-                  {idx === 0 ? "Where" : "And"}
-                </span>
-
-                {/* Column selector */}
-                <select
-                  value={f.columnId}
-                  onChange={(e) =>
-                    updateFilter(f.id, { columnId: e.target.value })
-                  }
-                  className="h-8 rounded border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {columns.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Condition selector */}
-                <select
-                  value={f.condition}
-                  onChange={(e) =>
-                    updateFilter(f.id, {
-                      condition: e.target.value as FilterCondition,
-                    })
-                  }
-                  className="h-8 rounded border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {conditions.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Value input */}
-                <ValueInput
-                  column={col}
-                  condition={f.condition}
-                  value={f.value}
-                  statusLabels={statusLabels}
-                  onChange={(v) => updateFilter(f.id, { value: v })}
-                />
-
-                {/* Remove button */}
-                <button
-                  onClick={() => removeFilter(f.id)}
-                  className="ml-auto p-1 text-stone-400 hover:text-red-500 rounded transition-colors"
-                  title="Remove filter"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center px-5 py-3 border-t border-stone-100">
           <button
-            onClick={addFilter}
-            disabled={columns.length === 0}
-            className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={onClose}
+            className="p-1 rounded hover:bg-stone-100 transition-colors"
+            title="Close filters"
           >
-            <Plus className="h-4 w-4" />
-            New filter
+            <X className="h-3.5 w-3.5 text-stone-500" />
           </button>
+        </div>
+      </div>
+
+      {/* Filter rows */}
+      <div className="px-4 py-3 space-y-2">
+        {displayFilters.map((f, idx) => {
+          const col = columns.find((c) => c.id === f.columnId) ?? null;
+          const conditions = col ? conditionsForType(col.type) : [];
+
+          return (
+            <div key={f.id} className="flex flex-wrap items-center gap-2">
+              {/* Label */}
+              <span className="text-xs text-stone-400 w-10 text-right shrink-0 font-medium">
+                {idx === 0 ? "Where" : "And"}
+              </span>
+
+              {/* Column selector */}
+              <select
+                value={f.columnId}
+                onChange={(e) => updateFilter(f.id, { columnId: e.target.value })}
+                className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {columns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Condition selector */}
+              <select
+                value={f.condition}
+                onChange={(e) =>
+                  updateFilter(f.id, { condition: e.target.value as FilterCondition })
+                }
+                className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {conditions.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* Value input */}
+              <ValueInput
+                column={col}
+                condition={f.condition}
+                value={f.value}
+                statusLabels={statusLabels}
+                onChange={(v) => updateFilter(f.id, { value: v })}
+              />
+
+              {/* Remove */}
+              <button
+                onClick={() => removeFilter(f.id)}
+                className="p-1 text-stone-300 hover:text-red-400 rounded transition-colors ml-auto"
+                title="Remove filter"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-100 gap-4">
+        <button
+          onClick={addFilter}
+          disabled={columns.length === 0}
+          className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 font-medium disabled:opacity-40 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New filter
+        </button>
+
+        {/* Save as new view — secondary/white */}
+        <div className="shrink-0">
+          {savingView ? (
+            <SaveViewInline
+              onSave={(name) => {
+                setSavingView(false);
+                onSaveView(name);
+              }}
+              onCancel={() => setSavingView(false)}
+            />
+          ) : (
+            <button
+              onClick={() => setSavingView(true)}
+              disabled={!isDirty}
+              className="h-7 px-3 text-xs font-medium rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 hover:border-stone-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              title={isDirty ? "Save current search & filters as a new view" : "No changes to save"}
+            >
+              Save as new view
+            </button>
+          )}
         </div>
       </div>
     </div>

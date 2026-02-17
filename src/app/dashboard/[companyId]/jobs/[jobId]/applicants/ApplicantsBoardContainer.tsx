@@ -37,6 +37,12 @@ interface ApplicantsBoardContainerProps {
   statusLabels: BoardStatusLabel[];
   cells: BoardCell[];
   initialViews: BoardView[];
+  // Integrate / Automate (moved from page.tsx top bar onto toolbar Row 1)
+  integrationHref: string;
+  accountId: string;
+  automations: any[];
+  triggers: any[];
+  boardGroups: any[];
 }
 
 export function ApplicantsBoardContainer({
@@ -49,13 +55,18 @@ export function ApplicantsBoardContainer({
   statusLabels,
   cells,
   initialViews,
+  integrationHref,
+  accountId,
+  automations,
+  triggers,
+  boardGroups,
 }: ApplicantsBoardContainerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Monday-style toolbar: views + search + filter + save */}
+      {/* Monday-style toolbar: search · filter · integrate · automate | views */}
       <BoardToolbar
         companyId={companyId}
         jobId={jobId}
@@ -67,6 +78,11 @@ export function ApplicantsBoardContainer({
         activeFilters={activeFilters}
         onSearchChange={setSearchQuery}
         onFiltersChange={setActiveFilters}
+        integrationHref={integrationHref}
+        accountId={accountId}
+        automations={automations}
+        triggers={triggers}
+        groups={boardGroups}
       />
 
       {/* Board */}
