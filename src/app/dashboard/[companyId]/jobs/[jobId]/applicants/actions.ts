@@ -316,19 +316,34 @@ export async function bulkDeleteApplicants(
   revalidatePath(dashPath(companyId, jobId));
 }
 
+type GroupRow = { id: string; name: string; color: string; sort_order: number; is_collapsed: boolean };
+
+/** Returns true when a Supabase/PostgREST error is a Postgres unique-violation (23505). */
+function isUniqueViolation(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === "23505" ||
+    (error.message ?? "").includes("23505") ||
+    (error.message ?? "").includes("duplicate key") ||
+    (error.message ?? "").includes("board_groups_board_name_unique_idx") ||
+    (error.message ?? "").includes("board_groups_board_name_idx")
+  );
+}
+
 export async function createGroup(
   companyId: string,
   jobId: string,
   boardId: string,
+  /** Base name hint — "New Group" by default. The action finds the first
+   *  available variant (New Group → New Group 2 → New Group 3 …). */
   name: string,
   color?: string
-): Promise<{ data?: { id: string; name: string; color: string; sort_order: number; is_collapsed: boolean }; error?: string }> {
+): Promise<{ data?: GroupRow; error?: string }> {
   const supabase = await createClient();
 
   // Default colors cycle (Monday-style)
   const defaultColors = ['#0073ea', '#00c875', '#fdab3d', '#e2445c', '#9cd326', '#784bd1', '#579bfc', '#ff642e'];
 
-  // Put it at the end
+  // Place the new group at the end of the board.
   const { data: existing, error: readErr } = await supabase
     .from("board_groups")
     .select("sort_order")
@@ -345,25 +360,39 @@ export async function createGroup(
   const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
   const groupColor = color || defaultColors[nextSort % defaultColors.length];
 
-  const { data, error } = await supabase
-    .from("board_groups")
-    .insert({
-      company_id: companyId,
-      board_id: boardId,
-      name,
-      sort_order: nextSort,
-      color: groupColor,
-    })
-    .select("id, name, color, sort_order, is_collapsed")
-    .single();
+  // Retry loop: try "New Group", then "New Group 2", "New Group 3", …
+  // Handles concurrent clicks and multi-user race conditions via 23505 detection.
+  const MAX_RETRIES = 50;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const candidateName = attempt === 0 ? name : `${name} ${attempt + 1}`;
 
-  if (error) {
-    console.error("[createGroup] Error creating group:", error);
-    return { error: error.message };
+    const { data, error } = await supabase
+      .from("board_groups")
+      .insert({
+        company_id: companyId,
+        board_id: boardId,
+        name: candidateName,
+        sort_order: nextSort,
+        color: groupColor,
+      })
+      .select("id, name, color, sort_order, is_collapsed")
+      .single();
+
+    if (!error) {
+      revalidatePath(dashPath(companyId, jobId));
+      return { data: data as GroupRow };
+    }
+
+    if (!isUniqueViolation(error)) {
+      // Non-unique error — bail immediately.
+      console.error("[createGroup] Error creating group:", error);
+      return { error: error.message };
+    }
+
+    // Unique violation — try the next candidate name.
   }
 
-  revalidatePath(dashPath(companyId, jobId));
-  return { data: data as { id: string; name: string; color: string; sort_order: number; is_collapsed: boolean } };
+  return { error: `Could not find a unique group name after ${MAX_RETRIES} attempts.` };
 }
 
 export async function toggleGroupCollapse(
