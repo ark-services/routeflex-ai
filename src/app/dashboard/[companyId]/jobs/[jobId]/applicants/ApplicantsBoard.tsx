@@ -49,7 +49,7 @@ import {
   quickCreateApplicant,
 } from "./actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
-import { statusColorArray } from "@/lib/brand-colors";
+import { statusColorArray, STATUS_COLOR_PALETTE } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { formatPhone } from "@/lib/validation/columnValidation";
@@ -1114,7 +1114,7 @@ export default function ApplicantsBoard({
                         <table className="w-full text-left border-collapse">
                           <thead className="bg-stone-50/80">
                             <tr className="border-b border-stone-200">
-                              <th className="sticky left-0 z-10 w-10 bg-stone-50/80 px-4 py-2"></th>
+                              <th className="sticky left-0 z-20 w-10 bg-stone-50/80 px-4 py-2"></th>
 
                               {/* Sortable columns */}
                               <SortableContext
@@ -1229,7 +1229,7 @@ export default function ApplicantsBoard({
                       <table className="w-full text-left border-collapse bg-white">
                         <thead className="bg-stone-50/80">
                           <tr className="border-b border-stone-200">
-                            <th className="sticky left-0 z-10 w-10 bg-stone-50/80 px-4 py-2"></th>
+                            <th className="sticky left-0 z-20 w-10 bg-stone-50/80 px-4 py-2"></th>
                             {visibleColumns.map((col) => (
                               <th key={col.id} className="px-4 py-2 text-xs font-medium text-stone-700 border-r border-stone-200">
                                 {col.name}
@@ -1933,7 +1933,7 @@ function SortableGroupHeader({
       style={style}
       className={`group flex items-center gap-3 px-3 py-2.5 bg-white
         border-l-[4px] border-b border-stone-100
-        sticky top-0 z-10
+        sticky top-0 z-30
         ${isDragging ? "" : "shadow-[0_1px_0_0_rgb(0,0,0,0.04)]"}`}
       {...attributes}
     >
@@ -2308,6 +2308,20 @@ function CellRenderer({
 
 // ===== Status Labels Editor (Monday.com-style inline editing) =====
 
+// Returns the first palette color that isn't already taken by an existing label.
+// This is the core fix for the uniqueness-conflict UX problem: new labels always
+// start with a safe color, so users never hit a color-conflict error unless they
+// intentionally choose an in-use color (which the picker prevents anyway).
+function getNextAvailableColor(usedColors: string[]): string {
+  const used = new Set(usedColors);
+  for (const { value } of STATUS_COLOR_PALETTE) {
+    if (!used.has(value)) return value;
+  }
+  // All 25 palette slots are taken — fall back to last color.
+  // Server will reject; user must delete a label to free a slot.
+  return STATUS_COLOR_PALETTE[STATUS_COLOR_PALETTE.length - 1].value;
+}
+
 function StatusLabelsEditor({
   companyId,
   jobId,
@@ -2326,9 +2340,20 @@ function StatusLabelsEditor({
   const [localLabels, setLocalLabels] = useState<StatusLabel[]>(labels);
   const [editValues, setEditValues] = useState<Record<string, { label: string; color: string }>>({});
   const [newLabel, setNewLabel] = useState("");
-  const [newColor, setNewColor] = useState("#4F46E5");
-  const [showColorPickerForId, setShowColorPickerForId] = useState<string | null>(null);
+  // Smart default: first available unused palette color instead of always "#4F46E5".
+  // Computed lazily from the initial labels so the first add never conflicts.
+  const [newColor, setNewColor] = useState(() =>
+    getNextAvailableColor(labels.map((l) => l.color))
+  );
+  // Color picker visibility is driven by focus, not by a separate toggle button.
+  // This matches Monday's "edit intent" model: picker appears when editing.
+  const [isNewLabelFocused, setIsNewLabelFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Refs to programmatically focus label name inputs.
+  // Clicking a color swatch focuses the corresponding input, opening the picker.
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const newLabelInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize local state ONLY when modal opens or columnId changes
   // NOT when labels prop changes (that's what causes the revert bug)
@@ -2344,6 +2369,16 @@ function StatusLabelsEditor({
       initializedRef.current = true;
     }
   }, [columnId]); // Only re-initialize if columnId changes
+
+  // When localLabels changes (add / delete), ensure newColor is still available.
+  // Handles the race-condition edge case where another session takes the pre-selected color.
+  useEffect(() => {
+    const usedColors = localLabels.map((l) => editValues[l.id]?.color || l.color);
+    if (usedColors.includes(newColor)) {
+      setNewColor(getNextAvailableColor(usedColors));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localLabels]);
 
   function onUpdateLabel(labelId: string, overrideColor?: string) {
     const values = editValues[labelId];
@@ -2361,14 +2396,14 @@ function StatusLabelsEditor({
       )
     );
 
-    // Persist to server
+    // Persist to server. editingLabelId is managed by the caller (onBlur / color onChange),
+    // not here — so we don't race-condition against the next focused label.
     startTransition(async () => {
       try {
         await updateStatusLabel(companyId, jobId, labelId, {
           label: values.label.trim(),
           color: finalColor,
         });
-        setEditingLabelId(null);
         setError(null);
       } catch (err) {
         // Revert local state on error
@@ -2420,15 +2455,33 @@ function StatusLabelsEditor({
     startTransition(async () => {
       try {
         const created = await createStatusLabel(companyId, jobId, columnId, newLabel.trim(), newColor);
-        // Add to local state immediately
         if (created) {
-          setLocalLabels((prev) => [...prev, created]);
+          const updatedLabels = [...localLabels, created];
+          setLocalLabels(updatedLabels);
+          // Register the new label in editValues so the useEffect and color picker
+          // can reference it correctly without waiting for a re-render cycle.
+          setEditValues((prev) => ({
+            ...prev,
+            [created.id]: { label: created.label, color: created.color },
+          }));
+          // Pre-select the next available color so the user can add another label
+          // immediately without hitting a conflict.
+          setNewColor(getNextAvailableColor(updatedLabels.map((l) => l.color)));
         }
         setNewLabel("");
-        setNewColor("#4F46E5");
+        setIsNewLabelFocused(false);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to create label");
+        const msg = err instanceof Error ? err.message : "Failed to create label";
+        // Last-resort: if a color conflict slips through (race condition), auto-select
+        // the next available color and prompt the user to try again.
+        if (msg.toLowerCase().includes("color") || msg.includes("23505")) {
+          const usedColors = localLabels.map((l) => editValues[l.id]?.color || l.color);
+          setNewColor(getNextAvailableColor(usedColors));
+          setError("Color conflict detected — a new color has been auto-selected. Try adding again.");
+        } else {
+          setError(msg);
+        }
       }
     });
   }
@@ -2452,41 +2505,44 @@ function StatusLabelsEditor({
         <div className="mt-6 space-y-2 max-h-96 overflow-y-auto">
           {localLabels.map((label) => {
             const isFallback = fallbackLabel?.id === label.id;
+            const isEditing = editingLabelId === label.id;
             return (
             <div key={label.id} className="group">
               <div className="flex items-center gap-3 p-2 rounded-[10px] hover:bg-stone-50 transition-colors">
-                {/* Color swatch - clickable */}
+                {/* Color swatch — clicking it focuses the name input, which opens the picker.
+                    onMouseDown:preventDefault prevents stealing focus from an already-editing input. */}
                 <button
                   type="button"
-                  onClick={() => setShowColorPickerForId(showColorPickerForId === label.id ? null : label.id)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => inputRefs.current[label.id]?.focus()}
                   className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
                   style={{ backgroundColor: editValues[label.id]?.color || label.color }}
-                  title="Change color"
+                  title="Click to change color"
                 />
 
                 {/* Inline editable text field */}
                 <div className="flex-1 flex items-center gap-2">
                   <input
+                    ref={(el) => { inputRefs.current[label.id] = el; }}
                     type="text"
                     value={editValues[label.id]?.label || label.label}
                     onChange={(e) => {
                       setEditValues((prev) => ({
                         ...prev,
-                        [label.id]: {
-                          ...prev[label.id],
-                          label: e.target.value,
-                        },
+                        [label.id]: { ...prev[label.id], label: e.target.value },
                       }));
                     }}
                     onFocus={() => setEditingLabelId(label.id)}
                     onBlur={() => {
-                      if (editingLabelId === label.id) {
-                        onUpdateLabel(label.id);
-                      }
+                      // The color picker uses onMouseDown:preventDefault so clicking a
+                      // color swatch does NOT trigger this blur — only a true focus-leave does.
+                      onUpdateLabel(label.id);
+                      setEditingLabelId(null);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         onUpdateLabel(label.id);
+                        setEditingLabelId(null);
                         e.currentTarget.blur();
                       }
                       if (e.key === 'Escape') {
@@ -2523,22 +2579,24 @@ function StatusLabelsEditor({
                 )}
               </div>
 
-              {/* Inline color picker */}
-              {showColorPickerForId === label.id && (
-                <div className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]">
+              {/* Color picker — visible only while this label's name input is focused.
+                  onMouseDown:preventDefault keeps input focus when clicking swatches so
+                  the blur handler (save + close) doesn't fire mid-selection. */}
+              {isEditing && (
+                <div
+                  className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]"
+                  onMouseDown={(e) => e.preventDefault()}
+                >
                   <ColorPicker
                     value={editValues[label.id]?.color || label.color}
                     onChange={(color) => {
                       setEditValues((prev) => ({
                         ...prev,
-                        [label.id]: {
-                          ...prev[label.id],
-                          color,
-                        },
+                        [label.id]: { ...prev[label.id], color },
                       }));
-                      // Pass color as override to avoid race condition with async state update
+                      // Color selection = save intent. Close picker immediately, then persist.
+                      setEditingLabelId(null);
                       onUpdateLabel(label.id, color);
-                      setShowColorPickerForId(null);
                     }}
                     inline
                     disabledColors={localLabels
@@ -2552,19 +2610,25 @@ function StatusLabelsEditor({
           })}
         </div>
 
-        {/* Add new label */}
+        {/* Add new label — color swatch shows the auto-selected next-available color.
+            Clicking the swatch focuses the input (opening the picker) rather than
+            toggling a separate state, keeping the interaction model consistent. */}
         <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-stone-300 bg-stone-50">
           <button
             type="button"
-            onClick={() => setShowColorPickerForId('new')}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => newLabelInputRef.current?.focus()}
             className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
             style={{ backgroundColor: newColor }}
-            title="Choose color"
+            title="Click to choose color"
           />
           <input
+            ref={newLabelInputRef}
             type="text"
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
+            onFocus={() => setIsNewLabelFocused(true)}
+            onBlur={() => setIsNewLabelFocused(false)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newLabel.trim()) {
                 onAddLabel();
@@ -2583,14 +2647,20 @@ function StatusLabelsEditor({
           </button>
         </div>
 
-        {/* Inline color picker for new label */}
-        {showColorPickerForId === 'new' && (
-          <div className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]">
+        {/* Color picker for new label — appears on input focus, stays open while focused.
+            Unlike existing-label pickers, it does NOT close on color selection because
+            the user still needs to type the label name and press Enter/click Add.
+            onMouseDown:preventDefault keeps focus when clicking swatches. */}
+        {isNewLabelFocused && (
+          <div
+            className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]"
+            onMouseDown={(e) => e.preventDefault()}
+          >
             <ColorPicker
               value={newColor}
               onChange={(color) => {
                 setNewColor(color);
-                setShowColorPickerForId(null);
+                // Intentionally do NOT close here — user picks color then types name.
               }}
               inline
               disabledColors={localLabels.map((l) => editValues[l.id]?.color || l.color)}
