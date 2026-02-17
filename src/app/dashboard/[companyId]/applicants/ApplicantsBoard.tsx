@@ -43,6 +43,7 @@ import {
 import { statusColorArray } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { formatPhone } from "@/lib/validation/columnValidation";
 
 type Group = {
   id: string;
@@ -116,7 +117,7 @@ export default function ApplicantsBoard({
   // Add column modal
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
-  const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status">("text");
+  const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location">("text");
   const [addColumnError, setAddColumnError] = useState<string | null>(null);
 
   // Status labels editor
@@ -386,10 +387,30 @@ export default function ApplicantsBoard({
     if (column.type === "number") return cell.value_number;
     if (column.type === "date") return cell.value_date;
     if (column.type === "status") return cell.value_status_label_id;
+    if (column.type === "email") return cell.value_text;
+    if (column.type === "phone") return cell.value_text;
+    if (column.type === "location") return cell.value_text;
+    if (column.type === "file") {
+      // For file type, combine path and metadata
+      if (cell.value_file_path || cell.value_text) {
+        const metadata = cell.value_text ? JSON.parse(cell.value_text) : null;
+        // Generate Supabase storage URL for the file
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const url = cell.value_file_path
+          ? `${supabaseUrl}/storage/v1/object/public/files/${cell.value_file_path}`
+          : null;
+        return {
+          path: cell.value_file_path,
+          metadata: metadata,
+          url: url,
+        };
+      }
+      return null;
+    }
     return null;
   }
 
-  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status", value: any) {
+  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file", value: any) {
     startTransition(async () => {
       await updateBoardCell(companyId, applicantId, columnId, columnType, value);
     });
@@ -577,8 +598,12 @@ export default function ApplicantsBoard({
                     className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
                   >
                     <option value="text">Text</option>
+                    <option value="email">Email</option>
+                    <option value="phone">Phone</option>
                     <option value="number">Number</option>
                     <option value="date">Date</option>
+                    <option value="location">Location</option>
+                    <option value="file">File</option>
                     <option value="status">Status</option>
                   </select>
                 </div>
@@ -816,7 +841,7 @@ function SortableRow({
   selected: boolean;
   onToggle: () => void;
   getCellValue: (col: BoardColumn) => any;
-  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status", val: any) => void;
+  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file", val: any) => void;
   labelsByColumn: Map<string, StatusLabel[]>;
   onEditLabels: (colId: string) => void;
   rowMenuOpen: boolean;
@@ -957,6 +982,141 @@ function SortableRow({
   );
 }
 
+// ===== File Cell Component =====
+
+function FileCell({
+  value,
+  applicant,
+  column,
+  onUpdate,
+  isPending,
+  startTransition,
+}: {
+  value: any;
+  applicant: ApplicantRow;
+  column: BoardColumn;
+  onUpdate: (val: any) => void;
+  isPending: boolean;
+  startTransition: any;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Parse file metadata from value
+  const fileData = value ? (typeof value === 'string' ? JSON.parse(value) : value) : null;
+  const fileName = fileData?.metadata?.name || fileData?.name;
+  const fileUrl = fileData?.url;
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+
+    try {
+      // Create FormData for upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('companyId', column.company_id);
+      formData.append('boardId', column.board_id);
+      formData.append('columnId', column.id);
+      formData.append('applicantId', applicant.id);
+
+      // Upload file via API
+      const response = await fetch('/api/board/upload-file', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      // Update cell with file path and metadata
+      startTransition(() => {
+        onUpdate({
+          path: result.path,
+          metadata: result.metadata,
+          url: result.url,
+        });
+      });
+
+    } catch (err: any) {
+      console.error('[FileCell] Upload error:', err);
+      setError(err.message || 'Failed to upload file');
+    } finally {
+      setUploading(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDelete = () => {
+    startTransition(() => {
+      onUpdate(null);
+    });
+  };
+
+  if (uploading || isPending) {
+    return (
+      <div className="flex items-center gap-2 px-2 py-1">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600" />
+        <span className="text-sm text-stone-500">Uploading...</span>
+      </div>
+    );
+  }
+
+  if (fileName && fileUrl) {
+    return (
+      <div className="flex items-center gap-2 px-2 py-1">
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-blue-600 hover:underline truncate max-w-[150px]"
+          title={fileName}
+        >
+          {fileName}
+        </a>
+        <button
+          onClick={handleDelete}
+          className="text-stone-400 hover:text-red-600 text-xs"
+          title="Delete file"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-2 py-1">
+      <input
+        ref={fileInputRef}
+        type="file"
+        onChange={handleFileSelect}
+        className="hidden"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.webp,.txt,.json,.html"
+      />
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        className="text-sm text-stone-600 hover:text-stone-900 hover:underline"
+      >
+        Choose file
+      </button>
+      {error && (
+        <div className="text-xs text-red-600 mt-1">{error}</div>
+      )}
+    </div>
+  );
+}
+
 // ===== Cell Renderer =====
 
 function CellRenderer({
@@ -1036,6 +1196,55 @@ function CellRenderer({
         labels={labels}
         onChange={(val) => startTransition(() => onUpdate(val))}
         onEditLabels={onEditLabels}
+      />
+    );
+  }
+
+  if (column.type === "email") {
+    return (
+      <input
+        type="email"
+        value={value ?? ""}
+        onChange={(e) => startTransition(() => onUpdate(e.target.value))}
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        placeholder="email@example.com"
+      />
+    );
+  }
+
+  if (column.type === "phone") {
+    return (
+      <input
+        type="tel"
+        value={value ? formatPhone(value) : ""}
+        onChange={(e) => startTransition(() => onUpdate(e.target.value))}
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        placeholder="(123) 456-7890"
+      />
+    );
+  }
+
+  if (column.type === "location") {
+    return (
+      <input
+        type="text"
+        value={value ?? ""}
+        onChange={(e) => startTransition(() => onUpdate(e.target.value))}
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        placeholder="City, State"
+      />
+    );
+  }
+
+  if (column.type === "file") {
+    return (
+      <FileCell
+        value={value}
+        applicant={applicant}
+        column={column}
+        onUpdate={onUpdate}
+        isPending={isPending}
+        startTransition={startTransition}
       />
     );
   }

@@ -98,7 +98,7 @@ export interface BoardGroup {
   created_at: string;
 }
 
-export const COLUMN_TYPES = ["text", "number", "date", "file", "status"] as const;
+export const COLUMN_TYPES = ["text", "number", "date", "file", "status", "email", "phone", "location"] as const;
 export type ColumnType = (typeof COLUMN_TYPES)[number];
 
 export interface BoardColumn {
@@ -129,5 +129,6 @@ export interface BoardCell {
   value_number: number | null;
   value_date: string | null;
   value_status_label_id: string | null;
+  value_file_path: string | null;
   created_at: string;
 }
