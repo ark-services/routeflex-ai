@@ -751,7 +751,12 @@ export default function ApplicantsBoard({
     if (column.type === "email") return cell.value_text;
     if (column.type === "phone") return cell.value_text;
     if (column.type === "location") return cell.value_text;
-    if (column.type === "file") return cell.value_text; // File path stored as text
+    if (column.type === "file") {
+      if (!cell.value_file_path && !cell.value_text) return null;
+      let metadata: { name: string; size: number; type: string } | null = null;
+      try { if (cell.value_text) metadata = JSON.parse(cell.value_text); } catch {}
+      return { path: cell.value_file_path, metadata };
+    }
     return null;
   }
 
@@ -766,7 +771,7 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status", value: any) {
+  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file", value: any) {
     startTransition(async () => {
       // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
       // update all selected rows with the new status value
@@ -918,7 +923,7 @@ export default function ApplicantsBoard({
                                   className="h-4 w-4 rounded border-stone-300 flex-shrink-0"
                                 />
                                 <span className="font-semibold text-stone-900 text-sm truncate">
-                                  {nameCol ? getCellValue(a, nameCol) || a.full_name : a.full_name}
+                                  {nameCol ? (getCellValue(a, nameCol) as string) || a.full_name : a.full_name}
                                 </span>
                               </div>
                               {/* Row actions menu */}
@@ -975,7 +980,7 @@ export default function ApplicantsBoard({
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-stone-500 w-16 flex-shrink-0">Email</span>
                                   <span className="text-sm text-stone-700 truncate">
-                                    {getCellValue(a, emailCols[0]) || a.email || "—"}
+                                    {(getCellValue(a, emailCols[0]) as string) || a.email || "—"}
                                   </span>
                                 </div>
                               )}
@@ -984,7 +989,7 @@ export default function ApplicantsBoard({
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-stone-500 w-16 flex-shrink-0">Phone</span>
                                   <span className="text-sm text-stone-700 truncate">
-                                    {getCellValue(a, phoneCols[0]) || a.phone || "—"}
+                                    {(getCellValue(a, phoneCols[0]) as string) || a.phone || "—"}
                                   </span>
                                 </div>
                               )}
@@ -1175,6 +1180,8 @@ export default function ApplicantsBoard({
                                     onMove={(groupId) => onMoveApplicant(a.id, groupId)}
                                     onDuplicate={() => onDuplicateApplicant(a.id)}
                                     onDelete={() => onDeleteApplicant(a.id)}
+                                    companyId={companyId}
+                                    boardId={boardId}
                                   />
                                 ))}
                               </SortableContext>
@@ -1256,6 +1263,8 @@ export default function ApplicantsBoard({
                               onMove={(groupId) => onMoveApplicant(a.id, groupId)}
                               onDuplicate={() => onDuplicateApplicant(a.id)}
                               onDelete={() => onDeleteApplicant(a.id)}
+                              companyId={companyId}
+                              boardId={boardId}
                             />
                           ))}
                         </tbody>
@@ -1683,13 +1692,15 @@ function SortableRow({
   onMove,
   onDuplicate,
   onDelete,
+  companyId,
+  boardId,
 }: {
   applicant: ApplicantRow;
   columns: BoardColumn[];
   selected: boolean;
   onToggle: () => void;
   getCellValue: (col: BoardColumn) => any;
-  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status", val: any) => void;
+  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file", val: any) => void;
   labelsByColumn: Map<string, StatusLabel[]>;
   onEditLabels: (colId: string) => void;
   rowMenuOpen: boolean;
@@ -1698,6 +1709,8 @@ function SortableRow({
   onMove: (groupId: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  companyId: string;
+  boardId: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `row-${applicant.id}`,
@@ -1818,6 +1831,8 @@ function SortableRow({
           labels={labelsByColumn.get(col.id) ?? []}
           onUpdate={(val) => onUpdateCell(col.id, col.type as any, val)}
           onEditLabels={() => onEditLabels(col.id)}
+          companyId={companyId}
+          boardId={boardId}
         />
       </td>
     );
@@ -2057,6 +2072,385 @@ function SortableGroupHeader({
   );
 }
 
+// ===== FileCell =====
+//
+// Monday-style file column cell with:
+//   • Hover-only paperclip affordance when empty
+//   • Immediate file picker on click (no dropdown)
+//   • Inline uploading spinner
+//   • Filled: file-type icon + truncated name, hover shows replace/remove
+//   • Preview modal: image/PDF inline, download fallback
+//   • Drag-and-drop and Cmd/Ctrl+V paste support
+//   • ARIA keyboard accessible
+//
+// The hidden <input type="file"> is always in the DOM (never conditionally
+// rendered) to avoid hydration mismatches and SSR issues.
+
+type FileValue = {
+  path: string | null;
+  metadata: { name: string; size: number; type: string } | null;
+} | null;
+
+// Tiny inline SVG icons — one per file-type family.
+function FileSvgIcon({ type }: { type: string }) {
+  // PDF
+  if (type === "application/pdf")
+    return (
+      <svg className="h-4 w-4 flex-shrink-0 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+      </svg>
+    );
+  // Word / DOC / DOCX
+  if (type.includes("word") || type.includes("msword"))
+    return (
+      <svg className="h-4 w-4 flex-shrink-0 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+      </svg>
+    );
+  // Excel / CSV / Sheets
+  if (type.includes("sheet") || type.includes("excel") || type === "text/csv")
+    return (
+      <svg className="h-4 w-4 flex-shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clipRule="evenodd" />
+      </svg>
+    );
+  // Images
+  if (type.startsWith("image/"))
+    return (
+      <svg className="h-4 w-4 flex-shrink-0 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+      </svg>
+    );
+  // Generic
+  return (
+    <svg className="h-4 w-4 flex-shrink-0 text-stone-400" viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function FileCell({
+  applicant,
+  column,
+  value,
+  companyId,
+  boardId,
+  onUpdate,
+}: {
+  applicant: ApplicantRow;
+  column: BoardColumn;
+  value: FileValue;
+  companyId: string;
+  boardId: string;
+  onUpdate: (val: any) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  // Local copy of value for instant optimistic feedback.
+  const [localValue, setLocalValue] = useState<FileValue>(value);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Always-present hidden file input — never conditionally rendered to avoid
+  // hydration mismatches between SSR (no file API) and client.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync from server when the parent propagates a change (e.g., after optimistic
+  // update resolves or another cell on the row is saved).
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  // ── Upload ────────────────────────────────────────────────────────────────
+
+  async function handleFileSelect(file: File) {
+    setUploading(true);
+    setUploadError(null);
+
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("companyId", companyId);
+    fd.append("boardId", boardId);
+    fd.append("columnId", column.id);
+    fd.append("applicantId", applicant.id);
+
+    try {
+      const res = await fetch("/api/board/upload-file", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error ?? "Upload failed");
+      const next: FileValue = { path: data.path, metadata: data.metadata };
+      setLocalValue(next);
+      onUpdate(next);
+      setUploadError(null);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+      // Reset so selecting the same file again still fires onChange.
+      e.target.value = "";
+    }
+  }
+
+  function openPicker() {
+    fileInputRef.current?.click();
+  }
+
+  // ── Remove ────────────────────────────────────────────────────────────────
+
+  function handleRemove() {
+    setLocalValue(null);
+    onUpdate(null);
+    setUploadError(null);
+  }
+
+  // ── Drag-and-drop ─────────────────────────────────────────────────────────
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(true);
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    // Only clear if truly leaving the cell (not entering a child element).
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false);
+  }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelect(file);
+  }
+
+  // ── Paste (Cmd/Ctrl + V) ──────────────────────────────────────────────────
+  // Only upload if the pasted item is actually a file; silently ignore text/URLs.
+
+  function handlePaste(e: React.ClipboardEvent) {
+    const fileItem = Array.from(e.clipboardData.items).find((i) => i.kind === "file");
+    if (!fileItem) return; // text or URL — ignore
+    e.preventDefault();
+    const file = fileItem.getAsFile();
+    if (file) handleFileSelect(file);
+  }
+
+  // ── Derived display values ────────────────────────────────────────────────
+
+  const meta = localValue?.metadata ?? null;
+  const fileType = meta?.type ?? "";
+  const fileName = meta?.name ?? localValue?.path?.split("/").pop() ?? "File";
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const fileUrl = localValue?.path
+    ? `${supabaseUrl}/storage/v1/object/public/files/${localValue.path}`
+    : null;
+  const isImage = fileType.startsWith("image/");
+  const isPDF = fileType === "application/pdf";
+
+  // Hidden file input — always rendered (never gated on mounted/client check).
+  const hiddenInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      className="sr-only"
+      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.gif,.webp,.txt,.json,.html"
+      onChange={handleInputChange}
+      tabIndex={-1}
+      aria-hidden="true"
+    />
+  );
+
+  // ── Empty state ───────────────────────────────────────────────────────────
+
+  if (!localValue && !uploading) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Upload file"
+        onClick={openPicker}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
+        }}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onPaste={handlePaste}
+        className={`group/fcell relative flex h-8 w-full cursor-pointer items-center rounded px-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          isDragOver ? "bg-blue-50 ring-1 ring-inset ring-blue-300" : "hover:bg-stone-50"
+        }`}
+      >
+        {hiddenInput}
+        {/* Paperclip — visible on hover/drag/focus. Cell height is fixed at h-8 regardless. */}
+        <svg
+          className={`h-4 w-4 text-stone-400 transition-opacity ${
+            isDragOver ? "opacity-100" : "opacity-0 group-hover/fcell:opacity-100 group-focus/fcell:opacity-100"
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+        </svg>
+        {/* Non-blocking inline error — shown inside the cell so row height stays fixed */}
+        {uploadError && (
+          <span className="ml-1 truncate text-xs text-red-500" title={uploadError}>
+            {uploadError}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // ── Uploading state ───────────────────────────────────────────────────────
+
+  if (uploading) {
+    return (
+      <div className="flex h-8 w-full items-center gap-2 px-1">
+        {hiddenInput}
+        <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-stone-200 border-t-blue-500" />
+        <span className="truncate text-xs text-stone-500">Uploading…</span>
+      </div>
+    );
+  }
+
+  // ── Filled state ──────────────────────────────────────────────────────────
+
+  return (
+    <div
+      className={`group/fcell relative flex h-8 w-full items-center gap-1 rounded px-1 transition-colors ${
+        isDragOver ? "bg-blue-50 ring-1 ring-inset ring-blue-300" : "hover:bg-stone-50"
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      onPaste={handlePaste}
+    >
+      {hiddenInput}
+
+      {/* File icon + name — clicking opens the preview modal */}
+      <button
+        type="button"
+        onClick={() => setPreviewOpen(true)}
+        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+        title={fileName}
+      >
+        <FileSvgIcon type={fileType} />
+        <span className="truncate text-xs text-stone-700">{fileName}</span>
+      </button>
+
+      {/* Hover actions: replace and remove — only visible on hover to keep the cell clean */}
+      <div className="flex flex-shrink-0 items-center opacity-0 transition-opacity group-hover/fcell:opacity-100">
+        {/* Replace */}
+        <button
+          type="button"
+          onClick={openPicker}
+          className="rounded p-0.5 text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
+          title="Replace file"
+          aria-label="Replace file"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+        </button>
+        {/* Remove */}
+        <button
+          type="button"
+          onClick={handleRemove}
+          className="rounded p-0.5 text-stone-400 transition-colors hover:bg-red-50 hover:text-red-600"
+          title="Remove file"
+          aria-label="Remove file"
+        >
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Inline error badge — only after a failed re-upload attempt */}
+      {uploadError && (
+        <span className="ml-1 flex-shrink-0 truncate text-xs text-red-500" title={uploadError}>!</span>
+      )}
+
+      {/* Preview modal — portalled to body so it's never clipped by table overflow */}
+      {previewOpen && fileUrl && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div
+            className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-stone-200 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <FileSvgIcon type={fileType} />
+                <span className="truncate text-sm font-medium text-stone-900">{fileName}</span>
+              </div>
+              <div className="ml-4 flex flex-shrink-0 items-center gap-2">
+                <a
+                  href={fileUrl}
+                  download={fileName}
+                  className="flex items-center gap-1 rounded-lg border border-stone-200 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:bg-stone-50"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(false)}
+                  className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-900"
+                  aria-label="Close preview"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal body */}
+            <div className="min-h-0 flex-1 overflow-auto">
+              {isImage ? (
+                // Images: render inline so user can inspect without downloading.
+                <img src={fileUrl} alt={fileName} className="mx-auto max-w-full object-contain" />
+              ) : isPDF ? (
+                // PDFs: use an iframe — works in all modern browsers without plugins.
+                <iframe src={fileUrl} className="h-[80vh] w-full" title={fileName} />
+              ) : (
+                // Everything else: offer a download link.
+                <div className="flex flex-col items-center justify-center gap-4 py-16">
+                  <FileSvgIcon type={fileType} />
+                  <p className="text-sm text-stone-500">Preview not available for this file type.</p>
+                  <a
+                    href={fileUrl}
+                    download={fileName}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
+                  >
+                    Download {fileName}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 // ===== Cell Renderer =====
 
 function CellRenderer({
@@ -2066,6 +2460,8 @@ function CellRenderer({
   labels,
   onUpdate,
   onEditLabels,
+  companyId,
+  boardId,
 }: {
   applicant: ApplicantRow;
   column: BoardColumn;
@@ -2073,6 +2469,8 @@ function CellRenderer({
   labels: StatusLabel[];
   onUpdate: (val: any) => void;
   onEditLabels: () => void;
+  companyId?: string;
+  boardId?: string;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -2288,18 +2686,15 @@ function CellRenderer({
   }
 
   if (column.type === "file") {
-    if (!value) {
-      return <span className="text-stone-300">—</span>;
-    }
     return (
-      <a
-        href={`/api/resumes/view?applicantId=${applicant.id}`}
-        target="_blank"
-        rel="noreferrer"
-        className="text-blue-600 hover:underline text-sm"
-      >
-        View
-      </a>
+      <FileCell
+        applicant={applicant}
+        column={column}
+        value={value}
+        companyId={companyId ?? ""}
+        boardId={boardId ?? ""}
+        onUpdate={onUpdate}
+      />
     );
   }
 

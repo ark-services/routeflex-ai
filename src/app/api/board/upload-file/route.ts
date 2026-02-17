@@ -51,19 +51,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify user is a member of the company
+    // Resolve the company's account_id, then verify membership via account_memberships.
+    // (The codebase uses account-level membership, not a company_members table.)
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .select('account_id')
+      .eq('id', companyId)
+      .maybeSingle();
+
+    if (companyError || !company) {
+      console.error('[Board File Upload API] Company lookup failed:', { companyId, error: companyError });
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+
     const { data: membership, error: membershipError } = await supabase
-      .from('company_members')
+      .from('account_memberships')
       .select('role')
-      .eq('company_id', companyId)
+      .eq('account_id', company.account_id)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (membershipError || !membership) {
-      console.error('[Board File Upload API] Company membership check failed:', {
+      console.error('[Board File Upload API] Membership check failed:', {
         userId: user.id,
         companyId,
-        error: membershipError
+        accountId: company.account_id,
+        error: membershipError,
       });
       return NextResponse.json(
         { error: 'Forbidden: User is not a member of this company' },
