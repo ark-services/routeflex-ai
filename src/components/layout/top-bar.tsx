@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Menu } from "lucide-react";
 import { CompanySelect } from "./company-select";
 import { UserMenu } from "./user-menu";
 import type { Company } from "@/lib/types";
@@ -12,6 +13,7 @@ interface TopBarProps {
   isAdmin: boolean;
   canCreateCompany: boolean;
   onCreateCompany: () => void;
+  onMenuOpen?: () => void;
 }
 
 export function TopBar({
@@ -23,17 +25,30 @@ export function TopBar({
   isAdmin,
   canCreateCompany,
   onCreateCompany,
+  onMenuOpen,
 }: TopBarProps) {
   return (
-    <header className="h-16 border-b border-stone-200 bg-white flex items-center justify-between px-6">
-      <Link
-        href="/"
-        className="text-lg font-semibold tracking-tight text-stone-900 hover:text-stone-700 transition-colors"
-      >
-        RouteFlex AI
-      </Link>
+    <header className="h-14 md:h-16 border-b border-stone-200 bg-white flex items-center justify-between px-4 md:px-6 flex-shrink-0">
+      <div className="flex items-center gap-3">
+        {/* Hamburger – mobile only */}
+        {onMenuOpen && (
+          <button
+            onClick={onMenuOpen}
+            className="md:hidden p-1.5 hover:bg-stone-100 rounded-lg transition-colors"
+            aria-label="Open navigation"
+          >
+            <Menu className="h-5 w-5 text-stone-600" />
+          </button>
+        )}
+        <Link
+          href="/"
+          className="text-base md:text-lg font-semibold tracking-tight text-stone-900 hover:text-stone-700 transition-colors"
+        >
+          RouteFlex AI
+        </Link>
+      </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         <CompanySelect
           companies={companies}
           currentCompanyId={currentCompanyId}

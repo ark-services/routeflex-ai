@@ -490,33 +490,33 @@ export default async function ApplicantsPage({
   return (
     <div className="h-full flex flex-col">
       {/* Navigation */}
-      <div className="bg-white border-b px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="bg-white border-b px-4 sm:px-6 py-2 sm:py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-3 sm:gap-4">
             <a
               href={`/dashboard/${companyId}/jobs/${jobId}/applicants`}
-              className="text-sm font-medium text-gray-900 border-b-2 border-blue-600 pb-2"
+              className="text-sm font-medium text-gray-900 border-b-2 border-blue-600 py-2"
             >
-              Applicants Board
+              Applicants
             </a>
             <a
               href={`/dashboard/${companyId}/jobs/${jobId}/form`}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 pb-2"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 py-2"
             >
-              Application Form
+              Form
             </a>
           </div>
 
           {/* Automate & Integrate Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <a
               href={`/admin/${company.account_id}/integrations`}
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center gap-2 text-sm font-medium"
+              className="px-3 py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center gap-1.5 text-sm font-medium"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
-              Integrate
+              <span className="hidden sm:inline">Integrate</span>
             </a>
             <AutomateButton
               companyId={companyId}

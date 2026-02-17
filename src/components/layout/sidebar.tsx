@@ -15,6 +15,8 @@ interface SidebarProps {
   jobs: Job[];
   canCreateJob: boolean;
   onCreateJob: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export function Sidebar({
@@ -23,6 +25,8 @@ export function Sidebar({
   jobs,
   canCreateJob,
   onCreateJob,
+  mobileOpen = false,
+  onMobileClose,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [jobSelectOpen, setJobSelectOpen] = useState(false);
@@ -134,22 +138,8 @@ export function Sidebar({
     return result;
   };
 
-  if (collapsed) {
-    return (
-      <div className="w-16 border-r border-stone-200 bg-stone-50/50 flex flex-col items-center py-4">
-        <button
-          onClick={() => setCollapsed(false)}
-          className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
-          title="Expand sidebar"
-        >
-          <ChevronRight className="h-5 w-5 text-stone-600" />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-64 border-r border-stone-200 bg-stone-50/50 flex flex-col">
+  const sidebarContent = (
+    <div className="w-64 border-r border-stone-200 bg-stone-50/50 flex flex-col h-full">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-stone-200">
         <h2 className="text-sm font-semibold text-stone-900">Navigation</h2>
@@ -394,5 +384,52 @@ export function Sidebar({
         </>
       )}
     </div>
+  );
+
+  return (
+    <>
+      {/* Mobile overlay drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40"
+            onClick={onMobileClose}
+            aria-hidden="true"
+          />
+          {/* Drawer panel */}
+          <div className="fixed inset-y-0 left-0 z-50 flex flex-col bg-stone-50 shadow-xl overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
+              <span className="text-sm font-semibold text-stone-900">Navigation</span>
+              <button
+                onClick={onMobileClose}
+                className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors"
+                aria-label="Close menu"
+              >
+                <ChevronLeft className="h-5 w-5 text-stone-600" />
+              </button>
+            </div>
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop persistent sidebar (collapsed or expanded) */}
+      {collapsed ? (
+        <div className="hidden md:flex w-16 border-r border-stone-200 bg-stone-50/50 flex-col items-center py-4">
+          <button
+            onClick={() => setCollapsed(false)}
+            className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
+            title="Expand sidebar"
+          >
+            <ChevronRight className="h-5 w-5 text-stone-600" />
+          </button>
+        </div>
+      ) : (
+        <div className="hidden md:flex">
+          {sidebarContent}
+        </div>
+      )}
+    </>
   );
 }

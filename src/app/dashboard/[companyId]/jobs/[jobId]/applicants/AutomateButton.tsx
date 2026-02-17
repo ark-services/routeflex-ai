@@ -27,10 +27,10 @@ export function AutomateButton({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 hover:shadow-lg hover:shadow-purple-500/30 transition-all flex items-center gap-2 text-sm font-medium shadow-sm"
+        className="px-3 py-2 min-h-[44px] bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 hover:shadow-lg hover:shadow-purple-500/30 transition-all flex items-center gap-1.5 text-sm font-medium shadow-sm"
       >
-        <Zap className="w-4 h-4" />
-        Automate
+        <Zap className="w-4 h-4 flex-shrink-0" />
+        <span className="hidden sm:inline">Automate</span>
       </button>
 
       <AutomationOverlay

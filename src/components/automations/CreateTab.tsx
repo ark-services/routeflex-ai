@@ -302,7 +302,7 @@ export function CreateTab({
   };
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
       {/* Title */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 bg-purple-100 px-4 py-2 rounded-full">
@@ -380,12 +380,12 @@ export function CreateTab({
 
         {/* Create/Update Buttons */}
         {selectedTrigger && actions.length > 0 && (
-          <div className="flex justify-center gap-3 pt-6">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 pt-6">
             {isEditing && onCancelEdit && (
               <button
                 onClick={onCancelEdit}
                 disabled={loading}
-                className="px-8 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 font-medium"
+                className="px-8 py-3 min-h-[44px] bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 font-medium"
               >
                 Cancel
               </button>
@@ -393,7 +393,7 @@ export function CreateTab({
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium shadow-lg"
+              className="px-8 py-3 min-h-[44px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium shadow-lg"
             >
               {loading
                 ? isEditing

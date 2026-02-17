@@ -173,6 +173,9 @@ export default function ApplicantsBoard({
   const [localApplicants, setLocalApplicants] = useState(applicants);
   const [localGroups, setLocalGroups] = useState(groups);
 
+  // Mobile card expanded state
+  const [mobileExpandedRows, setMobileExpandedRows] = useState<Record<string, boolean>>({});
+
   // Avoid hydration mismatches with DnD/table markup by rendering after mount
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -703,7 +706,7 @@ export default function ApplicantsBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden bg-stone-50">
+      <div className="flex h-[calc(100dvh-7rem)] md:h-[calc(100vh-8rem)] flex-col overflow-hidden bg-stone-50">
         {/* Hidden Columns Control */}
         {hiddenColumns.length > 0 && (
           <div className="px-6 py-3 border-b border-stone-200 bg-white">
@@ -743,8 +746,210 @@ export default function ApplicantsBoard({
           </div>
         )}
 
-        {/* Board content - single horizontal scroll */}
-        <div className="flex-1 overflow-auto">
+        {/* ====== MOBILE CARD VIEW (hidden on md+) ====== */}
+        <div className="md:hidden flex-1 overflow-auto">
+          <div className="p-3 space-y-4">
+            {localGroups.map((g) => {
+              const rows = applicantsByGroup.get(g.id) ?? [];
+              return (
+                <section key={g.id}>
+                  {/* Group header */}
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <button
+                      onClick={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
+                      className="text-stone-500 text-xs"
+                    >
+                      {g.is_collapsed ? "▶" : "▼"}
+                    </button>
+                    <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
+                    <span className="font-semibold text-stone-900 text-sm">{g.name}</span>
+                    <span className="text-xs text-stone-400">({rows.length})</span>
+                  </div>
+
+                  {!g.is_collapsed && (
+                    <div className="space-y-2">
+                      {rows.map((a) => {
+                        const isExpanded = !!mobileExpandedRows[a.id];
+                        const menuOpen = rowMenuOpen === a.id;
+
+                        // Identify key columns to surface at top of card
+                        const nameCol = visibleColumns.find(c => c.is_system && c.name === "Name");
+                        const statusCols = visibleColumns.filter(c => c.type === "status");
+                        const emailCols = visibleColumns.filter(c => c.type === "email" || (c.is_system && c.name === "Email"));
+                        const phoneCols = visibleColumns.filter(c => c.type === "phone" || (c.is_system && c.name === "Phone"));
+                        const primaryStatusCol = statusCols[0];
+                        // Remaining columns for the expanded section
+                        const keyColIds = new Set([
+                          nameCol?.id,
+                          primaryStatusCol?.id,
+                          emailCols[0]?.id,
+                          phoneCols[0]?.id,
+                        ].filter(Boolean));
+                        const expandedCols = visibleColumns.filter(c => !keyColIds.has(c.id));
+
+                        return (
+                          <div
+                            key={a.id}
+                            className={`bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden ${selected[a.id] ? "ring-2 ring-blue-500" : ""}`}
+                          >
+                            {/* Card top: Name + menu */}
+                            <div className="flex items-start justify-between px-4 pt-3 pb-1">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={!!selected[a.id]}
+                                  onChange={() => toggleRow(a.id)}
+                                  className="h-4 w-4 rounded border-stone-300 flex-shrink-0"
+                                />
+                                <span className="font-semibold text-stone-900 text-sm truncate">
+                                  {nameCol ? getCellValue(a, nameCol) || a.full_name : a.full_name}
+                                </span>
+                              </div>
+                              {/* Row actions menu */}
+                              <div className="relative flex-shrink-0 ml-2">
+                                <button
+                                  onClick={() => setRowMenuOpen(menuOpen ? null : a.id)}
+                                  className="p-1.5 hover:bg-stone-100 rounded-lg text-stone-500 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                                >
+                                  ⋮
+                                </button>
+                                {menuOpen && (
+                                  <>
+                                    <div className="fixed inset-0 z-[30]" onClick={() => setRowMenuOpen(null)} />
+                                    <div className="absolute right-0 top-full mt-1 z-[31] w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl">
+                                      <div className="px-3 py-1 text-xs font-medium text-stone-400">Move to</div>
+                                      {localGroups.map((grp) => (
+                                        <button
+                                          key={grp.id}
+                                          onClick={() => onMoveApplicant(a.id, grp.id)}
+                                          className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50"
+                                        >
+                                          {grp.name}
+                                        </button>
+                                      ))}
+                                      <div className="my-1 border-t border-stone-100" />
+                                      <button onClick={() => onDuplicateApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">Duplicate</button>
+                                      <button onClick={() => onDeleteApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Key info row */}
+                            <div className="px-4 pb-2 space-y-1.5">
+                              {/* Status badge */}
+                              {primaryStatusCol && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-stone-500 w-16 flex-shrink-0">Status</span>
+                                  <div className="flex-1 min-w-0">
+                                    <CellRenderer
+                                      applicant={a}
+                                      column={primaryStatusCol}
+                                      value={getCellValue(a, primaryStatusCol)}
+                                      labels={labelsByColumn.get(primaryStatusCol.id) ?? []}
+                                      onUpdate={(val) => onUpdateCell(a.id, primaryStatusCol.id, primaryStatusCol.type as any, val)}
+                                      onEditLabels={() => setEditLabelsColumnId(primaryStatusCol.id)}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {/* Email */}
+                              {emailCols[0] && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-stone-500 w-16 flex-shrink-0">Email</span>
+                                  <span className="text-sm text-stone-700 truncate">
+                                    {getCellValue(a, emailCols[0]) || a.email || "—"}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Phone */}
+                              {phoneCols[0] && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-stone-500 w-16 flex-shrink-0">Phone</span>
+                                  <span className="text-sm text-stone-700 truncate">
+                                    {getCellValue(a, phoneCols[0]) || a.phone || "—"}
+                                  </span>
+                                </div>
+                              )}
+                              {/* Applied date */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-stone-500 w-16 flex-shrink-0">Applied</span>
+                                <span className="text-xs text-stone-400">
+                                  {new Date(a.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Expand toggle */}
+                            {expandedCols.length > 0 && (
+                              <button
+                                onClick={() => setMobileExpandedRows(prev => ({ ...prev, [a.id]: !isExpanded }))}
+                                className="w-full px-4 py-2 text-xs text-stone-500 hover:text-stone-700 hover:bg-stone-50 border-t border-stone-100 text-left flex items-center gap-1 transition-colors"
+                              >
+                                {isExpanded ? "▲ Show less" : `▼ Show ${expandedCols.length} more field${expandedCols.length !== 1 ? "s" : ""}`}
+                              </button>
+                            )}
+
+                            {/* Expanded: all other columns */}
+                            {isExpanded && (
+                              <div className="px-4 pb-3 pt-1 border-t border-stone-100 space-y-2 bg-stone-50/50">
+                                {expandedCols.map((col) => (
+                                  <div key={col.id} className="flex items-start gap-2">
+                                    <span className="text-xs text-stone-500 w-24 flex-shrink-0 pt-1.5">{col.name}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <CellRenderer
+                                        applicant={a}
+                                        column={col}
+                                        value={getCellValue(a, col)}
+                                        labels={labelsByColumn.get(col.id) ?? []}
+                                        onUpdate={(val) => onUpdateCell(a.id, col.id, col.type as any, val)}
+                                        onEditLabels={() => setEditLabelsColumnId(col.id)}
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Add item */}
+                      <button
+                        onClick={() => onQuickCreateApplicant(g.id)}
+                        disabled={isPending}
+                        className="w-full py-2.5 text-sm text-stone-400 hover:text-blue-600 hover:bg-blue-50/30 rounded-xl border border-dashed border-stone-200 transition-colors"
+                      >
+                        + Add item
+                      </button>
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+
+            {/* Add new group on mobile */}
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="New group name"
+                className="flex-1 h-11 rounded-lg border border-stone-200 bg-white px-3 text-base outline-none focus:border-stone-400"
+              />
+              <button
+                onClick={onCreateGroup}
+                disabled={isPending || !newGroupName.trim()}
+                className="h-11 px-4 rounded-lg bg-stone-900 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60 whitespace-nowrap"
+              >
+                + Group
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ====== DESKTOP TABLE VIEW (hidden on mobile) ====== */}
+        <div className="hidden md:block flex-1 overflow-auto">
           <div className="min-w-max p-6">
             {/* Groups */}
             <div className="space-y-4">
@@ -972,10 +1177,10 @@ export default function ApplicantsBoard({
 
         {/* Add Column Modal */}
         {showAddColumnModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-6 shadow-xl">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
+            <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold text-stone-900">Add Column</h3>
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-stone-700">Column name</label>
                   <input
@@ -985,7 +1190,7 @@ export default function ApplicantsBoard({
                       setAddColumnError(null);
                     }}
                     placeholder="e.g. Interview Score"
-                    className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
+                    className="mt-1 h-11 w-full rounded-lg border border-stone-200 bg-white px-3 text-base outline-none focus:border-stone-400"
                     autoFocus
                   />
                   {addColumnError && (
@@ -997,7 +1202,7 @@ export default function ApplicantsBoard({
                   <select
                     value={newColumnType}
                     onChange={(e) => setNewColumnType(e.target.value as any)}
-                    className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
+                    className="mt-1 h-11 w-full rounded-lg border border-stone-200 bg-white px-3 text-base outline-none focus:border-stone-400"
                   >
                     <option value="text">Text</option>
                     <option value="email">Email</option>
@@ -1010,7 +1215,7 @@ export default function ApplicantsBoard({
                   </select>
                 </div>
               </div>
-              <div className="mt-6 flex items-center justify-end gap-2">
+              <div className="mt-6 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
                 <button
                   onClick={() => {
                     setShowAddColumnModal(false);
@@ -1019,14 +1224,14 @@ export default function ApplicantsBoard({
                     setAddColumnError(null);
                     setAddAfterColumnId(null);
                   }}
-                  className="h-9 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                  className="h-11 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 hover:bg-stone-50 w-full sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={onAddColumn}
                   disabled={isPending || !newColumnName.trim()}
-                  className="h-9 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60"
+                  className="h-11 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60 w-full sm:w-auto"
                 >
                   Add
                 </button>
@@ -1052,8 +1257,8 @@ export default function ApplicantsBoard({
 
         {/* Bulk action bar */}
         {selectedIds.length > 0 && (
-          <div className="fixed bottom-6 left-1/2 z-50 w-[min(920px,calc(100%-24px))] -translate-x-1/2 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-xl">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="fixed bottom-0 sm:bottom-6 left-0 sm:left-1/2 right-0 sm:right-auto z-50 w-full sm:w-[min(920px,calc(100%-24px))] sm:-translate-x-1/2 rounded-none sm:rounded-xl border-t sm:border border-stone-200 bg-white px-4 py-3 shadow-xl">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-sm text-stone-700">
                 <span className="font-semibold">{selectedIds.length}</span> selected
               </div>
@@ -1065,7 +1270,7 @@ export default function ApplicantsBoard({
                     if (groupId) onMoveToGroup(groupId);
                     e.currentTarget.value = "";
                   }}
-                  className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none"
+                  className="h-10 rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none"
                   defaultValue=""
                   disabled={isPending}
                 >
@@ -1082,7 +1287,7 @@ export default function ApplicantsBoard({
                 <button
                   onClick={onBulkDelete}
                   disabled={isPending}
-                  className="h-9 rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
+                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
                 >
                   Delete
                 </button>
@@ -1090,7 +1295,7 @@ export default function ApplicantsBoard({
                 <button
                   onClick={clearSelection}
                   disabled={isPending}
-                  className="h-9 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-60"
+                  className="h-10 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-60"
                 >
                   Clear
                 </button>
@@ -1809,7 +2014,7 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="—"
         />
         {isPending && (
@@ -1831,7 +2036,7 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="—"
         />
         {isPending && (
@@ -1853,7 +2058,7 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -1885,7 +2090,7 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="email@example.com"
         />
         {isPending && (
@@ -1907,7 +2112,7 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="(123) 456-7890"
         />
         {isPending && (
@@ -1929,7 +2134,7 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="City, State"
         />
         {isPending && (
@@ -2091,8 +2296,8 @@ function StatusLabelsEditor({
   const fallbackLabel = localLabels.find((l) => l.label.toLowerCase() === "none") || localLabels[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-[10px] border border-stone-200 bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
+      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-[10px] border border-stone-200 bg-white p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-stone-900">Edit Status Labels</h3>
 
         {/* Error message */}

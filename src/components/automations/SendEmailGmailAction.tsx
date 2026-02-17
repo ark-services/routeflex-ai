@@ -180,7 +180,7 @@ export function SendEmailGmailAction({
               value={action.config.subject || ''}
               onChange={(e) => onChange({ config: { ...action.config, subject: e.target.value } })}
               placeholder="e.g., Welcome to {{company_name}}, {{applicant_name}}!"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[16px] md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 

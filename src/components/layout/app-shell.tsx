@@ -34,6 +34,7 @@ export function AppShell({
 }: AppShellProps) {
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [showCreateJob, setShowCreateJob] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-50">
@@ -46,6 +47,7 @@ export function AppShell({
         isAdmin={isAdmin}
         canCreateCompany={canCreateCompany}
         onCreateCompany={() => setShowCreateCompany(true)}
+        onMenuOpen={() => setMobileSidebarOpen(true)}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -55,9 +57,11 @@ export function AppShell({
           jobs={jobs}
           canCreateJob={canCreateJob}
           onCreateJob={() => setShowCreateJob(true)}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto min-w-0">
           {children}
         </main>
       </div>

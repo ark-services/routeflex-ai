@@ -22,10 +22,10 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ a
         <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Integrations</h1>
         <p className="text-sm text-stone-600">Connect external services for automations</p>
 
-        <Card className="p-6">
-          <div className="flex items-start justify-between">
+        <Card className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
                 <Mail className="w-6 h-6 text-red-600" />
               </div>
               <div>
@@ -34,15 +34,15 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ a
                   Send automated emails through your Gmail account
                 </p>
                 {isConnected && (
-                  <div className="mt-3 flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4 text-green-600" />
+                  <div className="mt-3 flex items-center gap-2 text-sm flex-wrap">
+                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
                     <span className="text-green-700 font-medium">Connected</span>
                     <span className="text-stone-500">• {connectedEmail}</span>
                   </div>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:flex-shrink-0">
               {isConnected ? (
                 <>
                   <GmailReconnectButton accountId={accountId} />

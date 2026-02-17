@@ -41,7 +41,7 @@ export function Dialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm"
@@ -50,7 +50,7 @@ export function Dialog({
       />
 
       {/* Modal content */}
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 w-full sm:max-w-md">
         {children}
       </div>
     </div>
@@ -58,7 +58,11 @@ export function Dialog({
 }
 
 export function DialogContent({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`bg-white rounded-xl p-8 ${className}`}>{children}</div>;
+  return (
+    <div className={`bg-white rounded-t-2xl sm:rounded-xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto ${className}`}>
+      {children}
+    </div>
+  );
 }
 
 export function DialogHeader({ children }: { children: ReactNode }) {

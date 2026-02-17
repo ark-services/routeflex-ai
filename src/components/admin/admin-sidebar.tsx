@@ -36,12 +36,10 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
   };
 
   return (
-    <aside className="w-56 flex-shrink-0">
-      <div className="sticky top-6 space-y-1">
-        <h2 className="px-3 mb-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">
-          Admin Center
-        </h2>
-        <nav className="space-y-1">
+    <>
+      {/* Mobile: horizontal scrollable tab bar */}
+      <div className="md:hidden w-full overflow-x-auto border-b border-stone-200 bg-white mb-4">
+        <nav className="flex min-w-max px-4 gap-1 py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -52,20 +50,53 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
                 key={href}
                 href={href}
                 className={`
-                  flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                  flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap min-h-[44px]
                   ${active
                     ? "bg-blue-50 text-blue-700"
                     : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
                   }
                 `}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4 flex-shrink-0" />
                 {item.label}
               </Link>
             );
           })}
         </nav>
       </div>
-    </aside>
+
+      {/* Desktop: vertical sidebar */}
+      <aside className="hidden md:block w-56 flex-shrink-0">
+        <div className="sticky top-6 space-y-1">
+          <h2 className="px-3 mb-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">
+            Admin Center
+          </h2>
+          <nav className="space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              const href = `/admin/${accountId}${item.href}`;
+
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`
+                    flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                    ${active
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                    }
+                  `}
+                >
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </aside>
+    </>
   );
 }

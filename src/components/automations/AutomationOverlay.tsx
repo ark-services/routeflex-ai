@@ -89,16 +89,16 @@ export function AutomationOverlay({
 
   return (
     <div
-      className="fixed inset-0 bg-gray-900/10 backdrop-blur-[2px] z-50 flex items-center justify-center p-6"
+      className="fixed inset-0 bg-gray-900/10 backdrop-blur-[2px] z-50 flex items-end sm:items-center justify-center p-0 sm:p-6"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col"
+        className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-6xl h-[92vh] sm:h-[85vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200 flex-shrink-0">
-          <h2 className="text-2xl font-semibold text-gray-900">Automations</h2>
+        <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">Automations</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -108,7 +108,7 @@ export function AutomationOverlay({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 px-8 flex-shrink-0">
+        <div className="flex border-b border-gray-200 px-4 sm:px-8 flex-shrink-0">
           <button
             onClick={() => setActiveTab("manage")}
             className={`px-4 py-3 font-medium transition-colors relative ${
