@@ -1,11 +1,22 @@
 "use client";
 
-import { useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import { createPortal } from "react-dom";
 import { X, Plus, Trash2 } from "lucide-react";
 import type { ActiveFilter, FilterCondition } from "./view-actions";
 import type { BoardColumn, BoardStatusLabel } from "@/lib/types";
 
-// ─── Condition options by column type ─────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function newFilterId() {
+  return Math.random().toString(36).slice(2, 10);
+}
 
 function conditionsForType(type: string): { value: FilterCondition; label: string }[] {
   switch (type) {
@@ -37,7 +48,7 @@ function conditionsForType(type: string): { value: FilterCondition; label: strin
         { value: "is_empty", label: "is empty" },
         { value: "is_not_empty", label: "is not empty" },
       ];
-    default: // text, email, phone, location
+    default:
       return [
         { value: "contains", label: "contains" },
         { value: "equals", label: "is" },
@@ -45,6 +56,18 @@ function conditionsForType(type: string): { value: FilterCondition; label: strin
         { value: "is_not_empty", label: "is not empty" },
       ];
   }
+}
+
+function makeBlankFilter(columns: BoardColumn[], joiner?: "and" | "or"): ActiveFilter {
+  const col = columns[0];
+  const conds = col ? conditionsForType(col.type) : [];
+  return {
+    id: newFilterId(),
+    columnId: col?.id ?? "",
+    condition: conds[0]?.value ?? "contains",
+    value: "",
+    joiner,
+  };
 }
 
 // ─── Value input ──────────────────────────────────────────────────────────────
@@ -65,55 +88,34 @@ function ValueInput({
   if (!column) return null;
   if (condition === "is_empty" || condition === "is_not_empty") return null;
 
+  const cls =
+    "h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500";
+
   if (column.type === "status") {
     const labels = statusLabels.filter((sl) => sl.column_id === column.id);
     return (
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-[120px]"
-      >
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${cls} min-w-[120px]`}>
         <option value="">Select…</option>
         {labels.map((l) => (
-          <option key={l.id} value={l.id}>
-            {l.label}
-          </option>
+          <option key={l.id} value={l.id}>{l.label}</option>
         ))}
       </select>
     );
   }
-
   if (column.type === "number") {
     return (
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Value"
-        className="h-8 w-28 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-      />
+      <input type="number" value={value} onChange={(e) => onChange(e.target.value)}
+        placeholder="Value" className={`${cls} w-28`} />
     );
   }
-
   if (column.type === "date") {
     return (
-      <input
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-      />
+      <input type="date" value={value} onChange={(e) => onChange(e.target.value)} className={cls} />
     );
   }
-
   return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Value"
-      className="h-8 min-w-[140px] rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-    />
+    <input type="text" value={value} onChange={(e) => onChange(e.target.value)}
+      placeholder="Value" className={`${cls} min-w-[140px]`} />
   );
 }
 
@@ -127,50 +129,37 @@ function SaveViewInline({
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
 
-  // Auto-focus when rendered
-  setTimeout(() => inputRef.current?.focus(), 0);
-
-  const submit = () => {
-    const trimmed = name.trim();
-    if (trimmed) onSave(trimmed);
-  };
+  const submit = () => { const t = name.trim(); if (t) onSave(t); };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <input
-        ref={inputRef}
+        ref={ref}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") submit();
-          if (e.key === "Escape") onCancel();
-        }}
+        onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") onCancel(); }}
         placeholder="View name…"
-        className="h-7 flex-1 min-w-0 rounded border border-stone-300 px-2 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="h-7 w-36 rounded border border-stone-300 px-2 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
-      <button
-        onClick={submit}
-        disabled={!name.trim()}
-        className="h-7 px-2.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 shrink-0"
-      >
+      <button onClick={submit} disabled={!name.trim()}
+        className="h-7 px-2.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40">
         Save
       </button>
-      <button
-        onClick={onCancel}
-        className="h-7 px-2 text-xs text-stone-500 hover:text-stone-700 shrink-0"
-      >
+      <button onClick={onCancel} className="h-7 px-2 text-xs text-stone-500 hover:text-stone-700">
         Cancel
       </button>
     </div>
   );
 }
 
-// ─── Main FilterPanel component ───────────────────────────────────────────────
+// ─── Portal-based popover panel ───────────────────────────────────────────────
 
 export interface FilterPanelProps {
   open: boolean;
+  anchorEl: HTMLElement | null;  // the Filter button element for positioning
   columns: BoardColumn[];
   statusLabels: BoardStatusLabel[];
   filters: ActiveFilter[];
@@ -182,6 +171,7 @@ export interface FilterPanelProps {
 
 export function FilterPanel({
   open,
+  anchorEl,
   columns,
   statusLabels,
   filters,
@@ -190,46 +180,78 @@ export function FilterPanel({
   onSaveView,
   isDirty,
 }: FilterPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const [savingView, setSavingView] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!open) return null;
+  // Client-only portal
+  useEffect(() => { setMounted(true); }, []);
 
-  // ── Ensure at least one filter row is visible ─────────────────────────────
-
-  // Seed the first filter row if none exist yet
-  const displayFilters =
-    filters.length === 0 && columns.length > 0
-      ? (() => {
-          const firstCol = columns[0];
-          const conds = conditionsForType(firstCol.type);
-          return [
-            {
-              id: "__seed__",
-              columnId: firstCol.id,
-              condition: conds[0]?.value ?? "contains",
-              value: "",
-            } as ActiveFilter,
-          ];
-        })()
-      : filters;
-
-  // Commit the seeded filter once the user touches it
-  function ensureSeeded(id: string) {
-    if (id === "__seed__" && filters.length === 0) {
-      // Re-materialise the seeded row into real state
-      onFiltersChange(displayFilters);
+  // ── Auto-seed: when panel opens with no filters, add first row immediately ──
+  useEffect(() => {
+    if (open && filters.length === 0 && columns.length > 0) {
+      onFiltersChange([makeBlankFilter(columns)]);
     }
-  }
+    if (!open) setSavingView(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // ── Position the panel below the anchor button ────────────────────────────
+  const updatePos = useCallback(() => {
+    if (!anchorEl) return;
+    const rect = anchorEl.getBoundingClientRect();
+    setPos({ top: rect.bottom + 6, left: rect.left });
+  }, [anchorEl]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePos();
+  }, [open, updatePos]);
+
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("resize", updatePos);
+    window.addEventListener("scroll", updatePos, true);
+    return () => {
+      window.removeEventListener("resize", updatePos);
+      window.removeEventListener("scroll", updatePos, true);
+    };
+  }, [open, updatePos]);
+
+  // ── Close on outside click / Escape ──────────────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    function onDown(e: MouseEvent) {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target as Node) &&
+        anchorEl &&
+        !anchorEl.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [open, onClose, anchorEl]);
 
   // ── Filter operations ─────────────────────────────────────────────────────
 
   const updateFilter = (id: string, patch: Partial<ActiveFilter>) => {
-    // If touching the seed row, write it as real first
-    const base = filters.length === 0 ? displayFilters : filters;
     onFiltersChange(
-      base.map((f) => {
+      filters.map((f) => {
         if (f.id !== id) return f;
-        const updated = { ...f, ...patch, id: f.id === "__seed__" ? Math.random().toString(36).slice(2) : f.id };
+        const updated = { ...f, ...patch };
+        // Reset condition + value when column changes
         if (patch.columnId && patch.columnId !== f.columnId) {
           const col = columns.find((c) => c.id === patch.columnId);
           const conds = col ? conditionsForType(col.type) : [];
@@ -246,24 +268,28 @@ export function FilterPanel({
   };
 
   const addFilter = () => {
-    const firstCol = columns[0];
-    if (!firstCol) return;
-    const conditions = conditionsForType(firstCol.type);
-    onFiltersChange([
-      ...(filters.length === 0 ? [] : filters),
-      {
-        id: Math.random().toString(36).slice(2),
-        columnId: firstCol.id,
-        condition: conditions[0]?.value ?? "contains",
-        value: "",
-      },
-    ]);
+    if (columns.length === 0) return;
+    // Always creates one new row immediately — no double-click needed
+    onFiltersChange([...filters, makeBlankFilter(columns, "and")]);
   };
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  return (
-    <div className="bg-white border-b border-stone-200 shadow-sm">
+  if (!mounted || !open) return null;
+
+  const panel = (
+    <div
+      ref={panelRef}
+      style={{
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        zIndex: 9999,
+        minWidth: 520,
+        maxWidth: "calc(100vw - 32px)",
+      }}
+      className="bg-white rounded-xl border border-stone-200 shadow-xl"
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-100">
         <span className="text-sm font-semibold text-stone-800">Filters</span>
@@ -279,7 +305,7 @@ export function FilterPanel({
           <button
             onClick={onClose}
             className="p-1 rounded hover:bg-stone-100 transition-colors"
-            title="Close filters"
+            title="Close"
           >
             <X className="h-3.5 w-3.5 text-stone-500" />
           </button>
@@ -288,16 +314,29 @@ export function FilterPanel({
 
       {/* Filter rows */}
       <div className="px-4 py-3 space-y-2">
-        {displayFilters.map((f, idx) => {
+        {filters.map((f, idx) => {
           const col = columns.find((c) => c.id === f.columnId) ?? null;
           const conditions = col ? conditionsForType(col.type) : [];
 
           return (
-            <div key={f.id} className="flex flex-wrap items-center gap-2">
-              {/* Label */}
-              <span className="text-xs text-stone-400 w-10 text-right shrink-0 font-medium">
-                {idx === 0 ? "Where" : "And"}
-              </span>
+            <div key={f.id} className="flex items-center gap-2 flex-wrap">
+              {/* Connector — "Where" for row 0, And/Or dropdown for rows 1+ */}
+              {idx === 0 ? (
+                <span className="text-xs font-medium text-stone-400 w-12 text-right shrink-0 select-none">
+                  Where
+                </span>
+              ) : (
+                <select
+                  value={f.joiner ?? "and"}
+                  onChange={(e) =>
+                    updateFilter(f.id, { joiner: e.target.value as "and" | "or" })
+                  }
+                  className="h-8 w-16 rounded-md border border-stone-200 bg-white px-1.5 text-xs text-stone-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 shrink-0"
+                >
+                  <option value="and">And</option>
+                  <option value="or">Or</option>
+                </select>
+              )}
 
               {/* Column selector */}
               <select
@@ -306,9 +345,7 @@ export function FilterPanel({
                 className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 {columns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
 
@@ -321,9 +358,7 @@ export function FilterPanel({
                 className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 {conditions.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
+                  <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
 
@@ -336,10 +371,10 @@ export function FilterPanel({
                 onChange={(v) => updateFilter(f.id, { value: v })}
               />
 
-              {/* Remove */}
+              {/* Trash — immediately after the value control, not pushed far right */}
               <button
                 onClick={() => removeFilter(f.id)}
-                className="p-1 text-stone-300 hover:text-red-400 rounded transition-colors ml-auto"
+                className="p-1.5 text-stone-300 hover:text-red-400 rounded transition-colors shrink-0"
                 title="Remove filter"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -351,23 +386,21 @@ export function FilterPanel({
 
       {/* Footer */}
       <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-100 gap-4">
+        {/* + New filter */}
         <button
           onClick={addFilter}
           disabled={columns.length === 0}
-          className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-700 font-medium disabled:opacity-40 transition-colors"
+          className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800 font-medium disabled:opacity-40 transition-colors shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
           New filter
         </button>
 
-        {/* Save as new view — secondary/white */}
+        {/* Save as new view — secondary/white, inside panel */}
         <div className="shrink-0">
           {savingView ? (
             <SaveViewInline
-              onSave={(name) => {
-                setSavingView(false);
-                onSaveView(name);
-              }}
+              onSave={(name) => { setSavingView(false); onSaveView(name); }}
               onCancel={() => setSavingView(false)}
             />
           ) : (
@@ -375,7 +408,7 @@ export function FilterPanel({
               onClick={() => setSavingView(true)}
               disabled={!isDirty}
               className="h-7 px-3 text-xs font-medium rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 hover:border-stone-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title={isDirty ? "Save current search & filters as a new view" : "No changes to save"}
+              title={isDirty ? "Save current filters as a new view" : "No changes to save"}
             >
               Save as new view
             </button>
@@ -384,4 +417,6 @@ export function FilterPanel({
       </div>
     </div>
   );
+
+  return createPortal(panel, document.body);
 }

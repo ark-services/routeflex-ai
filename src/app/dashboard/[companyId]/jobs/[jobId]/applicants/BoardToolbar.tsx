@@ -64,6 +64,7 @@ export function BoardToolbar({
   const [searchFocused, setSearchFocused] = useState(false);
   const [isPending, startTransition] = useTransition();
   const searchRef = useRef<HTMLInputElement>(null);
+  const filterBtnRef = useRef<HTMLButtonElement>(null);
 
   // ── Dirty detection ───────────────────────────────────────────────────────
 
@@ -203,8 +204,9 @@ export function BoardToolbar({
           )}
         </div>
 
-        {/* Filter button */}
+        {/* Filter button — ref used by FilterPanel for portal positioning */}
         <button
+          ref={filterBtnRef}
           onClick={() => setFilterOpen((o) => !o)}
           className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0 ${
             filterOpen || activeFilters.length > 0
@@ -244,9 +246,10 @@ export function BoardToolbar({
         />
       </div>
 
-      {/* ── Inline filter panel (opens below Row 1, above view tabs) ────────── */}
+      {/* ── Filter panel — portal overlay anchored below filter button ────── */}
       <FilterPanel
         open={filterOpen}
+        anchorEl={filterBtnRef.current}
         columns={columns}
         statusLabels={statusLabels}
         filters={activeFilters}

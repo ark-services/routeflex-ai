@@ -266,15 +266,15 @@ export default function ApplicantsBoard({
       });
     }
 
-    // ── Column filters (AND logic) ──────────────────────────────────────────
-    for (const f of activeFilters) {
-      const col = localColumns.find((c) => c.id === f.columnId);
-      if (!col) continue;
+    // ── Column filters with AND/OR joiner support ──────────────────────────
+    if (activeFilters.length > 0) {
+      // Helper: evaluate a single filter clause for one applicant
+      function evalClause(a: typeof result[0], f: typeof activeFilters[0]): boolean {
+        const col = localColumns.find((c) => c.id === f.columnId);
+        if (!col) return true; // unknown column → pass-through
 
-      result = result.filter((a) => {
         const cell = cellLookup.get(`${a.id}::${f.columnId}`);
 
-        // Empty / not empty checks work on any type
         if (f.condition === "is_empty") {
           if (col.type === "status") return !cell?.value_status_label_id;
           if (col.type === "number") return cell?.value_number == null;
@@ -289,15 +289,12 @@ export default function ApplicantsBoard({
           if (col.type === "file") return !!cell?.value_file_path;
           return !!cell?.value_text;
         }
-
-        // Type-specific conditions
         if (col.type === "status") {
           const labelId = cell?.value_status_label_id ?? "";
           if (f.condition === "is") return labelId === f.value;
           if (f.condition === "is_not") return labelId !== f.value;
           return true;
         }
-
         if (col.type === "number") {
           const num = cell?.value_number ?? null;
           const fv = parseFloat(f.value);
@@ -307,7 +304,6 @@ export default function ApplicantsBoard({
           if (f.condition === "less_than") return num < fv;
           return true;
         }
-
         if (col.type === "date") {
           const dv = cell?.value_date ?? "";
           if (!dv || !f.value) return false;
@@ -316,13 +312,24 @@ export default function ApplicantsBoard({
           if (f.condition === "after") return dv > f.value;
           return true;
         }
-
-        // Text-like (text, email, phone, location)
+        // Text-like
         const tv = (cell?.value_text ?? "").toLowerCase();
         const fvl = f.value.toLowerCase();
         if (f.condition === "contains") return tv.includes(fvl);
         if (f.condition === "equals") return tv === fvl;
         return true;
+      }
+
+      // Combine filter clauses left-to-right using each row's joiner.
+      // Row 0 always applies. Row i uses f.joiner ("and"|"or", default "and").
+      result = result.filter((a) => {
+        let pass = evalClause(a, activeFilters[0]);
+        for (let i = 1; i < activeFilters.length; i++) {
+          const joiner = activeFilters[i].joiner ?? "and";
+          const next = evalClause(a, activeFilters[i]);
+          pass = joiner === "or" ? pass || next : pass && next;
+        }
+        return pass;
       });
     }
 

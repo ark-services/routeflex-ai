@@ -18,10 +18,12 @@ export type FilterCondition =
   | "is_not";
 
 export type ActiveFilter = {
-  id: string; // client-side key (e.g. crypto.randomUUID())
+  id: string; // client-side key
   columnId: string;
   condition: FilterCondition;
   value: string;
+  /** Row 1 has no joiner (always "Where"). Rows 2+ default to "and". */
+  joiner?: "and" | "or";
 };
 
 export type BoardViewQuery = {
