@@ -2744,6 +2744,9 @@ function StatusLabelsEditor({
   // This matches Monday's "edit intent" model: picker appears when editing.
   const [isNewLabelFocused, setIsNewLabelFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inline hint shown near the palette for recoverable color issues (not a red banner).
+  // Used as last-resort when a race-condition somehow slips past the smart defaults.
+  const [colorHint, setColorHint] = useState<string | null>(null);
 
   // Refs to programmatically focus label name inputs.
   // Clicking a color swatch focuses the corresponding input, opening the picker.
@@ -2865,15 +2868,17 @@ function StatusLabelsEditor({
         }
         setNewLabel("");
         setIsNewLabelFocused(false);
+        setColorHint(null);
         setError(null);
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to create label";
-        // Last-resort: if a color conflict slips through (race condition), auto-select
-        // the next available color and prompt the user to try again.
+        // Last-resort: a color conflict slipped past the smart defaults (race condition).
+        // Auto-select the next available color and show a subtle inline hint — not a
+        // red banner, since this is recoverable and the user didn't do anything wrong.
         if (msg.toLowerCase().includes("color") || msg.includes("23505")) {
           const usedColors = localLabels.map((l) => editValues[l.id]?.color || l.color);
           setNewColor(getNextAvailableColor(usedColors));
-          setError("Color conflict detected — a new color has been auto-selected. Try adding again.");
+          setColorHint("Color conflict — a new color was auto-selected. Try again.");
         } else {
           setError(msg);
         }
@@ -2884,10 +2889,19 @@ function StatusLabelsEditor({
   // Determine fallback label (first label or one named "None")
   const fallbackLabel = localLabels.find((l) => l.label.toLowerCase() === "none") || localLabels[0];
 
+  // Derived color-availability values used to gate the "Add" row and button.
+  // These are recomputed on every render so they always reflect pending local edits.
+  const usedColorsForNew = localLabels.map((l) => editValues[l.id]?.color || l.color);
+  // True when every palette slot is occupied — user must free one before adding.
+  const allColorsUsed = STATUS_COLOR_PALETTE.every(({ value }) => usedColorsForNew.includes(value));
+  // Safety net: newColor should always be valid after smart-default logic, but
+  // this guards against any edge case where it could momentarily be stale.
+  const isNewColorValid = !usedColorsForNew.includes(newColor);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
       <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-[10px] border border-stone-200 bg-white p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-stone-900">Edit Status Labels</h3>
+        <h3 className="text-lg font-semibold text-stone-900">Edit Labels</h3>
 
         {/* Error message */}
         {error && (
@@ -3005,62 +3019,80 @@ function StatusLabelsEditor({
           })}
         </div>
 
-        {/* Add new label — color swatch shows the auto-selected next-available color.
-            Clicking the swatch focuses the input (opening the picker) rather than
-            toggling a separate state, keeping the interaction model consistent. */}
-        <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-stone-300 bg-stone-50">
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => newLabelInputRef.current?.focus()}
-            className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
-            style={{ backgroundColor: newColor }}
-            title="Click to choose color"
-          />
-          <input
-            ref={newLabelInputRef}
-            type="text"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-            onFocus={() => setIsNewLabelFocused(true)}
-            onBlur={() => setIsNewLabelFocused(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && newLabel.trim()) {
-                onAddLabel();
-              }
-            }}
-            placeholder="Add new label"
-            className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg outline-none focus:border-blue-500 transition-colors"
-          />
-          <button
-            type="button"
-            onClick={onAddLabel}
-            disabled={isPending || !newLabel.trim()}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            Add
-          </button>
-        </div>
-
-        {/* Color picker for new label — appears on input focus, stays open while focused.
-            Unlike existing-label pickers, it does NOT close on color selection because
-            the user still needs to type the label name and press Enter/click Add.
-            onMouseDown:preventDefault keeps focus when clicking swatches. */}
-        {isNewLabelFocused && (
-          <div
-            className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]"
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <ColorPicker
-              value={newColor}
-              onChange={(color) => {
-                setNewColor(color);
-                // Intentionally do NOT close here — user picks color then types name.
-              }}
-              inline
-              disabledColors={localLabels.map((l) => editValues[l.id]?.color || l.color)}
-            />
+        {/* "Add new label" row — hidden and replaced with a message when all 25 palette
+            colors are already in use. This makes the constraint obvious without an error. */}
+        {allColorsUsed ? (
+          <div className="mt-4 rounded-[10px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            All colors are in use. Delete a label or change an existing label&apos;s color to add more.
           </div>
+        ) : (
+          <>
+            {/* Color swatch shows the auto-selected next-available color.
+                Clicking the swatch focuses the input, which opens the color picker below.
+                onMouseDown:preventDefault keeps focus when clicking the swatch. */}
+            <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-stone-300 bg-stone-50">
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => newLabelInputRef.current?.focus()}
+                className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
+                style={{ backgroundColor: newColor }}
+                title="Click to choose color"
+              />
+              <input
+                ref={newLabelInputRef}
+                type="text"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onFocus={() => setIsNewLabelFocused(true)}
+                onBlur={() => setIsNewLabelFocused(false)}
+                onKeyDown={(e) => {
+                  // Enforce the same validation rules as the Add button on Enter.
+                  if (e.key === 'Enter' && newLabel.trim() && isNewColorValid) {
+                    onAddLabel();
+                  }
+                }}
+                placeholder="New label"
+                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg outline-none focus:border-blue-500 transition-colors"
+              />
+              {/* Disabled when: pending, no name, or chosen color is somehow already taken.
+                  Under normal flow the color is always valid (smart defaults), but the extra
+                  guard here means the button is a reliable last line of defence. */}
+              <button
+                type="button"
+                onClick={onAddLabel}
+                disabled={isPending || !newLabel.trim() || !isNewColorValid}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Color picker for new label — appears on input focus and stays open while
+                focused so the user can pick a color then type the name, or vice-versa.
+                onMouseDown:preventDefault prevents the input from blurring on swatch click. */}
+            {isNewLabelFocused && (
+              <div
+                className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <ColorPicker
+                  value={newColor}
+                  onChange={(color) => {
+                    setNewColor(color);
+                    setColorHint(null);
+                    // Intentionally do NOT close — user picks color then types the name.
+                  }}
+                  inline
+                  disabledColors={usedColorsForNew}
+                />
+                {/* Inline hint for the rare race-condition case — soft amber, not red banner */}
+                {colorHint && (
+                  <p className="mt-2 text-xs text-amber-700">{colorHint}</p>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Footer */}
