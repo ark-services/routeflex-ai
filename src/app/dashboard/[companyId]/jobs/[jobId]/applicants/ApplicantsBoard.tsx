@@ -137,8 +137,6 @@ export default function ApplicantsBoard({
   const router = useRouter();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [isPending, startTransition] = useTransition();
-  const [newGroupName, setNewGroupName] = useState("");
-
   // Add column modal
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
@@ -151,9 +149,6 @@ export default function ApplicantsBoard({
 
   // Row menu
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
-
-  // Group color picker
-  const [colorPickerGroupId, setColorPickerGroupId] = useState<string | null>(null);
 
   // Hidden columns dropdown
   const [showHiddenColumnsMenu, setShowHiddenColumnsMenu] = useState(false);
@@ -581,13 +576,15 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onCreateGroup() {
-    const name = newGroupName.trim();
-    if (!name) return;
-
+  function handleAddNewGroup() {
     startTransition(async () => {
-      await createGroup(companyId, jobId, boardId, name);
-      setNewGroupName("");
+      const result = await createGroup(companyId, jobId, boardId, "New Group");
+      if (result?.data) {
+        const newGroup: Group = { ...result.data, is_collapsed: false };
+        setLocalGroups((prev) => [...prev, newGroup]);
+        setEditingGroupId(newGroup.id);
+        setEditingGroupValue(newGroup.name);
+      }
     });
   }
 
@@ -598,9 +595,12 @@ export default function ApplicantsBoard({
   }
 
   function onUpdateGroupColor(groupId: string, color: string) {
+    // Optimistic update so the border/text color changes immediately
+    setLocalGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, color } : g))
+    );
     startTransition(async () => {
       await updateGroupColor(companyId, jobId, boardId, groupId, color);
-      setColorPickerGroupId(null);
     });
   }
 
@@ -854,7 +854,11 @@ export default function ApplicantsBoard({
             {localGroups.map((g) => {
               const rows = applicantsByGroup.get(g.id) ?? [];
               return (
-                <section key={g.id}>
+                <section
+                  key={g.id}
+                  className="border-l-[3px] pl-2"
+                  style={{ borderLeftColor: g.color }}
+                >
                   {/* Group header */}
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <button
@@ -863,8 +867,7 @@ export default function ApplicantsBoard({
                     >
                       {g.is_collapsed ? "▶" : "▼"}
                     </button>
-                    <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
-                    <span className="font-semibold text-stone-900 text-sm">{g.name}</span>
+                    <span className="font-semibold text-sm" style={{ color: g.color }}>{g.name}</span>
                     <span className="text-xs text-stone-400">({rows.length})</span>
                   </div>
 
@@ -1031,22 +1034,15 @@ export default function ApplicantsBoard({
               );
             })}
 
-            {/* Add new group on mobile */}
-            <div className="flex items-center gap-2 pt-2">
-              <input
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                placeholder="New group name"
-                className="flex-1 h-11 rounded-lg border border-stone-200 bg-white px-3 text-base outline-none focus:border-stone-400"
-              />
-              <button
-                onClick={onCreateGroup}
-                disabled={isPending || !newGroupName.trim()}
-                className="h-11 px-4 rounded-lg bg-stone-900 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60 whitespace-nowrap"
-              >
-                + Group
-              </button>
-            </div>
+            {/* Add new group on mobile — subtle */}
+            <button
+              onClick={handleAddNewGroup}
+              disabled={isPending}
+              className="flex items-center gap-2 h-10 px-3 text-sm text-stone-500 hover:text-stone-700 bg-white hover:bg-stone-50 border border-dashed border-stone-300 hover:border-stone-400 rounded-xl transition-colors w-full justify-center disabled:opacity-50"
+            >
+              <span className="font-medium">+</span>
+              <span>Add new group</span>
+            </button>
           </div>
         </div>
 
@@ -1064,15 +1060,18 @@ export default function ApplicantsBoard({
                 {localGroups.map((g) => {
                   const rows = applicantsByGroup.get(g.id) ?? [];
                   return (
-                    <section key={g.id} className="space-y-2">
+                    <section
+                      key={g.id}
+                      className="border-l-[3px] pl-1"
+                      style={{ borderLeftColor: g.color }}
+                    >
+                      <div className="space-y-2">
                       {/* Sortable Group header */}
                       <SortableGroupHeader
                         group={g}
                         rowCount={rows.length}
                         isCollapsed={g.is_collapsed}
                         onToggleCollapse={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
-                        colorPickerOpen={colorPickerGroupId === g.id}
-                        onColorPickerToggle={() => setColorPickerGroupId(colorPickerGroupId === g.id ? null : g.id)}
                         onColorChange={(color) => onUpdateGroupColor(g.id, color)}
                         isEditing={editingGroupId === g.id}
                         editValue={editingGroupValue}
@@ -1192,6 +1191,7 @@ export default function ApplicantsBoard({
                         </table>
                       </div>
                     )}
+                      </div>
                     </section>
                   );
                 })}
@@ -1257,20 +1257,15 @@ export default function ApplicantsBoard({
                 );
               })()}
 
-              {/* Add new group */}
-              <div className="flex items-center gap-3 pt-4 px-2">
-                <input
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="New group name"
-                  className="h-9 w-64 rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
-                />
+              {/* Add new group — subtle Monday-style */}
+              <div className="pt-3 px-2">
                 <button
-                  onClick={onCreateGroup}
-                  disabled={isPending || !newGroupName.trim()}
-                  className="flex h-9 items-center gap-2 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60"
+                  onClick={handleAddNewGroup}
+                  disabled={isPending}
+                  className="flex items-center gap-2 h-8 px-3 text-sm text-stone-500 hover:text-stone-700 bg-white hover:bg-stone-50 border border-dashed border-stone-300 hover:border-stone-400 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <span>+ Add new group</span>
+                  <span className="font-medium">+</span>
+                  <span>Add new group</span>
                 </button>
               </div>
             </div>
@@ -1842,8 +1837,6 @@ function SortableGroupHeader({
   rowCount,
   isCollapsed,
   onToggleCollapse,
-  colorPickerOpen,
-  onColorPickerToggle,
   onColorChange,
   isEditing,
   editValue,
@@ -1860,8 +1853,6 @@ function SortableGroupHeader({
   rowCount: number;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  colorPickerOpen: boolean;
-  onColorPickerToggle: () => void;
   onColorChange: (color: string) => void;
   isEditing: boolean;
   editValue: string;
@@ -1886,7 +1877,12 @@ function SortableGroupHeader({
   };
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
+  const [clientMounted, setClientMounted] = useState(false);
+
+  useEffect(() => { setClientMounted(true); }, []);
 
   // Calculate menu position when it opens
   useEffect(() => {
@@ -1901,11 +1897,28 @@ function SortableGroupHeader({
     }
   }, [menuOpen]);
 
+  // Calculate color picker position when rename starts
+  useEffect(() => {
+    if (!isEditing || !inputRef.current) return;
+    const update = () => {
+      if (!inputRef.current) return;
+      const rect = inputRef.current.getBoundingClientRect();
+      setPickerPos({ top: rect.bottom + 6, left: rect.left });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [isEditing]);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-3 px-2"
+      className="group flex items-center gap-3 px-2 py-1"
       {...attributes}
     >
       {/* Drag handle */}
@@ -1919,38 +1932,15 @@ function SortableGroupHeader({
       {/* Collapse toggle */}
       <button
         onClick={onToggleCollapse}
-        className="text-stone-600 hover:text-stone-900 text-sm"
+        className="text-stone-500 hover:text-stone-800 text-sm"
       >
         {isCollapsed ? "▶" : "▼"}
       </button>
 
-      {/* Color picker */}
-      <div className="relative">
-        <button
-          onClick={onColorPickerToggle}
-          className="h-4 w-4 rounded cursor-pointer hover:ring-2 hover:ring-stone-300 transition"
-          style={{ backgroundColor: group.color }}
-        />
-        {/* Color picker dropdown */}
-        {colorPickerOpen && (
-          <div className="absolute left-0 top-6 z-50 rounded-lg border border-stone-200 bg-white p-3 shadow-xl">
-            <div className="grid grid-cols-8 gap-2">
-              {PRESET_COLORS.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => onColorChange(color)}
-                  className="h-6 w-6 rounded border border-stone-200 hover:scale-110 transition-transform"
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Inline editable name */}
+      {/* Inline editable name — color matches group color */}
       {isEditing ? (
         <input
+          ref={inputRef}
           value={editValue}
           onChange={(e) => onChange(e.target.value)}
           onBlur={onSaveEdit}
@@ -1958,14 +1948,17 @@ function SortableGroupHeader({
             if (e.key === "Enter") onSaveEdit();
             if (e.key === "Escape") onCancelEdit();
           }}
-          className="h-7 w-48 rounded border border-stone-300 px-2 text-sm outline-none focus:border-stone-500"
+          style={{ color: group.color, borderColor: group.color }}
+          className="h-7 w-48 rounded border-2 px-2 text-sm font-semibold outline-none bg-white"
           autoFocus
           onFocus={(e) => e.target.select()}
         />
       ) : (
         <button
           onClick={onStartEdit}
-          className="text-base font-semibold text-stone-900 hover:text-stone-700 cursor-text"
+          style={{ color: group.color }}
+          className="text-base font-semibold cursor-text hover:opacity-75 transition-opacity"
+          title="Click to rename"
         >
           {group.name}
         </button>
@@ -1977,15 +1970,45 @@ function SortableGroupHeader({
       <button
         ref={menuButtonRef}
         onClick={onMenuToggle}
-        className="opacity-0 group-hover:opacity-100 ml-2 text-stone-600 hover:text-stone-900 transition-opacity text-sm font-bold"
+        className="opacity-0 group-hover:opacity-100 ml-1 p-1 rounded hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition-opacity"
+        title="Group actions"
       >
-        ⋮
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/>
+        </svg>
       </button>
 
-      {/* Render menu in a portal to escape overflow/z-index issues */}
-      {menuOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+      {/* Color picker portal — only while rename mode is active (skip until positioned) */}
+      {isEditing && clientMounted && pickerPos.top > 0 && createPortal(
+        <div
+          style={{ position: "fixed", top: pickerPos.top, left: pickerPos.left, zIndex: 9999 }}
+          className="rounded-xl border border-stone-200 bg-white p-2.5 shadow-xl"
+          onMouseDown={(e) => e.preventDefault()} // keep input focused when clicking colors
+        >
+          <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wide mb-2 px-0.5">
+            Group color
+          </p>
+          <div className="grid grid-cols-8 gap-1.5">
+            {PRESET_COLORS.map((color) => (
+              <button
+                key={color}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onColorChange(color)}
+                className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${
+                  group.color === color ? "border-stone-700 scale-110" : "border-transparent"
+                }`}
+                style={{ backgroundColor: color }}
+                title={color}
+              />
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Kebab menu portal */}
+      {menuOpen && menuPosition && clientMounted && createPortal(
         <>
-          {/* Backdrop to close menu when clicking outside */}
           <div
             className="fixed inset-0 z-[998]"
             onClick={onMenuToggle}

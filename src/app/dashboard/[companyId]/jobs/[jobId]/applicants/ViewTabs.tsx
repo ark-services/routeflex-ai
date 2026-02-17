@@ -1,5 +1,17 @@
 "use client";
 
+/**
+ * ViewTabs — Monday-style view tab bar with drag-to-reorder.
+ *
+ * Hydration strategy (Option A):
+ *   • `mounted` starts as `false` on both server and client (hydration pass).
+ *   • Server + hydration pass render <StaticTabList> — plain HTML, no dnd-kit
+ *     hooks, no aria-describedby → server HTML === client hydration HTML.
+ *   • After mount useEffect fires → `mounted` becomes `true` → React replaces
+ *     StaticTabList with SortableTabList (full dnd-kit, fully interactive).
+ *   • This eliminates the DndDescribedBy-N counter mismatch on browser Back.
+ */
+
 import {
   useRef,
   useState,
@@ -13,7 +25,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
+  type DragEndEvent,
   closestCenter,
 } from "@dnd-kit/core";
 import {
@@ -26,8 +38,19 @@ import { CSS } from "@dnd-kit/utilities";
 import { MoreHorizontal, Copy, Trash2, Pencil } from "lucide-react";
 import type { BoardView } from "./view-actions";
 
+// ─── Shared tab appearance props ──────────────────────────────────────────────
+
+interface TabSharedProps {
+  view: BoardView;
+  isActive: boolean;
+  isDefault: boolean;
+  onClick: () => void;
+  onRename: (view: BoardView) => void;
+  onDuplicate: (view: BoardView) => void;
+  onDelete: (view: BoardView) => void;
+}
+
 // ─── Portal kebab menu ────────────────────────────────────────────────────────
-// Renders via createPortal so stacking contexts inside the board can't clip it.
 
 interface KebabMenuProps {
   anchorEl: HTMLElement | null;
@@ -50,9 +73,6 @@ function KebabMenu({
 }: KebabMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
 
   const updatePos = useCallback(() => {
     if (!anchorEl) return;
@@ -75,7 +95,6 @@ function KebabMenu({
     };
   }, [open, updatePos]);
 
-  // Close on outside click or Escape
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -97,7 +116,7 @@ function KebabMenu({
     };
   }, [open, onClose, anchorEl]);
 
-  if (!mounted || !open) return null;
+  if (!open) return null;
 
   return createPortal(
     <div
@@ -133,9 +152,10 @@ function KebabMenu({
   );
 }
 
-// ─── Single sortable tab ──────────────────────────────────────────────────────
+// ─── Shared tab chrome (used by both static and sortable variants) ─────────────
+// Extracted so both render identical DOM structure/classes.
 
-function SortableTab({
+function TabChrome({
   view,
   isActive,
   isDefault,
@@ -143,40 +163,35 @@ function SortableTab({
   onRename,
   onDuplicate,
   onDelete,
-}: {
-  view: BoardView;
-  isActive: boolean;
-  isDefault: boolean;
-  onClick: () => void;
-  onRename: (view: BoardView) => void;
-  onDuplicate: (view: BoardView) => void;
-  onDelete: (view: BoardView) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: view.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
+  // Optional drag props injected by SortableTab only
+  dragProps,
+}: TabSharedProps & {
+  dragProps?: {
+    ref: (node: HTMLElement | null) => void;
+    style: React.CSSProperties;
+    buttonAttrs: Record<string, unknown>;
+    buttonListeners: Record<string, unknown>;
   };
-
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
+  const containerStyle = dragProps?.style ?? {};
+  const containerRef = dragProps?.ref;
+
   return (
     <div
-      ref={setNodeRef}
-      style={style}
+      ref={containerRef}
+      style={containerStyle}
       className={`relative flex items-center gap-0.5 group shrink-0 ${
         isActive ? "border-b-2 border-blue-600" : "border-b-2 border-transparent"
       }`}
     >
-      {/* Tab label */}
+      {/* Tab label — receives drag attrs only in sortable mode */}
       <button
-        {...attributes}
-        {...listeners}
-        onClick={() => { if (!isDragging) onClick(); }}
+        {...(dragProps?.buttonAttrs ?? {})}
+        {...(dragProps?.buttonListeners ?? {})}
+        onClick={() => onClick()}
         className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer select-none ${
           isActive ? "text-blue-600" : "text-stone-600 hover:text-stone-900"
         }`}
@@ -196,7 +211,7 @@ function SortableTab({
         <MoreHorizontal className="h-3.5 w-3.5 text-stone-500" />
       </button>
 
-      {/* Portal menu — always above everything */}
+      {/* Portal menu — only rendered client-side (KebabMenu uses createPortal) */}
       <KebabMenu
         anchorEl={btnRef.current}
         open={menuOpen}
@@ -207,6 +222,46 @@ function SortableTab({
         onDelete={() => onDelete(view)}
       />
     </div>
+  );
+}
+
+// ─── Static tab (SSR-safe, no dnd-kit hooks) ──────────────────────────────────
+// Renders identical DOM to SortableTab but without useSortable.
+// No aria-describedby attribute → no hydration mismatch.
+
+function StaticTab(props: TabSharedProps) {
+  return <TabChrome {...props} />;
+}
+
+// ─── Sortable tab (client-only, full dnd-kit) ─────────────────────────────────
+
+function SortableTab(props: TabSharedProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.view.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <TabChrome
+      {...props}
+      onClick={() => { if (!isDragging) props.onClick(); }}
+      dragProps={{
+        ref: setNodeRef,
+        style,
+        buttonAttrs: attributes as unknown as Record<string, unknown>,
+        buttonListeners: listeners as Record<string, unknown>,
+      }}
+    />
   );
 }
 
@@ -223,9 +278,7 @@ function RenameViewModal({
 }) {
   const [name, setName] = useState(view.name);
   const inputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => { inputRef.current?.select(); }, []);
-
   const submit = () => { const t = name.trim(); if (t) onSave(t); };
 
   return createPortal(
@@ -267,9 +320,7 @@ function DeleteViewModal({
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-2xl border border-stone-200 w-full max-w-sm p-6">
         <h3 className="text-sm font-semibold text-stone-900 mb-2">Delete view?</h3>
-        <p className="text-sm text-stone-500 mb-5">
-          &ldquo;{view.name}&rdquo; will be permanently deleted.
-        </p>
+        <p className="text-sm text-stone-500 mb-5">&ldquo;{view.name}&rdquo; will be permanently deleted.</p>
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100 rounded">Cancel</button>
           <button onClick={onConfirm} className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
@@ -280,19 +331,43 @@ function DeleteViewModal({
   );
 }
 
-// ─── Main ViewTabs ────────────────────────────────────────────────────────────
+// ─── Static tab list (SSR + hydration pass) ───────────────────────────────────
 
-export interface ViewTabsProps {
-  views: BoardView[];
-  activeViewId: string;
-  onViewChange: (viewId: string) => void;
-  onRename: (viewId: string, name: string) => void;
-  onDuplicate: (viewId: string) => void;
-  onDelete: (viewId: string) => void;
-  onReorder: (orderedIds: string[]) => void;
+type InternalListProps = Omit<ViewTabsProps, "onReorder" | "onRename" | "onDuplicate" | "onDelete"> & {
+  onRename: (view: BoardView) => void;
+  onDuplicate: (view: BoardView) => void;
+  onDelete: (view: BoardView) => void;
+};
+
+function StaticTabList({
+  views,
+  activeViewId,
+  onViewChange,
+  onRename,
+  onDuplicate,
+  onDelete,
+}: Omit<InternalListProps, "onReorder">) {
+  return (
+    <div className="flex items-end gap-0 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      {views.map((view) => (
+        <StaticTab
+          key={view.id}
+          view={view}
+          isActive={view.id === activeViewId}
+          isDefault={view.is_default}
+          onClick={() => onViewChange(view.id)}
+          onRename={onRename}
+          onDuplicate={onDuplicate}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  );
 }
 
-export function ViewTabs({
+// ─── Sortable tab list (client-only, after mount) ─────────────────────────────
+
+function SortableTabList({
   views,
   activeViewId,
   onViewChange,
@@ -300,10 +375,7 @@ export function ViewTabs({
   onDuplicate,
   onDelete,
   onReorder,
-}: ViewTabsProps) {
-  const [renamingView, setRenamingView] = useState<BoardView | null>(null);
-  const [deletingView, setDeletingView] = useState<BoardView | null>(null);
-
+}: InternalListProps & { onReorder: ViewTabsProps["onReorder"] }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
@@ -318,37 +390,87 @@ export function ViewTabs({
   }
 
   return (
-    <>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={views.map((v) => v.id)} strategy={horizontalListSortingStrategy}>
-          <div className="flex items-end gap-0 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            {views.map((view) => (
-              <SortableTab
-                key={view.id}
-                view={view}
-                isActive={view.id === activeViewId}
-                isDefault={view.is_default}
-                onClick={() => onViewChange(view.id)}
-                onRename={(v) => setRenamingView(v)}
-                onDuplicate={(v) => onDuplicate(v.id)}
-                onDelete={(v) => setDeletingView(v)}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={views.map((v) => v.id)} strategy={horizontalListSortingStrategy}>
+        <div className="flex items-end gap-0 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          {views.map((view) => (
+            <SortableTab
+              key={view.id}
+              view={view}
+              isActive={view.id === activeViewId}
+              isDefault={view.is_default}
+              onClick={() => onViewChange(view.id)}
+              onRename={onRename}
+              onDuplicate={onDuplicate}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
 
+// ─── Public ViewTabs (hydration-safe entry point) ────────────────────────────
+
+export interface ViewTabsProps {
+  views: BoardView[];
+  activeViewId: string;
+  onViewChange: (viewId: string) => void;
+  onRename: (viewId: string, name: string) => void;
+  onDuplicate: (viewId: string) => void;
+  onDelete: (viewId: string) => void;
+  onReorder: (orderedIds: string[]) => void;
+}
+
+export function ViewTabs(props: ViewTabsProps) {
+  // `mounted` is false on server and during the hydration pass.
+  // This guarantees server HTML === initial client HTML (both use StaticTabList).
+  // After mount, React replaces StaticTabList with SortableTabList on the client.
+  const [mounted, setMounted] = useState(false);
+  const [renamingView, setRenamingView] = useState<BoardView | null>(null);
+  const [deletingView, setDeletingView] = useState<BoardView | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const { onRename: _extRename, ...restProps } = props;
+
+  const internalRename = (v: BoardView) => setRenamingView(v);
+  const internalDuplicate = (v: BoardView) => props.onDuplicate(v.id);
+  const internalDelete = (v: BoardView) => setDeletingView(v);
+
+  return (
+    <>
+      {mounted ? (
+        <SortableTabList
+          {...restProps}
+          onRename={internalRename}
+          onDuplicate={internalDuplicate}
+          onDelete={internalDelete}
+        />
+      ) : (
+        <StaticTabList
+          views={props.views}
+          activeViewId={props.activeViewId}
+          onViewChange={props.onViewChange}
+          onRename={internalRename}
+          onDuplicate={internalDuplicate}
+          onDelete={internalDelete}
+        />
+      )}
+
+      {/* Modals use createPortal — only render client-side, triggered by user action */}
       {renamingView && (
         <RenameViewModal
           view={renamingView}
-          onSave={(name) => { onRename(renamingView.id, name); setRenamingView(null); }}
+          onSave={(name) => { props.onRename(renamingView.id, name); setRenamingView(null); }}
           onClose={() => setRenamingView(null)}
         />
       )}
       {deletingView && (
         <DeleteViewModal
           view={deletingView}
-          onConfirm={() => { onDelete(deletingView.id); setDeletingView(null); }}
+          onConfirm={() => { props.onDelete(deletingView.id); setDeletingView(null); }}
           onClose={() => setDeletingView(null)}
         />
       )}

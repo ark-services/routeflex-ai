@@ -322,7 +322,7 @@ export async function createGroup(
   boardId: string,
   name: string,
   color?: string
-) {
+): Promise<{ data?: { id: string; name: string; color: string; sort_order: number; is_collapsed: boolean }; error?: string }> {
   const supabase = await createClient();
 
   // Default colors cycle (Monday-style)
@@ -339,13 +339,13 @@ export async function createGroup(
 
   if (readErr) {
     console.error("[createGroup] Error reading existing groups:", readErr);
-    throw new Error(readErr.message);
+    return { error: readErr.message };
   }
 
   const nextSort = (existing?.[0]?.sort_order ?? 0) + 1;
   const groupColor = color || defaultColors[nextSort % defaultColors.length];
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("board_groups")
     .insert({
       company_id: companyId,
@@ -353,14 +353,17 @@ export async function createGroup(
       name,
       sort_order: nextSort,
       color: groupColor,
-    });
+    })
+    .select("id, name, color, sort_order, is_collapsed")
+    .single();
 
   if (error) {
     console.error("[createGroup] Error creating group:", error);
-    throw new Error(error.message);
+    return { error: error.message };
   }
 
   revalidatePath(dashPath(companyId, jobId));
+  return { data: data as { id: string; name: string; color: string; sort_order: number; is_collapsed: boolean } };
 }
 
 export async function toggleGroupCollapse(
