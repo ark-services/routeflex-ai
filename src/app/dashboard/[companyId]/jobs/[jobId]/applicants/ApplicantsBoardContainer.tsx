@@ -1,0 +1,89 @@
+"use client";
+
+import { useState } from "react";
+import ApplicantsBoard from "./ApplicantsBoard";
+import { BoardToolbar } from "./BoardToolbar";
+import type { ActiveFilter, BoardView } from "./view-actions";
+import type { BoardColumn, BoardStatusLabel, BoardCell } from "@/lib/types";
+
+type Group = {
+  id: string;
+  name: string;
+  sort_order: number;
+  color: string;
+  is_collapsed: boolean;
+};
+
+type ApplicantRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  status: string;
+  created_at: string;
+  resume_path: string | null;
+  jobs: { title: string } | null;
+  group_id: string | null;
+  position: number;
+};
+
+interface ApplicantsBoardContainerProps {
+  companyId: string;
+  jobId: string;
+  boardId: string;
+  groups: Group[];
+  applicants: ApplicantRow[];
+  columns: BoardColumn[];
+  statusLabels: BoardStatusLabel[];
+  cells: BoardCell[];
+  initialViews: BoardView[];
+}
+
+export function ApplicantsBoardContainer({
+  companyId,
+  jobId,
+  boardId,
+  groups,
+  applicants,
+  columns,
+  statusLabels,
+  cells,
+  initialViews,
+}: ApplicantsBoardContainerProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
+
+  return (
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Monday-style toolbar: views + search + filter + save */}
+      <BoardToolbar
+        companyId={companyId}
+        jobId={jobId}
+        boardId={boardId}
+        columns={columns}
+        statusLabels={statusLabels}
+        initialViews={initialViews}
+        searchQuery={searchQuery}
+        activeFilters={activeFilters}
+        onSearchChange={setSearchQuery}
+        onFiltersChange={setActiveFilters}
+      />
+
+      {/* Board */}
+      <div className="flex-1 overflow-hidden">
+        <ApplicantsBoard
+          companyId={companyId}
+          jobId={jobId}
+          boardId={boardId}
+          groups={groups as any}
+          applicants={applicants as any}
+          columns={columns as any}
+          statusLabels={statusLabels}
+          cells={cells}
+          searchQuery={searchQuery}
+          activeFilters={activeFilters}
+        />
+      </div>
+    </div>
+  );
+}

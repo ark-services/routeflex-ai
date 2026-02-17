@@ -53,25 +53,7 @@ export default async function ApplicationFormPage({
 
     return (
       <div className="h-full flex flex-col">
-        {/* Navigation */}
-        <div className="bg-white border-b px-6 py-3">
-          <div className="flex items-center gap-4">
-            <a
-              href={`/dashboard/${companyId}/jobs/${jobId}/applicants`}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 pb-2"
-            >
-              Applicants Board
-            </a>
-            <a
-              href={`/dashboard/${companyId}/jobs/${jobId}/form`}
-              className="text-sm font-medium text-gray-900 border-b-2 border-blue-600 pb-2"
-            >
-              Application Form
-            </a>
-          </div>
-        </div>
-
-        {/* Form Builder */}
+        {/* Form Builder – nav tabs moved to left sidebar */}
         <div className="flex-1 overflow-hidden">
           <FormBuilder
             companyId={companyId}

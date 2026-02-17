@@ -1,8 +1,9 @@
-import ApplicantsBoard from "./ApplicantsBoard";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { AutomateButton } from "./AutomateButton";
+import { ApplicantsBoardContainer } from "./ApplicantsBoardContainer";
+import { getBoardViews } from "./view-actions";
 
 function ErrorPanel({
   title,
@@ -458,81 +459,60 @@ export default async function ApplicantsPage({
     .eq("board_id", board.id)
     .order("sort_order", { ascending: true });
 
-  // Critical debug: Check if applicant group_ids match actual group ids
-  if (applicants && applicants.length > 0 && groups && groups.length > 0) {
-    const groupIds = new Set(groups.map(g => g.id));
-    const applicantGroupIds = applicants.map(a => a.group_id);
-    const unmatchedApplicants = applicants.filter(a => a.group_id && !groupIds.has(a.group_id));
+  // ============================================================================
+  // Fetch saved board views (Monday-style view tabs)
+  // ============================================================================
+  const savedViews = await getBoardViews(companyId, board.id);
 
-    if (unmatchedApplicants.length > 0) {
-      console.error('[Applicants Page] CRITICAL: Applicants with group_ids that do not match any group:', {
-        unmatchedCount: unmatchedApplicants.length,
-        unmatchedApplicants: unmatchedApplicants.map(a => ({
-          id: a.id,
-          name: a.full_name,
-          group_id: a.group_id,
-        })),
-        availableGroupIds: Array.from(groupIds),
-        availableGroupNames: groups.map(g => ({ id: g.id, name: g.name })),
-      });
-    } else {
-      console.log('[Applicants Page] ✅ All applicant group_ids match available groups');
+  // If no views exist yet, seed the default "Main table" view
+  let initialViews = savedViews;
+  if (savedViews.length === 0) {
+    // Insert default view via direct supabase call (server-side only)
+    const { data: defaultView } = await supabase
+      .from("board_views")
+      .insert({
+        company_id: companyId,
+        job_id: jobId,
+        board_id: board.id,
+        name: "Main table",
+        query: { search: "", filters: [], logic: "and" },
+        position: 0,
+        is_default: true,
+      })
+      .select("id, name, query, position, is_default")
+      .single();
+
+    if (defaultView) {
+      initialViews = [defaultView as any];
     }
-
-    const groupDistribution = groups.map(g => ({
-      groupId: g.id,
-      groupName: g.name,
-      applicantCount: applicants.filter(a => a.group_id === g.id).length,
-    }));
-    console.log('[Applicants Page] Expected applicant distribution by group:', groupDistribution);
   }
 
   return (
     <div className="h-full flex flex-col">
-      {/* Navigation */}
-      <div className="bg-white border-b px-4 sm:px-6 py-2 sm:py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <a
-              href={`/dashboard/${companyId}/jobs/${jobId}/applicants`}
-              className="text-sm font-medium text-gray-900 border-b-2 border-blue-600 py-2"
-            >
-              Applicants
-            </a>
-            <a
-              href={`/dashboard/${companyId}/jobs/${jobId}/form`}
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 py-2"
-            >
-              Form
-            </a>
-          </div>
-
-          {/* Automate & Integrate Buttons */}
-          <div className="flex items-center gap-2">
-            <a
-              href={`/admin/${company.account_id}/integrations`}
-              className="px-3 py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center gap-1.5 text-sm font-medium"
-            >
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              <span className="hidden sm:inline">Integrate</span>
-            </a>
-            <AutomateButton
-              companyId={companyId}
-              jobId={jobId}
-              accountId={company.account_id}
-              automations={automations || []}
-              triggers={triggers || []}
-              groups={groupsForAutomation || []}
-            />
-          </div>
-        </div>
+      {/* Top bar: Automate & Integrate (moved out of the old tab row) */}
+      <div className="bg-white border-b px-4 sm:px-6 py-2 flex items-center justify-end gap-2 shrink-0">
+        <a
+          href={`/admin/${company.account_id}/integrations`}
+          className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center gap-1.5 text-sm font-medium"
+        >
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span className="hidden sm:inline">Integrate</span>
+        </a>
+        <AutomateButton
+          companyId={companyId}
+          jobId={jobId}
+          accountId={company.account_id}
+          automations={automations || []}
+          triggers={triggers || []}
+          groups={groupsForAutomation || []}
+        />
       </div>
 
-      {/* Board */}
+      {/* Board container: toolbar (views + search + filter) + board */}
       <div className="flex-1 overflow-hidden">
-        <ApplicantsBoard
+        <ApplicantsBoardContainer
           companyId={companyId}
           jobId={jobId}
           boardId={board.id}
@@ -541,6 +521,7 @@ export default async function ApplicantsPage({
           columns={(columns ?? []) as any}
           statusLabels={statusLabels}
           cells={cells}
+          initialViews={initialViews as any}
         />
       </div>
     </div>

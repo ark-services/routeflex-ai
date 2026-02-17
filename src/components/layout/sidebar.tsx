@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, MoreVertical } from "lucide-react";
+import { useRouter, useParams, usePathname } from "next/navigation";
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, MoreVertical } from "lucide-react";
 import type { Job, Company } from "@/lib/types";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
 import { renameJob, duplicateJob, deleteJob } from "./job-actions";
@@ -37,9 +37,18 @@ export function Sidebar({
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
 
   // Get current job ID from URL params
   const currentJobId = (params?.jobId as string) || null;
+
+  // Active link detection
+  const isOnApplicants =
+    currentJobId !== null &&
+    pathname?.endsWith("/applicants");
+  const isOnForm =
+    currentJobId !== null &&
+    pathname?.endsWith("/form");
 
   const currentJob = jobs.find((j) => j.id === currentJobId);
   const hasJobs = jobs.length > 0;
@@ -47,14 +56,6 @@ export function Sidebar({
   const handleJobChange = (jobId: string) => {
     setJobSelectOpen(false);
     router.push(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
-  };
-
-  const handleViewApplicationPage = () => {
-    if (!currentJob) return;
-
-    // Navigate to the Application Form page where the Share Form button is
-    router.push(`/dashboard/${companyId}/jobs/${currentJobId}/form`);
-    setApplicantsMenuOpen(false);
   };
 
   const handleRenameBoard = () => {
@@ -274,9 +275,10 @@ export function Sidebar({
             </div>
           )}
 
-          {/* Nested Navigation - Applicants */}
+          {/* Nested Navigation - Applicants Board + Application Form */}
           {hasJobs && currentJobId && (
             <div className="ml-3 mt-2 space-y-1">
+              {/* Applicants Board */}
               <div className="relative group">
                 <div
                   role="button"
@@ -294,10 +296,14 @@ export function Sidebar({
                       );
                     }
                   }}
-                  className="w-full text-left px-3 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-lg transition-colors flex items-center gap-2 cursor-pointer select-none"
+                  className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 cursor-pointer select-none ${
+                    isOnApplicants
+                      ? "bg-blue-50 text-blue-700 font-medium"
+                      : "text-stone-700 hover:bg-stone-100"
+                  }`}
                 >
-                  <LayoutDashboard className="h-4 w-4 text-stone-500" />
-                  <span className="flex-1">Applicants</span>
+                  <LayoutDashboard className={`h-4 w-4 ${isOnApplicants ? "text-blue-600" : "text-stone-500"}`} />
+                  <span className="flex-1">Applicants Board</span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -322,13 +328,6 @@ export function Sidebar({
                     />
                     <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-stone-200 bg-white shadow-lg z-20">
                       <div className="py-1">
-                        <button
-                          onClick={handleViewApplicationPage}
-                          disabled={isPending}
-                          className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50"
-                        >
-                          View application page
-                        </button>
                         <button
                           onClick={handleRenameBoard}
                           disabled={isPending}
@@ -355,6 +354,33 @@ export function Sidebar({
                     </div>
                   </>
                 )}
+              </div>
+
+              {/* Application Form */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  router.push(
+                    `/dashboard/${companyId}/jobs/${currentJobId}/form`
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(
+                      `/dashboard/${companyId}/jobs/${currentJobId}/form`
+                    );
+                  }
+                }}
+                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 cursor-pointer select-none ${
+                  isOnForm
+                    ? "bg-blue-50 text-blue-700 font-medium"
+                    : "text-stone-700 hover:bg-stone-100"
+                }`}
+              >
+                <FileText className={`h-4 w-4 ${isOnForm ? "text-blue-600" : "text-stone-500"}`} />
+                <span className="flex-1">Application Form</span>
               </div>
             </div>
           )}

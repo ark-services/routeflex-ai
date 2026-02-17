@@ -54,6 +54,7 @@ import { StatusDropdown } from "@/components/ui/status-dropdown";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { formatPhone } from "@/lib/validation/columnValidation";
 import type { BoardColumn as BaseBoardColumn, BoardCell, BoardStatusLabel } from "@/lib/types";
+import type { ActiveFilter } from "./view-actions";
 
 type Group = {
   id: string;
@@ -102,6 +103,8 @@ export default function ApplicantsBoard({
   columns,
   statusLabels,
   cells,
+  searchQuery = "",
+  activeFilters = [],
 }: {
   companyId: string;
   jobId: string;
@@ -111,6 +114,8 @@ export default function ApplicantsBoard({
   columns: BoardColumn[];
   statusLabels: StatusLabel[];
   cells: BoardCell[];
+  searchQuery?: string;
+  activeFilters?: ActiveFilter[];
 }) {
   // CRITICAL: Log props received to debug filtering
   console.log('[ApplicantsBoard] Component rendered with props:', {
@@ -220,11 +225,115 @@ export default function ApplicantsBoard({
     [selected]
   );
 
+  // Build a fast cell lookup once so filtering can reference it
+  const cellLookup = useMemo(() => {
+    const map = new Map<string, BoardCell>();
+    for (const c of cells) {
+      map.set(`${c.applicant_id}::${c.column_id}`, c);
+    }
+    return map;
+  }, [cells]);
+
+  // Build status-label lookup: labelId → label text (for filter matching)
+  const statusLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const sl of statusLabels) {
+      map.set(sl.id, sl.label);
+    }
+    return map;
+  }, [statusLabels]);
+
+  // Apply search + filters to produce filtered view (does not mutate localApplicants)
+  const filteredApplicants = useMemo(() => {
+    let result = localApplicants;
+
+    // ── Search ──────────────────────────────────────────────────────────────
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter((a) => {
+        if (a.full_name?.toLowerCase().includes(q)) return true;
+        if (a.email?.toLowerCase().includes(q)) return true;
+        if (a.phone?.toLowerCase().includes(q)) return true;
+        if (a.status?.toLowerCase().includes(q)) return true;
+        // Search text-like cell values
+        for (const col of localColumns) {
+          if (["text", "email", "phone", "location"].includes(col.type)) {
+            const cell = cellLookup.get(`${a.id}::${col.id}`);
+            if (cell?.value_text?.toLowerCase().includes(q)) return true;
+          }
+        }
+        return false;
+      });
+    }
+
+    // ── Column filters (AND logic) ──────────────────────────────────────────
+    for (const f of activeFilters) {
+      const col = localColumns.find((c) => c.id === f.columnId);
+      if (!col) continue;
+
+      result = result.filter((a) => {
+        const cell = cellLookup.get(`${a.id}::${f.columnId}`);
+
+        // Empty / not empty checks work on any type
+        if (f.condition === "is_empty") {
+          if (col.type === "status") return !cell?.value_status_label_id;
+          if (col.type === "number") return cell?.value_number == null;
+          if (col.type === "date") return !cell?.value_date;
+          if (col.type === "file") return !cell?.value_file_path;
+          return !cell?.value_text;
+        }
+        if (f.condition === "is_not_empty") {
+          if (col.type === "status") return !!cell?.value_status_label_id;
+          if (col.type === "number") return cell?.value_number != null;
+          if (col.type === "date") return !!cell?.value_date;
+          if (col.type === "file") return !!cell?.value_file_path;
+          return !!cell?.value_text;
+        }
+
+        // Type-specific conditions
+        if (col.type === "status") {
+          const labelId = cell?.value_status_label_id ?? "";
+          if (f.condition === "is") return labelId === f.value;
+          if (f.condition === "is_not") return labelId !== f.value;
+          return true;
+        }
+
+        if (col.type === "number") {
+          const num = cell?.value_number ?? null;
+          const fv = parseFloat(f.value);
+          if (isNaN(fv) || num == null) return false;
+          if (f.condition === "equals") return num === fv;
+          if (f.condition === "greater_than") return num > fv;
+          if (f.condition === "less_than") return num < fv;
+          return true;
+        }
+
+        if (col.type === "date") {
+          const dv = cell?.value_date ?? "";
+          if (!dv || !f.value) return false;
+          if (f.condition === "is") return dv === f.value;
+          if (f.condition === "before") return dv < f.value;
+          if (f.condition === "after") return dv > f.value;
+          return true;
+        }
+
+        // Text-like (text, email, phone, location)
+        const tv = (cell?.value_text ?? "").toLowerCase();
+        const fvl = f.value.toLowerCase();
+        if (f.condition === "contains") return tv.includes(fvl);
+        if (f.condition === "equals") return tv === fvl;
+        return true;
+      });
+    }
+
+    return result;
+  }, [localApplicants, searchQuery, activeFilters, localColumns, cellLookup, statusLabelById]);
+
   const applicantsByGroup = useMemo(() => {
     console.log('[ApplicantsBoard] Starting grouping with:', {
-      totalApplicants: localApplicants.length,
+      totalApplicants: filteredApplicants.length,
       totalGroups: groups.length,
-      applicants: localApplicants.map(a => ({
+      applicants: filteredApplicants.map(a => ({
         id: a.id,
         name: a.full_name,
         group_id: a.group_id,
@@ -243,7 +352,7 @@ export default function ApplicantsBoard({
     // If group_id doesn't match any group, put in orphaned section
     const orphanedApplicants: ApplicantRow[] = [];
 
-    for (const a of localApplicants) {
+    for (const a of filteredApplicants) {
       // If no group_id or group doesn't exist, put in orphaned
       if (!a.group_id || !map.has(a.group_id)) {
         console.warn('[ApplicantsBoard] Orphaned applicant (no matching group):', {
@@ -275,26 +384,12 @@ export default function ApplicantsBoard({
     // Final count
     const totalGrouped = Array.from(map.values()).reduce((sum, rows) => sum + rows.length, 0);
     console.log('[ApplicantsBoard] Grouping complete:', {
-      inputApplicants: localApplicants.length,
+      inputApplicants: filteredApplicants.length,
       outputApplicants: totalGrouped,
-      distribution: Array.from(map.entries()).map(([groupId, apps]) => ({
-        groupId,
-        groupName: groupId === '__orphaned__' ? '⚠️ Orphaned' : groups.find(g => g.id === groupId)?.name,
-        count: apps.length,
-      })),
     });
 
-    // SANITY CHECK: Ensure we didn't lose any applicants
-    if (totalGrouped !== localApplicants.length) {
-      console.error('[ApplicantsBoard] CRITICAL BUG: Lost applicants during grouping!', {
-        input: localApplicants.length,
-        output: totalGrouped,
-        lost: localApplicants.length - totalGrouped,
-      });
-    }
-
     return map;
-  }, [groups, localApplicants]);
+  }, [groups, filteredApplicants]);
 
   const cellsByApplicantAndColumn = useMemo(() => {
     const map = new Map<string, BoardCell>();
