@@ -156,17 +156,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ? new Date(Date.now() + tokens.expires_in * 1000)
       : null;
 
-    // Encrypt tokens before storage (falls back to plaintext if ENCRYPTION_KEY not set)
+    // Encrypt tokens before storage
+    // SECURITY: In production, encryption MUST succeed. No plaintext fallback.
     let encryptedAccessToken: string;
     let encryptedRefreshToken: string | null = null;
 
     try {
       encryptedAccessToken = encrypt(tokens.access_token);
       encryptedRefreshToken = tokens.refresh_token ? encrypt(tokens.refresh_token) : null;
+      console.log('[OAuth callback-new] ✅ Tokens encrypted successfully');
     } catch (encryptErr: any) {
-      console.error('Encryption failed, storing tokens in plaintext:', encryptErr.message);
-      // Fallback: store in plaintext if encryption fails
-      // WARNING: This is insecure but prevents total failure
+      console.error('[OAuth callback-new] ❌ Encryption failed:', encryptErr.message);
+
+      // PRODUCTION: Hard fail - never store plaintext tokens
+      if (process.env.NODE_ENV !== 'development') {
+        const redirectUrl = buildRedirectUrl(
+          baseUrl,
+          `/admin/${state.accountId}/integrations`,
+          { error: 'encryption_failed', details: 'ENCRYPTION_KEY not configured' }
+        );
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      // DEVELOPMENT ONLY: Log loud warning but allow (unacceptable in production)
+      console.error('\n' + '='.repeat(80));
+      console.error('⚠️  SECURITY WARNING: Storing tokens in PLAINTEXT (development only)');
+      console.error('   Set ENCRYPTION_KEY environment variable to encrypt tokens');
+      console.error('='.repeat(80) + '\n');
+
+      // Development fallback: store plaintext (INSECURE - dev only)
       encryptedAccessToken = tokens.access_token;
       encryptedRefreshToken = tokens.refresh_token || null;
     }
