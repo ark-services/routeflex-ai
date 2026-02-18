@@ -65,6 +65,39 @@ function remapConfig(
     if (dstColId) out.recipient_column_id = dstColId;
   }
 
+  // ── "and only if…" conditions — remap each condition's UUID fields ────────
+  if (Array.isArray(config.conditions)) {
+    out.conditions = (config.conditions as Record<string, unknown>[]).map((cond) => {
+      const remapped: Record<string, unknown> = { ...cond };
+
+      // Remap column_id by _column_name annotation
+      if (typeof cond._column_name === "string") {
+        const dstColId = colNameToId.get(cond._column_name.toLowerCase());
+        if (dstColId) remapped.column_id = dstColId;
+      }
+
+      // Remap status label value for status_is / status_is_not
+      if (
+        (cond.type === "status_is" || cond.type === "status_is_not") &&
+        typeof cond._value_label === "string"
+      ) {
+        const colId = remapped.column_id as string | undefined;
+        if (colId) {
+          const dstLabelId = labelMap.get(`${colId}|${cond._value_label.toLowerCase()}`);
+          if (dstLabelId) remapped.value = dstLabelId;
+        }
+      }
+
+      // Remap group value for item_in_group
+      if (cond.type === "item_in_group" && typeof cond._value_group_name === "string") {
+        const dstGroupId = groupNameToId.get(cond._value_group_name.toLowerCase());
+        if (dstGroupId) remapped.value = dstGroupId;
+      }
+
+      return remapped;
+    });
+  }
+
   return out;
 }
 

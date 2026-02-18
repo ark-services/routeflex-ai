@@ -34,6 +34,33 @@ function annotateFilter(
     const name = groupIdToName.get(filter.to_group_id);
     if (name) out._to_group_name = name;
   }
+
+  // Annotate "and only if…" conditions so applyTemplate can remap UUIDs by name
+  if (Array.isArray(filter.conditions)) {
+    out.conditions = (filter.conditions as Record<string, unknown>[]).map((cond) => {
+      const annotated: Record<string, unknown> = { ...cond };
+      // Annotate column_id → _column_name for all column-based conditions
+      if (typeof cond.column_id === "string") {
+        const name = colIdToName.get(cond.column_id);
+        if (name) annotated._column_name = name;
+      }
+      // Annotate status label value → _value_label for status_is / status_is_not
+      if (
+        (cond.type === "status_is" || cond.type === "status_is_not") &&
+        typeof cond.value === "string"
+      ) {
+        const labelText = labelIdToText.get(cond.value);
+        if (labelText) annotated._value_label = labelText;
+      }
+      // Annotate group value → _value_group_name for item_in_group
+      if (cond.type === "item_in_group" && typeof cond.value === "string") {
+        const groupName = groupIdToName.get(cond.value);
+        if (groupName) annotated._value_group_name = groupName;
+      }
+      return annotated;
+    });
+  }
+
   return out;
 }
 

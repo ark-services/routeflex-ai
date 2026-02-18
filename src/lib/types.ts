@@ -133,6 +133,30 @@ export interface BoardCell {
   created_at: string;
 }
 
+// ─── Automation filter conditions ("and only if…") ───────────────────────────
+//
+// Stored inside automations.filter as { ...triggerConfig, conditions: [...] }.
+// Each condition is AND-evaluated at runtime before executing actions.
+// Template annotations (_column_name etc.) are added at capture time and used
+// to remap UUIDs when the template is applied to a different board.
+
+export type FilterConditionType =
+  | "status_is"    | "status_is_not"
+  | "text_contains" | "text_equals"
+  | "number_eq"    | "number_gt"  | "number_gte" | "number_lt" | "number_lte"
+  | "date_is"      | "date_before" | "date_after"
+  | "item_in_group";
+
+export interface FilterCondition {
+  type: FilterConditionType | string; // string fallback for extensibility
+  column_id?: string;                 // board column UUID (not needed for item_in_group)
+  value: string | number;             // comparison value
+  // Template annotation fields — added at capture, used at apply:
+  _column_name?: string;
+  _value_label?: string;       // label text for status_is / status_is_not
+  _value_group_name?: string;  // group name for item_in_group
+}
+
 // ─── Template Center ────────────────────────────────────────────────────────
 
 export interface TemplateRow {

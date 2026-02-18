@@ -120,7 +120,7 @@ export async function fireJobTrigger(
       });
 
       // Apply filter matching
-      const filterMatches = matchesFilter(automation.filter, payload);
+      const filterMatches = await matchesFilter(supabase, automation.filter, payload);
 
       if (!filterMatches) {
         const skipReason = `Filter did not match. Filter: ${JSON.stringify(automation.filter)}, Payload: column_id=${payload.column_id}, new_value=${payload.new_value}, new_label="${payload.new_label}"`;
@@ -317,13 +317,21 @@ export async function fireJobTrigger(
 
 /**
  * Matches automation filter against event payload.
- * All keys in filter must match corresponding values in payload (exact match).
+ * Handles both the legacy trigger-config keys (column_id, changes_to) and
+ * the newer "and only if…" conditions array.
  *
- * Special mappings:
- * - filter.column_id → payload.column_id (UUID)
- * - filter.changes_to → payload.new_value (UUID, NOT new_label)
+ * Special key mappings:
+ * - filter.column_id  → payload.column_id  (trigger column UUID)
+ * - filter.changes_to → payload.new_value  (status label UUID)
+ * - filter.conditions → evaluated via evaluateConditions() (async DB reads)
+ * - filter.operator   → skipped (reserved for future OR support)
+ * - filter._*         → skipped (template annotation fields)
  */
-function matchesFilter(filter: any, payload: Record<string, any>): boolean {
+async function matchesFilter(
+  supabase: SupabaseClient,
+  filter: any,
+  payload: Record<string, any>
+): Promise<boolean> {
   if (!filter || typeof filter !== 'object') {
     console.log('[matchesFilter] No filter or invalid filter object - match all');
     return true;
@@ -338,36 +346,163 @@ function matchesFilter(filter: any, payload: Record<string, any>): boolean {
   console.log('[matchesFilter] Against payload:', payload);
 
   for (const [key, value] of Object.entries(filter)) {
+    // Skip reserved/annotation keys — handled separately below
+    if (key === 'conditions' || key === 'operator') continue;
+    if (key.startsWith('_')) continue; // template annotation fields (_column_name etc.)
+
     // Special handling for column_id match (for board.status_changes_to trigger)
     if (key === 'column_id') {
       const matches = payload.column_id === value;
       console.log(`[matchesFilter] column_id: filter=${value}, payload=${payload.column_id}, match=${matches}`);
-      if (!matches) {
-        return false;
-      }
-      continue; // Match succeeded, move to next filter key
+      if (!matches) return false;
+      continue;
     }
 
     // Special handling for changes_to match (maps to payload.new_value UUID, NOT new_label text)
     if (key === 'changes_to') {
       const matches = payload.new_value === value;
       console.log(`[matchesFilter] changes_to: filter=${value}, payload.new_value=${payload.new_value}, payload.new_label="${payload.new_label}", match=${matches}`);
-      if (!matches) {
-        return false;
-      }
-      continue; // Match succeeded, move to next filter key
+      if (!matches) return false;
+      continue;
     }
 
     // Generic key match for any other filter keys
     const matches = payload[key] === value;
     console.log(`[matchesFilter] ${key}: filter=${value}, payload=${payload[key]}, match=${matches}`);
-    if (!matches) {
+    if (!matches) return false;
+  }
+
+  // Evaluate "and only if…" conditions (AND logic — all must pass)
+  if (Array.isArray(filter.conditions) && filter.conditions.length > 0) {
+    console.log(`[matchesFilter] Evaluating ${filter.conditions.length} additional condition(s)…`);
+    const conditionsPass = await evaluateConditions(supabase, filter.conditions, payload);
+    if (!conditionsPass) {
+      console.log('[matchesFilter] ✗ Additional conditions did not pass');
       return false;
     }
   }
 
   console.log('[matchesFilter] ✓ All filter conditions matched');
   return true;
+}
+
+/**
+ * Evaluates an array of FilterConditions with AND logic.
+ * Returns false as soon as any condition fails.
+ */
+async function evaluateConditions(
+  supabase: SupabaseClient,
+  conditions: any[],
+  payload: Record<string, any>
+): Promise<boolean> {
+  for (const condition of conditions) {
+    const passes = await evaluateCondition(supabase, condition, payload);
+    console.log(
+      `[evaluateCondition] type="${condition.type}" col="${condition.column_id}" value="${condition.value}": ${passes ? '✓' : '✗'}`
+    );
+    if (!passes) return false; // AND — short-circuit on first failure
+  }
+  return true;
+}
+
+/**
+ * Evaluates a single filter condition against the event payload.
+ *
+ * Optimization: if the condition references the same column that triggered
+ * the event, the value is read from the payload (no DB round-trip).
+ * Otherwise the current cell value is fetched from board_cells.
+ *
+ * Missing context (no applicant_id, no board_cell found) → returns false.
+ */
+async function evaluateCondition(
+  supabase: SupabaseClient,
+  condition: any,
+  payload: Record<string, any>
+): Promise<boolean> {
+  const { type, column_id, value } = condition;
+  const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
+
+  if (!applicantId) {
+    console.warn('[evaluateCondition] No applicant_id in payload — condition cannot be evaluated');
+    return false;
+  }
+
+  // ── item_in_group: check applicant's current group ────────────────────────
+  if (type === 'item_in_group') {
+    // Use payload group_id if available (e.g. applicant.moved_group trigger)
+    if (payload.group_id) return payload.group_id === value;
+    const { data: applicant } = await supabase
+      .from('applicants')
+      .select('group_id')
+      .eq('id', applicantId)
+      .maybeSingle();
+    return applicant?.group_id === value;
+  }
+
+  if (!column_id) {
+    console.warn(`[evaluateCondition] No column_id for condition type "${type}"`);
+    return false;
+  }
+
+  // ── Resolve cell value ────────────────────────────────────────────────────
+  let cellValue: string | number | null = null;
+
+  // Use payload data when the condition references the triggering column
+  if (column_id === payload.column_id) {
+    if (type.startsWith('status_'))  cellValue = payload.new_value ?? null;
+    else if (type.startsWith('text_'))   cellValue = payload.new_value_text ?? payload.value_text ?? null;
+    else if (type.startsWith('number_')) cellValue = payload.new_value_number ?? payload.value_number ?? null;
+    else if (type.startsWith('date_'))   cellValue = payload.new_value_date ?? payload.value_date ?? null;
+  }
+
+  // Fall back to DB read for any other column
+  if (cellValue === null || cellValue === undefined) {
+    const { data: cell } = await supabase
+      .from('board_cells')
+      .select('value_text, value_number, value_date, value_status_label_id')
+      .eq('applicant_id', applicantId)
+      .eq('column_id', column_id)
+      .maybeSingle();
+
+    if (!cell) {
+      console.warn(
+        `[evaluateCondition] No board_cell found for applicant=${applicantId} column=${column_id} — treating as fail`
+      );
+      return false;
+    }
+
+    if      (type.startsWith('status_'))  cellValue = cell.value_status_label_id ?? null;
+    else if (type.startsWith('text_'))    cellValue = cell.value_text ?? null;
+    else if (type.startsWith('number_'))  cellValue = cell.value_number ?? null;
+    else if (type.startsWith('date_'))    cellValue = cell.value_date ?? null;
+  }
+
+  // ── Evaluate ──────────────────────────────────────────────────────────────
+  switch (type) {
+    case 'status_is':
+      return String(cellValue ?? '') === String(value);
+    case 'status_is_not':
+      return String(cellValue ?? '') !== String(value);
+
+    case 'text_equals':
+      return (cellValue ?? '').toString().toLowerCase() === (value ?? '').toString().toLowerCase();
+    case 'text_contains':
+      return (cellValue ?? '').toString().toLowerCase().includes((value ?? '').toString().toLowerCase());
+
+    case 'number_eq':   return Number(cellValue) === Number(value);
+    case 'number_gt':   return Number(cellValue) >   Number(value);
+    case 'number_gte':  return Number(cellValue) >=  Number(value);
+    case 'number_lt':   return Number(cellValue) <   Number(value);
+    case 'number_lte':  return Number(cellValue) <=  Number(value);
+
+    case 'date_is':     return String(cellValue ?? '') === String(value);
+    case 'date_before': return String(cellValue ?? '') <   String(value);
+    case 'date_after':  return String(cellValue ?? '') >   String(value);
+
+    default:
+      console.warn(`[evaluateCondition] Unknown condition type "${type}" — treating as fail`);
+      return false;
+  }
 }
 
 /**
@@ -1342,7 +1477,7 @@ export async function debugAutomationRun(
 
       // Re-evaluate filter
       console.log('[debugAutomationRun] Re-evaluating filter...');
-      const filterMatches = matchesFilter(automation.filter, run.payload);
+      const filterMatches = await matchesFilter(supabase, automation.filter, run.payload);
       console.log('[debugAutomationRun] Filter result:', filterMatches ? '✓ MATCH' : '✗ NO MATCH');
     }
   }

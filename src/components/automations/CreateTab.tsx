@@ -35,6 +35,43 @@ interface Action {
   config: Record<string, any>;
 }
 
+interface FilterCondition {
+  type: string;
+  column_id?: string;
+  value: string | number | "";
+}
+
+const CONDITION_TYPES = [
+  { value: "status_is",     label: "Status is",        colType: "status" as const },
+  { value: "status_is_not", label: "Status is not",    colType: "status" as const },
+  { value: "text_contains", label: "Text contains",    colType: "text"   as const },
+  { value: "text_equals",   label: "Text equals",      colType: "text"   as const },
+  { value: "number_eq",     label: "Number =",         colType: "number" as const },
+  { value: "number_gt",     label: "Number >",         colType: "number" as const },
+  { value: "number_gte",    label: "Number ≥",         colType: "number" as const },
+  { value: "number_lt",     label: "Number <",         colType: "number" as const },
+  { value: "number_lte",    label: "Number ≤",         colType: "number" as const },
+  { value: "date_is",       label: "Date is",          colType: "date"   as const },
+  { value: "date_before",   label: "Date before",      colType: "date"   as const },
+  { value: "date_after",    label: "Date after",       colType: "date"   as const },
+  { value: "item_in_group", label: "Item is in group", colType: null },
+] as const;
+
+// Text-like column types that store their value in value_text
+const TEXT_COL_TYPES = ["text", "email", "phone", "location"];
+
+// Human-readable operator label for each condition type
+function conditionOpLabel(type: string): string {
+  const map: Record<string, string> = {
+    status_is: "is", status_is_not: "is not",
+    text_equals: "equals", text_contains: "contains",
+    number_eq: "=", number_gt: ">", number_gte: "≥", number_lt: "<", number_lte: "≤",
+    date_is: "is", date_before: "before", date_after: "after",
+    item_in_group: "in group",
+  };
+  return map[type] ?? type;
+}
+
 interface Automation {
   id: string;
   name: string;
@@ -77,6 +114,7 @@ export function CreateTab({
   const [actions, setActions] = useState<Action[]>([]);
   const [loading, setLoading] = useState(false);
   const [columns, setColumns] = useState<Column[]>([]);
+  const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
 
   const isEditing = !!editingAutomation;
 
@@ -99,7 +137,19 @@ export function CreateTab({
       // Find the trigger
       const trigger = triggers.find((t) => t.key === editingAutomation.trigger_key);
       setSelectedTrigger(trigger || null);
-      setTriggerConfig(editingAutomation.filter || {});
+
+      // Separate trigger-config keys from the "and only if…" conditions array
+      const { conditions: savedConditions, ...triggerConfigOnly } = editingAutomation.filter || {};
+      setTriggerConfig(triggerConfigOnly || {});
+      setFilterConditions(
+        Array.isArray(savedConditions)
+          ? savedConditions.map((c: any) => ({
+              type: c.type ?? "text_equals",
+              column_id: c.column_id,
+              value: c.value ?? "",
+            }))
+          : []
+      );
 
       // Set actions
       const editActions = editingAutomation.automation_actions
@@ -116,6 +166,7 @@ export function CreateTab({
     setSelectedTrigger(null);
     setTriggerConfig({});
     setActions([]);
+    setFilterConditions([]);
   };
 
   const addAction = () => {
@@ -200,12 +251,26 @@ export function CreateTab({
     try {
       const name = buildRecipeName();
 
+      // Merge trigger config with any "and only if…" conditions.
+      // Strip incomplete conditions (those missing column_id or value).
+      const validConditions = filterConditions.filter((c) =>
+        c.type === "item_in_group" ? c.value !== "" : c.column_id && c.value !== ""
+      );
+      const filterToSave: Record<string, any> = { ...triggerConfig };
+      if (validConditions.length > 0) {
+        filterToSave.conditions = validConditions.map((c) => ({
+          type: c.type,
+          ...(c.column_id ? { column_id: c.column_id } : {}),
+          value: c.value,
+        }));
+      }
+
       if (isEditing && editingAutomation) {
         // Update existing automation
         await updateJobAutomation(companyId, jobId, editingAutomation.id, {
           name,
           trigger_key: selectedTrigger.key,
-          filter: triggerConfig,
+          filter: filterToSave,
           actions: actions.map((action, index) => ({
             type: action.type,
             config: action.config,
@@ -217,7 +282,7 @@ export function CreateTab({
         await createJobAutomation(companyId, jobId, {
           name,
           trigger_key: selectedTrigger.key,
-          filter: triggerConfig,
+          filter: filterToSave,
           actions: actions.map((action, index) => ({
             type: action.type as any,
             config: action.config,
@@ -298,7 +363,30 @@ export function CreateTab({
       }
     });
 
-    return `When ${triggerText} → ${actionTexts.join(" and ")}`;
+    // Build condition summary for valid conditions
+    const validConditions = filterConditions.filter((c) =>
+      c.type === "item_in_group" ? c.value !== "" : c.column_id && c.value !== ""
+    );
+    const conditionTexts = validConditions.map((cond) => {
+      if (cond.type === "item_in_group") {
+        const group = groups.find((g) => g.id === cond.value);
+        return `in group ${group?.name ?? String(cond.value)}`;
+      }
+      const col = columns.find((c) => c.id === cond.column_id);
+      if (!col) return "";
+      let valueDisplay = String(cond.value);
+      if ((cond.type === "status_is" || cond.type === "status_is_not") && col.labels) {
+        const lbl = col.labels.find((l) => l.id === cond.value);
+        if (lbl) valueDisplay = lbl.label;
+      }
+      return `${col.name} ${conditionOpLabel(cond.type)} ${valueDisplay}`;
+    }).filter(Boolean);
+
+    const conditionSuffix = conditionTexts.length > 0
+      ? ` AND only if ${conditionTexts.join(" AND ")}`
+      : "";
+
+    return `When ${triggerText}${conditionSuffix} → ${actionTexts.join(" and ")}`;
   };
 
   return (
@@ -332,6 +420,16 @@ export function CreateTab({
             groups={groups}
           />
         </div>
+
+        {/* AND ONLY IF — optional filter conditions */}
+        {selectedTrigger && (
+          <FilterConditionsEditor
+            conditions={filterConditions}
+            columns={columns}
+            groups={groups}
+            onChange={setFilterConditions}
+          />
+        )}
 
         {/* Arrow */}
         {selectedTrigger && (
@@ -554,6 +652,192 @@ function TriggerSelector({
           <X className="w-5 h-5 text-gray-600" />
         </button>
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Filter Conditions Editor ("and only if…")
+// ============================================================================
+
+function FilterConditionsEditor({
+  conditions,
+  columns,
+  groups,
+  onChange,
+}: {
+  conditions: FilterCondition[];
+  columns: Column[];
+  groups: Group[];
+  onChange: (conditions: FilterCondition[]) => void;
+}) {
+  const addCondition = () => {
+    onChange([...conditions, { type: "text_equals", column_id: undefined, value: "" }]);
+  };
+
+  const updateCondition = (index: number, updates: Partial<FilterCondition>) => {
+    const next = [...conditions];
+    next[index] = { ...next[index], ...updates };
+    onChange(next);
+  };
+
+  const removeCondition = (index: number) => {
+    onChange(conditions.filter((_, i) => i !== index));
+  };
+
+  if (conditions.length === 0) {
+    return (
+      <div className="flex justify-center">
+        <button
+          onClick={addCondition}
+          className="text-sm text-gray-400 hover:text-amber-600 transition-colors flex items-center gap-1.5 px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:border-amber-300 hover:bg-amber-50/30"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          and only if… (optional filter)
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-2 border-amber-200 bg-amber-50/40 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-semibold text-amber-700">and only if…</span>
+        <button
+          onClick={addCondition}
+          className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add condition
+        </button>
+      </div>
+      <div className="space-y-2">
+        {conditions.map((cond, index) => (
+          <FilterConditionRow
+            key={index}
+            condition={cond}
+            columns={columns}
+            groups={groups}
+            onChange={(updates) => updateCondition(index, updates)}
+            onRemove={() => removeCondition(index)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FilterConditionRow({
+  condition,
+  columns,
+  groups,
+  onChange,
+  onRemove,
+}: {
+  condition: FilterCondition;
+  columns: Column[];
+  groups: Group[];
+  onChange: (updates: Partial<FilterCondition>) => void;
+  onRemove: () => void;
+}) {
+  const condInfo = CONDITION_TYPES.find((t) => t.value === condition.type);
+  const isGroupCondition = condition.type === "item_in_group";
+
+  // Filter columns to only those relevant to the condition type
+  const relevantColumns = isGroupCondition
+    ? []
+    : columns.filter((c) => {
+        if (!condInfo?.colType) return false;
+        if (condInfo.colType === "text") return TEXT_COL_TYPES.includes(c.type);
+        return c.type === condInfo.colType;
+      });
+
+  const selectedColumn = columns.find((c) => c.id === condition.column_id);
+  const isStatusCondition = condition.type === "status_is" || condition.type === "status_is_not";
+  const isTextCondition   = condition.type === "text_equals" || condition.type === "text_contains";
+  const isNumberCondition = condition.type.startsWith("number_");
+  const isDateCondition   = condition.type.startsWith("date_");
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
+      {/* Condition type selector */}
+      <select
+        value={condition.type}
+        onChange={(e) => onChange({ type: e.target.value, column_id: undefined, value: "" })}
+        className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+      >
+        {CONDITION_TYPES.map((t) => (
+          <option key={t.value} value={t.value}>{t.label}</option>
+        ))}
+      </select>
+
+      {/* Column picker (not shown for item_in_group) */}
+      {!isGroupCondition && (
+        <ColumnPicker
+          columns={relevantColumns}
+          selectedId={condition.column_id}
+          onSelect={(id) => onChange({ column_id: id, value: "" })}
+          placeholder="column"
+        />
+      )}
+
+      {/* Value input — varies by condition type */}
+      {isGroupCondition && (
+        <GroupPicker
+          groups={groups}
+          selectedId={typeof condition.value === "string" ? condition.value : undefined}
+          onSelect={(id) => onChange({ value: id ?? "" })}
+          placeholder="group"
+        />
+      )}
+
+      {isStatusCondition && condition.column_id && (
+        <StatusLabelPicker
+          column={selectedColumn}
+          selectedId={typeof condition.value === "string" ? condition.value : undefined}
+          onSelect={(id) => onChange({ value: id })}
+          placeholder="value"
+        />
+      )}
+
+      {isTextCondition && (
+        <input
+          type="text"
+          value={typeof condition.value === "string" ? condition.value : ""}
+          onChange={(e) => onChange({ value: e.target.value })}
+          placeholder="value…"
+          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white min-w-[120px] focus:outline-none focus:ring-1 focus:ring-amber-400"
+        />
+      )}
+
+      {isNumberCondition && (
+        <input
+          type="number"
+          value={condition.value === "" ? "" : condition.value}
+          onChange={(e) =>
+            onChange({ value: e.target.value === "" ? "" : parseFloat(e.target.value) })
+          }
+          placeholder="0"
+          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white w-24 focus:outline-none focus:ring-1 focus:ring-amber-400"
+        />
+      )}
+
+      {isDateCondition && (
+        <input
+          type="date"
+          value={typeof condition.value === "string" ? condition.value : ""}
+          onChange={(e) => onChange({ value: e.target.value })}
+          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+        />
+      )}
+
+      {/* Remove button */}
+      <button
+        onClick={onRemove}
+        className="ml-auto p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500 transition-colors"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }
