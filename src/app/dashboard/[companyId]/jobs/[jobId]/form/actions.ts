@@ -123,7 +123,8 @@ export async function updateFormField(
     label?: string;
     required?: boolean;
     settings?: Record<string, any>;
-  }
+  },
+  syncToBoard: boolean = true
 ) {
   const supabase = await createClient();
 
@@ -139,8 +140,8 @@ export async function updateFormField(
 
   if (error) throw new Error(error.message);
 
-  // Update corresponding board column if label changed
-  if (updates.label) {
+  // Update corresponding board column if label changed and sync is enabled
+  if (updates.label && syncToBoard) {
     await supabase
       .from("board_columns")
       .update({ name: updates.label })
@@ -150,6 +151,122 @@ export async function updateFormField(
   revalidatePath(dashPath(companyId, jobId));
   revalidatePath(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
   return data;
+}
+
+/**
+ * Update form metadata (title, description, settings)
+ */
+export async function updateFormMeta(
+  companyId: string,
+  jobId: string,
+  formId: string,
+  updates: {
+    title?: string;
+    description?: string;
+    settings?: Record<string, any>;
+  }
+) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("job_application_forms")
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", formId)
+    .eq("company_id", companyId)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(dashPath(companyId, jobId));
+  return data;
+}
+
+/**
+ * Upload a form logo image to the private "logos" Supabase Storage bucket.
+ * Returns a short-lived signed URL (1 h) for immediate display plus the
+ * permanent storage path (which is what gets persisted to the DB).
+ */
+export async function uploadFormLogo(
+  companyId: string,
+  formId: string,
+  formData: FormData
+): Promise<{ url: string; path: string } | { error: string }> {
+  const file = formData.get("logo") as File | null;
+
+  if (!file || file.size === 0) {
+    return { error: "No file provided" };
+  }
+
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ];
+  if (!allowedTypes.includes(file.type)) {
+    return { error: "Invalid file type. Use JPEG, PNG, GIF, or WebP." };
+  }
+
+  const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+  if (file.size > MAX_SIZE) {
+    return { error: "File too large. Maximum 5MB." };
+  }
+
+  const supabase = await createClient();
+  const timestamp = Date.now();
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  // Path layout: {companyId}/{formId}/{timestamp}-{filename}
+  // The first path segment (companyId) is extracted by the storage RLS policy
+  // via storage.foldername(name)[1] to verify membership.
+  const path = `${companyId}/${formId}/${timestamp}-${sanitizedName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("logos")
+    .upload(path, file, { cacheControl: "3600", upsert: false });
+
+  if (uploadError) {
+    return { error: uploadError.message };
+  }
+
+  // Private bucket — generate a 1-hour signed URL for immediate display.
+  // The path is stored separately and a fresh URL is generated on each page load.
+  const { data: signedData, error: signedError } = await supabase.storage
+    .from("logos")
+    .createSignedUrl(path, 3600);
+
+  if (signedError || !signedData) {
+    return { error: signedError?.message ?? "Failed to generate signed URL" };
+  }
+
+  return { url: signedData.signedUrl, path };
+}
+
+/**
+ * Generate a fresh 1-hour signed URL for an existing logo path.
+ * Called server-side (page.tsx) on each page load so the displayed URL is
+ * always valid.
+ */
+export async function getLogoSignedUrl(logoPath: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.storage
+    .from("logos")
+    .createSignedUrl(logoPath, 3600);
+  return data?.signedUrl ?? null;
+}
+
+/**
+ * Delete a logo file from the "logos" storage bucket.
+ * Called when the user removes their logo in the Design panel.
+ */
+export async function deleteFormLogo(logoPath: string): Promise<void> {
+  if (!logoPath) return;
+  const supabase = await createClient();
+  await supabase.storage.from("logos").remove([logoPath]);
 }
 
 /**

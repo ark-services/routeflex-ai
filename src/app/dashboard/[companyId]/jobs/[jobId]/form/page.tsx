@@ -51,9 +51,22 @@ export default async function ApplicationFormPage({
     const form = await getApplicationForm(companyId, jobId);
     const fields = await getFormFields(form.id);
 
+    // If the form has a logo stored in the private "logos" bucket, generate a
+    // fresh 1-hour signed URL so the Design panel can display it immediately.
+    // We do this server-side so the anon key is never exposed to the browser.
+    const logoPath = (form.settings as Record<string, any>)?.design?.logoPath as
+      | string
+      | undefined;
+    let logoSignedUrl = "";
+    if (logoPath) {
+      const { data } = await supabase.storage
+        .from("logos")
+        .createSignedUrl(logoPath, 3600);
+      logoSignedUrl = data?.signedUrl ?? "";
+    }
+
     return (
       <div className="h-full flex flex-col">
-        {/* Form Builder – nav tabs moved to left sidebar */}
         <div className="flex-1 overflow-hidden">
           <FormBuilder
             companyId={companyId}
@@ -61,6 +74,7 @@ export default async function ApplicationFormPage({
             form={form}
             fields={fields}
             jobTitle={job.title}
+            logoSignedUrl={logoSignedUrl}
           />
         </div>
       </div>

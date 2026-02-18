@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createFormField, updateFormField, deleteFormField } from "./actions";
+import { useState, useEffect, useRef } from "react";
+import {
+  createFormField,
+  updateFormField,
+  deleteFormField,
+  updateFormMeta,
+} from "./actions";
 import FieldCard from "./FieldCard";
 import FieldTypePicker from "./FieldTypePicker";
 import QuestionSettingsPanel from "./QuestionSettingsPanel";
 import FormBuilderSidebar from "./FormBuilderSidebar";
+import DesignPanel, { DesignSettings } from "./DesignPanel";
+import SettingsPanel, { FormSettingsType } from "./SettingsPanel";
 import Toast from "./Toast";
 
 type FormField = {
@@ -23,7 +30,16 @@ type Form = {
   public_token: string;
   title: string;
   description: string;
+  settings: Record<string, any> | null;
 };
+
+type ActiveTab = "edit" | "design" | "settings";
+
+const TABS: { id: ActiveTab; label: string }[] = [
+  { id: "edit", label: "Edit" },
+  { id: "design", label: "Design" },
+  { id: "settings", label: "Settings" },
+];
 
 export default function FormBuilder({
   companyId,
@@ -31,175 +47,392 @@ export default function FormBuilder({
   form,
   fields: initialFields,
   jobTitle,
+  logoSignedUrl = "",
 }: {
   companyId: string;
   jobId: string;
   form: Form;
   fields: FormField[];
   jobTitle: string;
+  /** Fresh 1-hour signed URL generated server-side from the stored logoPath. */
+  logoSignedUrl?: string;
 }) {
+  // ─── Tab state ────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<ActiveTab>("edit");
+
+  // ─── Fields state ─────────────────────────────────────────────────────────
   const [fields, setFields] = useState(initialFields);
-  const [showShareModal, setShowShareModal] = useState(false);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [addFieldAt, setAddFieldAt] = useState<number | null>(null);
-  const [publicUrl, setPublicUrl] = useState<string>("");
-  const [showToast, setShowToast] = useState(false);
 
-  // Set publicUrl on client side only to avoid SSR "window is not defined" error
+  // ─── Public URL ───────────────────────────────────────────────────────────
+  const [publicUrl, setPublicUrl] = useState("");
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setPublicUrl(`${window.location.origin}/apply/${jobId}/${form.public_token}`);
+      setPublicUrl(
+        `${window.location.origin}/apply/${jobId}/${form.public_token}`
+      );
     }
   }, [jobId, form.public_token]);
 
-  const handleCopyLink = () => {
-    if (!publicUrl) {
-      console.warn("Public URL not yet available");
-      return;
-    }
-    navigator.clipboard.writeText(publicUrl);
+  // ─── Toast ────────────────────────────────────────────────────────────────
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("Copied!");
+
+  const showCopiedToast = (msg = "Copied!") => {
+    setToastMessage(msg);
     setShowToast(true);
-    setShowShareModal(false);
   };
 
-  const handleAddFieldType = async (type: string) => {
-    try {
-      // Generate a default label based on type
-      const defaultLabels: Record<string, string> = {
-        text: "Short Answer",
-        textarea: "Long Answer",
-        email: "Email Address",
-        phone: "Phone Number",
-        number: "Number",
-        date: "Date",
-        file: "Upload File",
-        radio: "Choose One",
-        checkbox: "Select All That Apply",
-        select: "Select from Dropdown",
-      };
+  // ─── Share modal ──────────────────────────────────────────────────────────
+  const [showShareModal, setShowShareModal] = useState(false);
 
+  // ─── Form title / description (inline-editable) ───────────────────────────
+  const [formTitle, setFormTitle] = useState(form.title || "Application Form");
+  const [formDescription, setFormDescription] = useState(form.description || "");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditingTitle) titleInputRef.current?.focus();
+  }, [isEditingTitle]);
+
+  useEffect(() => {
+    if (isEditingDescription) descriptionRef.current?.focus();
+  }, [isEditingDescription]);
+
+  const handleTitleSave = async () => {
+    const trimmed = formTitle.trim();
+    if (!trimmed) {
+      setFormTitle(form.title || "Application Form");
+      setIsEditingTitle(false);
+      return;
+    }
+    setIsEditingTitle(false);
+    if (trimmed !== form.title) {
+      await updateFormMeta(companyId, jobId, form.id, { title: trimmed });
+    }
+  };
+
+  const handleDescriptionSave = async () => {
+    setIsEditingDescription(false);
+    if (formDescription !== (form.description || "")) {
+      await updateFormMeta(companyId, jobId, form.id, {
+        description: formDescription,
+      });
+    }
+  };
+
+  // ─── Settings (design + form) ─────────────────────────────────────────────
+  // Keep a merged copy of the full settings object so writes never lose keys.
+  const initialSettings = form.settings || {};
+
+  const [currentSettings, setCurrentSettings] = useState<Record<string, any>>(initialSettings);
+
+  const [designSettings, setDesignSettings] = useState<DesignSettings>({
+    backgroundColor: initialSettings.design?.backgroundColor ?? "#f9fafb",
+    // logoPath is the persistent storage key (saved to DB).
+    // logoUrl is ephemeral (signed URL, not saved); we seed it from the
+    // server-generated prop so it's always valid on first render.
+    logoPath: initialSettings.design?.logoPath ?? "",
+    logoUrl: logoSignedUrl,
+  });
+
+  const [formSettings, setFormSettings] = useState<FormSettingsType>({
+    tags: initialSettings.tags ?? [],
+    syncQuestions: initialSettings.syncQuestions ?? true,
+  });
+
+  const handleDesignChange = async (newDesign: DesignSettings) => {
+    setDesignSettings(newDesign);
+    // Only persist stable values: backgroundColor and logoPath.
+    // logoUrl is a short-lived signed URL — storing it in the DB would be
+    // misleading once it expires (typically after 1 hour).
+    const persistDesign = {
+      backgroundColor: newDesign.backgroundColor,
+      logoPath: newDesign.logoPath,
+    };
+    const merged = { ...currentSettings, design: persistDesign };
+    setCurrentSettings(merged);
+    await updateFormMeta(companyId, jobId, form.id, { settings: merged });
+  };
+
+  const handleFormSettingsChange = async (newFs: FormSettingsType) => {
+    setFormSettings(newFs);
+    const merged = {
+      ...currentSettings,
+      tags: newFs.tags,
+      syncQuestions: newFs.syncQuestions,
+    };
+    setCurrentSettings(merged);
+    await updateFormMeta(companyId, jobId, form.id, { settings: merged });
+  };
+
+  // ─── Field operations ─────────────────────────────────────────────────────
+  const handleAddFieldType = async (type: string) => {
+    const defaultLabels: Record<string, string> = {
+      text: "Short Answer",
+      textarea: "Long Answer",
+      email: "Email Address",
+      phone: "Phone Number",
+      number: "Number",
+      date: "Date",
+      file: "Upload File",
+      radio: "Choose One",
+      checkbox: "Select All That Apply",
+      select: "Select from Dropdown",
+    };
+
+    try {
       const label = defaultLabels[type] || "New Question";
       const key = `${type}_${Date.now()}`.toLowerCase();
-
       const newField = await createFormField(companyId, jobId, form.id, {
         key,
         label,
         type,
         required: false,
       });
-
       setFields([...fields, newField]);
       setAddFieldAt(null);
-
-      // Auto-select the new field
       setSelectedFieldId(newField.id);
-    } catch (error) {
-      console.error("Failed to create field:", error);
+    } catch {
       alert("Failed to create field");
     }
   };
 
-  const handleUpdateField = async (fieldId: string, updates: Partial<FormField>) => {
+  const handleUpdateField = async (
+    fieldId: string,
+    updates: Partial<FormField>
+  ) => {
     try {
-      await updateFormField(companyId, jobId, fieldId, updates);
-      setFields(
-        fields.map((f) => (f.id === fieldId ? { ...f, ...updates } : f))
+      await updateFormField(
+        companyId,
+        jobId,
+        fieldId,
+        updates,
+        formSettings.syncQuestions
       );
-    } catch (error) {
-      console.error("Failed to update field:", error);
+      setFields(fields.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)));
+    } catch {
       alert("Failed to update field");
     }
   };
 
   const handleDeleteField = async (fieldId: string) => {
-    if (!confirm("Are you sure? This will hide the field but preserve existing applicant data.")) {
+    if (
+      !confirm(
+        "Are you sure? This will hide the field but preserve existing applicant data."
+      )
+    )
       return;
-    }
-
     try {
       await deleteFormField(companyId, jobId, fieldId);
       setFields(fields.filter((f) => f.id !== fieldId));
-
-      // Deselect if the deleted field was selected
       if (selectedFieldId === fieldId) {
         setSelectedFieldId(null);
         setShowSettingsPanel(false);
       }
-    } catch (error) {
-      console.error("Failed to delete field:", error);
+    } catch {
       alert("Failed to delete field");
     }
   };
 
   const handleDuplicateField = async (fieldId: string) => {
-    const fieldToDuplicate = fields.find((f) => f.id === fieldId);
-    if (!fieldToDuplicate) return;
-
+    const src = fields.find((f) => f.id === fieldId);
+    if (!src) return;
     try {
       const newField = await createFormField(companyId, jobId, form.id, {
-        key: `${fieldToDuplicate.key}_copy_${Date.now()}`,
-        label: `${fieldToDuplicate.label} (Copy)`,
-        type: fieldToDuplicate.type,
-        required: fieldToDuplicate.required,
-        settings: { ...fieldToDuplicate.settings },
+        key: `${src.key}_copy_${Date.now()}`,
+        label: `${src.label} (Copy)`,
+        type: src.type,
+        required: src.required,
+        settings: { ...src.settings },
       });
-
       setFields([...fields, newField]);
-
-      // Auto-select the new field
       setSelectedFieldId(newField.id);
-    } catch (error) {
-      console.error("Failed to duplicate field:", error);
+    } catch {
       alert("Failed to duplicate field");
     }
   };
 
   const selectedField = fields.find((f) => f.id === selectedFieldId) || null;
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="h-full flex bg-gray-50">
-      {/* Left Sidebar - Form Navigation */}
-      <FormBuilderSidebar
-        fields={fields}
-        selectedFieldId={selectedFieldId}
-        onSelectField={(fieldId) => {
-          setSelectedFieldId(fieldId);
-          // Optionally scroll to the field
-          const fieldElement = document.getElementById(`field-${fieldId}`);
-          if (fieldElement) {
-            fieldElement.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        }}
-      />
+    <div className="h-full flex flex-col">
+      {/* ── Top header bar ─────────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-4 flex-shrink-0">
+        {/* Left: breadcrumb-style label */}
+        <div className="flex-shrink-0 min-w-0">
+          <h1 className="text-base font-semibold text-gray-900 truncate">
+            Application Form
+          </h1>
+          <p className="text-xs text-gray-500 truncate">{jobTitle}</p>
+        </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Application Form</h1>
-            <p className="text-sm text-gray-600 mt-1">{jobTitle}</p>
-          </div>
+        {/* Center: tab switcher */}
+        <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-0.5 flex-shrink-0">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                activeTab === tab.id
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right: Preview + Share Form */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => publicUrl && window.open(publicUrl, "_blank")}
+            disabled={!publicUrl}
+            className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          >
+            Preview
+          </button>
           <button
             onClick={() => setShowShareModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
           >
             Share Form
           </button>
         </div>
+      </div>
 
-        {/* Form Builder Canvas */}
-        <div className="flex-1 overflow-auto p-6">
+      {/* ── Main body ──────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left sidebar */}
+        <FormBuilderSidebar
+          fields={fields}
+          selectedFieldId={selectedFieldId}
+          onSelectField={(id) => {
+            setSelectedFieldId(id);
+            document
+              .getElementById(`field-${id}`)
+              ?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+        />
+
+        {/* Canvas */}
+        <div
+          className="flex-1 overflow-auto p-6"
+          style={{ backgroundColor: designSettings.backgroundColor }}
+        >
           <div className="max-w-3xl mx-auto">
-            {/* Form Header Card */}
-            <div className="mb-6 bg-white rounded-xl border-2 border-gray-200 shadow-sm p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {form.title || "Application Form"}
-              </h2>
-              <p className="text-sm text-gray-600">
-                {form.description || "Please fill out the form below to apply for this position."}
-              </p>
+            {/* Form header card — inline editable */}
+            <div className="mb-6 bg-white rounded-xl border-2 border-gray-200 shadow-sm overflow-hidden">
+              {/* Logo (shown when set) */}
+              {designSettings.logoUrl && (
+                <div className="px-8 pt-6 pb-0">
+                  <img
+                    src={designSettings.logoUrl}
+                    alt="Form logo"
+                    className="max-h-12 object-contain"
+                  />
+                </div>
+              )}
+
+              <div className="p-8">
+                {/* Title */}
+                <div className="mb-3">
+                  {isEditingTitle ? (
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      onBlur={handleTitleSave}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleTitleSave();
+                        else if (e.key === "Escape") {
+                          setFormTitle(form.title || "Application Form");
+                          setIsEditingTitle(false);
+                        }
+                      }}
+                      className="w-full text-2xl font-bold text-gray-900 border-b-2 border-blue-500 focus:outline-none bg-transparent pb-0.5"
+                    />
+                  ) : (
+                    <div
+                      className="group/title flex items-center gap-2 cursor-text"
+                      onClick={() => setIsEditingTitle(true)}
+                    >
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {formTitle}
+                      </h2>
+                      <svg
+                        className="w-4 h-4 text-gray-400 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div className="group/desc">
+                  {isEditingDescription ? (
+                    <textarea
+                      ref={descriptionRef}
+                      value={formDescription}
+                      onChange={(e) => setFormDescription(e.target.value)}
+                      onBlur={handleDescriptionSave}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setFormDescription(form.description || "");
+                          setIsEditingDescription(false);
+                        }
+                      }}
+                      placeholder="Add a form description…"
+                      rows={2}
+                      className="w-full text-sm text-gray-600 border-b border-blue-500 focus:outline-none bg-transparent resize-none"
+                    />
+                  ) : (
+                    <div
+                      className="flex items-start gap-2 cursor-text"
+                      onClick={() => setIsEditingDescription(true)}
+                    >
+                      <p className="text-sm text-gray-600 flex-1 min-h-[20px]">
+                        {formDescription || (
+                          <span className="text-gray-400 italic">
+                            Click to add a description…
+                          </span>
+                        )}
+                      </p>
+                      <svg
+                        className="w-4 h-4 text-gray-400 opacity-0 group-hover/desc:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Field Cards */}
@@ -216,10 +449,10 @@ export default function FormBuilder({
                     onOpenSettings={() => {
                       setSelectedFieldId(field.id);
                       setShowSettingsPanel(true);
+                      setActiveTab("edit");
                     }}
                   />
 
-                  {/* Add Field Between Cards */}
                   {addFieldAt === index && (
                     <div className="my-4">
                       <FieldTypePicker
@@ -231,7 +464,7 @@ export default function FormBuilder({
                 </div>
               ))}
 
-              {/* Add Field at End */}
+              {/* Add field at end */}
               {addFieldAt === fields.length ? (
                 <div className="mt-4">
                   <FieldTypePicker
@@ -249,18 +482,26 @@ export default function FormBuilder({
               )}
             </div>
 
-            {/* Empty State */}
+            {/* Empty state */}
             {fields.length === 0 && addFieldAt === null && (
               <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
+                <svg
+                  className="mx-auto h-16 w-16 text-gray-300 mb-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No form fields yet
+                  No questions yet
                 </h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <p className="text-sm text-gray-500 mb-6">
                   Start building your form by adding questions
                 </p>
                 <button
@@ -273,32 +514,48 @@ export default function FormBuilder({
             )}
           </div>
         </div>
+
+        {/* Right panel — context-dependent */}
+        {activeTab === "edit" && showSettingsPanel && selectedField && (
+          <QuestionSettingsPanel
+            field={selectedField}
+            onUpdate={(updates) => handleUpdateField(selectedField.id, updates)}
+            onClose={() => setShowSettingsPanel(false)}
+          />
+        )}
+        {activeTab === "design" && (
+          <DesignPanel
+            companyId={companyId}
+            formId={form.id}
+            designSettings={designSettings}
+            onChange={handleDesignChange}
+          />
+        )}
+        {activeTab === "settings" && (
+          <SettingsPanel
+            formSettings={formSettings}
+            publicUrl={publicUrl}
+            onChange={handleFormSettingsChange}
+            onCopyLink={(url) => {
+              navigator.clipboard.writeText(url);
+              showCopiedToast("Link copied to clipboard");
+            }}
+          />
+        )}
       </div>
 
-      {/* Question Settings Panel (Right Side) */}
-      {showSettingsPanel && selectedField && (
-        <QuestionSettingsPanel
-          field={selectedField}
-          onUpdate={(updates) => handleUpdateField(selectedField.id, updates)}
-          onClose={() => setShowSettingsPanel(false)}
-        />
-      )}
-
-      {/* Share Modal - Monday Style */}
+      {/* ── Share Modal ────────────────────────────────────────────────────── */}
       {showShareModal && (
         <div
-          className="fixed inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-gray-900/20 flex items-center justify-center z-50"
           onClick={() => setShowShareModal(false)}
         >
           <div
             className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Share Form
-              </h3>
+              <h3 className="text-xl font-semibold text-gray-900">Share Form</h3>
               <button
                 onClick={() => setShowShareModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -309,23 +566,25 @@ export default function FormBuilder({
               </button>
             </div>
 
-            {/* Content */}
             <div className="px-6 py-5">
               <p className="text-sm text-gray-600 mb-4">
-                This form is public and available to anyone with the link
+                This form is public and available to anyone with the link.
               </p>
-
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={publicUrl}
                   readOnly
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono text-gray-700 focus:outline-none"
                 />
                 <button
-                  onClick={handleCopyLink}
+                  onClick={() => {
+                    navigator.clipboard.writeText(publicUrl);
+                    showCopiedToast("Form link copied to clipboard");
+                    setShowShareModal(false);
+                  }}
                   disabled={!publicUrl}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium whitespace-nowrap disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -338,12 +597,9 @@ export default function FormBuilder({
         </div>
       )}
 
-      {/* Success Toast */}
+      {/* ── Toast ──────────────────────────────────────────────────────────── */}
       {showToast && (
-        <Toast
-          message="Form link copied to clipboard"
-          onClose={() => setShowToast(false)}
-        />
+        <Toast message={toastMessage} onClose={() => setShowToast(false)} />
       )}
     </div>
   );

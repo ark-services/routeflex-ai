@@ -32,19 +32,8 @@ export default function FormBuilderSidebar({
 
       {/* Form Structure */}
       <div className="flex-1 py-2">
-        {/* Welcome Page (Future) */}
-        <div className="px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-            </svg>
-            <span>Welcome Page</span>
-          </div>
-          <p className="text-xs text-gray-400 mt-1 ml-6">Coming soon</p>
-        </div>
-
         {/* Page 1 */}
-        <div className="mt-3 mb-2 px-4">
+        <div className="mt-1 mb-2 px-4">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Page 1
           </div>
@@ -86,16 +75,6 @@ export default function FormBuilderSidebar({
           )}
         </div>
 
-        {/* Thank You Page (Future) */}
-        <div className="mt-6 px-4 py-2 text-sm text-gray-400 cursor-not-allowed">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>Thank You Page</span>
-          </div>
-          <p className="text-xs text-gray-400 mt-1 ml-6">Coming soon</p>
-        </div>
       </div>
 
       {/* Sidebar Footer Info */}
