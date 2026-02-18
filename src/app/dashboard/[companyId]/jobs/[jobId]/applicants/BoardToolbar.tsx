@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Search, SlidersHorizontal, X, Link2, Zap } from "lucide-react";
+import { Search, SlidersHorizontal, X, Link2, Zap, BookTemplate } from "lucide-react";
 import type { BoardColumn, BoardStatusLabel } from "@/lib/types";
 import type { ActiveFilter, BoardView, BoardViewQuery } from "./view-actions";
 import {
@@ -14,6 +14,7 @@ import {
 import { FilterPanel } from "./FilterPanel";
 import { ViewTabs } from "./ViewTabs";
 import { AutomateButton } from "./AutomateButton";
+import { SaveAsTemplateModal } from "./SaveAsTemplateModal";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,8 @@ export interface BoardToolbarProps {
   automations: any[];
   triggers: any[];
   groups: any[];
+  // Super admin
+  isSuperAdmin?: boolean;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -55,6 +58,7 @@ export function BoardToolbar({
   automations,
   triggers,
   groups,
+  isSuperAdmin = false,
 }: BoardToolbarProps) {
   const [views, setViews] = useState<BoardView[]>(initialViews);
   const [activeViewId, setActiveViewId] = useState<string>(
@@ -63,6 +67,7 @@ export function BoardToolbar({
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [saveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -172,7 +177,7 @@ export function BoardToolbar({
   return (
     <div className="bg-white border-b border-stone-200 shrink-0">
 
-      {/* ── Row 1: Search · Filter · ··· · Integrate · Automate ────────────── */}
+      {/* ── Row 1: Search · Filter · ··· · [Save as Template] · Integrate · Automate */}
       <div className="flex items-center gap-2 px-4 py-2">
 
         {/* Search — collapses/expands on focus */}
@@ -226,6 +231,18 @@ export function BoardToolbar({
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Save as Template — super admin only */}
+        {isSuperAdmin && (
+          <button
+            onClick={() => setSaveAsTemplateOpen(true)}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 text-sm font-medium transition-colors shrink-0"
+            title="Save this job's layout as a template (Super Admin)"
+          >
+            <BookTemplate className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Save as Template…</span>
+          </button>
+        )}
+
         {/* Integrate */}
         <a
           href={integrationHref}
@@ -276,6 +293,14 @@ export function BoardToolbar({
           />
         </div>
       )}
+
+      {/* ── Save as Template modal ────────────────────────────────────────────── */}
+      <SaveAsTemplateModal
+        open={saveAsTemplateOpen}
+        onClose={() => setSaveAsTemplateOpen(false)}
+        companyId={companyId}
+        jobId={jobId}
+      />
     </div>
   );
 }

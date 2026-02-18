@@ -630,7 +630,11 @@ export default function ApplicantsBoard({
     if (!groupToDelete) return;
 
     startTransition(async () => {
-      await deleteGroup(companyId, jobId, boardId, groupToDelete.id);
+      const result = await deleteGroup(companyId, jobId, boardId, groupToDelete.id);
+      if (result?.error) {
+        alert(result.error);
+        return;
+      }
       setDeleteGroupModalOpen(false);
       setGroupToDelete(null);
     });
@@ -1127,6 +1131,7 @@ export default function ApplicantsBoard({
                         onChange={setEditingGroupValue}
                         menuOpen={groupMenuOpen === g.id}
                         onMenuToggle={() => setGroupMenuOpen(groupMenuOpen === g.id ? null : g.id)}
+                        canDelete={localGroups.length > 1}
                         onRename={() => {
                           setEditingGroupId(g.id);
                           setEditingGroupValue(g.name);
@@ -1460,7 +1465,8 @@ export default function ApplicantsBoard({
             itemName={groupToDelete.name}
             onDelete={async () => {
               if (!groupToDelete) return { error: "No group selected" };
-              await deleteGroup(companyId, jobId, boardId, groupToDelete.id);
+              const result = await deleteGroup(companyId, jobId, boardId, groupToDelete.id);
+              if (result?.error) return { error: result.error };
               return { success: true };
             }}
           />
@@ -1900,6 +1906,7 @@ function SortableGroupHeader({
   onMenuToggle,
   onRename,
   onDelete,
+  canDelete = true,
 }: {
   group: Group;
   rowCount: number;
@@ -1916,6 +1923,7 @@ function SortableGroupHeader({
   onMenuToggle: () => void;
   onRename: () => void;
   onDelete: () => void;
+  canDelete?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `group-${group.id}`,
@@ -2086,13 +2094,17 @@ function SortableGroupHeader({
             >
               Rename
             </button>
-            <div className="my-1 border-t border-stone-100" />
-            <button
-              onClick={onDelete}
-              className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
-            >
-              Delete
-            </button>
+            {canDelete && (
+              <>
+                <div className="my-1 border-t border-stone-100" />
+                <button
+                  onClick={onDelete}
+                  className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              </>
+            )}
           </div>
         </>,
         document.body

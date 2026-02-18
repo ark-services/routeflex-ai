@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * GET /api/templates/signed-url?path=<storage-path>
+ *
+ * Returns a 1-hour signed URL for a template thumbnail.
+ * Auth: any authenticated user.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const path = searchParams.get("path");
+
+    if (!path) {
+      return NextResponse.json({ error: "Missing required param: path" }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const serviceClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const { data, error } = await serviceClient.storage
+      .from("templates")
+      .createSignedUrl(path, 3600); // 1-hour expiry
+
+    if (error || !data?.signedUrl) {
+      return NextResponse.json({ error: "Failed to create signed URL" }, { status: 500 });
+    }
+
+    return NextResponse.json({ url: data.signedUrl });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

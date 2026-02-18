@@ -491,7 +491,7 @@ export async function deleteGroup(
   jobId: string,
   boardId: string,
   groupId: string
-) {
+): Promise<{ success?: true; error?: string }> {
   const supabase = await createClient();
 
   // Fetch all groups for board (sorted by sort_order)
@@ -504,18 +504,19 @@ export async function deleteGroup(
 
   if (fetchError) {
     console.error("[deleteGroup] Error fetching groups:", fetchError);
-    throw new Error(fetchError.message);
+    return { error: fetchError.message };
   }
 
-  // Prevent deletion if only 1 group remains
+  // Prevent deletion if only 1 group remains — return structured error, never throw,
+  // so Next.js does not show the runtime error overlay.
   if (!groups || groups.length <= 1) {
-    throw new Error("Cannot delete the last group");
+    return { error: "Cannot delete the last group" };
   }
 
   // Find first group that isn't being deleted (target group)
   const targetGroup = groups.find((g) => g.id !== groupId);
   if (!targetGroup) {
-    throw new Error("No target group found for applicant migration");
+    return { error: "No target group found for applicant migration" };
   }
 
   // Move all applicants from deleted group to target group
@@ -528,7 +529,7 @@ export async function deleteGroup(
 
   if (moveError) {
     console.error("[deleteGroup] Error moving applicants:", moveError);
-    throw new Error(moveError.message);
+    return { error: moveError.message };
   }
 
   // Delete the group
@@ -541,7 +542,7 @@ export async function deleteGroup(
 
   if (deleteError) {
     console.error("[deleteGroup] Error deleting group:", deleteError);
-    throw new Error(deleteError.message);
+    return { error: deleteError.message };
   }
 
   // Renormalize sort_order for remaining groups (0, 1, 2, ...)
@@ -556,6 +557,7 @@ export async function deleteGroup(
   }
 
   revalidatePath(dashPath(companyId, jobId));
+  return { success: true };
 }
 
 export async function reorderGroups(

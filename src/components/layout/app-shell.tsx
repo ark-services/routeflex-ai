@@ -57,6 +57,7 @@ export function AppShell({
           jobs={jobs}
           canCreateJob={canCreateJob}
           onCreateJob={() => setShowCreateJob(true)}
+          userEmail={userEmail}
           mobileOpen={mobileSidebarOpen}
           onMobileClose={() => setMobileSidebarOpen(false)}
         />

@@ -49,7 +49,7 @@ export async function addJob(formData: FormData) {
   const companyId = formData.get("companyId") as string;
   const title = (formData.get("title") as string).trim();
   const location = (formData.get("location") as string).trim();
-  const template = (formData.get("template") as JobTemplate) || "fedex_pd";
+  const template = (formData.get("template") as JobTemplate) || "scratch";
   const status = ((formData.get("status") as JobStatus) || "open") as JobStatus;
   const supabase = await createClient();
 

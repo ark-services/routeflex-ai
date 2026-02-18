@@ -132,3 +132,89 @@ export interface BoardCell {
   value_file_path: string | null;
   created_at: string;
 }
+
+// ─── Template Center ────────────────────────────────────────────────────────
+
+export interface TemplateRow {
+  cells: Record<string, string>;
+}
+
+export interface TemplateGroup {
+  name: string;
+  color?: string;
+  sort_order: number;
+  rows?: TemplateRow[];
+}
+
+export interface TemplateColumn {
+  name: string;
+  type: string;
+  sort_order: number;
+  is_system: boolean;
+  settings: Record<string, unknown>;
+}
+
+export interface TemplateAutomationAction {
+  type: string;
+  sort_order: number;
+  config: Record<string, unknown>;
+}
+
+export interface TemplateAutomation {
+  type: string;       // trigger_key value
+  name?: string;
+  config: Record<string, unknown>;   // filter jsonb
+  actions?: TemplateAutomationAction[];
+}
+
+// ─── Template Form (Application Form captured into a template) ───────────────
+
+export interface TemplateFormField {
+  key: string;           // machine-readable key, e.g. "first_name"
+  label: string;         // user-facing label
+  type: string;          // text | textarea | email | phone | number | date | file | checkbox | radio | select
+  required: boolean;
+  sort_order: number;
+  settings: Record<string, unknown>; // placeholder, options[], min/max, accept, maxSize, rows, etc.
+}
+
+export interface TemplateFormDesign {
+  backgroundColor?: string; // hex color for form background
+  logoPath?: string;         // storage path in "logos" bucket — copied to dest company on apply
+                             // logoUrl is intentionally omitted: signed URLs are ephemeral
+}
+
+export interface TemplateForm {
+  title: string;
+  description: string | null;
+  fields: TemplateFormField[];
+  design: TemplateFormDesign;
+}
+
+export interface TemplatePayload {
+  groups: TemplateGroup[];
+  columns?: TemplateColumn[];
+  automations?: TemplateAutomation[];
+  form?: TemplateForm;  // Application Form definition (optional — older templates won't have it)
+}
+
+export interface Template {
+  id: string;
+  title: string;
+  description: string | null;
+  thumbnail_path: string | null;
+  payload: TemplatePayload;
+  created_by: string | null;
+  is_published: boolean;
+  deleted_at: string | null;  // null = live; non-null = soft-deleted
+  created_at: string;
+  updated_at: string;
+}
+
+export interface JobTemplateApplication {
+  id: string;
+  job_id: string;
+  template_id: string;
+  applied_by: string;
+  applied_at: string;
+}

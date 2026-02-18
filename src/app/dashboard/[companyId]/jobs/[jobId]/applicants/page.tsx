@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { ApplicantsBoardContainer } from "./ApplicantsBoardContainer";
 import { getBoardViews } from "./view-actions";
+import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
 function ErrorPanel({
   title,
@@ -67,6 +68,8 @@ export default async function ApplicantsPage({
     .maybeSingle();
 
   if (!membership) redirect("/");
+
+  const isSuperAdmin = user.email === SUPER_ADMIN_EMAIL;
 
   // Verify job exists and belongs to company
   const { data: job } = await supabase
@@ -505,6 +508,7 @@ export default async function ApplicantsPage({
           automations={automations || []}
           triggers={triggers || []}
           boardGroups={groupsForAutomation || []}
+          isSuperAdmin={isSuperAdmin}
         />
       </div>
     </div>

@@ -37,12 +37,14 @@ interface ApplicantsBoardContainerProps {
   statusLabels: BoardStatusLabel[];
   cells: BoardCell[];
   initialViews: BoardView[];
-  // Integrate / Automate (moved from page.tsx top bar onto toolbar Row 1)
+  // Integrate / Automate
   integrationHref: string;
   accountId: string;
   automations: any[];
   triggers: any[];
   boardGroups: any[];
+  // Super admin — shows "Save as Template…" button
+  isSuperAdmin?: boolean;
 }
 
 export function ApplicantsBoardContainer({
@@ -60,6 +62,7 @@ export function ApplicantsBoardContainer({
   automations,
   triggers,
   boardGroups,
+  isSuperAdmin = false,
 }: ApplicantsBoardContainerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
@@ -83,6 +86,7 @@ export function ApplicantsBoardContainer({
         automations={automations}
         triggers={triggers}
         groups={boardGroups}
+        isSuperAdmin={isSuperAdmin}
       />
 
       {/* Board */}

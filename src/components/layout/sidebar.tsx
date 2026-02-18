@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useParams, usePathname } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, MoreVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, MoreVertical, LayoutGrid, ShieldAlert } from "lucide-react";
 import type { Job, Company } from "@/lib/types";
+import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
 import { renameJob, duplicateJob, deleteJob } from "./job-actions";
 import { RenameModal } from "@/components/modals/rename-modal";
@@ -15,6 +16,7 @@ interface SidebarProps {
   jobs: Job[];
   canCreateJob: boolean;
   onCreateJob: () => void;
+  userEmail?: string;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -25,6 +27,7 @@ export function Sidebar({
   jobs,
   canCreateJob,
   onCreateJob,
+  userEmail,
   mobileOpen = false,
   onMobileClose,
 }: SidebarProps) {
@@ -49,6 +52,8 @@ export function Sidebar({
   const isOnForm =
     currentJobId !== null &&
     pathname?.endsWith("/form");
+  const isOnTemplateCenter = pathname?.includes("/template-center") ?? false;
+  const isSuperAdmin = userEmail === SUPER_ADMIN_EMAIL;
 
   const currentJob = jobs.find((j) => j.id === currentJobId);
   const hasJobs = jobs.length > 0;
@@ -155,6 +160,34 @@ export function Sidebar({
 
       {/* Sidebar Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+
+        {/* Top-level navigation */}
+        <div className="space-y-1">
+          {/* Template Center */}
+          <button
+            onClick={() => router.push(`/dashboard/${companyId}/template-center`)}
+            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
+              isOnTemplateCenter
+                ? "bg-blue-50 text-blue-700 font-medium"
+                : "text-stone-700 hover:bg-stone-100"
+            }`}
+          >
+            <LayoutGrid className={`h-4 w-4 ${isOnTemplateCenter ? "text-blue-600" : "text-stone-500"}`} />
+            Template Center
+          </button>
+
+          {/* Super Admin link — only visible to super admin */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => router.push("/super-admin/templates")}
+              className="w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 text-red-600 hover:bg-red-50"
+            >
+              <ShieldAlert className="h-4 w-4" />
+              Super Admin
+            </button>
+          )}
+        </div>
+
         {/* Jobs Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-3">
