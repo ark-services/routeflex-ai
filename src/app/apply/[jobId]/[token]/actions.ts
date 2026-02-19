@@ -2,7 +2,7 @@
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { uploadResume } from "@/lib/storage/resumeUpload";
-import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
+import { getOrCreateApplicantsBoard, type BoardGroup } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { revalidatePath } from "next/cache";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 
