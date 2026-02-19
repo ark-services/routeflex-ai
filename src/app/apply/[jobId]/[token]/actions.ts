@@ -115,14 +115,70 @@ export async function submitApplication(
     const board = boardResult.board;
     const groups = boardResult.groups;
 
-    // Find the "New Applicants" group
-    const newApplicantsGroup = groups.find(g => g.name === "New Applicants");
-    if (!newApplicantsGroup) {
-      console.error('[Application Submit] New Applicants group not found in groups:', groups);
-      return { error: "Default application group not found" };
+    // ── Determine the destination group (robust fallback chain) ──────────────
+    // Priority:
+    //   1. Group flagged is_default_for_applications = true  (explicit, preferred)
+    //   2. Name match against known intake group names       (legacy / renamed)
+    //   3. First group by sort_order                         (anything is better than failing)
+    //   4. Auto-create "New Applicants"                      (all groups were deleted)
+    const INTAKE_NAMES = new Set([
+      "new applicants", "new group", "inbox", "applied", "applicants",
+    ]);
+
+    let destinationGroup =
+      groups.find((g) => g.is_default_for_applications) ??
+      groups.find((g) => INTAKE_NAMES.has(g.name.toLowerCase().trim())) ??
+      groups[0] ??   // already ordered by sort_order ascending
+      null;
+
+    if (!destinationGroup) {
+      // All groups were deleted from this board — create one now.
+      console.warn('[Application Submit] No groups found on board, auto-creating default group', {
+        event: "application.group.autocreated",
+        job_id: jobId,
+        company_id: form.company_id,
+        board_id: board.id,
+      });
+
+      const { data: newGroup, error: createGroupErr } = await supabase
+        .from("board_groups")
+        .insert({
+          board_id: board.id,
+          company_id: form.company_id,
+          name: "New Applicants",
+          color: "#0073ea",
+          sort_order: 1,
+          is_default_for_applications: true,
+        })
+        .select("id, name, sort_order, color, is_collapsed, is_default_for_applications")
+        .single();
+
+      if (createGroupErr || !newGroup) {
+        // Creation failed (e.g. concurrent request already inserted one) —
+        // try fetching whatever group now exists for this board.
+        const { data: fallbackGroup } = await supabase
+          .from("board_groups")
+          .select("id, name, sort_order, color, is_collapsed, is_default_for_applications")
+          .eq("board_id", board.id)
+          .eq("company_id", form.company_id)
+          .order("sort_order", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        destinationGroup = fallbackGroup ?? null;
+
+        if (!destinationGroup) {
+          const debugId = `grp-${Date.now().toString(36)}`;
+          console.error('[Application Submit] CRITICAL: could not create or find any group. debugId:', debugId, createGroupErr);
+          return { error: "We couldn't submit your application. Please try again." };
+        }
+      } else {
+        destinationGroup = newGroup;
+        console.log('[Application Submit] Auto-created default group:', newGroup.id);
+      }
     }
 
-    console.log('[Application Submit] Using board:', board.id, 'group:', newApplicantsGroup.id);
+    console.log('[Application Submit] Using board:', board.id, 'group:', destinationGroup.id, `"${destinationGroup.name}"`);
 
     // Handle resume upload if present
     let resumePath: string | null = null;
@@ -171,7 +227,7 @@ export async function submitApplication(
     const { data: maxPositionData } = await supabase
       .from("applicants")
       .select("position")
-      .eq("group_id", newApplicantsGroup.id)
+      .eq("group_id", destinationGroup.id)
       .order("position", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -185,7 +241,7 @@ export async function submitApplication(
         company_id: form.company_id,
         job_id: jobId,
         board_id: board.id,
-        group_id: newApplicantsGroup.id,
+        group_id: destinationGroup.id,
         full_name: fullName,
         email: email || "",
         phone: phone || "",
@@ -342,7 +398,7 @@ export async function submitApplication(
           board_id: board.id,
           applicant_id: applicant.id,
           form_id: form.form_id,
-          group_id: newApplicantsGroup.id,
+          group_id: destinationGroup.id,
         },
       });
 
@@ -358,7 +414,7 @@ export async function submitApplication(
           job_id: jobId,
           board_id: board.id,
           applicant_id: applicant.id,
-          group_id: newApplicantsGroup.id,
+          group_id: destinationGroup.id,
         },
       });
 

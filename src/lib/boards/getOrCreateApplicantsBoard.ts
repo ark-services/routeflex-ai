@@ -4,10 +4,12 @@ type GroupConfig = {
   name: string;
   color: string;
   sort_order: number;
+  /** Mark this group as the default destination for new public applicants. */
+  is_default_for_applications?: boolean;
 };
 
 const DEFAULT_GROUPS: GroupConfig[] = [
-  { name: "New Applicants", color: "#0073ea", sort_order: 1 },
+  { name: "New Applicants", color: "#0073ea", sort_order: 1, is_default_for_applications: true },
   { name: "Background Check", color: "#00c875", sort_order: 2 },
   { name: "Interview", color: "#fdab3d", sort_order: 3 },
   { name: "HR Paperwork", color: "#e2445c", sort_order: 4 },
@@ -23,6 +25,7 @@ export type BoardGroup = {
   sort_order: number;
   color: string;
   is_collapsed: boolean | null;
+  is_default_for_applications: boolean;
 };
 
 export type GetOrCreateBoardResult =
@@ -186,7 +189,7 @@ export async function getOrCreateApplicantsBoard(
     // ========================================================================
     const { data: existingGroups, error: groupsFetchError } = await supabase
       .from("board_groups")
-      .select("id, name, sort_order, color, is_collapsed")
+      .select("id, name, sort_order, color, is_collapsed, is_default_for_applications")
       .eq("company_id", companyId)
       .eq("board_id", boardId)
       .order("sort_order", { ascending: true });
@@ -221,6 +224,7 @@ export async function getOrCreateApplicantsBoard(
         name: g.name,
         color: g.color,
         sort_order: g.sort_order,
+        is_default_for_applications: g.is_default_for_applications ?? false,
       }));
 
       // Insert groups (ignore duplicates from race conditions)
@@ -244,7 +248,7 @@ export async function getOrCreateApplicantsBoard(
       // Re-fetch all groups to get complete list
       const { data: allGroups, error: refetchError } = await supabase
         .from("board_groups")
-        .select("id, name, sort_order, color, is_collapsed")
+        .select("id, name, sort_order, color, is_collapsed, is_default_for_applications")
         .eq("company_id", companyId)
         .eq("board_id", boardId)
         .order("sort_order", { ascending: true });

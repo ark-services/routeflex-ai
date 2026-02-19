@@ -20,18 +20,19 @@ type GroupConfig = {
   name: string;
   color: string;
   sort_order: number;
+  is_default_for_applications?: boolean;
 };
 
 // Template to group configurations mapping
 const TEMPLATE_GROUPS: Record<JobTemplate, GroupConfig[]> = {
   fedex_pd: [
-    { name: "New Applicants", color: "#0073ea", sort_order: 1 },
+    { name: "New Applicants", color: "#0073ea", sort_order: 1, is_default_for_applications: true },
     { name: "Background Check", color: "#00c875", sort_order: 2 },
     { name: "Interview", color: "#fdab3d", sort_order: 3 },
     { name: "HR Paperwork", color: "#e2445c", sort_order: 4 },
   ],
   scratch: [
-    { name: "New Group", color: "#0073ea", sort_order: 1 },
+    { name: "New Group", color: "#0073ea", sort_order: 1, is_default_for_applications: true },
   ],
 };
 
