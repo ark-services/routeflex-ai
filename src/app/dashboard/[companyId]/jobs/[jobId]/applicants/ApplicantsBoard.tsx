@@ -52,7 +52,7 @@ import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation
 import { statusColorArray, STATUS_COLOR_PALETTE } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
 import { ColorPicker } from "@/components/ui/color-picker";
-import { formatPhone } from "@/lib/validation/columnValidation";
+import { formatPhone, validatePhone } from "@/lib/validation/columnValidation";
 import type { BoardColumn as BaseBoardColumn, BoardCell, BoardStatusLabel } from "@/lib/types";
 import type { ActiveFilter } from "./view-actions";
 
@@ -2907,25 +2907,7 @@ function CellRenderer({
   }
 
   if (column.type === "phone") {
-    return (
-      <div className="relative">
-        <input
-          type="tel"
-          value={localValue ? formatPhone(localValue) : ""}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onFocus={() => setIsEditing(true)}
-          onBlur={commitEdit}
-          onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
-          placeholder="(123) 456-7890"
-        />
-        {isPending && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
-          </div>
-        )}
-      </div>
-    );
+    return <PhoneCell value={value} onUpdate={onUpdate} />;
   }
 
   if (column.type === "location") {
@@ -2964,6 +2946,97 @@ function CellRenderer({
   }
 
   return <span className="text-stone-300">—</span>;
+}
+
+// ===== Phone Cell — E.164-aware input with inline validation =====
+
+function PhoneCell({
+  value,
+  onUpdate,
+}: {
+  value: string | null;
+  onUpdate: (val: string | null) => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [localValue, setLocalValue] = useState<string>(value ?? "");
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync from server when not editing
+  useEffect(() => {
+    if (!isEditing) setLocalValue(value ?? "");
+  }, [value, isEditing]);
+
+  const commitPhoneEdit = () => {
+    const raw = localValue.trim();
+
+    // Allow clearing the field
+    if (!raw) {
+      setIsEditing(false);
+      setError(null);
+      if (value) startTransition(() => onUpdate(null));
+      return;
+    }
+
+    const { valid, normalized, error: errMsg } = validatePhone(raw);
+    if (!valid) {
+      setError(errMsg ?? "Invalid phone number");
+      // Keep focus — user must fix before closing
+      return;
+    }
+
+    setError(null);
+    setIsEditing(false);
+    if (normalized !== value) {
+      startTransition(() => onUpdate(normalized!));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitPhoneEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setLocalValue(value ?? "");
+      setError(null);
+      setIsEditing(false);
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  return (
+    <div className="relative">
+      <input
+        type="tel"
+        value={isEditing ? localValue : (value ? formatPhone(value) : "")}
+        onChange={(e) => {
+          setLocalValue(e.target.value);
+          setError(null);
+        }}
+        onFocus={() => {
+          setIsEditing(true);
+          setLocalValue(value ?? "");
+        }}
+        onBlur={commitPhoneEdit}
+        onKeyDown={handleKeyDown}
+        className={`h-8 w-full rounded border px-2 text-[16px] md:text-sm outline-none transition-colors hover:border-stone-200 focus:border-blue-500 ${
+          error ? "border-red-400 bg-red-50 focus:border-red-500" : "border-transparent"
+        }`}
+        placeholder="+15551234567"
+      />
+      {error && (
+        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
+          {error}
+        </div>
+      )}
+      {isPending && !error && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ===== Status Labels Editor (Monday.com-style inline editing) =====

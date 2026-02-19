@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import type { TemplatePayload, TemplateColumn, TemplateForm } from "@/lib/types";
+import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
 // ─── ID-remapping helper ──────────────────────────────────────────────────────
 //
@@ -880,6 +881,31 @@ export async function applyTemplate(
     template_id: templateId,
     applied_by: user.id,
   });
+
+  // Log activity
+  try {
+    const actorDisplayName =
+      user.user_metadata?.full_name ?? user.email ?? "Someone";
+    const templateTitle = (templateData.payload as any)?.title ?? "template";
+    const nGroups = groups.length;
+    const nAutos = automations.length;
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user.id,
+      actorType: "user",
+      eventType: "template.applied",
+      entityType: "template",
+      entityId: templateId,
+      summary: `${actorDisplayName} applied template "${templateTitle}" (${nGroups} group${nGroups !== 1 ? "s" : ""}, ${nAutos} automation${nAutos !== 1 ? "s" : ""})`,
+      data: {
+        actor_name: actorDisplayName,
+        template_title: templateTitle,
+        groups_count: nGroups,
+        automations_count: nAutos,
+      },
+    });
+  } catch {}
 
   // Revalidate the job board view
   revalidatePath(`/dashboard/${companyId}/jobs/${jobId}/applicants`);

@@ -834,13 +834,17 @@ export async function updateBoardCell(
     }
     cellData.value_text = value.trim();
   } else if (columnType === "phone") {
-    // Validate and normalize phone
-    const validation = validatePhone(value);
-    if (!validation.valid) {
-      throw new Error(validation.error || "Invalid phone number");
+    // Allow clearing the field
+    if (value === null || value === undefined || String(value).trim() === '') {
+      cellData.value_text = null;
+    } else {
+      // Validate and normalize to E.164
+      const validation = validatePhone(value);
+      if (!validation.valid) {
+        throw new Error(validation.error || "Invalid phone number");
+      }
+      cellData.value_text = validation.normalized ?? null;
     }
-    // Store normalized digits
-    cellData.value_text = validation.normalized;
   } else if (columnType === "location") {
     // Validate location
     const validation = validateLocation(value);

@@ -15,6 +15,7 @@ interface GmailConnection {
 }
 
 interface SendEmailGmailActionProps {
+  companyId: string;
   accountId: string;
   action: { type: string; config: Record<string, any> };
   columns: Column[];
@@ -22,11 +23,13 @@ interface SendEmailGmailActionProps {
 }
 
 export function SendEmailGmailAction({
+  companyId,
   accountId,
   action,
   columns,
   onChange,
 }: SendEmailGmailActionProps) {
+  const integrationsHref = `/admin/${accountId}/companies/${companyId}/integrations`;
   const [connections, setConnections] = useState<GmailConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
@@ -36,11 +39,11 @@ export function SendEmailGmailAction({
 
   useEffect(() => {
     loadConnections();
-  }, [accountId]);
+  }, [companyId]);
 
   async function loadConnections() {
     try {
-      const response = await fetch(`/api/integrations/gmail/connections?account_id=${accountId}`);
+      const response = await fetch(`/api/integrations/gmail/connections?company_id=${companyId}`);
       if (response.ok) {
         const data = await response.json();
         setConnections(data.connections || []);
@@ -129,7 +132,7 @@ export function SendEmailGmailAction({
                 <div className="px-4 py-3 text-center">
                   <p className="text-sm text-gray-600 mb-2">No Gmail accounts connected</p>
                   <a
-                    href={`/admin/${accountId}/integrations`}
+                    href={integrationsHref}
                     className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                   >
                     Connect Gmail →
@@ -145,7 +148,7 @@ export function SendEmailGmailAction({
             <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800">
               No Gmail accounts connected.{' '}
-              <a href={`/admin/${accountId}/integrations`} className="underline font-medium">
+              <a href={integrationsHref} className="underline font-medium">
                 Connect one now
               </a>
             </p>

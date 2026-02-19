@@ -53,11 +53,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(`${baseUrl}/login`);
     }
 
-    // Get account_id from query param
+    // Get account_id and company_id from query params
     const accountId = request.nextUrl.searchParams.get('account_id');
+    const companyId = request.nextUrl.searchParams.get('company_id');
+
     if (!accountId) {
       console.warn('[Gmail OAuth Start] ⚠️  Missing account_id parameter');
       return NextResponse.json({ error: 'account_id required' }, { status: 400 });
+    }
+    if (!companyId) {
+      console.warn('[Gmail OAuth Start] ⚠️  Missing company_id parameter');
+      return NextResponse.json({ error: 'company_id required' }, { status: 400 });
     }
 
     // Verify user has access to this account
@@ -73,12 +79,26 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Verify the company belongs to this account
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', companyId)
+      .eq('account_id', accountId)
+      .maybeSingle();
+
+    if (!company) {
+      console.warn('[Gmail OAuth Start] ⚠️  Company does not belong to account:', companyId);
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // Generate CSRF nonce
     const nonce = crypto.randomBytes(32).toString('base64url');
 
-    // Create state parameter containing accountId, userId, and nonce
+    // Create state parameter containing accountId, companyId, userId, and nonce
     const state = Buffer.from(JSON.stringify({
       accountId,
+      companyId,
       userId: user.id,
       nonce,
     })).toString('base64url');

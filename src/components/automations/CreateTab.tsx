@@ -5,6 +5,8 @@ import { Plus, X, ChevronDown, Zap } from "lucide-react";
 import { createJobAutomation, updateJobAutomation, getJobBoardColumns } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { EmailGmailEditor } from "./EmailGmailEditor";
 import { SendEmailGmailAction } from "./SendEmailGmailAction";
+import { TwilioSmsAction } from "./TwilioSmsAction";
+import { TwilioCallAction } from "./TwilioCallAction";
 
 interface Trigger {
   id: string;
@@ -245,6 +247,28 @@ export function CreateTab({
           return;
         }
       }
+      if (action.type === "twilio.send_sms") {
+        const ts = action.config.toSource;
+        if (!ts || (ts.type === "column" && !ts.columnId) || (ts.type === "manual" && !ts.value)) {
+          alert("Please configure the recipient for Send SMS");
+          return;
+        }
+        if (!action.config.message) {
+          alert("Please enter a message for Send SMS");
+          return;
+        }
+      }
+      if (action.type === "twilio.make_call_say") {
+        const ts = action.config.toSource;
+        if (!ts || (ts.type === "column" && !ts.columnId) || (ts.type === "manual" && !ts.value)) {
+          alert("Please configure the recipient for Call Someone and Say");
+          return;
+        }
+        if (!action.config.say) {
+          alert("Please enter text to say for Call Someone and Say");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -358,6 +382,22 @@ export function CreateTab({
           const recipientCol = columns.find((c) => c.id === action.config.recipient_column_id);
           return recipientCol ? `send email to ${recipientCol.name}` : "send email";
         }
+        case "twilio.send_sms": {
+          const ts = action.config.toSource;
+          if (ts?.type === "column") {
+            const col = columns.find((c) => c.id === ts.columnId);
+            return col ? `send SMS to ${col.name}` : "send SMS";
+          }
+          return ts?.value ? `send SMS to ${ts.value}` : "send SMS";
+        }
+        case "twilio.make_call_say": {
+          const ts = action.config.toSource;
+          if (ts?.type === "column") {
+            const col = columns.find((c) => c.id === ts.columnId);
+            return col ? `call ${col.name} and say` : "make call";
+          }
+          return ts?.value ? `call ${ts.value} and say` : "make call";
+        }
         default:
           return action.type;
       }
@@ -457,6 +497,7 @@ export function CreateTab({
                   index={index}
                   columns={columns}
                   groups={groups}
+                  companyId={companyId}
                   accountId={accountId}
                   onChange={(updates) => updateAction(index, updates)}
                   onRemove={() => removeAction(index)}
@@ -851,6 +892,7 @@ function ActionEditor({
   index,
   columns,
   groups,
+  companyId,
   accountId,
   onChange,
   onRemove,
@@ -859,6 +901,7 @@ function ActionEditor({
   index: number;
   columns: Column[];
   groups: Group[];
+  companyId: string;
   accountId: string;
   onChange: (updates: Partial<Action>) => void;
   onRemove: () => void;
@@ -873,6 +916,8 @@ function ActionEditor({
     { value: "send_email", label: "Send email (stub)" },
     { value: "send_slack", label: "Send Slack notification" },
     { value: "send_email_gmail", label: "Send Email (Gmail)" },
+    { value: "twilio.send_sms", label: "Send SMS (Twilio)" },
+    { value: "twilio.make_call_say", label: "Call Someone and Say (Twilio)" },
   ];
 
   return (
@@ -1034,7 +1079,7 @@ function ActionEditor({
 
         {action.type === "email_gmail" && (
           <EmailGmailEditor
-            accountId={accountId}
+            companyId={companyId}
             action={action}
             columns={columns}
             onChange={onChange}
@@ -1043,7 +1088,26 @@ function ActionEditor({
 
         {action.type === "send_email_gmail" && (
           <SendEmailGmailAction
+            companyId={companyId}
             accountId={accountId}
+            action={action}
+            columns={columns}
+            onChange={onChange}
+          />
+        )}
+
+        {action.type === "twilio.send_sms" && (
+          <TwilioSmsAction
+            companyId={companyId}
+            action={action}
+            columns={columns}
+            onChange={onChange}
+          />
+        )}
+
+        {action.type === "twilio.make_call_say" && (
+          <TwilioCallAction
+            companyId={companyId}
             action={action}
             columns={columns}
             onChange={onChange}

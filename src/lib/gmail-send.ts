@@ -88,6 +88,26 @@ export async function getGmailClientForConnection(
 }
 
 /**
+ * Get Gmail client for the active company-level connection.
+ * Looks up the company's active (non-revoked) connection and delegates to
+ * getGmailClientForConnection.  Returns null if no connection exists.
+ */
+export async function getGmailClientForCompany(
+  supabase: SupabaseClient,
+  companyId: string
+): Promise<GmailClient | null> {
+  const { data: connection } = await supabase
+    .from('gmail_connections')
+    .select('id')
+    .eq('company_id', companyId)
+    .is('revoked_at', null)
+    .maybeSingle();
+
+  if (!connection) return null;
+  return getGmailClientForConnection(supabase, connection.id);
+}
+
+/**
  * Send email via Gmail API
  */
 export async function sendEmail(

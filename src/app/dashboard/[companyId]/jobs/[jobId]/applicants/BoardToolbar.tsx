@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { Search, SlidersHorizontal, X, Link2, Zap, BookTemplate } from "lucide-react";
+import { useRef, useState, useTransition, useEffect } from "react";
+import { Search, SlidersHorizontal, X, Link2, Zap, BookTemplate, MoreHorizontal, ScrollText } from "lucide-react";
 import type { BoardColumn, BoardStatusLabel } from "@/lib/types";
 import type { ActiveFilter, BoardView, BoardViewQuery } from "./view-actions";
 import {
@@ -36,6 +36,8 @@ export interface BoardToolbarProps {
   automations: any[];
   triggers: any[];
   groups: any[];
+  // Activity log
+  onOpenActivityLog: () => void;
   // Super admin
   isSuperAdmin?: boolean;
 }
@@ -58,6 +60,7 @@ export function BoardToolbar({
   automations,
   triggers,
   groups,
+  onOpenActivityLog,
   isSuperAdmin = false,
 }: BoardToolbarProps) {
   const [views, setViews] = useState<BoardView[]>(initialViews);
@@ -68,8 +71,25 @@ export function BoardToolbar({
   const [searchFocused, setSearchFocused] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [saveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const filterBtnRef = useRef<HTMLButtonElement>(null);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close "..." menu on outside click
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        moreBtnRef.current?.contains(e.target as Node) ||
+        moreMenuRef.current?.contains(e.target as Node)
+      ) return;
+      setMoreOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [moreOpen]);
 
   // ── Dirty detection ───────────────────────────────────────────────────────
 
@@ -261,6 +281,36 @@ export function BoardToolbar({
           triggers={triggers}
           groups={groups}
         />
+
+        {/* More "..." menu */}
+        <div className="relative shrink-0">
+          <button
+            ref={moreBtnRef}
+            onClick={() => setMoreOpen((o) => !o)}
+            className={`flex items-center justify-center h-8 w-8 rounded-lg border text-sm transition-colors ${
+              moreOpen
+                ? "border-stone-300 bg-stone-100 text-stone-700"
+                : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300"
+            }`}
+            title="More options"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+          {moreOpen && (
+            <div
+              ref={moreMenuRef}
+              className="absolute right-0 top-full mt-1 w-44 bg-white border border-stone-200 rounded-lg shadow-lg z-50 py-1"
+            >
+              <button
+                onClick={() => { setMoreOpen(false); onOpenActivityLog(); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+              >
+                <ScrollText className="h-4 w-4 text-stone-500" />
+                Activity Log
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Filter panel — portal overlay anchored below filter button ────── */}

@@ -4,25 +4,25 @@ import { Mail, Plus, ChevronDown } from "lucide-react";
 import { getGmailConnection } from "@/components/integrations/actions";
 
 interface EmailGmailEditorProps {
-  accountId: string;
+  companyId: string;
   action: { type: string; config: Record<string, any> };
   columns: Array<{ id: string; name: string; type: string }>;
   onChange: (updates: { config: Record<string, any> }) => void;
 }
 
-export function EmailGmailEditor({ accountId, action, columns, onChange }: EmailGmailEditorProps) {
+export function EmailGmailEditor({ companyId, action, columns, onChange }: EmailGmailEditorProps) {
   const [gmailConnection, setGmailConnection] = useState<{ id: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getGmailConnection(accountId).then((conn) => {
+    getGmailConnection(companyId).then((conn) => {
       setGmailConnection(conn);
       if (conn && !action.config.gmail_connection_id) {
         onChange({ config: { ...action.config, gmail_connection_id: conn.id } });
       }
       setLoading(false);
     });
-  }, [accountId]);
+  }, [companyId]);
 
   const emailColumns = columns.filter((c) => c.type === "email");
 
@@ -39,10 +39,7 @@ export function EmailGmailEditor({ accountId, action, columns, onChange }: Email
     return (
       <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
         <p className="text-sm text-amber-800">
-          No Gmail account connected.{" "}
-          <a href={`/admin/${accountId}/integrations`} className="underline font-medium">
-            Connect one in Integrations
-          </a>
+          No Gmail account connected for this company. Connect one in Admin → Integrations.
         </p>
       </div>
     );

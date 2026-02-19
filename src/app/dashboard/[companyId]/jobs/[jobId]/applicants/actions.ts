@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { validateEmail, validatePhone, validateLocation } from "@/lib/validation/columnValidation";
+import { logActivityEvent } from "@/lib/activity/logActivityEvent";
+
+/** Returns actor name from user metadata for activity log entries. */
+function actorName(user: { user_metadata?: { full_name?: string }; email?: string } | null): string {
+  return user?.user_metadata?.full_name ?? user?.email ?? "Someone";
+}
 
 function dashPath(companyId: string, jobId: string) {
   return `/dashboard/${companyId}/jobs/${jobId}/applicants`;
@@ -206,6 +212,22 @@ export async function bulkMoveApplicants(
 
   console.log(`[bulkMoveApplicants] ✓ Successfully moved ${count} applicant(s) to ${targetGroup.name}`);
 
+  // Log activity
+  try {
+    const actor = actorName(user);
+    const n = count ?? applicantIds.length;
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "applicant.moved_group",
+      entityType: "applicant",
+      summary: `${actor} moved ${n} applicant${n !== 1 ? "s" : ""} to ${targetGroup.name}`,
+      data: { actor_name: actor, group_name: targetGroup.name, count: n },
+    });
+  } catch {}
+
   revalidatePath(dashPath(companyId, jobId));
 }
 
@@ -379,6 +401,23 @@ export async function createGroup(
       .single();
 
     if (!error) {
+      // Log activity
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const actor = actorName(user);
+        await logActivityEvent(supabase, {
+          companyId,
+          jobId,
+          actorUserId: user?.id ?? null,
+          actorType: "user",
+          eventType: "group.created",
+          entityType: "group",
+          entityId: data.id,
+          summary: `${actor} created group "${data.name}"`,
+          data: { actor_name: actor, group_name: data.name },
+        });
+      } catch {}
+
       revalidatePath(dashPath(companyId, jobId));
       return { data: data as GroupRow };
     }
@@ -483,6 +522,23 @@ export async function renameGroup(
     throw new Error(error.message);
   }
 
+  // Log activity
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const actor = actorName(user);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "group.renamed",
+      entityType: "group",
+      entityId: groupId,
+      summary: `${actor} renamed group to "${trimmedName}"`,
+      data: { actor_name: actor, group_name: trimmedName },
+    });
+  } catch {}
+
   revalidatePath(dashPath(companyId, jobId));
 }
 
@@ -493,6 +549,13 @@ export async function deleteGroup(
   groupId: string
 ): Promise<{ success?: true; error?: string }> {
   const supabase = await createClient();
+
+  // Fetch the name of the group being deleted for the activity log
+  const { data: deletedGroupInfo } = await supabase
+    .from("board_groups")
+    .select("name")
+    .eq("id", groupId)
+    .maybeSingle();
 
   // Fetch all groups for board (sorted by sort_order)
   const { data: groups, error: fetchError } = await supabase
@@ -555,6 +618,24 @@ export async function deleteGroup(
       .eq("company_id", companyId)
       .eq("board_id", boardId);
   }
+
+  // Log activity
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const actor = actorName(user);
+    const gName = deletedGroupInfo?.name ?? "a group";
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "group.deleted",
+      entityType: "group",
+      entityId: groupId,
+      summary: `${actor} deleted group "${gName}"`,
+      data: { actor_name: actor, group_name: gName },
+    });
+  } catch {}
 
   revalidatePath(dashPath(companyId, jobId));
   return { success: true };
@@ -1206,13 +1287,17 @@ export async function updateBoardCell(
     }
     cellData.value_text = value.trim();
   } else if (columnType === "phone") {
-    // Validate and normalize phone
-    const validation = validatePhone(value);
-    if (!validation.valid) {
-      throw new Error(validation.error || "Invalid phone number");
+    // Allow clearing the field
+    if (value === null || value === undefined || String(value).trim() === '') {
+      cellData.value_text = null;
+    } else {
+      // Validate and normalize to E.164
+      const validation = validatePhone(value);
+      if (!validation.valid) {
+        throw new Error(validation.error || "Invalid phone number");
+      }
+      cellData.value_text = validation.normalized ?? null;
     }
-    // Store normalized digits
-    cellData.value_text = validation.normalized;
   } else if (columnType === "location") {
     // Validate location
     const validation = validateLocation(value);
@@ -1314,6 +1399,25 @@ export async function updateBoardCell(
         oldLabel,
         newLabel,
       });
+
+      // Log cell.updated activity
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const actor = actorName(user);
+        if (newLabel) {
+          await logActivityEvent(supabase, {
+            companyId,
+            jobId,
+            actorUserId: user?.id ?? null,
+            actorType: "user",
+            eventType: "cell.updated",
+            entityType: "applicant",
+            entityId: applicantId,
+            summary: `${actor} changed ${column?.name ?? "status"} → ${newLabel}`,
+            data: { actor_name: actor, column_name: column?.name, old_label: oldLabel, new_label: newLabel },
+          });
+        }
+      } catch {}
     } catch (automationError) {
       console.error('[updateBoardCell] Error firing automation:', automationError);
       // Don't throw - automation errors should not block the cell update
@@ -1619,6 +1723,22 @@ export async function moveApplicant(
     toGroup: targetGroup.name,
   });
 
+  // Log activity
+  try {
+    const actor = actorName(user);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "applicant.moved_group",
+      entityType: "applicant",
+      entityId: applicantId,
+      summary: `${actor} moved ${existingApplicant.full_name} to ${targetGroup.name}`,
+      data: { actor_name: actor, applicant_name: existingApplicant.full_name, group_name: targetGroup.name },
+    });
+  } catch {}
+
   revalidatePath(dashPath(companyId, jobId));
 }
 
@@ -1718,6 +1838,22 @@ export async function deleteApplicant(
   }
 
   console.log('[deleteApplicant] Successfully deleted applicant:', existingApplicant.full_name);
+
+  // Log activity
+  try {
+    const actor = actorName(user);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "applicant.deleted",
+      entityType: "applicant",
+      entityId: applicantId,
+      summary: `${actor} deleted ${existingApplicant.full_name}`,
+      data: { actor_name: actor, applicant_name: existingApplicant.full_name },
+    });
+  } catch {}
 
   revalidatePath(dashPath(companyId, jobId));
 }
@@ -1959,6 +2095,29 @@ export async function quickCreateApplicant(
   }
 
   console.log("[quickCreateApplicant] Created:", newApplicant);
+
+  // Log activity
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const actor = actorName(user);
+    // Fetch group name for summary
+    const { data: grp } = await supabase
+      .from("board_groups")
+      .select("name")
+      .eq("id", groupId)
+      .maybeSingle();
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "applicant.created",
+      entityType: "applicant",
+      entityId: newApplicant.id,
+      summary: `${actor} added New Applicant to ${grp?.name ?? "a group"}`,
+      data: { actor_name: actor, group_name: grp?.name ?? null },
+    });
+  } catch {}
 
   revalidatePath(dashPath(companyId, jobId));
   return newApplicant;

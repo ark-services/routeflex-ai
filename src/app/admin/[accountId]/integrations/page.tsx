@@ -1,60 +1,69 @@
 import { requireAdmin } from "@/lib/rbac";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Mail, Check } from "lucide-react";
-import { GmailConnectButton } from "@/components/integrations/GmailConnectButton";
-import { GmailDisconnectButton } from "@/components/integrations/GmailDisconnectButton";
-import { GmailReconnectButton } from "@/components/integrations/GmailReconnectButton";
-import { IntegrationsClient } from "./IntegrationsClient";
-import { getGmailConnection } from "@/components/integrations/actions";
+import { Building2, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
-export default async function IntegrationsPage({ params }: { params: Promise<{ accountId: string }> }) {
+export default async function IntegrationsIndexPage({
+  params,
+}: {
+  params: Promise<{ accountId: string }>;
+}) {
   const { accountId } = await params;
   await requireAdmin(accountId);
 
-  // Get Gmail connection using new per-user flow (with fallback to old account-level)
-  const gmailConnection = await getGmailConnection(accountId);
-  const isConnected = !!gmailConnection;
-  const connectedEmail = gmailConnection?.email;
+  const supabase = await createClient();
+  const { data: companies } = await supabase
+    .from("companies")
+    .select("id, name, created_at")
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: true });
 
+  const list = companies ?? [];
+
+  // Exactly one company → redirect straight to its integrations page
+  if (list.length === 1) {
+    redirect(`/admin/${accountId}/companies/${list[0].id}/integrations`);
+  }
+
+  // Zero or many companies → show a picker
   return (
-    <IntegrationsClient>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Integrations</h1>
-        <p className="text-sm text-stone-600">Connect external services for automations</p>
-
-        <Card className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                <Mail className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-stone-900">Gmail</h3>
-                <p className="text-sm text-stone-600 mt-1">
-                  Send automated emails through your Gmail account
-                </p>
-                {isConnected && (
-                  <div className="mt-3 flex items-center gap-2 text-sm flex-wrap">
-                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                    <span className="text-green-700 font-medium">Connected</span>
-                    <span className="text-stone-500">• {connectedEmail}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 sm:flex-shrink-0">
-              {isConnected ? (
-                <>
-                  <GmailReconnectButton accountId={accountId} />
-                  <GmailDisconnectButton accountId={accountId} />
-                </>
-              ) : (
-                <GmailConnectButton accountId={accountId} />
-              )}
-            </div>
-          </div>
-        </Card>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+          Integrations
+        </h1>
+        <p className="text-sm text-stone-600 mt-1">
+          {list.length === 0
+            ? "No companies found for this account."
+            : "Select a company to manage its integrations."}
+        </p>
       </div>
-    </IntegrationsClient>
+
+      {list.length > 0 && (
+        <div className="space-y-3">
+          {list.map((company) => (
+            <Link
+              key={company.id}
+              href={`/admin/${accountId}/companies/${company.id}/integrations`}
+              className="block"
+            >
+              <Card className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 text-stone-500" />
+                  </div>
+                  <span className="text-sm font-medium text-stone-900">
+                    {company.name}
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-stone-400" />
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

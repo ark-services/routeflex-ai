@@ -5,6 +5,7 @@ import ApplicantsBoard from "./ApplicantsBoard";
 import { BoardToolbar } from "./BoardToolbar";
 import type { ActiveFilter, BoardView } from "./view-actions";
 import type { BoardColumn, BoardStatusLabel, BoardCell } from "@/lib/types";
+import { ActivityLogDrawer } from "@/components/activity/ActivityLogDrawer";
 
 type Group = {
   id: string;
@@ -66,6 +67,7 @@ export function ApplicantsBoardContainer({
 }: ApplicantsBoardContainerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
+  const [activityLogOpen, setActivityLogOpen] = useState(false);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -86,6 +88,7 @@ export function ApplicantsBoardContainer({
         automations={automations}
         triggers={triggers}
         groups={boardGroups}
+        onOpenActivityLog={() => setActivityLogOpen(true)}
         isSuperAdmin={isSuperAdmin}
       />
 
@@ -104,6 +107,14 @@ export function ApplicantsBoardContainer({
           activeFilters={activeFilters}
         />
       </div>
+
+      {/* Activity Log Drawer */}
+      <ActivityLogDrawer
+        open={activityLogOpen}
+        onClose={() => setActivityLogOpen(false)}
+        companyId={companyId}
+        jobId={jobId}
+      />
     </div>
   );
 }

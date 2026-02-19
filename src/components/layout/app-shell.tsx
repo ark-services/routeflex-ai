@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TopBar } from "./top-bar";
 import { Sidebar } from "./sidebar";
 import { CreateCompanyModal } from "./create-company-modal";
 import { CreateJobModal } from "./create-job-modal";
+import {
+  AutomationToastStack,
+  emitAutomationRunning,
+  emitAutomationCompleted,
+  emitAutomationFailed,
+} from "@/components/ui/automation-toast-stack";
+import { createClient } from "@/lib/supabase/client";
 import type { Company, Job } from "@/lib/types";
 
 interface AppShellProps {
@@ -35,6 +42,51 @@ export function AppShell({
   const [showCreateCompany, setShowCreateCompany] = useState(false);
   const [showCreateJob, setShowCreateJob] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Subscribe to automation_runs inserts via Supabase Realtime.
+  // When a non-skipped run is inserted the automation actually executed —
+  // emit the "automation:running" event so the toast stack can display it.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`automation-runs-${currentCompanyId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "automation_runs",
+          filter: `company_id=eq.${currentCompanyId}`,
+        },
+        (event) => {
+          const run = event.new as {
+            status: string;
+            error?: string | null;
+            payload?: { _automation_name?: string | null };
+          };
+          // Only show toast for runs that actually executed (not filtered/skipped)
+          if (run.status === "skipped") return;
+          const name = run.payload?._automation_name ?? "";
+          // Immediately show "Automation Running"
+          emitAutomationRunning(name);
+          // After 1.5 s, show completion or failure
+          const runStatus = run.status;
+          const runError = run.error ?? null;
+          setTimeout(() => {
+            if (runStatus === "success") {
+              emitAutomationCompleted(name);
+            } else if (runStatus === "failed") {
+              emitAutomationFailed(name, runError);
+            }
+          }, 1500);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentCompanyId]);
 
   return (
     <div className="h-screen flex flex-col bg-stone-50">
@@ -78,6 +130,8 @@ export function AppShell({
         onClose={() => setShowCreateJob(false)}
         companyId={currentCompanyId}
       />
+
+      <AutomationToastStack />
     </div>
   );
 }

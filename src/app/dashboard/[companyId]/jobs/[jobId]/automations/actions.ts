@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
+import { logActivityEvent } from "@/lib/activity/logActivityEvent";
+
+function actorName(user: { user_metadata?: { full_name?: string }; email?: string } | null): string {
+  return user?.user_metadata?.full_name ?? user?.email ?? "Someone";
+}
 
 function jobPath(companyId: string, jobId: string) {
   return `/dashboard/${companyId}/jobs/${jobId}/applicants`;
@@ -103,6 +108,22 @@ export async function createJobAutomation(
     }
   }
 
+  // Log activity
+  try {
+    const actor = actorName(user);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user.id,
+      actorType: "user",
+      eventType: "automation.created",
+      entityType: "automation",
+      entityId: automation.id,
+      summary: `${actor} created automation "${automation.name}"`,
+      data: { actor_name: actor, automation_name: automation.name },
+    });
+  } catch {}
+
   revalidatePath(jobPath(companyId, jobId));
   return automation;
 }
@@ -118,6 +139,13 @@ export async function toggleJobAutomation(
 ) {
   const supabase = await createClient();
 
+  // Fetch automation name for summary
+  const { data: auto } = await supabase
+    .from("automations")
+    .select("name")
+    .eq("id", automationId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("automations")
     .update({ is_enabled })
@@ -126,6 +154,24 @@ export async function toggleJobAutomation(
     .eq("job_id", jobId);
 
   if (error) throw new Error(error.message);
+
+  // Log activity
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const actor = actorName(user);
+    const autoName = auto?.name ?? "automation";
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: is_enabled ? "automation.enabled" : "automation.disabled",
+      entityType: "automation",
+      entityId: automationId,
+      summary: `${actor} ${is_enabled ? "enabled" : "disabled"} automation "${autoName}"`,
+      data: { actor_name: actor, automation_name: autoName },
+    });
+  } catch {}
 
   revalidatePath(jobPath(companyId, jobId));
 }
@@ -140,6 +186,13 @@ export async function deleteJobAutomation(
 ) {
   const supabase = await createClient();
 
+  // Fetch automation name before deletion
+  const { data: auto } = await supabase
+    .from("automations")
+    .select("name")
+    .eq("id", automationId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("automations")
     .delete()
@@ -148,6 +201,24 @@ export async function deleteJobAutomation(
     .eq("job_id", jobId);
 
   if (error) throw new Error(error.message);
+
+  // Log activity
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const actor = actorName(user);
+    const autoName = auto?.name ?? "automation";
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "automation.deleted",
+      entityType: "automation",
+      entityId: automationId,
+      summary: `${actor} deleted automation "${autoName}"`,
+      data: { actor_name: actor, automation_name: autoName },
+    });
+  } catch {}
 
   revalidatePath(jobPath(companyId, jobId));
 }
@@ -384,6 +455,23 @@ export async function updateJobAutomation(
       throw new Error(actionsError.message);
     }
   }
+
+  // Log activity
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const actor = actorName(user);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorUserId: user?.id ?? null,
+      actorType: "user",
+      eventType: "automation.updated",
+      entityType: "automation",
+      entityId: automationId,
+      summary: `${actor} updated automation "${input.name}"`,
+      data: { actor_name: actor, automation_name: input.name },
+    });
+  } catch {}
 
   revalidatePath(jobPath(companyId, jobId));
 }

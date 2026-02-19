@@ -104,7 +104,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // Decode state
-    let state: { accountId: string; userId: string; nonce: string };
+    let state: { accountId: string; companyId: string; userId: string; nonce: string };
     try {
       const decoded = Buffer.from(stateParam, 'base64url').toString('utf-8');
       state = JSON.parse(decoded);
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       const redirectUrl = buildRedirectUrl(
         baseUrl,
-        `/admin/${state.accountId}/integrations`,
+        `/admin/${state.accountId}/companies/${state.companyId}/integrations`,
         { error: 'token_exchange_failed', details: tokenResponse.statusText }
       );
       return NextResponse.redirect(redirectUrl);
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!userInfoResponse.ok) {
       const redirectUrl = buildRedirectUrl(
         baseUrl,
-        `/admin/${state.accountId}/integrations`,
+        `/admin/${state.accountId}/companies/${state.companyId}/integrations`,
         { error: 'userinfo_failed' }
       );
       return NextResponse.redirect(redirectUrl);
@@ -182,7 +182,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!emailAddress) {
       const redirectUrl = buildRedirectUrl(
         baseUrl,
-        `/admin/${state.accountId}/integrations`,
+        `/admin/${state.accountId}/companies/${state.companyId}/integrations`,
         { error: 'no_email' }
       );
       return NextResponse.redirect(redirectUrl);
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       if (process.env.NODE_ENV !== 'development') {
         const redirectUrl = buildRedirectUrl(
           baseUrl,
-          `/admin/${state.accountId}/integrations`,
+          `/admin/${state.accountId}/companies/${state.companyId}/integrations`,
           { error: 'encryption_failed', details: 'ENCRYPTION_KEY not configured' }
         );
         return NextResponse.redirect(redirectUrl);
@@ -226,11 +226,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       encryptedRefreshToken = tokens.refresh_token || null;
     }
 
-    // Upsert gmail_connection
+    // Revoke any existing active Gmail connections for this company
+    // (MVP: one active connection per company — new connection replaces old)
+    const { error: revokeError } = await supabase
+      .from('gmail_connections')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('company_id', state.companyId)
+      .is('revoked_at', null);
+
+    if (revokeError) {
+      // Non-fatal: log and continue — old connection may simply not exist
+      console.warn('[OAuth callback-new] ⚠️ Failed to revoke old connections:', revokeError.message);
+    }
+
+    // Upsert gmail_connection (company-scoped)
     const { error: upsertError } = await supabase
       .from('gmail_connections')
       .upsert({
         account_id: state.accountId,
+        company_id: state.companyId,
         user_id: state.userId,
         email_address: emailAddress,
         provider: 'google',
@@ -249,17 +263,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const errorMsg = encodeURIComponent(upsertError.message || 'Unknown error');
       const redirectUrl = buildRedirectUrl(
         baseUrl,
-        `/admin/${state.accountId}/integrations`,
+        `/admin/${state.accountId}/companies/${state.companyId}/integrations`,
         { error: 'storage_failed', details: errorMsg }
       );
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Success - redirect to integrations page with success message
-    console.log('[OAuth callback-new] ✅ Successfully stored Gmail connection for user:', state.userId);
+    // Success - redirect to company-scoped integrations page
+    console.log('[OAuth callback-new] ✅ Successfully stored Gmail connection for company:', state.companyId);
     const redirectUrl = buildRedirectUrl(
       baseUrl,
-      `/admin/${state.accountId}/integrations`,
+      `/admin/${state.accountId}/companies/${state.companyId}/integrations`,
       { success: 'gmail_connected', email: emailAddress }
     );
 

@@ -10,20 +10,31 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Prefer company_id param (new); fall back to account_id (legacy)
+    const companyId = request.nextUrl.searchParams.get('company_id');
     const accountId = request.nextUrl.searchParams.get('account_id');
-    if (!accountId) {
-      return NextResponse.json({ error: 'account_id required' }, { status: 400 });
+
+    if (!companyId && !accountId) {
+      return NextResponse.json({ error: 'company_id required' }, { status: 400 });
     }
 
-    // Fetch user's active Gmail connections for this account
     // IMPORTANT: Never return access_token or refresh_token to client
-    const { data: connections, error } = await supabase
+    let query = supabase
       .from('gmail_connections')
       .select('id, email_address, created_at')
-      .eq('account_id', accountId)
-      .eq('user_id', user.id)
       .is('revoked_at', null)
       .order('created_at', { ascending: false });
+
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    } else {
+      // Legacy fallback: filter by account + current user
+      query = query
+        .eq('account_id', accountId!)
+        .eq('user_id', user.id);
+    }
+
+    const { data: connections, error } = await query;
 
     if (error) {
       console.error('Failed to fetch connections:', error);
