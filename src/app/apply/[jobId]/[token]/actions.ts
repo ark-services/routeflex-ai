@@ -116,6 +116,12 @@ export async function submitApplication(
     const groups = boardResult.groups;
 
     // ── Determine the destination group (robust fallback chain) ──────────────
+    // destinationGroup is explicitly nullable here because we try up to four
+    // strategies before settling on a real group (or auto-creating one).
+    // It MUST be non-null before we proceed to insert the applicant — the
+    // guard below line 4 ensures that invariant and gives TS a single,
+    // unambiguous narrowing point.
+    //
     // Priority:
     //   1. Group flagged is_default_for_applications = true  (explicit, preferred)
     //   2. Name match against known intake group names       (legacy / renamed)
@@ -125,7 +131,9 @@ export async function submitApplication(
       "new applicants", "new group", "inbox", "applied", "applicants",
     ]);
 
-    let destinationGroup =
+    // Explicitly typed as BoardGroup | null so later assignments (from
+    // .maybeSingle() or .single()) are accepted without narrowing conflicts.
+    let destinationGroup: BoardGroup | null =
       groups.find((g) => g.is_default_for_applications) ??
       groups.find((g) => INTAKE_NAMES.has(g.name.toLowerCase().trim())) ??
       groups[0] ??   // already ordered by sort_order ascending
@@ -156,7 +164,7 @@ export async function submitApplication(
       if (createGroupErr || !newGroup) {
         // Creation failed (e.g. concurrent request already inserted one) —
         // try fetching whatever group now exists for this board.
-        const { data: fallbackGroup } = await supabase
+        const { data: fallbackGroup, error: fallbackErr } = await supabase
           .from("board_groups")
           .select("id, name, sort_order, color, is_collapsed, is_default_for_applications")
           .eq("board_id", board.id)
@@ -165,17 +173,24 @@ export async function submitApplication(
           .limit(1)
           .maybeSingle();
 
-        destinationGroup = fallbackGroup ?? null;
-
-        if (!destinationGroup) {
-          const debugId = `grp-${Date.now().toString(36)}`;
-          console.error('[Application Submit] CRITICAL: could not create or find any group. debugId:', debugId, createGroupErr);
-          return { error: "We couldn't submit your application. Please try again." };
+        if (fallbackErr) {
+          console.error('[Application Submit] Fallback group fetch failed:', fallbackErr);
         }
+        // fallbackGroup is null when no rows exist; that case is caught below.
+        destinationGroup = fallbackGroup as BoardGroup | null;
       } else {
-        destinationGroup = newGroup;
+        destinationGroup = newGroup as BoardGroup;
         console.log('[Application Submit] Auto-created default group:', newGroup.id);
       }
+    }
+
+    // Final guard: after all four strategies, destinationGroup must be set.
+    // If it is still null here, the DB is in an unrecoverable state for this
+    // request — return a safe user-facing message without leaking internals.
+    if (!destinationGroup) {
+      const debugId = `grp-${Date.now().toString(36)}`;
+      console.error('[Application Submit] CRITICAL: could not create or find any group. debugId:', debugId);
+      return { error: "We couldn't submit your application. Please try again." };
     }
 
     console.log('[Application Submit] Using board:', board.id, 'group:', destinationGroup.id, `"${destinationGroup.name}"`);
