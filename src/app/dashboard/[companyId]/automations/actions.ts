@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fireTrigger } from "@/lib/automations/fire";
+import { AutomationActionType } from "@/lib/automations/actionTypes";
 
 function dashPath(companyId: string) {
   return `/dashboard/${companyId}/automations`;
@@ -43,7 +44,7 @@ export async function createAutomation(
     trigger_key: string;
     filter?: Record<string, any>;
     actions: Array<{
-      type: "move_group" | "set_status" | "webhook" | "send_email";
+      type: AutomationActionType;
       config: Record<string, any>;
     }>;
   }

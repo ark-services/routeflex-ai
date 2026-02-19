@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
+import { AutomationActionType } from "@/lib/automations/actionTypes";
 
 function actorName(user: { user_metadata?: { full_name?: string }; email?: string } | null): string {
   return user?.user_metadata?.full_name ?? user?.email ?? "Someone";
@@ -56,7 +57,7 @@ export async function createJobAutomation(
     trigger_key: string;
     filter?: Record<string, any>;
     actions: Array<{
-      type: "move_group" | "set_status" | "webhook" | "send_email";
+      type: AutomationActionType;
       config: Record<string, any>;
       sort_order?: number;
     }>;

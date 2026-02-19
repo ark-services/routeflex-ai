@@ -110,16 +110,22 @@ export function ManageTab({
     // Search in action type labels (human-readable)
     const actionLabelMatch = automation.automation_actions.some((action) => {
       const labelMap: Record<string, string> = {
-        'move_group': 'move to group',
-        'set_status': 'set status',
-        'change_status': 'change status',
-        'delete_item': 'delete item',
-        'set_date': 'set date',
-        'set_number': 'set number',
-        'inc_dec': 'increment decrement',
-        'webhook': 'webhook',
-        'send_email': 'send email',
-        'send_slack': 'send slack',
+        'move_group':           'move to group',
+        'set_status':           'set status',
+        'change_status':        'change status',
+        'delete_item':          'delete item',
+        'set_date':             'set date',
+        'set_number':           'set number',
+        'inc_dec':              'increment decrement',
+        'webhook':              'webhook',
+        'send_email':           'send email',
+        'send_slack':           'send slack',
+        'email_gmail':          'send gmail email',
+        'send_email_gmail':     'send email gmail',
+        'twilio.send_sms':      'send sms',
+        'twilio.make_call_say': 'make call',
+        'integration.set_field':'set fadv field',
+        'fadv.add_subject':     'add to fadv',
       };
       return (labelMap[action.type] || action.type).includes(query);
     });

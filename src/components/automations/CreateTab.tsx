@@ -279,6 +279,20 @@ export function CreateTab({
           return;
         }
       }
+      if (action.type === "fadv.add_subject") {
+        if (
+          !action.config.package_column_id ||
+          !action.config.facility_id_column_id ||
+          !action.config.position_type_column_id
+        ) {
+          alert("Please select all three input columns (Package, Facility ID, Position Type) for the FADV action");
+          return;
+        }
+        if (!action.config.output_column_id) {
+          alert("Please select an output column for the FADV action (where status messages will be written)");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -414,6 +428,8 @@ export function CreateTab({
             : "field";
           return `set FADV ${fieldLabel} to "${action.config.value ?? ""}"`;
         }
+        case "fadv.add_subject":
+          return "submit applicant to First Advantage";
         default:
           return action.type;
       }
@@ -935,6 +951,7 @@ function ActionEditor({
     { value: "twilio.send_sms", label: "Send SMS (Twilio)" },
     { value: "twilio.make_call_say", label: "Call Someone and Say (Twilio)" },
     { value: "integration.set_field", label: "Set integration field (FADV)" },
+    { value: "fadv.add_subject", label: "Add to FADV" },
   ];
 
   const FADV_FIELD_OPTIONS = [
@@ -1172,6 +1189,68 @@ function ActionEditor({
               className="px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium min-w-[140px]"
             />
           </>
+        )}
+
+        {action.type === "fadv.add_subject" && (
+          <div className="w-full space-y-3 pt-1">
+            {/* Package column */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-28 shrink-0">Package from</span>
+              <ColumnPicker
+                columns={columns.filter(
+                  (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                )}
+                selectedId={action.config.package_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, package_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Facility ID column */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-28 shrink-0">Facility ID from</span>
+              <ColumnPicker
+                columns={columns.filter(
+                  (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                )}
+                selectedId={action.config.facility_id_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, facility_id_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Position Type column */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-28 shrink-0">Position Type from</span>
+              <ColumnPicker
+                columns={columns.filter(
+                  (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                )}
+                selectedId={action.config.position_type_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, position_type_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Output column */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
+              <span className="text-sm text-gray-500 w-28 shrink-0">Write result to</span>
+              <ColumnPicker
+                columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
+                selectedId={action.config.output_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, output_column_id: id } })
+                }
+                placeholder="output column"
+              />
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -323,6 +323,50 @@ export async function submitToFadv(
   return { success: true, subjectId: fadvResult.subjectId };
 }
 
+// ── runFadvApiCall ────────────────────────────────────────────────────────────
+// Exported entry-point used by the queue processor (process-queue route).
+// Accepts the pre-validated field values without requiring `location`
+// (the column-mapping automation flow does not map a location column).
+
+export interface FadvApiCallParams {
+  cspId: string;
+  companyIdValue: string;
+  clientId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  packageCode: string;
+  facilityId: string;
+  positionType: string;
+  username: string | null;
+  /** Decrypted password — NEVER log */
+  password: string | null;
+  /** Decrypted security answer — NEVER log */
+  securityAnswer: string | null;
+}
+
+export async function runFadvApiCall(
+  params: FadvApiCallParams
+): Promise<{ success: boolean; subjectId?: string; error?: string }> {
+  return callFadvCreateSubject({
+    cspId:          params.cspId,
+    companyIdValue: params.companyIdValue,
+    clientId:       params.clientId,
+    firstName:      params.firstName,
+    lastName:       params.lastName,
+    email:          params.email,
+    phone:          params.phone,
+    packageCode:    params.packageCode,
+    location:       "",          // not required in column-mapping flow
+    facilityId:     params.facilityId,
+    positionType:   params.positionType,
+    username:       params.username,
+    password:       params.password,
+    securityAnswer: params.securityAnswer,
+  });
+}
+
 // ── callFadvCreateSubject ─────────────────────────────────────────────────────
 // Stub for the actual FADV API call. Replace with real implementation
 // when the FADV API endpoint and auth scheme are confirmed.

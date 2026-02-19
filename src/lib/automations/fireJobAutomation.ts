@@ -613,6 +613,9 @@ async function executeAction(
     case 'integration.set_field':
       return executeIntegrationSetField(supabase, companyId, jobId, config, payload);
 
+    case 'fadv.add_subject':
+      return executeFadvAddSubject(supabase, companyId, jobId, config, payload);
+
     default:
       return { success: false, error: `Unknown action type: ${type}` };
   }
@@ -1873,6 +1876,216 @@ function resolveVariables(template: string, context: Record<string, any>): strin
   return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
     return context[key]?.toString() || match;
   });
+}
+
+/**
+ * Action: fadv.add_subject
+ *
+ * Validates three input text columns on the applicant's board row, then
+ * enqueues a background FADV submission by inserting an integration_submissions
+ * row with status = 'queued'.  The Vercel cron job at /api/fadv/process-queue
+ * picks up the row, calls the FADV API, and writes the final result back to
+ * output_column_id.
+ *
+ * Config:
+ *   package_column_id       — text column holding the FADV Package value
+ *   facility_id_column_id   — text column holding the Facility ID value
+ *   position_type_column_id — text column holding the Position Type value
+ *   output_column_id        — text column where status messages are written
+ *
+ * Execution behaviours:
+ *   • Missing config keys          → hard failure (return success: false)
+ *   • Missing applicant cell values → write error to output column, return success: true
+ *   • Already successfully submitted → write "already submitted" message, return success: true
+ *   • DB insert failure            → hard failure (return success: false)
+ *   • Happy path                   → write "queued" to output column, return success: true
+ */
+async function executeFadvAddSubject(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const {
+    package_column_id,
+    facility_id_column_id,
+    position_type_column_id,
+    output_column_id,
+  } = config;
+
+  const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
+
+  console.log('[executeFadvAddSubject] Starting:', {
+    package_column_id,
+    facility_id_column_id,
+    position_type_column_id,
+    output_column_id,
+    applicantId,
+    companyId,
+    jobId,
+  });
+
+  // ── Validate config ─────────────────────────────────────────────────────────
+  if (!package_column_id || !facility_id_column_id || !position_type_column_id) {
+    return {
+      success: false,
+      error: 'fadv.add_subject: package_column_id, facility_id_column_id, and position_type_column_id are required in config',
+    };
+  }
+
+  if (!applicantId) {
+    return { success: false, error: 'fadv.add_subject: missing applicant_id in payload' };
+  }
+
+  // ── Helper: write a message to the output column ────────────────────────────
+  async function writeOutput(message: string) {
+    if (!output_column_id) return;
+    try {
+      await supabase
+        .from('board_cells')
+        .upsert(
+          {
+            applicant_id:          applicantId,
+            column_id:             output_column_id,
+            value_text:            message,
+            value_number:          null,
+            value_date:            null,
+            value_status_label_id: null,
+            value_file_path:       null,
+          },
+          { onConflict: 'applicant_id,column_id' }
+        );
+    } catch (err) {
+      console.error('[executeFadvAddSubject] writeOutput error (non-fatal):', err);
+    }
+  }
+
+  // ── Read input column values from board_cells ───────────────────────────────
+  const columnIds = [package_column_id, facility_id_column_id, position_type_column_id];
+
+  const { data: cells, error: cellsError } = await supabase
+    .from('board_cells')
+    .select('column_id, value_text')
+    .eq('applicant_id', applicantId)
+    .in('column_id', columnIds);
+
+  if (cellsError) {
+    console.error('[executeFadvAddSubject] Failed to read cells:', cellsError);
+    return { success: false, error: `Failed to read applicant column values: ${cellsError.message}` };
+  }
+
+  const cellMap: Record<string, string> = {};
+  for (const cell of cells ?? []) {
+    cellMap[cell.column_id] = cell.value_text ?? '';
+  }
+
+  const packageVal      = (cellMap[package_column_id]       ?? '').trim();
+  const facilityIdVal   = (cellMap[facility_id_column_id]   ?? '').trim();
+  const positionTypeVal = (cellMap[position_type_column_id] ?? '').trim();
+
+  // ── Validate field values ───────────────────────────────────────────────────
+  const missing: string[] = [];
+  if (!packageVal)      missing.push('Package');
+  if (!facilityIdVal)   missing.push('Facility ID');
+  if (!positionTypeVal) missing.push('Position Type');
+
+  if (missing.length > 0) {
+    const msg = `FADV not submitted: missing ${missing.join(', ')}`;
+    console.log('[executeFadvAddSubject] Validation failed:', msg);
+    await writeOutput(msg);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorType: 'automation',
+      eventType: 'fadv.submission.missing_applicant_fields',
+      entityType: 'applicant',
+      entityId: applicantId,
+      summary: msg,
+      data: { applicant_id: applicantId, missing_fields: missing },
+    });
+    // Graceful skip — automation run is still marked success
+    return { success: true };
+  }
+
+  // ── Idempotency: skip if already successfully submitted ─────────────────────
+  const { data: existing } = await supabase
+    .from('integration_submissions')
+    .select('id')
+    .eq('applicant_id', applicantId)
+    .eq('provider', 'fadv')
+    .eq('status', 'success')
+    .maybeSingle();
+
+  if (existing) {
+    const msg = 'FADV already submitted ✅';
+    console.log('[executeFadvAddSubject] Skipping — already submitted:', existing.id);
+    await writeOutput(msg);
+    return { success: true };
+  }
+
+  // ── Resolve board_id (best-effort; nullable in table) ───────────────────────
+  const { data: board } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('job_id', jobId)
+    .maybeSingle();
+
+  // ── Enqueue submission ──────────────────────────────────────────────────────
+  const { data: submission, error: insertError } = await supabase
+    .from('integration_submissions')
+    .insert({
+      company_id:      companyId,
+      applicant_id:    applicantId,
+      job_id:          jobId,
+      board_id:        board?.id ?? null,
+      provider:        'fadv',
+      status:          'queued',
+      input_snapshot: {
+        package:       packageVal,
+        facility_id:   facilityIdVal,
+        position_type: positionTypeVal,
+      },
+      output_column_id: output_column_id ?? null,
+    })
+    .select('id')
+    .single();
+
+  if (insertError) {
+    console.error('[executeFadvAddSubject] Failed to create submission record:', insertError);
+    return { success: false, error: `Failed to queue FADV submission: ${insertError.message}` };
+  }
+
+  // ── Write queued status to output column ────────────────────────────────────
+  await writeOutput('FADV submission queued...');
+
+  // ── Log activity event ──────────────────────────────────────────────────────
+  await logActivityEvent(supabase, {
+    companyId,
+    jobId,
+    actorType: 'automation',
+    eventType: 'fadv.submission.queued',
+    entityType: 'applicant',
+    entityId: applicantId,
+    summary: 'FADV submission queued for background processing',
+    data: {
+      applicant_id:  applicantId,
+      submission_id: submission.id,
+      package:       packageVal,
+      facility_id:   facilityIdVal,
+      position_type: positionTypeVal,
+    },
+  });
+
+  console.log('[executeFadvAddSubject] ✓ Queued submission:', submission.id, {
+    applicantId,
+    packageVal,
+    facilityIdVal,
+    positionTypeVal,
+  });
+
+  return { success: true };
 }
 
 /**
