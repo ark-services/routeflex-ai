@@ -31,6 +31,7 @@ type ApplicantRow = {
 interface ApplicantsBoardContainerProps {
   companyId: string;
   jobId: string;
+  jobTitle: string;
   boardId: string;
   groups: Group[];
   applicants: ApplicantRow[];
@@ -51,6 +52,7 @@ interface ApplicantsBoardContainerProps {
 export function ApplicantsBoardContainer({
   companyId,
   jobId,
+  jobTitle,
   boardId,
   groups,
   applicants,
@@ -75,6 +77,7 @@ export function ApplicantsBoardContainer({
       <BoardToolbar
         companyId={companyId}
         jobId={jobId}
+        jobTitle={jobTitle}
         boardId={boardId}
         columns={columns}
         statusLabels={statusLabels}

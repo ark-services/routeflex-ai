@@ -145,13 +145,12 @@ export function Sidebar({
   };
 
   const sidebarContent = (
-    <div className="w-64 border-r border-stone-200 bg-stone-50/50 flex flex-col h-full">
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-stone-200">
-        <h2 className="text-sm font-semibold text-stone-900">Navigation</h2>
+    <div className="w-64 border-r border-stone-200 bg-stone-50/50 flex flex-col h-full group">
+      {/* Sidebar Header — collapse arrow only, revealed on sidebar hover */}
+      <div className="flex items-center justify-end px-3 py-1.5 border-b border-stone-200 min-h-[36px]">
         <button
           onClick={() => setCollapsed(true)}
-          className="p-1 hover:bg-stone-100 rounded transition-colors"
+          className="p-1 hover:bg-stone-100 rounded transition opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
           title="Collapse sidebar"
         >
           <ChevronLeft className="h-4 w-4 text-stone-600" />
@@ -458,8 +457,7 @@ export function Sidebar({
           />
           {/* Drawer panel */}
           <div className="fixed inset-y-0 left-0 z-50 flex flex-col bg-stone-50 shadow-xl overflow-y-auto">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200">
-              <span className="text-sm font-semibold text-stone-900">Navigation</span>
+            <div className="flex items-center justify-end px-4 py-3 border-b border-stone-200">
               <button
                 onClick={onMobileClose}
                 className="p-1.5 hover:bg-stone-100 rounded-lg transition-colors"

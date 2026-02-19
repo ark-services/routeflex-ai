@@ -21,6 +21,7 @@ import { SaveAsTemplateModal } from "./SaveAsTemplateModal";
 export interface BoardToolbarProps {
   companyId: string;
   jobId: string;
+  jobTitle: string;
   boardId: string;
   columns: BoardColumn[];
   statusLabels: BoardStatusLabel[];
@@ -47,6 +48,7 @@ export interface BoardToolbarProps {
 export function BoardToolbar({
   companyId,
   jobId,
+  jobTitle,
   boardId,
   columns,
   statusLabels,
@@ -91,14 +93,6 @@ export function BoardToolbar({
     return () => document.removeEventListener("mousedown", handler);
   }, [moreOpen]);
 
-  // ── Dirty detection ───────────────────────────────────────────────────────
-
-  const currentView = views.find((v) => v.id === activeViewId);
-  const isDirty =
-    searchQuery !== (currentView?.query.search ?? "") ||
-    JSON.stringify(activeFilters) !==
-      JSON.stringify(currentView?.query.filters ?? []);
-
   // ── Switch view ───────────────────────────────────────────────────────────
 
   function switchView(viewId: string) {
@@ -110,11 +104,14 @@ export function BoardToolbar({
   }
 
   // ── Save as new view ──────────────────────────────────────────────────────
+  // Receives the validated draft filters directly from FilterPanel so the
+  // saved view reflects exactly what the user configured, not the stale
+  // activeFilters closure value.
 
-  async function handleSaveView(name: string) {
+  async function handleSaveView(name: string, filtersToSave: ActiveFilter[]) {
     const query: BoardViewQuery = {
       search: searchQuery,
-      filters: activeFilters,
+      filters: filtersToSave,
       logic: "and",
     };
     startTransition(async () => {
@@ -197,8 +194,107 @@ export function BoardToolbar({
   return (
     <div className="bg-white border-b border-stone-200 shrink-0">
 
-      {/* ── Row 1: Search · Filter · ··· · [Save as Template] · Integrate · Automate */}
-      <div className="flex items-center gap-2 px-4 py-2">
+      {/* ── Row 1: Job title (primary) · Board actions (right) ───────────────
+           Title is the visual anchor — large, bold, breathing room above + below.
+           Board-level actions (Integrate, Automate) sit on the same row because
+           they operate on the board as a whole, not on a specific view or search. */}
+      <div className="flex items-center gap-3 px-6 pt-5 pb-3 min-w-0">
+
+        <h1 className="text-[26px] font-semibold leading-tight text-stone-900 truncate min-w-0 flex-1">
+          {jobTitle}
+        </h1>
+
+        {/* Board-level actions — right-aligned, compact */}
+        <div className="flex items-center gap-2 shrink-0">
+
+          {/* Save as Template — super admin only */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setSaveAsTemplateOpen(true)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 text-sm font-medium transition-colors"
+              title="Save this job's layout as a template (Super Admin)"
+            >
+              <BookTemplate className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Save as Template…</span>
+            </button>
+          )}
+
+          {/* Integrate */}
+          <a
+            href={integrationHref}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300 text-sm font-medium transition-colors"
+          >
+            <Link2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Integrate</span>
+          </a>
+
+          {/* Automate */}
+          <AutomateButton
+            companyId={companyId}
+            jobId={jobId}
+            accountId={accountId}
+            automations={automations}
+            triggers={triggers}
+            groups={groups}
+          />
+
+          {/* More "..." menu */}
+          <div className="relative">
+            <button
+              ref={moreBtnRef}
+              onClick={() => setMoreOpen((o) => !o)}
+              className={`flex items-center justify-center h-8 w-8 rounded-lg border text-sm transition-colors ${
+                moreOpen
+                  ? "border-stone-300 bg-stone-100 text-stone-700"
+                  : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300"
+              }`}
+              title="More options"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+            {moreOpen && (
+              <div
+                ref={moreMenuRef}
+                className="absolute right-0 top-full mt-1 w-44 bg-white border border-stone-200 rounded-lg shadow-lg z-50 py-1"
+              >
+                <button
+                  onClick={() => { setMoreOpen(false); onOpenActivityLog(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  <ScrollText className="h-4 w-4 text-stone-500" />
+                  Activity Log
+                </button>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Row 2: View tabs (secondary) ─────────────────────────────────────
+           Tabs sit directly under the title — they feel grouped to it.
+           No top border here; the spacing from Row 1's pb-3 provides the gap. */}
+      {views.length > 0 && (
+        <div
+          className="px-6 overflow-x-auto"
+          style={{ scrollbarWidth: "none" }}
+        >
+          <ViewTabs
+            views={views}
+            activeViewId={activeViewId}
+            onViewChange={switchView}
+            onRename={handleRename}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onReorder={handleReorder}
+          />
+        </div>
+      )}
+
+      {/* ── Row 3: Utility toolbar — Search · Filter (tertiary) ──────────────
+           Separated from tabs by a hairline border, making it clearly a
+           utility layer rather than part of the navigation hierarchy. */}
+      <div className="flex items-center gap-2 px-6 py-2 border-t border-stone-100">
 
         {/* Search — collapses/expands on focus */}
         <div
@@ -229,7 +325,7 @@ export function BoardToolbar({
           )}
         </div>
 
-        {/* Filter button — ref used by FilterPanel for portal positioning */}
+        {/* Filter */}
         <button
           ref={filterBtnRef}
           onClick={() => setFilterOpen((o) => !o)}
@@ -248,72 +344,9 @@ export function BoardToolbar({
           )}
         </button>
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Save as Template — super admin only */}
-        {isSuperAdmin && (
-          <button
-            onClick={() => setSaveAsTemplateOpen(true)}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 text-sm font-medium transition-colors shrink-0"
-            title="Save this job's layout as a template (Super Admin)"
-          >
-            <BookTemplate className="h-3.5 w-3.5 shrink-0" />
-            <span className="hidden sm:inline">Save as Template…</span>
-          </button>
-        )}
-
-        {/* Integrate */}
-        <a
-          href={integrationHref}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300 text-sm font-medium transition-colors shrink-0"
-        >
-          <Link2 className="h-3.5 w-3.5 shrink-0" />
-          <span className="hidden sm:inline">Integrate</span>
-        </a>
-
-        {/* Automate */}
-        <AutomateButton
-          companyId={companyId}
-          jobId={jobId}
-          accountId={accountId}
-          automations={automations}
-          triggers={triggers}
-          groups={groups}
-        />
-
-        {/* More "..." menu */}
-        <div className="relative shrink-0">
-          <button
-            ref={moreBtnRef}
-            onClick={() => setMoreOpen((o) => !o)}
-            className={`flex items-center justify-center h-8 w-8 rounded-lg border text-sm transition-colors ${
-              moreOpen
-                ? "border-stone-300 bg-stone-100 text-stone-700"
-                : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300"
-            }`}
-            title="More options"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-          {moreOpen && (
-            <div
-              ref={moreMenuRef}
-              className="absolute right-0 top-full mt-1 w-44 bg-white border border-stone-200 rounded-lg shadow-lg z-50 py-1"
-            >
-              <button
-                onClick={() => { setMoreOpen(false); onOpenActivityLog(); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
-              >
-                <ScrollText className="h-4 w-4 text-stone-500" />
-                Activity Log
-              </button>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* ── Filter panel — portal overlay anchored below filter button ────── */}
+      {/* ── Filter panel — portal anchored below filter button ────────────── */}
       <FilterPanel
         open={filterOpen}
         anchorEl={filterBtnRef.current}
@@ -323,28 +356,9 @@ export function BoardToolbar({
         onFiltersChange={onFiltersChange}
         onClose={() => setFilterOpen(false)}
         onSaveView={handleSaveView}
-        isDirty={isDirty}
       />
 
-      {/* ── Row 2: View tabs ─────────────────────────────────────────────────── */}
-      {views.length > 0 && (
-        <div
-          className="px-4 overflow-x-auto border-t border-stone-100"
-          style={{ scrollbarWidth: "none" }}
-        >
-          <ViewTabs
-            views={views}
-            activeViewId={activeViewId}
-            onViewChange={switchView}
-            onRename={handleRename}
-            onDuplicate={handleDuplicate}
-            onDelete={handleDelete}
-            onReorder={handleReorder}
-          />
-        </div>
-      )}
-
-      {/* ── Save as Template modal ────────────────────────────────────────────── */}
+      {/* ── Save as Template modal ────────────────────────────────────────── */}
       <SaveAsTemplateModal
         open={saveAsTemplateOpen}
         onClose={() => setSaveAsTemplateOpen(false)}

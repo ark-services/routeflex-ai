@@ -323,70 +323,69 @@ export default function FormBuilder({
           }}
         />
 
-        {/* Canvas */}
+        {/* Canvas — full-page background driven by design settings, matching live page */}
         <div
           className="flex-1 overflow-auto p-6"
           style={{ backgroundColor: designSettings.backgroundColor }}
         >
-          <div className="max-w-3xl mx-auto">
-            {/* Form header card — inline editable */}
-            <div className="mb-6 bg-white rounded-xl border-2 border-gray-200 shadow-sm overflow-hidden">
-              {/* Logo (shown when set) */}
-              {designSettings.logoUrl && (
-                <div className="px-8 pt-6 pb-0">
+          <div className="max-w-2xl mx-auto">
+            {/* Form header card — two-section layout matching the live apply page:
+                 top section: logo + title (border-b divider)
+                 bottom section: description (inline-editable) */}
+            <div className="mb-5 bg-white rounded-2xl border border-stone-200 shadow-[0_2px_16px_rgba(0,0,0,0.08)] overflow-hidden">
+
+              {/* Header section: logo + title */}
+              <div className="px-8 pt-8 pb-6 border-b border-stone-100">
+                {designSettings.logoUrl && (
                   <img
                     src={designSettings.logoUrl}
                     alt="Form logo"
-                    className="max-h-12 object-contain"
+                    className="max-h-10 object-contain mb-5"
                   />
-                </div>
-              )}
-
-              <div className="p-8">
-                {/* Title */}
-                <div className="mb-3">
-                  {isEditingTitle ? (
-                    <input
-                      ref={titleInputRef}
-                      type="text"
-                      value={formTitle}
-                      onChange={(e) => setFormTitle(e.target.value)}
-                      onBlur={handleTitleSave}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleTitleSave();
-                        else if (e.key === "Escape") {
-                          setFormTitle(form.title || "Application Form");
-                          setIsEditingTitle(false);
-                        }
-                      }}
-                      className="w-full text-2xl font-bold text-gray-900 border-b-2 border-blue-500 focus:outline-none bg-transparent pb-0.5"
-                    />
-                  ) : (
-                    <div
-                      className="group/title flex items-center gap-2 cursor-text"
-                      onClick={() => setIsEditingTitle(true)}
+                )}
+                {isEditingTitle ? (
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleTitleSave();
+                      else if (e.key === "Escape") {
+                        setFormTitle(form.title || "Application Form");
+                        setIsEditingTitle(false);
+                      }
+                    }}
+                    className="w-full text-2xl font-bold text-stone-900 leading-tight border-b-2 border-blue-500 focus:outline-none bg-transparent pb-0.5"
+                  />
+                ) : (
+                  <div
+                    className="group/title flex items-center gap-2 cursor-text"
+                    onClick={() => setIsEditingTitle(true)}
+                  >
+                    <h2 className="text-2xl font-bold text-stone-900 leading-tight">
+                      {formTitle}
+                    </h2>
+                    <svg
+                      className="w-4 h-4 text-stone-400 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      <h2 className="text-2xl font-bold text-gray-900">
-                        {formTitle}
-                      </h2>
-                      <svg
-                        className="w-4 h-4 text-gray-400 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </div>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
 
-                {/* Description */}
+              {/* Description section — mirrors where description sits in the live form body */}
+              <div className="px-8 py-6">
                 <div className="group/desc">
                   {isEditingDescription ? (
                     <textarea
@@ -402,22 +401,22 @@ export default function FormBuilder({
                       }}
                       placeholder="Add a form description…"
                       rows={2}
-                      className="w-full text-sm text-gray-600 border-b border-blue-500 focus:outline-none bg-transparent resize-none"
+                      className="w-full text-sm text-stone-500 leading-relaxed border-b border-blue-500 focus:outline-none bg-transparent resize-none"
                     />
                   ) : (
                     <div
                       className="flex items-start gap-2 cursor-text"
                       onClick={() => setIsEditingDescription(true)}
                     >
-                      <p className="text-sm text-gray-600 flex-1 min-h-[20px]">
+                      <p className="text-sm text-stone-500 leading-relaxed flex-1 min-h-[20px]">
                         {formDescription || (
-                          <span className="text-gray-400 italic">
-                            Click to add a description…
+                          <span className="text-stone-300 italic">
+                            Click to add a form description…
                           </span>
                         )}
                       </p>
                       <svg
-                        className="w-4 h-4 text-gray-400 opacity-0 group-hover/desc:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
+                        className="w-4 h-4 text-stone-400 opacity-0 group-hover/desc:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -433,10 +432,11 @@ export default function FormBuilder({
                   )}
                 </div>
               </div>
+
             </div>
 
             {/* Field Cards */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               {fields.map((field, index) => (
                 <div key={field.id} id={`field-${field.id}`}>
                   <FieldCard
@@ -475,7 +475,7 @@ export default function FormBuilder({
               ) : (
                 <button
                   onClick={() => setAddFieldAt(fields.length)}
-                  className="w-full px-6 py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all font-medium"
+                  className="w-full px-6 py-4 border-2 border-dashed border-stone-200 rounded-2xl text-stone-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 transition-all text-sm font-medium"
                 >
                   + Add Question
                 </button>

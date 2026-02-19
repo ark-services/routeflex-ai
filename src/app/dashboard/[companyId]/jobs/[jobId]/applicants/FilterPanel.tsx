@@ -70,6 +70,17 @@ function makeBlankFilter(columns: BoardColumn[], joiner?: "and" | "or"): ActiveF
   };
 }
 
+// A filter is "valid" (counts toward the badge and is applied to rows) only when
+// it is fully specified: a column, a condition, and — for conditions that need a
+// value — a non-empty value string.
+const VALUE_LESS_CONDITIONS: FilterCondition[] = ["is_empty", "is_not_empty"];
+
+export function isValidFilter(f: ActiveFilter): boolean {
+  if (!f.columnId || !f.condition) return false;
+  if ((VALUE_LESS_CONDITIONS as string[]).includes(f.condition)) return true;
+  return f.value.trim() !== "";
+}
+
 // ─── Value input ──────────────────────────────────────────────────────────────
 
 function ValueInput({
@@ -162,11 +173,13 @@ export interface FilterPanelProps {
   anchorEl: HTMLElement | null;  // the Filter button element for positioning
   columns: BoardColumn[];
   statusLabels: BoardStatusLabel[];
+  /** Active (applied) filters — read-only here; used only to seed the draft on open. */
   filters: ActiveFilter[];
+  /** Called only when the user explicitly applies or clears filters. */
   onFiltersChange: (filters: ActiveFilter[]) => void;
   onClose: () => void;
-  onSaveView: (name: string) => void;
-  isDirty: boolean;
+  /** Called when the user saves filters as a new named view; receives the validated filters. */
+  onSaveView: (name: string, filters: ActiveFilter[]) => void;
 }
 
 export function FilterPanel({
@@ -178,22 +191,36 @@ export function FilterPanel({
   onFiltersChange,
   onClose,
   onSaveView,
-  isDirty,
 }: FilterPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [savingView, setSavingView] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // ── Draft state — isolated from activeFilters in the parent ───────────────
+  // Only modified by user interactions inside the panel.
+  // Never written back to the parent until the user explicitly applies.
+  const [draftFilters, setDraftFilters] = useState<ActiveFilter[]>([]);
+
   // Client-only portal
   useEffect(() => { setMounted(true); }, []);
 
-  // ── Auto-seed: when panel opens with no filters, add first row immediately ──
+  // ── On open: seed draft from current active filters ───────────────────────
+  // Auto-add one blank row only to the DRAFT so the UI isn't empty, but this
+  // does NOT touch activeFilters in the parent (fixes the "Filter 1" badge bug).
   useEffect(() => {
-    if (open && filters.length === 0 && columns.length > 0) {
-      onFiltersChange([makeBlankFilter(columns)]);
+    if (open) {
+      const initial =
+        filters.length > 0
+          ? filters.map((f) => ({ ...f })) // shallow copy each filter
+          : columns.length > 0
+          ? [makeBlankFilter(columns)]
+          : [];
+      setDraftFilters(initial);
     }
     if (!open) setSavingView(false);
+  // Intentionally only `open` in deps: we seed once on each open, not on
+  // every external change to `filters` or `columns`.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -219,7 +246,7 @@ export function FilterPanel({
     };
   }, [open, updatePos]);
 
-  // ── Close on outside click / Escape ──────────────────────────────────────
+  // ── Close on outside click / Escape — discards draft, no filter change ────
   useEffect(() => {
     if (!open) return;
 
@@ -244,11 +271,11 @@ export function FilterPanel({
     };
   }, [open, onClose, anchorEl]);
 
-  // ── Filter operations ─────────────────────────────────────────────────────
+  // ── Draft filter operations (all operate on draftFilters only) ────────────
 
   const updateFilter = (id: string, patch: Partial<ActiveFilter>) => {
-    onFiltersChange(
-      filters.map((f) => {
+    setDraftFilters((prev) =>
+      prev.map((f) => {
         if (f.id !== id) return f;
         const updated = { ...f, ...patch };
         // Reset condition + value when column changes
@@ -264,14 +291,40 @@ export function FilterPanel({
   };
 
   const removeFilter = (id: string) => {
-    onFiltersChange(filters.filter((f) => f.id !== id));
+    setDraftFilters((prev) => prev.filter((f) => f.id !== id));
   };
 
   const addFilter = () => {
     if (columns.length === 0) return;
-    // Always creates one new row immediately — no double-click needed
-    onFiltersChange([...filters, makeBlankFilter(columns, "and")]);
+    setDraftFilters((prev) => [...prev, makeBlankFilter(columns, "and")]);
   };
+
+  // ── Apply: validate draft, commit to active, close ────────────────────────
+  const handleApply = () => {
+    onFiltersChange(draftFilters.filter(isValidFilter));
+    onClose();
+  };
+
+  // ── Clear all: immediately wipes active filters; resets draft to blank row ─
+  // Kept as an immediate action (no Apply needed) because it is destructive and
+  // the intent is unambiguous.
+  const handleClearAll = () => {
+    setDraftFilters(columns.length > 0 ? [makeBlankFilter(columns)] : []);
+    onFiltersChange([]);
+  };
+
+  // ── Save as view: apply valid draft, then persist as named view ───────────
+  const handleSaveView = (name: string) => {
+    const valid = draftFilters.filter(isValidFilter);
+    onFiltersChange(valid);
+    onSaveView(name, valid);
+    setSavingView(false);
+    onClose();
+  };
+
+  // "Save as new view" is enabled whenever the draft contains at least one
+  // fully-specified filter (doesn't need to differ from the saved view).
+  const hasValidDraft = draftFilters.some(isValidFilter);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -294,9 +347,9 @@ export function FilterPanel({
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-100">
         <span className="text-sm font-semibold text-stone-800">Filters</span>
         <div className="flex items-center gap-3">
-          {filters.length > 0 && (
+          {draftFilters.length > 0 && (
             <button
-              onClick={() => onFiltersChange([])}
+              onClick={handleClearAll}
               className="text-xs text-stone-400 hover:text-red-500 transition-colors"
             >
               Clear all
@@ -312,9 +365,9 @@ export function FilterPanel({
         </div>
       </div>
 
-      {/* Filter rows */}
+      {/* Filter rows — driven by draftFilters */}
       <div className="px-4 py-3 space-y-2">
-        {filters.map((f, idx) => {
+        {draftFilters.map((f, idx) => {
           const col = columns.find((c) => c.id === f.columnId) ?? null;
           const conditions = col ? conditionsForType(col.type) : [];
 
@@ -396,23 +449,32 @@ export function FilterPanel({
           New filter
         </button>
 
-        {/* Save as new view — secondary/white, inside panel */}
-        <div className="shrink-0">
+        {/* Right-side actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Save as new view */}
           {savingView ? (
             <SaveViewInline
-              onSave={(name) => { setSavingView(false); onSaveView(name); }}
+              onSave={handleSaveView}
               onCancel={() => setSavingView(false)}
             />
           ) : (
             <button
               onClick={() => setSavingView(true)}
-              disabled={!isDirty}
+              disabled={!hasValidDraft}
               className="h-7 px-3 text-xs font-medium rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 hover:border-stone-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              title={isDirty ? "Save current filters as a new view" : "No changes to save"}
+              title={hasValidDraft ? "Save current filters as a new view" : "Add a complete filter first"}
             >
               Save as new view
             </button>
           )}
+
+          {/* Apply — commits valid draft filters to the board */}
+          <button
+            onClick={handleApply}
+            className="h-7 px-3 text-xs font-semibold rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            Apply
+          </button>
         </div>
       </div>
     </div>

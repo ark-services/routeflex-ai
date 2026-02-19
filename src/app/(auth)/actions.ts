@@ -35,6 +35,11 @@ export async function signup(formData: FormData) {
 
 export async function logout() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // Ignore sign-out errors (e.g. session already expired).
+    // Always redirect to /login regardless.
+  }
   redirect("/login");
 }

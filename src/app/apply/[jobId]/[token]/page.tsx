@@ -18,10 +18,10 @@ export default async function PublicApplicationPage({
 
   if (formError || !formData || formData.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Invalid Link</h1>
-          <p className="text-gray-600">
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-md p-8 max-w-md w-full">
+          <h1 className="text-xl font-bold text-red-600 mb-3">Invalid Link</h1>
+          <p className="text-stone-500 text-sm">
             This application form link is invalid or the job is no longer accepting applications.
           </p>
         </div>
@@ -31,11 +31,14 @@ export default async function PublicApplicationPage({
 
   const form = formData[0];
 
+  // Extract design settings persisted by the form builder
+  const designConfig = (form.settings as Record<string, any> | null)?.design ?? {};
+  const backgroundColor = (designConfig.backgroundColor as string | undefined) ?? "#f3f4f6";
+  const logoPath = designConfig.logoPath as string | undefined;
+
   // If the form has a logo in the private "logos" bucket, generate a signed URL
   // so applicants can view it. We use the service-role client because anonymous
   // (unauthenticated) users cannot call createSignedUrl on a private bucket.
-  const logoPath = (form.settings as Record<string, any> | null)?.design
-    ?.logoPath as string | undefined;
   let logoSignedUrl = "";
   if (logoPath) {
     const serviceSupabase = createServiceClient(
@@ -57,38 +60,46 @@ export default async function PublicApplicationPage({
 
   if (fieldsError || !fieldsData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-600">Failed to load form fields.</p>
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-md p-8 max-w-md w-full">
+          <h1 className="text-xl font-bold text-red-600 mb-3">Error</h1>
+          <p className="text-stone-500 text-sm">Failed to load form fields.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    // Full-page background — reads directly from the designer's color choice
+    <div
+      className="min-h-screen py-12 px-4"
+      style={{ backgroundColor }}
+    >
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Company logo (shown above the blue banner when a logo is set) */}
-          {logoSignedUrl && (
-            <div className="bg-white px-8 pt-6 pb-4 flex items-center border-b border-gray-100">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.08)]">
+
+          {/* ── Card header: logo · job title · company name ─────────────────
+               No colored banner. Neutral, breathing header that lets the
+               job title read as the visual anchor without competing with
+               the form fields below. */}
+          <div className="px-8 pt-8 pb-6 border-b border-stone-100">
+            {logoSignedUrl && (
               <img
                 src={logoSignedUrl}
                 alt={`${form.company_name} logo`}
-                className="max-h-10 object-contain"
+                className="max-h-10 object-contain mb-5"
               />
-            </div>
-          )}
-
-          {/* Header */}
-          <div className="bg-blue-600 text-white p-8">
-            <h1 className="text-3xl font-bold mb-2">{form.job_title}</h1>
-            <p className="text-blue-100">{form.company_name}</p>
+            )}
+            <h1 className="text-2xl font-bold text-stone-900 leading-tight">
+              {form.job_title}
+            </h1>
+            {form.company_name && (
+              <p className="mt-1 text-sm text-stone-500">{form.company_name}</p>
+            )}
           </div>
 
-          {/* Form */}
-          <div className="p-8">
+          {/* ── Form body: description + fields ──────────────────────────── */}
+          <div className="px-8 py-8">
             <PublicApplicationForm
               jobId={jobId}
               token={token}
@@ -96,11 +107,7 @@ export default async function PublicApplicationPage({
               fields={fieldsData}
             />
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="text-center text-gray-500 text-sm mt-6">
-          Powered by ArkRecruit
         </div>
       </div>
     </div>

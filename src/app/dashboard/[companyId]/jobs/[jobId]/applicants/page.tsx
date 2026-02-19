@@ -496,6 +496,7 @@ export default async function ApplicantsPage({
         <ApplicantsBoardContainer
           companyId={companyId}
           jobId={jobId}
+          jobTitle={job.title}
           boardId={board.id}
           groups={(groups ?? []) as any}
           applicants={(applicants ?? []) as any}
