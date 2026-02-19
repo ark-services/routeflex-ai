@@ -104,6 +104,9 @@ export async function createFormField(
       sort_order: nextSortOrder,
       is_system: false,
       settings: {},
+      // Stamp canonical system_key so reconcile can re-link by key if the
+      // column is ever hard-deleted from the board.
+      system_key: CANONICAL_KEYS.has(field.key) ? field.key : null,
     });
   }
 
@@ -333,8 +336,8 @@ function mapFieldTypeToColumnType(fieldType: string): string {
   const typeMap: Record<string, string> = {
     text: "text",
     textarea: "text",
-    email: "text",
-    phone: "text",
+    email: "email",
+    phone: "phone",
     number: "number",
     date: "date",
     file: "file",
@@ -343,4 +346,134 @@ function mapFieldTypeToColumnType(fieldType: string): string {
     select: "text",
   };
   return typeMap[fieldType] || "text";
+}
+
+/**
+ * The set of field keys that are treated as "canonical" (system-defined).
+ * Matching by system_key lets reconciliation restore columns even when the
+ * board_columns row was hard-deleted and the field_id FK is no longer present.
+ */
+const CANONICAL_KEYS = new Set(["first_name", "last_name", "email", "phone"]);
+
+/**
+ * Ensure every active form question has a corresponding board column.
+ *
+ * Run this when:
+ *   - The form builder loads (catches stale state from deleted columns)
+ *   - The user toggles "Sync questions" from OFF → ON
+ *
+ * Strategy per field (in priority order):
+ *   1. Direct link  — board_columns.field_id = field.id  → already synced, skip
+ *   2. Canonical    — field.key in CANONICAL_KEYS
+ *                     → find column with matching system_key, re-link it
+ *   3. Title match  — case-insensitive, only if exactly one unlinked column
+ *                     matches (ambiguous → skip and create fresh)
+ *   4. Create new   — insert a new board_columns row and link it
+ *
+ * Returns counts of created / re-linked columns so the caller can show a toast.
+ */
+export async function reconcileSyncedColumns(
+  companyId: string,
+  jobId: string,
+  formId: string
+): Promise<{ created: number; linked: number }> {
+  const supabase = await createClient();
+
+  // 1. Active form fields, in sort order
+  const { data: fields } = await supabase
+    .from("job_application_fields")
+    .select("id, key, label, type, sort_order")
+    .eq("form_id", formId)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (!fields || fields.length === 0) return { created: 0, linked: 0 };
+
+  // 2. Applicants board for this job
+  const { data: board } = await supabase
+    .from("boards")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .single();
+
+  if (!board) return { created: 0, linked: 0 };
+
+  // 3. All existing columns for this board (including hidden ones)
+  const { data: columns } = await supabase
+    .from("board_columns")
+    .select("id, field_id, name, system_key")
+    .eq("board_id", board.id);
+
+  const existingColumns = columns ?? [];
+
+  let created = 0;
+  let linked = 0;
+
+  for (const field of fields) {
+    // ── Step 1: direct link already exists ──────────────────────────────────
+    const directMatch = existingColumns.find((c) => c.field_id === field.id);
+    if (directMatch) continue;
+
+    // ── Step 2: canonical key match (system_key) ────────────────────────────
+    let matchedColumn: (typeof existingColumns)[number] | undefined;
+
+    if (CANONICAL_KEYS.has(field.key)) {
+      matchedColumn = existingColumns.find(
+        (c) => c.system_key === field.key && !c.field_id
+      );
+      // If the canonical column already has a field_id (pointing elsewhere),
+      // treat it as taken — fall through to create.
+    }
+
+    // ── Step 3: unique case-insensitive title match (unlinked columns only) ─
+    if (!matchedColumn) {
+      const normalized = field.label.toLowerCase().trim();
+      const titleMatches = existingColumns.filter(
+        (c) => !c.field_id && c.name.toLowerCase().trim() === normalized
+      );
+      // Only link when there is exactly one candidate — ambiguous → create new
+      if (titleMatches.length === 1) {
+        matchedColumn = titleMatches[0];
+      }
+    }
+
+    if (matchedColumn) {
+      // Re-link the existing column to this field
+      await supabase
+        .from("board_columns")
+        .update({
+          field_id: field.id,
+          // Preserve or assign system_key for canonical fields
+          ...(CANONICAL_KEYS.has(field.key) && !matchedColumn.system_key
+            ? { system_key: field.key }
+            : {}),
+        })
+        .eq("id", matchedColumn.id);
+
+      // Update local cache so subsequent iterations don't double-match
+      matchedColumn.field_id = field.id;
+      linked++;
+    } else {
+      // ── Step 4: create a brand-new board column ────────────────────────────
+      const columnType = mapFieldTypeToColumnType(field.type);
+      await supabase.from("board_columns").insert({
+        board_id: board.id,
+        company_id: companyId,
+        field_id: field.id,
+        name: field.label,
+        type: columnType,
+        sort_order: field.sort_order,
+        is_system: false,
+        settings: {},
+        system_key: CANONICAL_KEYS.has(field.key) ? field.key : null,
+      });
+      created++;
+    }
+  }
+
+  revalidatePath(dashPath(companyId, jobId));
+  revalidatePath(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
+
+  return { created, linked };
 }

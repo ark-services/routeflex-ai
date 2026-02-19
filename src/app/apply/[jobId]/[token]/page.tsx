@@ -78,24 +78,18 @@ export default async function PublicApplicationPage({
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.08)]">
 
-          {/* ── Card header: logo · job title · company name ─────────────────
-               No colored banner. Neutral, breathing header that lets the
-               job title read as the visual anchor without competing with
-               the form fields below. */}
+          {/* ── Card header: logo · job title ────────────────────────────── */}
           <div className="px-8 pt-8 pb-6 border-b border-stone-100">
             {logoSignedUrl && (
               <img
                 src={logoSignedUrl}
-                alt={`${form.company_name} logo`}
+                alt="Company logo"
                 className="max-h-10 object-contain mb-5"
               />
             )}
             <h1 className="text-2xl font-bold text-stone-900 leading-tight">
               {form.job_title}
             </h1>
-            {form.company_name && (
-              <p className="mt-1 text-sm text-stone-500">{form.company_name}</p>
-            )}
           </div>
 
           {/* ── Form body: description + fields ──────────────────────────── */}

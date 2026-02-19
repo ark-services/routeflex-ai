@@ -1208,6 +1208,10 @@ export async function deleteStatusLabel(
 
 // ===== Board Cell Actions =====
 
+export type CellUpdateResult =
+  | { ok: true }
+  | { ok: false; kind: "validation" | "server"; message: string };
+
 export async function updateBoardCell(
   companyId: string,
   jobId: string,
@@ -1215,7 +1219,7 @@ export async function updateBoardCell(
   columnId: string,
   columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file",
   value: any
-) {
+): Promise<CellUpdateResult> {
   // UUID validation regex
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -1241,7 +1245,7 @@ export async function updateBoardCell(
     if (!UUID_REGEX.test(param.value)) {
       const error = `Invalid UUID for ${param.name}: "${param.value}". Expected UUID format but got ${typeof param.value}.`;
       console.error('[updateBoardCell] Validation Error:', error);
-      throw new Error(error);
+      return { ok: false, kind: "server", message: "Invalid request" };
     }
   }
 
@@ -1280,12 +1284,16 @@ export async function updateBoardCell(
   } else if (columnType === "status") {
     cellData.value_status_label_id = value;
   } else if (columnType === "email") {
-    // Validate email
-    const validation = validateEmail(value);
-    if (!validation.valid) {
-      throw new Error(validation.error || "Invalid email address");
+    // Allow clearing the field
+    if (value === null || value === undefined || String(value).trim() === '') {
+      cellData.value_text = null;
+    } else {
+      const validation = validateEmail(value);
+      if (!validation.valid) {
+        return { ok: false, kind: "validation", message: validation.error || "Please enter a valid email address" };
+      }
+      cellData.value_text = value.trim();
     }
-    cellData.value_text = value.trim();
   } else if (columnType === "phone") {
     // Allow clearing the field
     if (value === null || value === undefined || String(value).trim() === '') {
@@ -1294,7 +1302,7 @@ export async function updateBoardCell(
       // Validate and normalize to E.164
       const validation = validatePhone(value);
       if (!validation.valid) {
-        throw new Error(validation.error || "Invalid phone number");
+        return { ok: false, kind: "validation", message: validation.error || "Invalid phone number" };
       }
       cellData.value_text = validation.normalized ?? null;
     }
@@ -1302,7 +1310,7 @@ export async function updateBoardCell(
     // Validate location
     const validation = validateLocation(value);
     if (!validation.valid) {
-      throw new Error(validation.error || "Invalid location");
+      return { ok: false, kind: "validation", message: validation.error || "Invalid location" };
     }
     cellData.value_text = value.trim();
   } else if (columnType === "file") {
@@ -1332,7 +1340,7 @@ export async function updateBoardCell(
       hint: error.hint,
       code: error.code,
     });
-    throw new Error(error.message);
+    return { ok: false, kind: "server", message: "Something went wrong. Please try again." };
   }
 
   console.log('[updateBoardCell] Success:', data);
@@ -1425,6 +1433,7 @@ export async function updateBoardCell(
   }
 
   revalidatePath(dashPath(companyId, jobId));
+  return { ok: true };
 }
 
 /**

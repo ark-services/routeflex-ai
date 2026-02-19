@@ -183,8 +183,8 @@ export async function addJob(formData: FormData) {
       const typeMap: Record<string, string> = {
         text: "text",
         textarea: "text",
-        email: "text",
-        phone: "text",
+        email: "email",
+        phone: "phone",
         number: "number",
         date: "date",
         file: "file",

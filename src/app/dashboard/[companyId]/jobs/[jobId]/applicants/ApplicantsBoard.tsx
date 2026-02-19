@@ -47,12 +47,13 @@ import {
   deleteGroup,
   reorderGroups,
   quickCreateApplicant,
+  type CellUpdateResult,
 } from "./actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
 import { statusColorArray, STATUS_COLOR_PALETTE } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
 import { ColorPicker } from "@/components/ui/color-picker";
-import { formatPhone, validatePhone } from "@/lib/validation/columnValidation";
+import { formatPhone, validatePhone, validateEmail } from "@/lib/validation/columnValidation";
 import type { BoardColumn as BaseBoardColumn, BoardCell, BoardStatusLabel } from "@/lib/types";
 import type { ActiveFilter } from "./view-actions";
 
@@ -158,6 +159,10 @@ export default function ApplicantsBoard({
   const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location">("text");
   const [addColumnError, setAddColumnError] = useState<string | null>(null);
   const [addAfterColumnId, setAddAfterColumnId] = useState<string | null>(null);
+
+  // Cell-level error toast (validation / server errors from updateBoardCell)
+  const [cellErrorMsg, setCellErrorMsg] = useState<string | null>(null);
+  const cellErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Status labels editor
   const [editLabelsColumnId, setEditLabelsColumnId] = useState<string | null>(null);
@@ -862,6 +867,12 @@ export default function ApplicantsBoard({
     return null;
   }
 
+  function showCellError(msg: string) {
+    if (cellErrorTimeout.current) clearTimeout(cellErrorTimeout.current);
+    setCellErrorMsg(msg);
+    cellErrorTimeout.current = setTimeout(() => setCellErrorMsg(null), 5000);
+  }
+
   function onQuickCreateApplicant(groupId: string) {
     startTransition(async () => {
       try {
@@ -908,8 +919,12 @@ export default function ApplicantsBoard({
           alert('Failed to update selected applicants. Please try again.');
         }
       } else {
-        // Single cell update
-        await updateBoardCell(companyId, jobId, applicantId, columnId, columnType, value);
+        // Single cell update — handle structured result, never let errors crash the page
+        const result = await updateBoardCell(companyId, jobId, applicantId, columnId, columnType, value);
+        if (!result.ok) {
+          console.warn('[onUpdateCell] Cell update rejected:', result);
+          showCellError(result.message);
+        }
       }
     });
   }
@@ -926,6 +941,25 @@ export default function ApplicantsBoard({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
+      {/* Cell validation / server error toast */}
+      {cellErrorMsg && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-red-200 bg-white px-4 py-3 shadow-lg max-w-sm">
+          <svg className="h-5 w-5 flex-shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm text-stone-700 flex-1">{cellErrorMsg}</span>
+          <button
+            onClick={() => { if (cellErrorTimeout.current) clearTimeout(cellErrorTimeout.current); setCellErrorMsg(null); }}
+            className="flex-shrink-0 text-stone-400 hover:text-stone-600 transition-colors"
+            aria-label="Dismiss"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col h-full min-h-0 bg-stone-50">
         {/* Hidden Columns Control */}
         {hiddenColumns.length > 0 && (
@@ -3017,25 +3051,7 @@ function CellRenderer({
   }
 
   if (column.type === "email") {
-    return (
-      <div className="relative">
-        <input
-          type="email"
-          value={localValue ?? ""}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onFocus={() => setIsEditing(true)}
-          onBlur={commitEdit}
-          onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
-          placeholder="email@example.com"
-        />
-        {isPending && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
-          </div>
-        )}
-      </div>
-    );
+    return <EmailCell value={value} onUpdate={onUpdate} />;
   }
 
   if (column.type === "phone") {
@@ -3078,6 +3094,91 @@ function CellRenderer({
   }
 
   return <span className="text-stone-300">—</span>;
+}
+
+// ===== Email Cell — validates before saving, shows inline error =====
+
+function EmailCell({
+  value,
+  onUpdate,
+}: {
+  value: string | null;
+  onUpdate: (val: string | null) => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [localValue, setLocalValue] = useState<string>(value ?? "");
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync from server when not editing
+  useEffect(() => {
+    if (!isEditing) setLocalValue(value ?? "");
+  }, [value, isEditing]);
+
+  const commitEmailEdit = () => {
+    const raw = localValue.trim();
+
+    // Allow clearing the field
+    if (!raw) {
+      setIsEditing(false);
+      setError(null);
+      if (value) startTransition(() => onUpdate(null));
+      return;
+    }
+
+    const { valid, error: errMsg } = validateEmail(raw);
+    if (!valid) {
+      setError(errMsg ?? "Invalid email address");
+      // Keep focus so user can fix the value
+      return;
+    }
+
+    setError(null);
+    setIsEditing(false);
+    if (raw !== value) {
+      startTransition(() => onUpdate(raw));
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitEmailEdit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setLocalValue(value ?? "");
+      setError(null);
+      setIsEditing(false);
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  return (
+    <div className="relative">
+      <input
+        type="email"
+        value={localValue}
+        onChange={(e) => { setLocalValue(e.target.value); setError(null); }}
+        onFocus={() => { setIsEditing(true); setLocalValue(value ?? ""); }}
+        onBlur={commitEmailEdit}
+        onKeyDown={handleKeyDown}
+        className={`h-8 w-full rounded border px-2 text-[16px] md:text-sm outline-none transition-colors hover:border-stone-200 focus:border-blue-500 ${
+          error ? "border-red-400 bg-red-50 focus:border-red-500" : "border-transparent"
+        }`}
+        placeholder="email@example.com"
+      />
+      {error && (
+        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
+          {error}
+        </div>
+      )}
+      {isPending && !error && (
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ===== Phone Cell — E.164-aware input with inline validation =====

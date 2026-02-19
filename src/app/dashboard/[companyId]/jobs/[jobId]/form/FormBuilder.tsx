@@ -6,6 +6,7 @@ import {
   updateFormField,
   deleteFormField,
   updateFormMeta,
+  reconcileSyncedColumns,
 } from "./actions";
 import FieldCard from "./FieldCard";
 import FieldTypePicker from "./FieldTypePicker";
@@ -85,6 +86,35 @@ export default function FormBuilder({
     setShowToast(true);
   };
 
+  // ─── Sync reconcile ───────────────────────────────────────────────────────
+  // Runs whenever sync is ON to guarantee every question has a board column.
+  const runReconcile = async () => {
+    try {
+      const { created, linked } = await reconcileSyncedColumns(
+        companyId,
+        jobId,
+        form.id
+      );
+      const total = created + linked;
+      if (total > 0) {
+        showCopiedToast(
+          `Sync restored ${total} missing board column${total === 1 ? "" : "s"}`
+        );
+      }
+    } catch {
+      // Non-fatal — silently ignore reconcile errors to avoid blocking UX
+    }
+  };
+
+  // Run once on mount when sync is already enabled
+  useEffect(() => {
+    if (formSettings.syncQuestions) {
+      runReconcile();
+    }
+    // Only on initial mount — formSettings is stable at this point
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ─── Share modal ──────────────────────────────────────────────────────────
   const [showShareModal, setShowShareModal] = useState(false);
 
@@ -162,6 +192,7 @@ export default function FormBuilder({
   };
 
   const handleFormSettingsChange = async (newFs: FormSettingsType) => {
+    const syncToggledOn = newFs.syncQuestions && !formSettings.syncQuestions;
     setFormSettings(newFs);
     const merged = {
       ...currentSettings,
@@ -170,6 +201,11 @@ export default function FormBuilder({
     };
     setCurrentSettings(merged);
     await updateFormMeta(companyId, jobId, form.id, { settings: merged });
+
+    // When the user turns sync ON, immediately repair any missing board columns
+    if (syncToggledOn) {
+      await runReconcile();
+    }
   };
 
   // ─── Field operations ─────────────────────────────────────────────────────
