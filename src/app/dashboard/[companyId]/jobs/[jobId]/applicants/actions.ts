@@ -673,7 +673,7 @@ export async function createBoardColumn(
   companyId: string,
   jobId: string,
   name: string,
-  columnType: "text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location",
+  columnType: "text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type",
   afterColumnId?: string
 ) {
   const supabase = await createClient();
@@ -1217,7 +1217,7 @@ export async function updateBoardCell(
   jobId: string,
   applicantId: string,
   columnId: string,
-  columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file",
+  columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type",
   value: any
 ): Promise<CellUpdateResult> {
   // UUID validation regex
@@ -1322,6 +1322,16 @@ export async function updateBoardCell(
       cellData.value_text = null;
       cellData.value_file_path = null;
     }
+  } else if (
+    columnType === "fadv.package" ||
+    columnType === "fadv.location" ||
+    columnType === "fadv.facility_id" ||
+    columnType === "fadv.position_type"
+  ) {
+    // FADV integration-backed column: store text in board_cells AND sync to
+    // applicant_integration_fields for submission validation.
+    const trimmed = value !== null && value !== undefined ? String(value).trim() : null;
+    cellData.value_text = trimmed || null;
   }
 
   console.log('[updateBoardCell] Upserting cell data:', cellData);
@@ -1344,6 +1354,53 @@ export async function updateBoardCell(
   }
 
   console.log('[updateBoardCell] Success:', data);
+
+  // Sync FADV columns to applicant_integration_fields
+  if (
+    columnType === "fadv.package" ||
+    columnType === "fadv.location" ||
+    columnType === "fadv.facility_id" ||
+    columnType === "fadv.position_type"
+  ) {
+    const fieldKeyMap: Record<string, string> = {
+      "fadv.package":       "package",
+      "fadv.location":      "location",
+      "fadv.facility_id":   "facility_id",
+      "fadv.position_type": "position_type",
+    };
+    const fieldKey = fieldKeyMap[columnType];
+    const trimmed = value !== null && value !== undefined ? String(value).trim() : null;
+
+    try {
+      // Fetch existing fields row to merge
+      const { data: existing } = await supabase
+        .from("applicant_integration_fields")
+        .select("fields")
+        .eq("applicant_id", applicantId)
+        .eq("provider", "fadv")
+        .maybeSingle();
+
+      const existingFields = (existing?.fields ?? {}) as Record<string, string | null>;
+      const updatedFields = { ...existingFields, [fieldKey]: trimmed };
+
+      await supabase
+        .from("applicant_integration_fields")
+        .upsert(
+          {
+            applicant_id: applicantId,
+            company_id: companyId,
+            job_id: jobId,
+            provider: "fadv",
+            fields: updatedFields,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "applicant_id,provider" }
+        );
+    } catch (syncErr) {
+      console.error("[updateBoardCell] Failed to sync FADV field to applicant_integration_fields:", syncErr);
+      // Non-fatal: board_cells already updated successfully
+    }
+  }
 
   // TRIGGER AUTOMATION: Detect status change and fire Monday.com-style trigger
   if (columnType === "status" && oldStatusLabelId !== value) {
@@ -2130,4 +2187,94 @@ export async function quickCreateApplicant(
 
   revalidatePath(dashPath(companyId, jobId));
   return newApplicant;
+}
+
+// ── sendToFadv ────────────────────────────────────────────────────────────────
+
+/**
+ * Submit an applicant to First Advantage (FADV) for background screening.
+ * Validates company-level config (CSP ID, Company ID) and applicant-level
+ * fields (package, location, facility_id, position_type) before submitting.
+ */
+export async function sendToFadv(
+  companyId: string,
+  jobId: string,
+  applicantId: string
+): Promise<{ success: boolean; error?: string; subjectId?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "Not authenticated" };
+
+    const { submitToFadv } = await import("@/lib/fadv/submit");
+    const result = await submitToFadv(supabase, {
+      companyId,
+      jobId,
+      applicantId,
+      actorUserId: user.id,
+    });
+
+    if (result.success) {
+      revalidatePath(dashPath(companyId, jobId));
+    }
+
+    return result;
+  } catch (err: any) {
+    console.error("[sendToFadv] Error:", err);
+    return { success: false, error: err.message ?? "Unknown error" };
+  }
+}
+
+// ── setApplicantIntegrationField ──────────────────────────────────────────────
+
+/**
+ * Directly set a FADV applicant field in applicant_integration_fields.
+ * Used by the integration.set_field automation action.
+ */
+export async function setApplicantIntegrationField(
+  companyId: string,
+  jobId: string,
+  applicantId: string,
+  provider: string,
+  fieldKey: string,
+  value: string | null
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+
+    // Fetch existing to merge
+    const { data: existing } = await supabase
+      .from("applicant_integration_fields")
+      .select("fields")
+      .eq("applicant_id", applicantId)
+      .eq("provider", provider)
+      .maybeSingle();
+
+    const existingFields = (existing?.fields ?? {}) as Record<string, string | null>;
+    const updatedFields = { ...existingFields, [fieldKey]: value };
+
+    const { error } = await supabase
+      .from("applicant_integration_fields")
+      .upsert(
+        {
+          applicant_id: applicantId,
+          company_id: companyId,
+          job_id: jobId,
+          provider,
+          fields: updatedFields,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "applicant_id,provider" }
+      );
+
+    if (error) {
+      console.error("[setApplicantIntegrationField] Error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[setApplicantIntegrationField] Error:", err);
+    return { success: false, error: err.message ?? "Unknown error" };
+  }
 }

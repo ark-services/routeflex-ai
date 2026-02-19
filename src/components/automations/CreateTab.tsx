@@ -269,6 +269,16 @@ export function CreateTab({
           return;
         }
       }
+      if (action.type === "integration.set_field") {
+        if (!action.config.field_key) {
+          alert("Please choose a FADV field for 'Set integration field'");
+          return;
+        }
+        if (action.config.value === undefined || action.config.value === null || action.config.value === "") {
+          alert("Please enter a value for 'Set integration field'");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -397,6 +407,12 @@ export function CreateTab({
             return col ? `call ${col.name} and say` : "make call";
           }
           return ts?.value ? `call ${ts.value} and say` : "make call";
+        }
+        case "integration.set_field": {
+          const fieldLabel = action.config.field_key
+            ? action.config.field_key.replace(/_/g, " ")
+            : "field";
+          return `set FADV ${fieldLabel} to "${action.config.value ?? ""}"`;
         }
         default:
           return action.type;
@@ -918,6 +934,14 @@ function ActionEditor({
     { value: "send_email_gmail", label: "Send Email (Gmail)" },
     { value: "twilio.send_sms", label: "Send SMS (Twilio)" },
     { value: "twilio.make_call_say", label: "Call Someone and Say (Twilio)" },
+    { value: "integration.set_field", label: "Set integration field (FADV)" },
+  ];
+
+  const FADV_FIELD_OPTIONS = [
+    { value: "package",       label: "Package" },
+    { value: "location",      label: "Location" },
+    { value: "facility_id",   label: "Facility ID" },
+    { value: "position_type", label: "Position Type" },
   ];
 
   return (
@@ -1112,6 +1136,42 @@ function ActionEditor({
             columns={columns}
             onChange={onChange}
           />
+        )}
+
+        {action.type === "integration.set_field" && (
+          <>
+            <span>set FADV</span>
+            <select
+              value={action.config.field_key || ""}
+              onChange={(e) =>
+                onChange({
+                  config: {
+                    ...action.config,
+                    provider: "fadv",
+                    field_key: e.target.value,
+                  },
+                })
+              }
+              className="px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium"
+            >
+              <option value="">choose field…</option>
+              {FADV_FIELD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <span>to</span>
+            <input
+              type="text"
+              value={action.config.value || ""}
+              onChange={(e) =>
+                onChange({ config: { ...action.config, value: e.target.value } })
+              }
+              placeholder="value…"
+              className="px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium min-w-[140px]"
+            />
+          </>
         )}
       </div>
     </div>

@@ -98,8 +98,29 @@ export interface BoardGroup {
   created_at: string;
 }
 
-export const COLUMN_TYPES = ["text", "number", "date", "file", "status", "email", "phone", "location"] as const;
+export const COLUMN_TYPES = [
+  "text", "number", "date", "file", "status", "email", "phone", "location",
+  "fadv.package", "fadv.location", "fadv.facility_id", "fadv.position_type",
+] as const;
 export type ColumnType = (typeof COLUMN_TYPES)[number];
+
+/** FADV-specific column types that sync to applicant_integration_fields */
+export const FADV_COLUMN_TYPES = [
+  "fadv.package", "fadv.location", "fadv.facility_id", "fadv.position_type",
+] as const;
+export type FadvColumnType = (typeof FADV_COLUMN_TYPES)[number];
+
+/** Map from FADV column type → field key in applicant_integration_fields.fields */
+export const FADV_COLUMN_TYPE_TO_FIELD: Record<FadvColumnType, string> = {
+  "fadv.package":       "package",
+  "fadv.location":      "location",
+  "fadv.facility_id":   "facility_id",
+  "fadv.position_type": "position_type",
+};
+
+export function isFadvColumnType(type: string): type is FadvColumnType {
+  return (FADV_COLUMN_TYPES as readonly string[]).includes(type);
+}
 
 export interface BoardColumn {
   id: string;

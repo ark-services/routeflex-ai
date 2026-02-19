@@ -47,6 +47,7 @@ import {
   deleteGroup,
   reorderGroups,
   quickCreateApplicant,
+  sendToFadv,
   type CellUpdateResult,
 } from "./actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
@@ -156,7 +157,7 @@ export default function ApplicantsBoard({
   // Add column modal
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [newColumnName, setNewColumnName] = useState("");
-  const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location">("text");
+  const [newColumnType, setNewColumnType] = useState<"text" | "number" | "date" | "file" | "status" | "email" | "phone" | "location" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type">("text");
   const [addColumnError, setAddColumnError] = useState<string | null>(null);
   const [addAfterColumnId, setAddAfterColumnId] = useState<string | null>(null);
 
@@ -281,6 +282,24 @@ export default function ApplicantsBoard({
     return map;
   }, [cells]);
 
+  // Compute FADV readiness: applicants that have all 4 FADV fields filled in board_cells
+  const fadvReadyApplicantIds = useMemo(() => {
+    const FADV_TYPES = ["fadv.package", "fadv.location", "fadv.facility_id", "fadv.position_type"];
+    const fadvCols = localColumns.filter((c) => FADV_TYPES.includes(c.type));
+    const hasAllTypes = FADV_TYPES.every((t) => fadvCols.some((c) => c.type === t));
+    if (!hasAllTypes || fadvCols.length === 0) return new Set<string>();
+
+    const ready = new Set<string>();
+    for (const a of localApplicants) {
+      const allFilled = fadvCols.every((col) => {
+        const cell = cellLookup.get(`${a.id}::${col.id}`);
+        return cell?.value_text?.trim();
+      });
+      if (allFilled) ready.add(a.id);
+    }
+    return ready;
+  }, [localColumns, localApplicants, cellLookup]);
+
   // Build status-label lookup: labelId → label text (for filter matching)
   const statusLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -304,7 +323,7 @@ export default function ApplicantsBoard({
         if (a.status?.toLowerCase().includes(q)) return true;
         // Search text-like cell values
         for (const col of localColumns) {
-          if (["text", "email", "phone", "location"].includes(col.type)) {
+          if (["text", "email", "phone", "location", "fadv.package", "fadv.location", "fadv.facility_id", "fadv.position_type"].includes(col.type)) {
             const cell = cellLookup.get(`${a.id}::${col.id}`);
             if (cell?.value_text?.toLowerCase().includes(q)) return true;
           }
@@ -829,6 +848,10 @@ export default function ApplicantsBoard({
     if (column.type === "email") return cell.value_text;
     if (column.type === "phone") return cell.value_text;
     if (column.type === "location") return cell.value_text;
+    if (column.type === "fadv.package") return cell.value_text;
+    if (column.type === "fadv.location") return cell.value_text;
+    if (column.type === "fadv.facility_id") return cell.value_text;
+    if (column.type === "fadv.position_type") return cell.value_text;
     if (column.type === "file") {
       if (!cell.value_file_path && !cell.value_text) return null;
       if (cell.value_text) {
@@ -884,7 +907,7 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file", value: any) {
+  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", value: any) {
     startTransition(async () => {
       // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
       // update all selected rows with the new status value
@@ -1061,6 +1084,11 @@ export default function ApplicantsBoard({
                                 <span className="font-semibold text-stone-900 text-sm truncate">
                                   {nameCol ? (getCellValue(a, nameCol) as string) || a.full_name : a.full_name}
                                 </span>
+                                {fadvReadyApplicantIds.has(a.id) && (
+                                  <span className="ml-1 flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                    ✓ FADV
+                                  </span>
+                                )}
                               </div>
                               {/* Row actions menu */}
                               <div className="relative flex-shrink-0 ml-2">
@@ -1084,6 +1112,18 @@ export default function ApplicantsBoard({
                                           {grp.name}
                                         </button>
                                       ))}
+                                      <div className="my-1 border-t border-stone-100" />
+                                      <button
+                                        onClick={async () => {
+                                          setRowMenuOpen(null);
+                                          const r = await sendToFadv(companyId, jobId, a.id);
+                                          if (!r.success) alert(`FADV: ${r.error}`);
+                                          else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
+                                      >
+                                        Send to FADV
+                                      </button>
                                       <div className="my-1 border-t border-stone-100" />
                                       <button onClick={() => onDuplicateApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">Duplicate</button>
                                       <button onClick={() => onDeleteApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
@@ -1336,6 +1376,12 @@ export default function ApplicantsBoard({
                                     onDelete={() => onDeleteApplicant(a.id)}
                                     companyId={companyId}
                                     boardId={boardId}
+                                    fadvReady={fadvReadyApplicantIds.has(a.id)}
+                                    onSendToFadv={async () => {
+                                      const r = await sendToFadv(companyId, jobId, a.id);
+                                      if (!r.success) alert(`FADV: ${r.error}`);
+                                      else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                                    }}
                                   />
                                 ))}
                               </SortableContext>
@@ -1419,6 +1465,12 @@ export default function ApplicantsBoard({
                               onDelete={() => onDeleteApplicant(a.id)}
                               companyId={companyId}
                               boardId={boardId}
+                              fadvReady={fadvReadyApplicantIds.has(a.id)}
+                              onSendToFadv={async () => {
+                                const r = await sendToFadv(companyId, jobId, a.id);
+                                if (!r.success) alert(`FADV: ${r.error}`);
+                                else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                              }}
                             />
                           ))}
                         </tbody>
@@ -1480,6 +1532,12 @@ export default function ApplicantsBoard({
                     <option value="location">Location</option>
                     <option value="file">File</option>
                     <option value="status">Status</option>
+                    <optgroup label="First Advantage (FADV)">
+                      <option value="fadv.package">FADV: Package</option>
+                      <option value="fadv.location">FADV: Location</option>
+                      <option value="fadv.facility_id">FADV: Facility ID</option>
+                      <option value="fadv.position_type">FADV: Position Type</option>
+                    </optgroup>
                   </select>
                 </div>
               </div>
@@ -1895,13 +1953,15 @@ function SortableRow({
   onDelete,
   companyId,
   boardId,
+  fadvReady = false,
+  onSendToFadv,
 }: {
   applicant: ApplicantRow;
   columns: BoardColumn[];
   selected: boolean;
   onToggle: () => void;
   getCellValue: (col: BoardColumn) => any;
-  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file", val: any) => void;
+  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", val: any) => void;
   labelsByColumn: Map<string, StatusLabel[]>;
   onEditLabels: (colId: string) => void;
   rowMenuOpen: boolean;
@@ -1912,6 +1972,8 @@ function SortableRow({
   onDelete: () => void;
   companyId: string;
   boardId: string;
+  fadvReady?: boolean;
+  onSendToFadv?: () => Promise<void>;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `row-${applicant.id}`,
@@ -1941,13 +2003,21 @@ function SortableRow({
     }
   }, [rowMenuOpen]);
 
-  // Sticky left cell (checkbox + row menu)
+  // Sticky left cell (checkbox + row menu + FADV badge)
   cellEls.push(
     <td
       key="__sticky__"
       className="sticky left-0 z-10 bg-white group-hover:bg-stone-50/60 px-4 py-2 border-r border-stone-100"
     >
       <div className="flex items-center gap-2">
+        {fadvReady && (
+          <span
+            className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap"
+            title="All FADV fields set — ready to submit"
+          >
+            ✓ FADV
+          </span>
+        )}
         <div className="relative">
           <button
             ref={menuButtonRef}
@@ -1988,6 +2058,18 @@ function SortableRow({
                 >
                   Duplicate
                 </button>
+                {onSendToFadv && (
+                  <>
+                    <div className="my-1 border-t border-stone-100" />
+                    <button
+                      onClick={() => { setRowMenuOpen(false); onSendToFadv(); }}
+                      className="w-full px-3 py-1.5 text-left text-sm text-blue-700 hover:bg-blue-50"
+                    >
+                      Send to FADV
+                    </button>
+                  </>
+                )}
+                <div className="my-1 border-t border-stone-100" />
                 <button
                   onClick={onDelete}
                   className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
@@ -3070,6 +3152,39 @@ function CellRenderer({
           onKeyDown={handleKeyDown}
           className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="City, State"
+        />
+        {isPending && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (
+    column.type === "fadv.package" ||
+    column.type === "fadv.location" ||
+    column.type === "fadv.facility_id" ||
+    column.type === "fadv.position_type"
+  ) {
+    const placeholders: Record<string, string> = {
+      "fadv.package":       "e.g. STANDARD",
+      "fadv.location":      "e.g. Chicago",
+      "fadv.facility_id":   "e.g. FAC001",
+      "fadv.position_type": "e.g. Driver",
+    };
+    return (
+      <div className="relative">
+        <input
+          type="text"
+          value={localValue ?? ""}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onFocus={() => setIsEditing(true)}
+          onBlur={commitEdit}
+          onKeyDown={handleKeyDown}
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-blue-200 focus:border-blue-500 bg-blue-50/30"
+          placeholder={placeholders[column.type] ?? "—"}
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">

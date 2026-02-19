@@ -610,6 +610,9 @@ async function executeAction(
     case 'twilio.make_call_say':
       return executeTwilioMakeCallSay(supabase, companyId, jobId, config, payload);
 
+    case 'integration.set_field':
+      return executeIntegrationSetField(supabase, companyId, jobId, config, payload);
+
     default:
       return { success: false, error: `Unknown action type: ${type}` };
   }
@@ -1747,6 +1750,120 @@ async function buildTwilioVariableContext(
 function maskPhone(phone: string): string {
   if (phone.length <= 7) return phone.slice(0, 2) + '****';
   return phone.slice(0, 3) + '******' + phone.slice(-4);
+}
+
+/**
+ * Action: integration.set_field
+ * Sets a per-applicant integration field (e.g. FADV package, location).
+ *
+ * Config:
+ *   provider   — "fadv"
+ *   field_key  — "package" | "location" | "facility_id" | "position_type"
+ *   value      — string value to set (static for MVP)
+ */
+async function executeIntegrationSetField(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const { provider, field_key, value } = config;
+  const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
+
+  if (!provider) {
+    return { success: false, error: 'integration.set_field: missing provider in config' };
+  }
+  if (!field_key) {
+    return { success: false, error: 'integration.set_field: missing field_key in config' };
+  }
+  if (!applicantId) {
+    return { success: false, error: 'integration.set_field: missing applicant_id in payload' };
+  }
+
+  const resolvedValue = value != null ? String(value) : null;
+
+  console.log('[executeIntegrationSetField]', {
+    provider,
+    field_key,
+    value: resolvedValue,
+    applicantId,
+    companyId,
+    jobId,
+  });
+
+  // Fetch existing fields row to merge
+  const { data: existing } = await supabase
+    .from('applicant_integration_fields')
+    .select('fields')
+    .eq('applicant_id', applicantId)
+    .eq('provider', provider)
+    .maybeSingle();
+
+  const existingFields = (existing?.fields ?? {}) as Record<string, string | null>;
+  const updatedFields = { ...existingFields, [field_key]: resolvedValue };
+
+  const { error } = await supabase
+    .from('applicant_integration_fields')
+    .upsert(
+      {
+        applicant_id: applicantId,
+        company_id: companyId,
+        job_id: jobId,
+        provider,
+        fields: updatedFields,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'applicant_id,provider' }
+    );
+
+  if (error) {
+    console.error('[executeIntegrationSetField] DB error:', error);
+    return { success: false, error: `Failed to set ${provider}.${field_key}: ${error.message}` };
+  }
+
+  // Also sync to board_cells if there's a fadv.* column of the matching type on the board
+  try {
+    const fadvColumnType = `fadv.${field_key}`;
+    const { data: board } = await supabase
+      .from('boards')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('job_id', jobId)
+      .maybeSingle();
+
+    if (board) {
+      const { data: col } = await supabase
+        .from('board_columns')
+        .select('id')
+        .eq('board_id', board.id)
+        .eq('type', fadvColumnType)
+        .maybeSingle();
+
+      if (col) {
+        await supabase
+          .from('board_cells')
+          .upsert(
+            {
+              applicant_id: applicantId,
+              column_id: col.id,
+              value_text: resolvedValue,
+              value_number: null,
+              value_date: null,
+              value_status_label_id: null,
+              value_file_path: null,
+            },
+            { onConflict: 'applicant_id,column_id' }
+          );
+      }
+    }
+  } catch (syncErr) {
+    // Non-fatal: applicant_integration_fields already updated
+    console.error('[executeIntegrationSetField] board_cells sync failed (non-fatal):', syncErr);
+  }
+
+  console.log('[executeIntegrationSetField] ✓ Set', `${provider}.${field_key}`, '=', resolvedValue);
+  return { success: true };
 }
 
 /**

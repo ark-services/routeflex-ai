@@ -9,6 +9,8 @@ import { GmailReconnectButton } from "@/components/integrations/GmailReconnectBu
 import { getGmailConnection } from "@/components/integrations/actions";
 import { getTwilioConnection } from "@/components/integrations/twilio-actions";
 import { TwilioCard } from "@/components/integrations/TwilioCard";
+import { getFadvConnection } from "@/components/integrations/fadv-actions";
+import { FadvCard } from "@/components/integrations/FadvCard";
 import { IntegrationsClient } from "./IntegrationsClient";
 
 export default async function CompanyIntegrationsPage({
@@ -26,9 +28,10 @@ export default async function CompanyIntegrationsPage({
   const company = await requireCompanyAccess(supabase, accountId, companyId);
 
   // 3. Fetch integration state
-  const [gmailConnection, twilioConnection] = await Promise.all([
+  const [gmailConnection, twilioConnection, fadvConnection] = await Promise.all([
     getGmailConnection(companyId),
     getTwilioConnection(companyId),
+    getFadvConnection(companyId),
   ]);
 
   const gmailConnected = !!gmailConnection;
@@ -84,6 +87,13 @@ export default async function CompanyIntegrationsPage({
           companyId={companyId}
           accountId={accountId}
           initialConnection={twilioConnection}
+        />
+
+        {/* ── First Advantage (FADV) ─────────────────────────────────── */}
+        <FadvCard
+          companyId={companyId}
+          accountId={accountId}
+          initialConnection={fadvConnection}
         />
       </div>
     </IntegrationsClient>
