@@ -94,6 +94,21 @@ type StatusLabel = BoardStatusLabel;
 
 const PRESET_COLORS = statusColorArray.map(c => c.value);
 
+const COLUMN_MIN_WIDTH = 90;
+const COLUMN_MAX_WIDTH = 600;
+const STICKY_COL_WIDTH = 56;
+const ADD_COL_BTN_WIDTH = 56;
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  text: 180, number: 120, date: 140,
+  file: 140, status: 160, email: 200,
+  phone: 150, location: 200,
+};
+
+function getDefaultWidth(type: string): number {
+  return DEFAULT_COLUMN_WIDTHS[type] ?? 180;
+}
+
 export default function ApplicantsBoard({
   companyId,
   jobId,
@@ -195,10 +210,42 @@ export default function ApplicantsBoard({
     setLocalGroups(groups);
   }, [groups]);
 
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    for (const col of columns) {
+      init[col.id] = col.settings?.ui?.width ?? getDefaultWidth(col.type);
+    }
+    return init;
+  });
+
+  useMemo(() => {
+    setColumnWidths(prev => {
+      const next = { ...prev };
+      for (const col of columns) {
+        if (col.settings?.ui?.width !== undefined) {
+          next[col.id] ??= col.settings.ui.width;
+        } else {
+          next[col.id] ??= getDefaultWidth(col.type);
+        }
+      }
+      return next;
+    });
+  }, [columns]);
+
+  function getColumnWidth(colId: string, colType: string): number {
+    return columnWidths[colId] ?? getDefaultWidth(colType);
+  }
+
   // Filter out hidden columns for display
   const visibleColumns = useMemo(() => {
     return localColumns.filter((col) => !col.is_hidden);
   }, [localColumns]);
+
+  const totalTableWidth = useMemo(() => {
+    return STICKY_COL_WIDTH
+      + visibleColumns.reduce((sum, col) => sum + (columnWidths[col.id] ?? getDefaultWidth(col.type)), 0)
+      + ADD_COL_BTN_WIDTH;
+  }, [columnWidths, visibleColumns]);
 
   const hiddenColumns = useMemo(() => {
     return localColumns.filter((col) => col.is_hidden);
@@ -701,6 +748,28 @@ export default function ApplicantsBoard({
     });
   }
 
+  function onColumnWidthChange(columnId: string, width: number) {
+    setColumnWidths(prev => ({ ...prev, [columnId]: width }));
+  }
+
+  function onColumnWidthCommit(columnId: string, width: number) {
+    setColumnWidths(prev => ({ ...prev, [columnId]: width }));
+    const column = localColumns.find(c => c.id === columnId);
+    if (!column) return;
+    const newSettings = {
+      ...column.settings,
+      ui: { ...column.settings?.ui, width },
+    };
+    startTransition(async () => {
+      await updateBoardColumn(companyId, jobId, columnId, { settings: newSettings });
+    });
+  }
+
+  function onColumnWidthReset(columnId: string, colType: string) {
+    const def = getDefaultWidth(colType);
+    onColumnWidthCommit(columnId, def);
+  }
+
   function onShowColumn(columnId: string) {
     startTransition(async () => {
       await updateBoardColumn(companyId, jobId, columnId, { is_hidden: false });
@@ -1150,7 +1219,20 @@ export default function ApplicantsBoard({
                         className="overflow-visible rounded-lg border border-stone-200 bg-white border-l-[4px]"
                         style={{ borderLeftColor: g.color }}
                       >
-                        <table className="w-full text-left border-collapse">
+                        <table
+                          className="text-left border-collapse"
+                          style={{ tableLayout: 'fixed', width: `${totalTableWidth}px` }}
+                        >
+                          <colgroup>
+                            <col style={{ width: `${STICKY_COL_WIDTH}px` }} />
+                            {visibleColumns.map(col => (
+                              <col
+                                key={col.id}
+                                style={{ width: `${getColumnWidth(col.id, col.type)}px` }}
+                              />
+                            ))}
+                            <col style={{ width: `${ADD_COL_BTN_WIDTH}px` }} />
+                          </colgroup>
                           <thead className="bg-stone-50/80">
                             <tr className="border-b border-stone-200">
                               <th className="sticky left-0 z-20 w-10 bg-stone-50/80 px-4 py-2"></th>
@@ -1164,6 +1246,10 @@ export default function ApplicantsBoard({
                                   <SortableColumnHeader
                                     key={col.id}
                                     column={col}
+                                    width={getColumnWidth(col.id, col.type)}
+                                    onWidthChange={(w) => onColumnWidthChange(col.id, w)}
+                                    onWidthCommit={(w) => onColumnWidthCommit(col.id, w)}
+                                    onWidthReset={() => onColumnWidthReset(col.id, col.type)}
                                     onSaveEdit={(newName) => onSaveColumnName(col.id, newName)}
                                     onDelete={() => onDeleteColumn(col.id)}
                                     onToggleMinimize={() => onToggleMinimizeColumn(col.id)}
@@ -1480,12 +1566,20 @@ export default function ApplicantsBoard({
 
 function SortableColumnHeader({
   column,
+  width,
+  onWidthChange,
+  onWidthCommit,
+  onWidthReset,
   onDelete,
   onToggleMinimize,
   onAddRight,
   onSaveEdit,
 }: {
   column: BoardColumn;
+  width: number;
+  onWidthChange: (w: number) => void;
+  onWidthCommit: (w: number) => void;
+  onWidthReset: () => void;
   onDelete: () => void;
   onToggleMinimize: () => void;
   onAddRight: () => void;
@@ -1500,7 +1594,8 @@ function SortableColumnHeader({
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `col-${column.id}`,
-    disabled: isEditing || isCollapsed,
+    // Disable when editing, collapsed, or for system columns (system columns were never reorderable)
+    disabled: isEditing || isCollapsed || column.is_system,
   });
 
   const style = {
@@ -1512,6 +1607,9 @@ function SortableColumnHeader({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(0);
+  const isResizing = useRef(false);
 
   // Update local value when column name changes from server
   useEffect(() => {
@@ -1575,11 +1673,12 @@ function SortableColumnHeader({
   return (
     <th
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, position: 'relative' }}
       className={`group py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0 ${
-        isCollapsed ? "px-1 w-12" : "px-4"
-      }`}
+        isCollapsed ? "px-1 w-12" : "px-3"
+      }${!isEditing && !isCollapsed && !column.is_system ? " cursor-grab active:cursor-grabbing" : ""}`}
       {...attributes}
+      {...listeners}
     >
       {isCollapsed ? (
         <div className="flex items-center justify-center">
@@ -1595,8 +1694,9 @@ function SortableColumnHeader({
           </button>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center w-full min-w-0">
           {isEditing ? (
+            // DRAG EXCLUSION: editing input — onPointerDown/onMouseDown stop events reaching <th> drag listeners
             <input
               ref={inputRef}
               type="text"
@@ -1604,45 +1704,42 @@ function SortableColumnHeader({
               onChange={(e) => setLocalValue(e.target.value)}
               onBlur={commitEdit}
               onKeyDown={handleKeyDown}
-              onMouseDown={(e) => {
-                // Prevent event from bubbling to parent that might interfere
-                e.stopPropagation();
-              }}
-              className="h-7 w-32 rounded border border-stone-300 px-2 text-xs outline-none focus:border-blue-500"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              // Width tracks typed content so the input doesn't occupy more space than needed
+              style={{ width: `${Math.max(4, localValue.length + 2)}ch` }}
+              className="h-7 min-w-[3ch] max-w-full rounded border border-stone-300 px-2 text-xs outline-none focus:border-blue-500"
             />
           ) : (
             <>
-              {/* Kebab menu button on LEFT */}
+              {/* DRAG EXCLUSION — title only: shrinks to text width so most header background stays drag zone */}
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!column.is_system) setIsEditing(true);
+                }}
+                className="max-w-full truncate text-left px-1 hover:text-stone-900 cursor-text disabled:cursor-default"
+                disabled={column.is_system}
+                title={column.name}
+              >
+                {column.name}
+              </button>
+
+              {/* DRAG EXCLUSION — kebab at far right: stopPropagation prevents <th> listeners from activating drag */}
               {!column.is_system && (
                 <button
                   ref={menuButtonRef}
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
                     setMenuOpen(!menuOpen);
                   }}
-                  className="opacity-0 group-hover:opacity-100 text-stone-600 hover:text-stone-900 transition-opacity text-xs font-bold"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1 text-stone-500 hover:text-stone-900 cursor-pointer text-sm leading-none"
+                  aria-label={`${column.name} column options`}
                 >
                   ⋮
-                </button>
-              )}
-
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsEditing(true);
-                }}
-                className="text-left hover:text-stone-900 cursor-text"
-                disabled={column.is_system}
-              >
-                {column.name}
-              </button>
-              {!column.is_system && (
-                <button
-                  {...listeners}
-                  className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600"
-                >
-                  ⋮⋮
                 </button>
               )}
             </>
@@ -1692,6 +1789,12 @@ function SortableColumnHeader({
             >
               Rename column
             </button>
+            <button
+              onClick={() => { onWidthReset(); setMenuOpen(false); }}
+              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+            >
+              Reset column width
+            </button>
             <div className="my-1 border-t border-stone-100" />
             <button
               onClick={() => {
@@ -1705,6 +1808,35 @@ function SortableColumnHeader({
           </div>
         </>,
         document.body
+      )}
+
+      {/* Resize handle */}
+      {!isCollapsed && (
+        <div
+          className="absolute top-0 right-0 h-full w-2 cursor-col-resize select-none z-30 hover:bg-blue-400/30"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            resizeStartX.current = e.clientX;
+            resizeStartWidth.current = width;
+            isResizing.current = true;
+            (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={(e) => {
+            if (!isResizing.current) return;
+            const delta = e.clientX - resizeStartX.current;
+            const newW = Math.max(COLUMN_MIN_WIDTH, Math.min(COLUMN_MAX_WIDTH, resizeStartWidth.current + delta));
+            onWidthChange(newW);
+          }}
+          onPointerUp={(e) => {
+            if (!isResizing.current) return;
+            isResizing.current = false;
+            (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+            const delta = e.clientX - resizeStartX.current;
+            const newW = Math.max(COLUMN_MIN_WIDTH, Math.min(COLUMN_MAX_WIDTH, resizeStartWidth.current + delta));
+            onWidthCommit(newW);
+          }}
+        />
       )}
     </th>
   );

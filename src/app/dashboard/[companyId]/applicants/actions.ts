@@ -598,7 +598,7 @@ export async function duplicateBoardColumn(companyId: string, columnId: string) 
 export async function updateBoardColumn(
   companyId: string,
   columnId: string,
-  updates: { name?: string; sort_order?: number }
+  updates: { name?: string; sort_order?: number; settings?: any }
 ) {
   const supabase = await createClient();
 
