@@ -18,6 +18,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required param: path' }, { status: 400 });
     }
 
+    if (path.includes('..')) {
+      return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+    }
+
     // Authenticate user
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -7,6 +7,24 @@ export async function POST(request: NextRequest) {
     const { accountId, companyId, applicantId, columnId, oldStatusLabelId, newStatusLabelId, userId } = await request.json();
     const supabase = await createClient();
 
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Verify user has membership in the account
+    const { data: membership, error: membershipError } = await supabase
+      .from('account_memberships')
+      .select('role')
+      .eq('account_id', accountId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // 1. Create status change event
     const { data: event, error: eventError } = await supabase.from('status_change_events').insert({
       account_id: accountId, company_id: companyId, applicant_id: applicantId, column_id: columnId,

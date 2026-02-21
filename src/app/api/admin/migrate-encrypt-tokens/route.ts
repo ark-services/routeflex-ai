@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { encrypt, isEncryptionAvailable, isPlaintextToken } from '@/lib/encryption';
+import { SUPER_ADMIN_EMAIL } from '@/lib/constants';
 
 /**
  * One-time migration endpoint to encrypt plaintext tokens
@@ -40,8 +41,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Verify user is a superadmin (check if they have admin role on any account)
-    // For now, just require authentication - you can add more strict checks
+    // Verify user is the super admin
+    if (user.email !== SUPER_ADMIN_EMAIL) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     console.log(`[migrate-encrypt-tokens] Starting migration for user: ${user.id}`);
 
     // Get all gmail_connections with potentially plaintext tokens

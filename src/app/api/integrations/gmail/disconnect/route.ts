@@ -22,7 +22,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .from('gmail_connections')
       .update({
         revoked_at: new Date().toISOString(),
-        access_token: '',
+        access_token: null,
         refresh_token: null,
         updated_at: new Date().toISOString(),
       })
