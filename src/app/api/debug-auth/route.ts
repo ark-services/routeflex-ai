@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   try {
     const supabase = await createClient();
 
@@ -15,7 +19,6 @@ export async function GET() {
 
     const user = userData.user;
 
-    // Query memberships
     const {
       data: membershipsData,
       error: membershipsError,
@@ -24,13 +27,6 @@ export async function GET() {
       .select("*")
       .eq("user_id", user?.id ?? "");
 
-    console.log("DEBUG memberships:", {
-      data: membershipsData,
-      error: membershipsError,
-      count: membershipsData?.length ?? 0,
-    });
-
-    // Query companies if we have memberships
     let companiesData = null;
     let companiesError = null;
 
@@ -43,19 +39,12 @@ export async function GET() {
 
       companiesData = companiesResult.data;
       companiesError = companiesResult.error;
-
-      console.log("DEBUG companies:", {
-        data: companiesData,
-        error: companiesError,
-        count: companiesData?.length ?? 0,
-      });
     }
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),
       environment: {
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || null,
-        SUPABASE_URL: process.env.SUPABASE_URL || null,
         NODE_ENV: process.env.NODE_ENV || null,
       },
       user: user
