@@ -11,7 +11,22 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
-import { performFadvLogin } from "./login";
+import { doLoginSteps } from "./login";
+import { launchFadvContext, saveFadvCookies } from "./browser";
+import {
+  SEL_FIRST_NAME,
+  SEL_LAST_NAME,
+  SEL_EMAIL,
+  SEL_CSP_ID,
+  SEL_PACKAGE,
+  SEL_COMPANY_ID,
+  SEL_FACILITY_ID,
+  SEL_POSITION_TYPE,
+  SEL_NAV_PROFILE_ADVANTAGE,
+  SEL_SEND_BUTTON_TEXT,
+  NAV_TIMEOUT_MS,
+  SUBMIT_TIMEOUT_MS,
+} from "./portal-config";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -368,8 +383,10 @@ export async function runFadvApiCall(
 }
 
 // ── callFadvCreateSubject ─────────────────────────────────────────────────────
-// Stub for the actual FADV API call. Replace with real implementation
-// when the FADV API endpoint and auth scheme are confirmed.
+// Automates the FADV Enterprise Advantage portal to create a new subject.
+// Launches a browser, logs in (3-step), navigates to Profile Advantage →
+// New Subject, fills the form, captures the Profile ID from the confirmation
+// dialog, and returns it as the subjectId.
 
 async function callFadvCreateSubject(params: {
   cspId: string;
@@ -389,9 +406,37 @@ async function callFadvCreateSubject(params: {
   /** Decrypted security answer — NEVER log this value */
   securityAnswer: string | null;
 }): Promise<{ success: boolean; subjectId?: string; error?: string }> {
-  // ── Step 1: Login via two-step flow ────────────────────────────────────────
-  if (params.clientId && params.username && params.password && params.securityAnswer) {
-    const loginResult = await performFadvLogin({
+
+  if (
+    !params.clientId ||
+    !params.username ||
+    !params.password ||
+    !params.securityAnswer
+  ) {
+    return {
+      success: false,
+      error: "FADV login credentials are not fully configured (Client ID, User ID, Password, Security Answer required)",
+    };
+  }
+
+  console.log("[callFadvCreateSubject] Starting FADV browser automation", {
+    clientId: params.clientId,
+    username: params.username,
+    applicant: `${params.firstName} ${params.lastName}`,
+    package: params.packageCode,
+    facilityId: params.facilityId,
+    positionType: params.positionType,
+    // password + securityAnswer intentionally NOT logged
+  });
+
+  // Persistent context — session cookies are saved to disk so FADV skips the
+  // security question on all runs after the first (same behaviour as a real browser).
+  const context = await launchFadvContext(params.clientId);
+  const page    = await context.newPage();
+
+  try {
+    // ── Step 1: Login (3-step: credentials → security question → FCRA notice) ─
+    const loginResult = await doLoginSteps(page, {
       clientId:       params.clientId,
       username:       params.username,
       password:       params.password,
@@ -401,40 +446,106 @@ async function callFadvCreateSubject(params: {
     if (!loginResult.success) {
       return { success: false, error: `FADV login failed: ${loginResult.message}` };
     }
-  }
 
-  // ── Step 2: Submit Create Subject request ──────────────────────────────────
-  // TODO: implement real FADV Create Subject API call using the session from login.
-  // Example structure (FADV XML/SOAP or REST — confirm with FADV):
-  //
-  //   const response = await fetch(FADV_API_URL, {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/xml', Cookie: loginResult.sessionCookie },
-  //     body: buildFadvXml(params),
-  //   });
-  //   if (!response.ok) return { success: false, error: await response.text() };
-  //   const subjectId = parseSubjectIdFromResponse(await response.text());
-  //   return { success: true, subjectId };
+    // Save session cookies so the next run skips the security question
+    await saveFadvCookies(context, params.clientId);
 
-  console.warn(
-    "[callFadvCreateSubject] FADV Create Subject API not yet implemented. Would have submitted:",
-    {
-      cspId: params.cspId,
-      companyIdValue: params.companyIdValue,
-      clientId: params.clientId,
-      username: params.username,
-      // password + securityAnswer intentionally NOT logged
-      applicant: `${params.firstName} ${params.lastName}`,
-      package: params.packageCode,
-      location: params.location,
-      facilityId: params.facilityId,
-      positionType: params.positionType,
+    // ── Step 2: Navigate to New Subject form ───────────────────────────────────
+    // Click the "Profile Advantage" top-level nav item to expand its sub-menu
+    await page
+      .locator(SEL_NAV_PROFILE_ADVANTAGE)
+      .filter({ hasText: "Profile Advantage" })
+      .click();
+
+    // Click the "New Subject" sub-menu item
+    await page.getByText("New Subject", { exact: true }).first().click();
+
+    // Wait for the form's first required field to appear
+    await page.waitForSelector(SEL_FIRST_NAME, { timeout: NAV_TIMEOUT_MS });
+
+    // ── Step 3: Fill the form ──────────────────────────────────────────────────
+    await page.fill(SEL_FIRST_NAME, params.firstName);
+    await page.fill(SEL_LAST_NAME,  params.lastName);
+    await page.fill(SEL_EMAIL,      params.email);
+
+    // CSP ID — select by value (e.g. "V0021753")
+    await page.selectOption(SEL_CSP_ID, { value: params.cspId });
+
+    // Package — try by numeric value first, fall back to display label
+    try {
+      await page.selectOption(SEL_PACKAGE, { value: params.packageCode });
+    } catch {
+      await page.selectOption(SEL_PACKAGE, { label: params.packageCode });
     }
-  );
 
-  // Return a mock success so the validation + logging pipeline is exercisable
-  return {
-    success: true,
-    subjectId: `FADV-STUB-${Date.now()}`,
-  };
+    // Custom dropdown fields (ID has spaces — use attribute selector)
+    await page.selectOption(SEL_COMPANY_ID,    { value: params.companyIdValue });
+    await page.selectOption(SEL_FACILITY_ID,   { value: params.facilityId });
+    await page.selectOption(SEL_POSITION_TYPE, { value: params.positionType });
+
+    // ── Step 4: Submit and capture the confirmation dialog ────────────────────
+    //
+    // FADV renders a GWT HTML modal after a successful Send — it is NOT a native
+    // browser alert() — so page.once("dialog") never fires. The modal uses the
+    // same GWT button pattern as the session-expired dialog: a <td class="html-face">
+    // containing "OK". We click Send, wait for that button to appear, read the
+    // dialog text, then dismiss it.
+    let profileId: string | undefined;
+
+    // Click the GWT-rendered "Send" button (a <td class="html-face"> element)
+    await page
+      .locator("td.html-face")
+      .filter({ hasText: new RegExp(`^${SEL_SEND_BUTTON_TEXT}$`) })
+      .click();
+
+    // Wait for the GWT confirmation modal's OK button to become visible.
+    const gwtOkBtn = page
+      .locator("td.html-face")
+      .filter({ hasText: /^OK$/ });
+
+    try {
+      await gwtOkBtn.waitFor({ state: "visible", timeout: SUBMIT_TIMEOUT_MS });
+    } catch {
+      throw new Error("No confirmation dialog appeared after Send — possible form validation error");
+    }
+
+    // Read the dialog body text before dismissing.
+    // GWT dialogs are table-based; walk up to the nearest enclosing table to
+    // capture the full message. Fall back to a generic success string.
+    const dialogMessage = await gwtOkBtn
+      .locator("xpath=ancestor::table[1]")
+      .innerText()
+      .catch(() => "Submission confirmed");
+    console.log("[callFadvCreateSubject] Confirmation dialog text:", dialogMessage);
+
+    await gwtOkBtn.click();
+
+    // Extract Profile ID — 8–12 uppercase alphanumeric chars (e.g. "YQXIEB64ZM")
+    const idMatch = dialogMessage.match(/\b([A-Z0-9]{8,12})\b/);
+    if (idMatch) {
+      profileId = idMatch[1];
+      console.log("[callFadvCreateSubject] Profile ID captured:", profileId);
+    } else {
+      // Dialog appeared but didn't contain a recognisable ID — still a success
+      console.warn(
+        "[callFadvCreateSubject] Dialog message did not contain a Profile ID pattern.",
+        "Message:", dialogMessage
+      );
+    }
+
+    return { success: true, subjectId: profileId };
+
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[callFadvCreateSubject] Error:", message);
+
+    if (message.includes("Timeout") || message.includes("timeout")) {
+      return { success: false, error: `FADV portal timeout — ${message}` };
+    }
+    return { success: false, error: message };
+  } finally {
+    if (process.env.FADV_DEBUG_KEEP_BROWSER !== "true") {
+      await context.close();
+    }
+  }
 }

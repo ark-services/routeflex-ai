@@ -223,10 +223,12 @@ async function processSubmission(supabase: ReturnType<typeof makeServiceClient>,
     }
   }
 
-  // ── 6. Build applicant name parts ─────────────────────────────────────────
+  // ── 6. Build applicant name / email — prefer column-mapped snapshot values ──
   const nameParts = (applicant.full_name ?? "").trim().split(/\s+/);
-  const firstName = nameParts[0] ?? "";
-  const lastName  = nameParts.slice(1).join(" ") || (nameParts[0] ?? "");
+  const firstName = input_snapshot.first_name?.trim() || (nameParts[0] ?? "");
+  const lastName  = input_snapshot.last_name?.trim()  || (nameParts.slice(1).join(" ") || (nameParts[0] ?? ""));
+  const email     = input_snapshot.email?.trim()       || (applicant.email ?? "");
+  const phone     = applicant.phone ?? "";
 
   // ── 7. Call FADV API ──────────────────────────────────────────────────────
   console.log("[fadv/process-queue] Calling FADV API for applicant:", applicant_id);
@@ -236,8 +238,8 @@ async function processSubmission(supabase: ReturnType<typeof makeServiceClient>,
     clientId:       configResult.clientId,
     firstName,
     lastName,
-    email:          applicant.email  ?? "",
-    phone:          applicant.phone  ?? "",
+    email,
+    phone,
     packageCode:    input_snapshot.package       ?? "",
     facilityId:     input_snapshot.facility_id   ?? "",
     positionType:   input_snapshot.position_type ?? "",

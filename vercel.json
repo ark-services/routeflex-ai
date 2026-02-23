@@ -4,5 +4,11 @@
       "path": "/api/fadv/process-queue",
       "schedule": "* * * * *"
     }
-  ]
+  ],
+  "functions": {
+    "src/app/api/fadv/process-queue/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  }
 }

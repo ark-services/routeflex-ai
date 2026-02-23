@@ -1911,6 +1911,9 @@ async function executeFadvAddSubject(
     package_column_id,
     facility_id_column_id,
     position_type_column_id,
+    first_name_column_id,
+    last_name_column_id,
+    email_column_id,
     output_column_id,
   } = config;
 
@@ -1920,6 +1923,9 @@ async function executeFadvAddSubject(
     package_column_id,
     facility_id_column_id,
     position_type_column_id,
+    first_name_column_id,
+    last_name_column_id,
+    email_column_id,
     output_column_id,
     applicantId,
     companyId,
@@ -1962,7 +1968,14 @@ async function executeFadvAddSubject(
   }
 
   // ── Read input column values from board_cells ───────────────────────────────
-  const columnIds = [package_column_id, facility_id_column_id, position_type_column_id];
+  const columnIds = [
+    package_column_id,
+    facility_id_column_id,
+    position_type_column_id,
+    first_name_column_id,
+    last_name_column_id,
+    email_column_id,
+  ].filter(Boolean) as string[];
 
   const { data: cells, error: cellsError } = await supabase
     .from('board_cells')
@@ -1983,6 +1996,9 @@ async function executeFadvAddSubject(
   const packageVal      = (cellMap[package_column_id]       ?? '').trim();
   const facilityIdVal   = (cellMap[facility_id_column_id]   ?? '').trim();
   const positionTypeVal = (cellMap[position_type_column_id] ?? '').trim();
+  const firstNameVal    = first_name_column_id ? (cellMap[first_name_column_id] ?? '').trim() : '';
+  const lastNameVal     = last_name_column_id  ? (cellMap[last_name_column_id]  ?? '').trim() : '';
+  const emailVal        = email_column_id      ? (cellMap[email_column_id]      ?? '').trim() : '';
 
   // ── Validate field values ───────────────────────────────────────────────────
   const missing: string[] = [];
@@ -2046,6 +2062,9 @@ async function executeFadvAddSubject(
         package:       packageVal,
         facility_id:   facilityIdVal,
         position_type: positionTypeVal,
+        ...(firstNameVal && { first_name: firstNameVal }),
+        ...(lastNameVal  && { last_name:  lastNameVal  }),
+        ...(emailVal     && { email:      emailVal     }),
       },
       output_column_id: output_column_id ?? null,
     })
@@ -2083,6 +2102,9 @@ async function executeFadvAddSubject(
     packageVal,
     facilityIdVal,
     positionTypeVal,
+    firstNameVal,
+    lastNameVal,
+    emailVal,
   });
 
   return { success: true };

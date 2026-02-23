@@ -1238,6 +1238,51 @@ function ActionEditor({
               />
             </div>
 
+            {/* First Name column (optional — falls back to applicant record) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-28 shrink-0">First Name from</span>
+              <ColumnPicker
+                columns={columns.filter(
+                  (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                )}
+                selectedId={action.config.first_name_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, first_name_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Last Name column (optional — falls back to applicant record) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-28 shrink-0">Last Name from</span>
+              <ColumnPicker
+                columns={columns.filter(
+                  (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                )}
+                selectedId={action.config.last_name_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, last_name_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Email column (optional — falls back to applicant record) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-28 shrink-0">Email from</span>
+              <ColumnPicker
+                columns={columns.filter(
+                  (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                )}
+                selectedId={action.config.email_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, email_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
             {/* Output column */}
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
               <span className="text-sm text-gray-500 w-28 shrink-0">Write result to</span>
