@@ -97,6 +97,16 @@ export const SEL_LAST_NAME    = "#CDC_NEW_SUBJECT_LAST_NAME";
 export const SEL_EMAIL        = "#CDC_NEW_SUBJECT_EMAIL_ADDRESS";
 
 /**
+ * "CC: Recruiter on Invitation Email" checkbox in the Email Information section.
+ * Checked so the recruiter receives a copy of the invitation email sent to the applicant.
+ *
+ * GWT renders this as a <label> wrapping an <input type="checkbox"> followed by the
+ * text. Uses :has-text to locate by visible label text rather than a fragile generated ID.
+ */
+export const SEL_CC_RECRUITER_INVITATION =
+  'label:has-text("CC: Recruiter on Invitation Email") input[type="checkbox"]';
+
+/**
  * CSP ID dropdown. ID contains a dot so attribute-selector syntax is required.
  * The option value equals the CSP ID string (e.g. "V0021753").
  */

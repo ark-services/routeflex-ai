@@ -18,6 +18,7 @@ import {
   SEL_FIRST_NAME,
   SEL_LAST_NAME,
   SEL_EMAIL,
+  SEL_CC_RECRUITER_INVITATION,
   SEL_CSP_ID,
   SEL_PACKAGE,
   SEL_COMPANY_ID,
@@ -484,6 +485,21 @@ async function callFadvCreateSubject(params: {
     await page.fill(SEL_FIRST_NAME, params.firstName);
     await page.fill(SEL_LAST_NAME,  params.lastName);
     await page.fill(SEL_EMAIL,      params.email);
+
+    // Check "CC: Recruiter on Invitation Email" so the recruiter receives a copy
+    // of the FADV invitation email sent to the applicant. Non-fatal if not found.
+    try {
+      const ccCheckbox = page.locator(SEL_CC_RECRUITER_INVITATION);
+      const isChecked  = await ccCheckbox.isChecked({ timeout: 5_000 });
+      if (!isChecked) {
+        await ccCheckbox.check();
+        console.log("[callFadvCreateSubject] Checked CC: Recruiter on Invitation Email");
+      } else {
+        console.log("[callFadvCreateSubject] CC: Recruiter on Invitation Email already checked");
+      }
+    } catch {
+      console.warn("[callFadvCreateSubject] Could not check CC: Recruiter on Invitation Email — continuing");
+    }
 
     // CSP ID — select by value (e.g. "V0021753")
     await page.selectOption(SEL_CSP_ID, { value: params.cspId });
