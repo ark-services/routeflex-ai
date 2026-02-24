@@ -25,6 +25,8 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { loadFadvConfig, runFadvApiCall } from "@/lib/fadv/submit";
 import { decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
+import { loadSafetyTrainerConfig } from "@/components/integrations/safety-trainer-actions";
+import { runSafetyTrainerSubmission } from "@/lib/safety-trainer/submit";
 
 // Max submissions processed per cron invocation
 const BATCH_SIZE = 5;
@@ -55,12 +57,12 @@ export async function GET(request: NextRequest) {
 
   const supabase = makeServiceClient();
 
-  // ── 1. Fetch queued submissions ────────────────────────────────────────────
+  // ── 1. Fetch queued submissions (all providers) ────────────────────────────
   const { data: submissions, error: fetchError } = await supabase
     .from("integration_submissions")
     .select("*")
     .eq("status", "queued")
-    .eq("provider", "fadv")
+    .in("provider", ["fadv", "safety_trainer"])
     .order("created_at", { ascending: true })
     .limit(BATCH_SIZE);
 
@@ -97,11 +99,16 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      await processSubmission(supabase, claimed);
+      if (claimed.provider === "safety_trainer") {
+        await processSafetyTrainerSubmission(supabase, claimed);
+      } else {
+        await processFadvSubmission(supabase, claimed);
+      }
       processed++;
     } catch (err: any) {
       failed++;
-      console.error("[fadv/process-queue] Unexpected error for submission:", submission.id, err);
+      const provider = claimed.provider ?? "fadv";
+      console.error(`[${provider}/process-queue] Unexpected error for submission:`, submission.id, err);
 
       // Mark as failed — don't lose the record
       const now = new Date().toISOString();
@@ -118,11 +125,12 @@ export async function GET(request: NextRequest) {
 
       // Best-effort output column write
       if (claimed.output_column_id) {
+        const label = provider === "safety_trainer" ? "Safety Trainer" : "FADV";
         await writeOutputCell(
           supabase,
           claimed.applicant_id,
           claimed.output_column_id,
-          "FADV failed ❌ unexpected_error"
+          `${label} failed ❌ unexpected_error`
         );
       }
     }
@@ -132,9 +140,9 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ processed, failed });
 }
 
-// ── processSubmission ─────────────────────────────────────────────────────────
+// ── processFadvSubmission ─────────────────────────────────────────────────────
 
-async function processSubmission(supabase: ReturnType<typeof makeServiceClient>, submission: any) {
+async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClient>, submission: any) {
   const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id } = submission;
 
   console.log("[fadv/process-queue] Processing submission:", {
@@ -246,6 +254,7 @@ async function processSubmission(supabase: ReturnType<typeof makeServiceClient>,
     username:       configResult.username,
     password,
     securityAnswer,
+    companyId:      company_id,
   });
 
   const now = new Date().toISOString();
@@ -338,6 +347,152 @@ async function processSubmission(supabase: ReturnType<typeof makeServiceClient>,
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+// ── processSafetyTrainerSubmission ────────────────────────────────────────────
+
+async function processSafetyTrainerSubmission(
+  supabase: ReturnType<typeof makeServiceClient>,
+  submission: any
+) {
+  const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id } = submission;
+
+  console.log("[safety_trainer/process-queue] Processing submission:", {
+    id,
+    applicant_id,
+    input_snapshot,
+  });
+
+  // ── Load Safety Trainer config (includes signature_data_url) ──────────────
+  const configResult = await loadSafetyTrainerConfig(supabase, company_id);
+  if (!configResult.ok) {
+    await markFailed(
+      supabase,
+      id,
+      applicant_id,
+      job_id,
+      company_id,
+      output_column_id,
+      "config_missing",
+      configResult.reason,
+      `Safety Trainer not submitted: ${configResult.reason}`,
+      "safety_trainer"
+    );
+    return;
+  }
+
+  // ── Load applicant basic info ──────────────────────────────────────────────
+  const { data: applicant, error: appError } = await supabase
+    .from("applicants")
+    .select("full_name, email, phone")
+    .eq("id", applicant_id)
+    .maybeSingle();
+
+  if (appError || !applicant) {
+    await markFailed(
+      supabase,
+      id,
+      applicant_id,
+      job_id,
+      company_id,
+      output_column_id,
+      "applicant_not_found",
+      "Applicant not found",
+      "Safety Trainer failed ❌ applicant_not_found",
+      "safety_trainer"
+    );
+    return;
+  }
+
+  // ── Run Playwright automation ──────────────────────────────────────────────
+  console.log("[safety_trainer/process-queue] Running Playwright submission for:", applicant_id);
+
+  const stResult = await runSafetyTrainerSubmission({
+    config: configResult.config,
+    applicant: {
+      full_name: applicant.full_name ?? "",
+      email:     applicant.email ?? "",
+      phone:     applicant.phone ?? "",
+    },
+    driverFedexId:  input_snapshot.driver_fedex_id  ?? "",
+    startDate:      input_snapshot.start_date        ?? "",
+    completionDate: input_snapshot.completion_date   ?? "",
+  });
+
+  const now = new Date().toISOString();
+  const ts  = new Date().toLocaleString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit",
+  });
+
+  if (stResult.success) {
+    await supabase
+      .from("integration_submissions")
+      .update({
+        status:       "success",
+        updated_at:   now,
+        completed_at: now,
+      })
+      .eq("id", id);
+
+    const msg = `Safety Trainer ✅ (${ts})`;
+    if (output_column_id) {
+      await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+    }
+
+    await logActivityEvent(supabase, {
+      companyId:  company_id,
+      jobId:      job_id ?? null,
+      actorType:  "system",
+      eventType:  "safety_trainer.submission.success",
+      entityType: "applicant",
+      entityId:   applicant_id,
+      summary:    "Applicant Safety Trainer certification form submitted",
+      data: {
+        applicant_id:  applicant_id,
+        submission_id: id,
+      },
+    });
+
+    console.log("[safety_trainer/process-queue] ✓ Submission succeeded:", id);
+  } else {
+    const errorCode = (stResult.error ?? "unknown_error").slice(0, 80);
+
+    await supabase
+      .from("integration_submissions")
+      .update({
+        status:        "failed",
+        error_code:    errorCode,
+        error_message: stResult.error ?? "Safety Trainer submission failed",
+        updated_at:    now,
+        completed_at:  now,
+      })
+      .eq("id", id);
+
+    const msg = `Safety Trainer failed ❌ ${errorCode}`;
+    if (output_column_id) {
+      await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+    }
+
+    await logActivityEvent(supabase, {
+      companyId:  company_id,
+      jobId:      job_id ?? null,
+      actorType:  "system",
+      eventType:  "safety_trainer.submission.failed",
+      entityType: "applicant",
+      entityId:   applicant_id,
+      summary:    `Safety Trainer submission failed: ${stResult.error ?? "unknown"}`,
+      data: {
+        applicant_id:  applicant_id,
+        submission_id: id,
+        error:         stResult.error ?? null,
+      },
+    });
+
+    console.error("[safety_trainer/process-queue] ✗ Submission failed:", id, stResult.error);
+  }
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
 /**
  * Marks a submission as failed and (optionally) writes to the output column.
  */
@@ -350,7 +505,8 @@ async function markFailed(
   outputColumnId:   string | null,
   errorCode:        string,
   errorMessage:     string,
-  outputMsg:        string
+  outputMsg:        string,
+  provider:         "fadv" | "safety_trainer" = "fadv"
 ) {
   const now = new Date().toISOString();
   await supabase
@@ -368,14 +524,19 @@ async function markFailed(
     await writeOutputCell(supabase, applicantId, outputColumnId, outputMsg);
   }
 
+  const eventType = provider === "safety_trainer"
+    ? "safety_trainer.submission.failed"
+    : "fadv.submission.failed";
+  const summaryPrefix = provider === "safety_trainer" ? "Safety Trainer" : "FADV";
+
   await logActivityEvent(supabase, {
     companyId,
     jobId,
     actorType:  "system",
-    eventType:  "fadv.submission.failed",
+    eventType,
     entityType: "applicant",
     entityId:   applicantId,
-    summary:    `FADV submission failed: ${errorMessage}`,
+    summary:    `${summaryPrefix} submission failed: ${errorMessage}`,
     data: {
       applicant_id:  applicantId,
       submission_id: submissionId,

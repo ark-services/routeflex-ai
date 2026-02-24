@@ -616,6 +616,9 @@ async function executeAction(
     case 'fadv.add_subject':
       return executeFadvAddSubject(supabase, companyId, jobId, config, payload);
 
+    case 'safety_trainer.submit':
+      return executeSafetyTrainerSubmit(supabase, companyId, jobId, config, payload);
+
     default:
       return { success: false, error: `Unknown action type: ${type}` };
   }
@@ -2105,6 +2108,210 @@ async function executeFadvAddSubject(
     firstNameVal,
     lastNameVal,
     emailVal,
+  });
+
+  return { success: true };
+}
+
+/**
+ * Action: safety_trainer.submit
+ *
+ * Reads three board columns (driver FedEx ID, start date, completion date)
+ * for the applicant, then enqueues a background Safety Trainer Hub submission
+ * by inserting an integration_submissions row with status = 'queued'.
+ * The Vercel cron job at /api/fadv/process-queue picks it up.
+ *
+ * Config:
+ *   driver_fedex_id_column_id   — text column with driver's FedEx ID
+ *   start_date_column_id        — date/text column for Stage 1 start date
+ *   completion_date_column_id   — date/text column for Stage 1 completion date
+ *   output_column_id            — text column where status messages are written
+ */
+async function executeSafetyTrainerSubmit(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const {
+    driver_fedex_id_column_id,
+    start_date_column_id,
+    completion_date_column_id,
+    output_column_id,
+  } = config;
+
+  const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
+
+  console.log('[executeSafetyTrainerSubmit] Starting:', {
+    driver_fedex_id_column_id,
+    start_date_column_id,
+    completion_date_column_id,
+    output_column_id,
+    applicantId,
+    companyId,
+    jobId,
+  });
+
+  // ── Validate config ─────────────────────────────────────────────────────────
+  if (!driver_fedex_id_column_id || !start_date_column_id || !completion_date_column_id) {
+    return {
+      success: false,
+      error: 'safety_trainer.submit: driver_fedex_id_column_id, start_date_column_id, and completion_date_column_id are required in config',
+    };
+  }
+
+  if (!applicantId) {
+    return { success: false, error: 'safety_trainer.submit: missing applicant_id in payload' };
+  }
+
+  // ── Helper: write a message to the output column ─────────────────────────
+  async function writeOutput(message: string) {
+    if (!output_column_id) return;
+    try {
+      await supabase
+        .from('board_cells')
+        .upsert(
+          {
+            applicant_id:          applicantId,
+            column_id:             output_column_id,
+            value_text:            message,
+            value_number:          null,
+            value_date:            null,
+            value_status_label_id: null,
+            value_file_path:       null,
+          },
+          { onConflict: 'applicant_id,column_id' }
+        );
+    } catch (err) {
+      console.error('[executeSafetyTrainerSubmit] writeOutput error (non-fatal):', err);
+    }
+  }
+
+  // ── Read input column values from board_cells ──────────────────────────────
+  const columnIds = [
+    driver_fedex_id_column_id,
+    start_date_column_id,
+    completion_date_column_id,
+  ].filter(Boolean) as string[];
+
+  const { data: cells, error: cellsError } = await supabase
+    .from('board_cells')
+    .select('column_id, value_text, value_date')
+    .eq('applicant_id', applicantId)
+    .in('column_id', columnIds);
+
+  if (cellsError) {
+    console.error('[executeSafetyTrainerSubmit] Failed to read cells:', cellsError);
+    return { success: false, error: `Failed to read applicant column values: ${cellsError.message}` };
+  }
+
+  const cellMap: Record<string, string> = {};
+  for (const cell of cells ?? []) {
+    // Prefer value_text; fall back to value_date for date columns
+    cellMap[cell.column_id] = (cell.value_text ?? cell.value_date ?? '');
+  }
+
+  const driverFedexIdVal  = (cellMap[driver_fedex_id_column_id]   ?? '').trim();
+  const startDateVal      = (cellMap[start_date_column_id]         ?? '').trim();
+  const completionDateVal = (cellMap[completion_date_column_id]    ?? '').trim();
+
+  // ── Validate field values ───────────────────────────────────────────────────
+  const missing: string[] = [];
+  if (!driverFedexIdVal)  missing.push('Driver FedEx ID');
+  if (!startDateVal)      missing.push('Start Date');
+  if (!completionDateVal) missing.push('Completion Date');
+
+  if (missing.length > 0) {
+    const msg = `Safety Trainer not submitted: missing ${missing.join(', ')}`;
+    console.log('[executeSafetyTrainerSubmit] Validation failed:', msg);
+    await writeOutput(msg);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorType: 'automation',
+      eventType: 'safety_trainer.submission.missing_applicant_fields',
+      entityType: 'applicant',
+      entityId: applicantId,
+      summary: msg,
+      data: { applicant_id: applicantId, missing_fields: missing },
+    });
+    return { success: true };
+  }
+
+  // ── Idempotency: skip if already successfully submitted ─────────────────────
+  const { data: existing } = await supabase
+    .from('integration_submissions')
+    .select('id')
+    .eq('applicant_id', applicantId)
+    .eq('provider', 'safety_trainer')
+    .eq('status', 'success')
+    .maybeSingle();
+
+  if (existing) {
+    const msg = 'Safety Trainer already submitted ✅';
+    console.log('[executeSafetyTrainerSubmit] Skipping — already submitted:', existing.id);
+    await writeOutput(msg);
+    return { success: true };
+  }
+
+  // ── Resolve board_id (best-effort; nullable in table) ───────────────────────
+  const { data: board } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('job_id', jobId)
+    .maybeSingle();
+
+  // ── Enqueue submission ──────────────────────────────────────────────────────
+  const { data: submission, error: insertError } = await supabase
+    .from('integration_submissions')
+    .insert({
+      company_id:      companyId,
+      applicant_id:    applicantId,
+      job_id:          jobId,
+      board_id:        board?.id ?? null,
+      provider:        'safety_trainer',
+      status:          'queued',
+      input_snapshot: {
+        driver_fedex_id:  driverFedexIdVal,
+        start_date:       startDateVal,
+        completion_date:  completionDateVal,
+      },
+      output_column_id: output_column_id ?? null,
+    })
+    .select('id')
+    .single();
+
+  if (insertError) {
+    console.error('[executeSafetyTrainerSubmit] Failed to create submission record:', insertError);
+    return { success: false, error: `Failed to queue Safety Trainer submission: ${insertError.message}` };
+  }
+
+  await writeOutput('Safety Trainer submission queued...');
+
+  await logActivityEvent(supabase, {
+    companyId,
+    jobId,
+    actorType: 'automation',
+    eventType: 'safety_trainer.submission.queued',
+    entityType: 'applicant',
+    entityId: applicantId,
+    summary: 'Safety Trainer submission queued for background processing',
+    data: {
+      applicant_id:    applicantId,
+      submission_id:   submission.id,
+      driver_fedex_id: driverFedexIdVal,
+      start_date:      startDateVal,
+      completion_date: completionDateVal,
+    },
+  });
+
+  console.log('[executeSafetyTrainerSubmit] ✓ Queued submission:', submission.id, {
+    applicantId,
+    driverFedexIdVal,
+    startDateVal,
+    completionDateVal,
   });
 
   return { success: true };

@@ -111,6 +111,8 @@ function getDefaultWidth(type: string): number {
   return DEFAULT_COLUMN_WIDTHS[type] ?? 180;
 }
 
+const VERBOSE = false; // set to true to re-enable verbose board logs
+
 export default function ApplicantsBoard({
   companyId,
   jobId,
@@ -135,7 +137,7 @@ export default function ApplicantsBoard({
   activeFilters?: ActiveFilter[];
 }) {
   // CRITICAL: Log props received to debug filtering
-  console.log('[ApplicantsBoard] Component rendered with props:', {
+  if (VERBOSE) console.log('[ApplicantsBoard] Component rendered with props:', {
     companyId,
     jobId,
     boardId,
@@ -403,7 +405,7 @@ export default function ApplicantsBoard({
   }, [localApplicants, searchQuery, activeFilters, localColumns, cellLookup, statusLabelById]);
 
   const applicantsByGroup = useMemo(() => {
-    console.log('[ApplicantsBoard] Starting grouping with:', {
+    if (VERBOSE) console.log('[ApplicantsBoard] Starting grouping with:', {
       totalApplicants: filteredApplicants.length,
       totalGroups: groups.length,
       applicants: filteredApplicants.map(a => ({
@@ -456,7 +458,7 @@ export default function ApplicantsBoard({
 
     // Final count
     const totalGrouped = Array.from(map.values()).reduce((sum, rows) => sum + rows.length, 0);
-    console.log('[ApplicantsBoard] Grouping complete:', {
+    if (VERBOSE) console.log('[ApplicantsBoard] Grouping complete:', {
       inputApplicants: filteredApplicants.length,
       outputApplicants: totalGrouped,
     });
@@ -912,7 +914,7 @@ export default function ApplicantsBoard({
       // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
       // update all selected rows with the new status value
       if (columnType === "status" && selectedIds.length > 1 && selected[applicantId]) {
-        console.log('[onUpdateCell] Bulk status update triggered:', {
+        if (VERBOSE) console.log('[onUpdateCell] Bulk status update triggered:', {
           applicantId,
           columnId,
           statusLabelId: value,
@@ -929,7 +931,7 @@ export default function ApplicantsBoard({
             value
           );
 
-          console.log('[onUpdateCell] Bulk update result:', result);
+          if (VERBOSE) console.log('[onUpdateCell] Bulk update result:', result);
 
           if (result.failed > 0) {
             // Show partial failure warning
@@ -3007,7 +3009,7 @@ function CellRenderer({
   // Commit the edit to server
   const commitEdit = () => {
     if (localValue !== value) {
-      console.log('[CellRenderer] Committing edit:', {
+      if (VERBOSE) console.log('[CellRenderer] Committing edit:', {
         applicantId: applicant.id,
         columnId: column.id,
         columnName: column.name,
@@ -3426,16 +3428,12 @@ function StatusLabelsEditor({
   const [newColor, setNewColor] = useState(() =>
     getNextAvailableColor(labels.map((l) => l.color))
   );
-  // Color picker visibility is driven by focus, not by a separate toggle button.
-  // This matches Monday's "edit intent" model: picker appears when editing.
-  const [isNewLabelFocused, setIsNewLabelFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Inline hint shown near the palette for recoverable color issues (not a red banner).
   // Used as last-resort when a race-condition somehow slips past the smart defaults.
   const [colorHint, setColorHint] = useState<string | null>(null);
 
-  // Refs to programmatically focus label name inputs.
-  // Clicking a color swatch focuses the corresponding input, opening the picker.
+  // Refs for label name inputs (used for keyboard focus management).
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const newLabelInputRef = useRef<HTMLInputElement>(null);
 
@@ -3453,6 +3451,10 @@ function StatusLabelsEditor({
       initializedRef.current = true;
     }
   }, [columnId]); // Only re-initialize if columnId changes
+
+  // Auto-focus the new label input when the modal opens so the user can start
+  // typing immediately without an extra click.
+  useEffect(() => { newLabelInputRef.current?.focus(); }, []);
 
   // When localLabels changes (add / delete), ensure newColor is still available.
   // Handles the race-condition edge case where another session takes the pre-selected color.
@@ -3553,7 +3555,6 @@ function StatusLabelsEditor({
           setNewColor(getNextAvailableColor(updatedLabels.map((l) => l.color)));
         }
         setNewLabel("");
-        setIsNewLabelFocused(false);
         setColorHint(null);
         setError(null);
       } catch (err) {
@@ -3586,7 +3587,7 @@ function StatusLabelsEditor({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
-      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-[10px] border border-stone-200 bg-white p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-[10px] border border-stone-200 bg-white p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
         <h3 className="text-lg font-semibold text-stone-900">Edit Labels</h3>
 
         {/* Error message */}
@@ -3596,110 +3597,87 @@ function StatusLabelsEditor({
           </div>
         )}
 
-        {/* Labels list - all inline editable */}
-        <div className="mt-6 space-y-2 max-h-96 overflow-y-auto">
+        {/* Labels grid — fills 6 rows then wraps to a new column, expanding horizontally
+            rather than vertically. No JS chunking needed: CSS handles it automatically. */}
+        <div
+          className="mt-4"
+          style={{
+            display: 'grid',
+            gridTemplateRows: 'repeat(6, auto)',
+            gridAutoFlow: 'column',
+            gridAutoColumns: 'minmax(180px, 1fr)',
+            gap: '2px 12px',
+          }}
+        >
           {localLabels.map((label) => {
             const isFallback = fallbackLabel?.id === label.id;
-            const isEditing = editingLabelId === label.id;
             return (
-            <div key={label.id} className="group">
-              <div className="flex items-center gap-3 p-2 rounded-[10px] hover:bg-stone-50 transition-colors">
-                {/* Color swatch — clicking it focuses the name input, which opens the picker.
-                    onMouseDown:preventDefault prevents stealing focus from an already-editing input. */}
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => inputRefs.current[label.id]?.focus()}
-                  className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
-                  style={{ backgroundColor: editValues[label.id]?.color || label.color }}
-                  title="Click to change color"
+            <div key={label.id} className="group flex items-center gap-2 py-1 px-1.5 rounded-lg hover:bg-stone-50 transition-colors min-w-0">
+                <ColorPicker
+                  size="sm"
+                  value={editValues[label.id]?.color || label.color}
+                  onChange={(color) => {
+                    setEditValues((prev) => ({
+                      ...prev,
+                      [label.id]: { ...prev[label.id], color },
+                    }));
+                    setEditingLabelId(null);
+                    onUpdateLabel(label.id, color);
+                  }}
+                  disabledColors={localLabels
+                    .filter((l) => l.id !== label.id)
+                    .map((l) => editValues[l.id]?.color || l.color)}
                 />
-
-                {/* Inline editable text field */}
-                <div className="flex-1 flex items-center gap-2">
-                  <input
-                    ref={(el) => { inputRefs.current[label.id] = el; }}
-                    type="text"
-                    value={editValues[label.id]?.label || label.label}
-                    onChange={(e) => {
-                      setEditValues((prev) => ({
-                        ...prev,
-                        [label.id]: { ...prev[label.id], label: e.target.value },
-                      }));
-                    }}
-                    onFocus={() => setEditingLabelId(label.id)}
-                    onBlur={() => {
-                      // The color picker uses onMouseDown:preventDefault so clicking a
-                      // color swatch does NOT trigger this blur — only a true focus-leave does.
+                <input
+                  ref={(el) => { inputRefs.current[label.id] = el; }}
+                  type="text"
+                  value={editValues[label.id]?.label || label.label}
+                  onChange={(e) => {
+                    setEditValues((prev) => ({
+                      ...prev,
+                      [label.id]: { ...prev[label.id], label: e.target.value },
+                    }));
+                  }}
+                  onFocus={() => setEditingLabelId(label.id)}
+                  onBlur={() => {
+                    onUpdateLabel(label.id);
+                    setEditingLabelId(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
                       onUpdateLabel(label.id);
                       setEditingLabelId(null);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        onUpdateLabel(label.id);
-                        setEditingLabelId(null);
-                        e.currentTarget.blur();
-                      }
-                      if (e.key === 'Escape') {
-                        setEditValues((prev) => ({
-                          ...prev,
-                          [label.id]: { label: label.label, color: label.color },
-                        }));
-                        setEditingLabelId(null);
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    className="flex-1 px-2 py-1 text-sm font-medium text-stone-900 bg-transparent border border-transparent rounded-lg hover:border-stone-200 focus:border-blue-500 focus:bg-white outline-none transition-colors"
-                    placeholder="Label name"
-                  />
-                  {isFallback && (
-                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                      Default
-                    </span>
-                  )}
-                </div>
-
-                {/* Delete button - disabled for fallback label */}
+                      e.currentTarget.blur();
+                    }
+                    if (e.key === 'Escape') {
+                      setEditValues((prev) => ({
+                        ...prev,
+                        [label.id]: { label: label.label, color: label.color },
+                      }));
+                      setEditingLabelId(null);
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className="min-w-0 flex-1 px-1.5 py-0.5 text-sm text-stone-900 bg-transparent border border-transparent rounded hover:border-stone-200 focus:border-blue-500 focus:bg-white outline-none transition-colors"
+                  placeholder="Label name"
+                />
+                {isFallback && (
+                  <span className="shrink-0 px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    Default
+                  </span>
+                )}
                 {!isFallback && (
                   <button
                     type="button"
                     onClick={() => onDeleteLabel(label.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-stone-400 hover:text-red-600 transition-all"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-red-600 transition-all"
                     title="Delete label"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 )}
-              </div>
-
-              {/* Color picker — visible only while this label's name input is focused.
-                  onMouseDown:preventDefault keeps input focus when clicking swatches so
-                  the blur handler (save + close) doesn't fire mid-selection. */}
-              {isEditing && (
-                <div
-                  className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]"
-                  onMouseDown={(e) => e.preventDefault()}
-                >
-                  <ColorPicker
-                    value={editValues[label.id]?.color || label.color}
-                    onChange={(color) => {
-                      setEditValues((prev) => ({
-                        ...prev,
-                        [label.id]: { ...prev[label.id], color },
-                      }));
-                      // Color selection = save intent. Close picker immediately, then persist.
-                      setEditingLabelId(null);
-                      onUpdateLabel(label.id, color);
-                    }}
-                    inline
-                    disabledColors={localLabels
-                      .filter((l) => l.id !== label.id)
-                      .map((l) => editValues[l.id]?.color || l.color)}
-                  />
-                </div>
-              )}
             </div>
           );
           })}
@@ -3717,23 +3695,20 @@ function StatusLabelsEditor({
                 Clicking the swatch focuses the input, which opens the color picker below.
                 onMouseDown:preventDefault keeps focus when clicking the swatch. */}
             <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-stone-300 bg-stone-50">
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => newLabelInputRef.current?.focus()}
-                className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
-                style={{ backgroundColor: newColor }}
-                title="Click to choose color"
+              {/* Popover ColorPicker — floats over content, no layout shift.
+                  Color is pre-selected via getNextAvailableColor(); clicking the swatch
+                  is optional. disabledColors prevents choosing a color already in use. */}
+              <ColorPicker
+                value={newColor}
+                onChange={(color) => { setNewColor(color); setColorHint(null); }}
+                disabledColors={usedColorsForNew}
               />
               <input
                 ref={newLabelInputRef}
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
-                onFocus={() => setIsNewLabelFocused(true)}
-                onBlur={() => setIsNewLabelFocused(false)}
                 onKeyDown={(e) => {
-                  // Enforce the same validation rules as the Add button on Enter.
                   if (e.key === 'Enter' && newLabel.trim() && isNewColorValid) {
                     onAddLabel();
                   }
@@ -3741,9 +3716,7 @@ function StatusLabelsEditor({
                 placeholder="New label"
                 className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg outline-none focus:border-blue-500 transition-colors"
               />
-              {/* Disabled when: pending, no name, or chosen color is somehow already taken.
-                  Under normal flow the color is always valid (smart defaults), but the extra
-                  guard here means the button is a reliable last line of defence. */}
+              {/* Disabled when: pending, no name, or chosen color is somehow already taken. */}
               <button
                 type="button"
                 onClick={onAddLabel}
@@ -3753,30 +3726,9 @@ function StatusLabelsEditor({
                 Add
               </button>
             </div>
-
-            {/* Color picker for new label — appears on input focus and stays open while
-                focused so the user can pick a color then type the name, or vice-versa.
-                onMouseDown:preventDefault prevents the input from blurring on swatch click. */}
-            {isNewLabelFocused && (
-              <div
-                className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]"
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                <ColorPicker
-                  value={newColor}
-                  onChange={(color) => {
-                    setNewColor(color);
-                    setColorHint(null);
-                    // Intentionally do NOT close — user picks color then types the name.
-                  }}
-                  inline
-                  disabledColors={usedColorsForNew}
-                />
-                {/* Inline hint for the rare race-condition case — soft amber, not red banner */}
-                {colorHint && (
-                  <p className="mt-2 text-xs text-amber-700">{colorHint}</p>
-                )}
-              </div>
+            {/* Race-condition hint — shown below the add row, not inside the picker */}
+            {colorHint && (
+              <p className="mt-1 ml-12 text-xs text-amber-700">{colorHint}</p>
             )}
           </>
         )}

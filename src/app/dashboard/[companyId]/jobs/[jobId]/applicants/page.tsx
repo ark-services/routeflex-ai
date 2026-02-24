@@ -5,6 +5,8 @@ import { ApplicantsBoardContainer } from "./ApplicantsBoardContainer";
 import { getBoardViews } from "./view-actions";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
+const VERBOSE = false; // set to true to re-enable verbose data-loading logs
+
 function ErrorPanel({
   title,
   message,
@@ -107,7 +109,7 @@ export default async function ApplicantsPage({
 
   const { board, groups } = boardResult;
 
-  console.log('[Applicants Page] Board and groups loaded:', {
+  if (VERBOSE) console.log('[Applicants Page] Board and groups loaded:', {
     boardId: board.id,
     groupCount: groups.length,
     groupNames: groups.map(g => ({ id: g.id, name: g.name })),
@@ -120,7 +122,7 @@ export default async function ApplicantsPage({
   // CRITICAL: Only filter by job_id and company_id (source of truth)
   // Do NOT filter by board_id, status, or any other field
   // ============================================================================
-  console.log('[Applicants Page] Fetching applicants with filters:', {
+  if (VERBOSE) console.log('[Applicants Page] Fetching applicants with filters:', {
     company_id: companyId,
     job_id: jobId,
   });
@@ -134,7 +136,7 @@ export default async function ApplicantsPage({
     .eq("job_id", jobId)
     .order("position", { ascending: true });
 
-  console.log('[Applicants Page] Raw Supabase response:', {
+  if (VERBOSE) console.log('[Applicants Page] Raw Supabase response:', {
     hasData: !!applicants,
     hasError: !!appErr,
     dataLength: applicants?.length,
@@ -167,7 +169,7 @@ export default async function ApplicantsPage({
     );
   }
 
-  console.log('[Applicants Page] Applicants fetched:', {
+  if (VERBOSE) console.log('[Applicants Page] Applicants fetched:', {
     count: applicants?.length || 0,
     companyId,
     jobId,
@@ -238,7 +240,7 @@ export default async function ApplicantsPage({
     .eq("board_id", board.id)
     .order("sort_order", { ascending: true });
 
-  console.log('[Applicants Page] Columns fetched:', {
+  if (VERBOSE) console.log('[Applicants Page] Columns fetched:', {
     count: columns?.length || 0,
     columnNames: columns?.map(c => c.name) || [],
   });
@@ -334,7 +336,7 @@ export default async function ApplicantsPage({
       );
     }
 
-    console.log('[Applicants Page] Data fetched:', {
+    if (VERBOSE) console.log('[Applicants Page] Data fetched:', {
       boardCells: boardCellData?.length || 0,
       fieldValues: fieldValueData?.length || 0,
     });
@@ -347,7 +349,7 @@ export default async function ApplicantsPage({
       }
     }
 
-    console.log('[Applicants Page] Field to column mapping:', {
+    if (VERBOSE) console.log('[Applicants Page] Field to column mapping:', {
       mappingCount: fieldToColumnMap.size,
       mappings: Array.from(fieldToColumnMap.entries()).map(([fieldId, colId]) => ({
         fieldId,
@@ -377,7 +379,7 @@ export default async function ApplicantsPage({
       })
       .filter((v): v is NonNullable<typeof v> => v !== null);
 
-    console.log('[Applicants Page] Transformed field values:', {
+    if (VERBOSE) console.log('[Applicants Page] Transformed field values:', {
       totalFieldValues: fieldValueData?.length || 0,
       transformedCount: transformedFieldValues.length,
       unmappedFieldsCount: unmappedFieldIds.size,
@@ -410,13 +412,13 @@ export default async function ApplicantsPage({
 
     cells = Array.from(cellMap.values());
 
-    console.log('[Applicants Page] Final merged cells:', {
+    if (VERBOSE) console.log('[Applicants Page] Final merged cells:', {
       count: cells.length,
       sample: cells.slice(0, 3),
     });
   }
 
-  console.log('[Applicants Page] Final data summary:', {
+  if (VERBOSE) console.log('[Applicants Page] Final data summary:', {
     boardId: board.id,
     groups: groups.length,
     applicants: applicants?.length || 0,

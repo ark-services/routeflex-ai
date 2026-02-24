@@ -293,6 +293,20 @@ export function CreateTab({
           return;
         }
       }
+      if (action.type === "safety_trainer.submit") {
+        if (
+          !action.config.driver_fedex_id_column_id ||
+          !action.config.start_date_column_id ||
+          !action.config.completion_date_column_id
+        ) {
+          alert("Please select all three input columns (Driver FedEx ID, Start Date, Completion Date) for the Impact Solutions Safety Cert action");
+          return;
+        }
+        if (!action.config.output_column_id) {
+          alert("Please select an output column for the Impact Solutions Safety Cert action (where status messages will be written)");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -430,6 +444,8 @@ export function CreateTab({
         }
         case "fadv.add_subject":
           return "submit applicant to First Advantage";
+        case "safety_trainer.submit":
+          return "submit applicant to Impact Solutions Safety Cert";
         default:
           return action.type;
       }
@@ -952,6 +968,7 @@ function ActionEditor({
     { value: "twilio.make_call_say", label: "Call Someone and Say (Twilio)" },
     { value: "integration.set_field", label: "Set integration field (FADV)" },
     { value: "fadv.add_subject", label: "Add to FADV" },
+    { value: "safety_trainer.submit", label: "Submit Impact Solutions Safety Cert" },
   ];
 
   const FADV_FIELD_OPTIONS = [
@@ -1288,6 +1305,62 @@ function ActionEditor({
               <span className="text-sm text-gray-500 w-28 shrink-0">Write result to</span>
               <ColumnPicker
                 columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
+                selectedId={action.config.output_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, output_column_id: id } })
+                }
+                placeholder="output column"
+              />
+            </div>
+          </div>
+        )}
+
+        {action.type === "safety_trainer.submit" && (
+          <div className="w-full space-y-3 pt-1">
+            {/* Driver FedEx ID column — text or number only */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-36 shrink-0">Driver FedEx ID from</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "text" || c.type === "number")}
+                selectedId={action.config.driver_fedex_id_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, driver_fedex_id_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Stage 1 Start Date column — date only */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-36 shrink-0">Stage 1 Start Date from</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "date")}
+                selectedId={action.config.start_date_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, start_date_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Stage 1 Completion Date column — date only */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-36 shrink-0">Completion Date from</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "date")}
+                selectedId={action.config.completion_date_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, completion_date_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Output column — text only */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
+              <span className="text-sm text-gray-500 w-36 shrink-0">Write result to</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "text")}
                 selectedId={action.config.output_column_id}
                 onSelect={(id) =>
                   onChange({ config: { ...action.config, output_column_id: id } })

@@ -13,6 +13,7 @@ import { decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 import { doLoginSteps } from "./login";
 import { launchFadvContext, saveFadvCookies } from "./browser";
+import { loadDbCookies, saveDbCookies } from "./cookie-store";
 import {
   SEL_FIRST_NAME,
   SEL_LAST_NAME,
@@ -359,6 +360,12 @@ export interface FadvApiCallParams {
   password: string | null;
   /** Decrypted security answer — NEVER log */
   securityAnswer: string | null;
+  /**
+   * Supabase company UUID. When provided, session cookies are loaded from the
+   * database before launching the browser (cold-start fallback) and saved back
+   * after a successful login (for serverless resilience).
+   */
+  companyId?: string;
 }
 
 export async function runFadvApiCall(
@@ -379,6 +386,7 @@ export async function runFadvApiCall(
     username:       params.username,
     password:       params.password,
     securityAnswer: params.securityAnswer,
+    companyId:      params.companyId,
   });
 }
 
@@ -405,6 +413,8 @@ async function callFadvCreateSubject(params: {
   password: string | null;
   /** Decrypted security answer — NEVER log this value */
   securityAnswer: string | null;
+  /** Supabase company UUID — enables DB cookie persistence for cold-start resilience */
+  companyId?: string;
 }): Promise<{ success: boolean; subjectId?: string; error?: string }> {
 
   if (
@@ -429,9 +439,12 @@ async function callFadvCreateSubject(params: {
     // password + securityAnswer intentionally NOT logged
   });
 
+  // Load DB cookies as a cold-start fallback (serverless: /tmp is wiped on cold start)
+  const dbCookies = params.companyId ? await loadDbCookies(params.companyId) : undefined;
+
   // Persistent context — session cookies are saved to disk so FADV skips the
   // security question on all runs after the first (same behaviour as a real browser).
-  const context = await launchFadvContext(params.clientId);
+  const context = await launchFadvContext(params.clientId, dbCookies ?? undefined);
   const page    = await context.newPage();
 
   try {
@@ -447,8 +460,12 @@ async function callFadvCreateSubject(params: {
       return { success: false, error: `FADV login failed: ${loginResult.message}` };
     }
 
-    // Save session cookies so the next run skips the security question
-    await saveFadvCookies(context, params.clientId);
+    // Save session cookies so the next run skips the security question.
+    // Also persist to DB for serverless cold-start resilience.
+    const savedCookies = await saveFadvCookies(context, params.clientId);
+    if (params.companyId && savedCookies.length > 0) {
+      await saveDbCookies(params.companyId, savedCookies);
+    }
 
     // ── Step 2: Navigate to New Subject form ───────────────────────────────────
     // Click the "Profile Advantage" top-level nav item to expand its sub-menu

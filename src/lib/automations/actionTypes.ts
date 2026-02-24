@@ -2,7 +2,7 @@
  * Canonical list of all allowed automation_actions.type values.
  *
  * KEEP THIS IN SYNC WITH the DB check constraint in:
- *   supabase/migrations/00071_automation_action_types_fadv.sql
+ *   supabase/migrations/00073_safety_trainer_action_type.sql
  *
  * HOW TO ADD A NEW ACTION TYPE:
  *   1. Add the string to AUTOMATION_ACTION_TYPES below.
@@ -35,6 +35,8 @@ export const AUTOMATION_ACTION_TYPES = [
   // ── Integration / FADV actions ──────────────────────────────────────────────
   "integration.set_field",
   "fadv.add_subject",
+  // ── Safety Trainer Hub ──────────────────────────────────────────────────────
+  "safety_trainer.submit",
 ] as const;
 
 /** TypeScript union of every allowed action type string. */

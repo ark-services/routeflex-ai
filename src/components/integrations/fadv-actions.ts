@@ -436,12 +436,15 @@ export async function testFadvConnection(
       };
     }
 
-    // Attempt the two-step login
+    // Attempt the two-step login.
+    // Pass companyId so session cookies are loaded from (and saved back to) the DB,
+    // giving serverless deployments cold-start resilience.
     const loginResult = await performFadvLogin({
       clientId:       connection.client_id!,
       username:       connection.username!,
       password,
       securityAnswer,
+      companyId,
     });
 
     if (!loginResult.success) {

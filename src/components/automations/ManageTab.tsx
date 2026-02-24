@@ -124,8 +124,9 @@ export function ManageTab({
         'send_email_gmail':     'send email gmail',
         'twilio.send_sms':      'send sms',
         'twilio.make_call_say': 'make call',
-        'integration.set_field':'set fadv field',
-        'fadv.add_subject':     'add to fadv',
+        'integration.set_field':    'set fadv field',
+        'fadv.add_subject':         'add to fadv',
+        'safety_trainer.submit':    'impact solutions safety cert',
       };
       return (labelMap[action.type] || action.type).includes(query);
     });

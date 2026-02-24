@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { validateEmail, validatePhone, validateLocation } from "@/lib/validation/columnValidation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
+const VERBOSE = false; // set to true to re-enable verbose action logs
+
 /** Returns actor name from user metadata for activity log entries. */
 function actorName(user: { user_metadata?: { full_name?: string }; email?: string } | null): string {
   return user?.user_metadata?.full_name ?? user?.email ?? "Someone";
@@ -97,7 +99,7 @@ export async function bulkMoveApplicants(
   // Get current user info for debugging
   const { data: { user } } = await supabase.auth.getUser();
 
-  console.log('[bulkMoveApplicants] Called with:', {
+  if (VERBOSE) console.log('[bulkMoveApplicants] Called with:', {
     userId: user?.id,
     userEmail: user?.email,
     companyId,
@@ -113,7 +115,7 @@ export async function bulkMoveApplicants(
     .select("id, full_name, group_id")
     .in("id", applicantIds);
 
-  console.log('[bulkMoveApplicants] Pre-move check:', {
+  if (VERBOSE) console.log('[bulkMoveApplicants] Pre-move check:', {
     requestedCount: applicantIds.length,
     foundCount: existingApplicants?.length || 0,
     applicants: existingApplicants?.map(a => ({ id: a.id, name: a.full_name, currentGroup: a.group_id })),
@@ -137,7 +139,7 @@ export async function bulkMoveApplicants(
     .eq("id", companyId)
     .maybeSingle();
 
-  console.log('[bulkMoveApplicants] Permission check:', {
+  if (VERBOSE) console.log('[bulkMoveApplicants] Permission check:', {
     userMembership: membership,
     companyAccount: company?.account_id,
     hasPermission: membership?.account_id === company?.account_id,
@@ -151,7 +153,7 @@ export async function bulkMoveApplicants(
     .eq("id", groupId)
     .maybeSingle();
 
-  console.log('[bulkMoveApplicants] Target group check:', {
+  if (VERBOSE) console.log('[bulkMoveApplicants] Target group check:', {
     groupId,
     groupExists: !!targetGroup,
     groupName: targetGroup?.name,
@@ -179,7 +181,7 @@ export async function bulkMoveApplicants(
     throw new Error(`Bulk move failed: ${error.message}`);
   }
 
-  console.log('[bulkMoveApplicants] Move result:', {
+  if (VERBOSE) console.log('[bulkMoveApplicants] Move result:', {
     movedCount: count,
     requestedCount: applicantIds.length,
     success: count === applicantIds.length,
@@ -203,14 +205,14 @@ export async function bulkMoveApplicants(
   }
 
   if (count !== applicantIds.length) {
-    console.warn('[bulkMoveApplicants] Partial move:', {
+    if (VERBOSE) console.warn('[bulkMoveApplicants] Partial move:', {
       requested: applicantIds.length,
       moved: count,
       missing: applicantIds.length - (count || 0),
     });
   }
 
-  console.log(`[bulkMoveApplicants] ✓ Successfully moved ${count} applicant(s) to ${targetGroup.name}`);
+  if (VERBOSE) console.log(`[bulkMoveApplicants] ✓ Successfully moved ${count} applicant(s) to ${targetGroup.name}`);
 
   // Log activity
   try {
@@ -241,7 +243,7 @@ export async function bulkDeleteApplicants(
   // Get current user info for debugging
   const { data: { user } } = await supabase.auth.getUser();
 
-  console.log('[bulkDeleteApplicants] Called with:', {
+  if (VERBOSE) console.log('[bulkDeleteApplicants] Called with:', {
     userId: user?.id,
     userEmail: user?.email,
     companyId,
@@ -256,7 +258,7 @@ export async function bulkDeleteApplicants(
     .select("id, full_name")
     .in("id", applicantIds);
 
-  console.log('[bulkDeleteApplicants] Pre-delete check:', {
+  if (VERBOSE) console.log('[bulkDeleteApplicants] Pre-delete check:', {
     requestedCount: applicantIds.length,
     foundCount: existingApplicants?.length || 0,
     applicants: existingApplicants?.map(a => ({ id: a.id, name: a.full_name })),
@@ -280,7 +282,7 @@ export async function bulkDeleteApplicants(
     .eq("id", companyId)
     .maybeSingle();
 
-  console.log('[bulkDeleteApplicants] Permission check:', {
+  if (VERBOSE) console.log('[bulkDeleteApplicants] Permission check:', {
     userMembership: membership,
     companyAccount: company?.account_id,
     hasPermission: membership?.account_id === company?.account_id,
@@ -305,7 +307,7 @@ export async function bulkDeleteApplicants(
     throw new Error(`Bulk delete failed: ${error.message}`);
   }
 
-  console.log('[bulkDeleteApplicants] Delete result:', {
+  if (VERBOSE) console.log('[bulkDeleteApplicants] Delete result:', {
     deletedCount: count,
     requestedCount: applicantIds.length,
     success: count === applicantIds.length,
@@ -326,14 +328,14 @@ export async function bulkDeleteApplicants(
   }
 
   if (count !== applicantIds.length) {
-    console.warn('[bulkDeleteApplicants] Partial delete:', {
+    if (VERBOSE) console.warn('[bulkDeleteApplicants] Partial delete:', {
       requested: applicantIds.length,
       deleted: count,
       missing: applicantIds.length - (count || 0),
     });
   }
 
-  console.log(`[bulkDeleteApplicants] Successfully deleted ${count} applicant(s)`);
+  if (VERBOSE) console.log(`[bulkDeleteApplicants] Successfully deleted ${count} applicant(s)`);
 
   revalidatePath(dashPath(companyId, jobId));
 }
@@ -989,8 +991,8 @@ export async function updateStatusLabel(
 ) {
   const supabase = await createClient();
 
-  console.log("[updateStatusLabel] ========================================");
-  console.log("[updateStatusLabel] Input:", {
+  if (VERBOSE) console.log("[updateStatusLabel] ========================================");
+  if (VERBOSE) console.log("[updateStatusLabel] Input:", {
     labelId,
     updates,
     companyId,
@@ -1009,7 +1011,7 @@ export async function updateStatusLabel(
     throw new Error("Label not found");
   }
 
-  console.log("[updateStatusLabel] Existing label before update:", existingLabel);
+  if (VERBOSE) console.log("[updateStatusLabel] Existing label before update:", existingLabel);
 
   // If updating color, check for uniqueness constraint
   if (updates.color && updates.color !== existingLabel.color) {
@@ -1038,7 +1040,7 @@ export async function updateStatusLabel(
     .eq("id", existingLabel.column_id)
     .single();
 
-  console.log("[updateStatusLabel] Column info:", column);
+  if (VERBOSE) console.log("[updateStatusLabel] Column info:", column);
 
   // Perform update and return data to confirm it worked
   const { data: updatedLabel, error, count } = await supabase
@@ -1066,10 +1068,10 @@ export async function updateStatusLabel(
     throw new Error(error.message);
   }
 
-  console.log("[updateStatusLabel] ✓ Update successful");
-  console.log("[updateStatusLabel] Updated label:", updatedLabel);
-  console.log("[updateStatusLabel] Rows affected:", count || 1);
-  console.log("[updateStatusLabel] ========================================");
+  if (VERBOSE) console.log("[updateStatusLabel] ✓ Update successful");
+  if (VERBOSE) console.log("[updateStatusLabel] Updated label:", updatedLabel);
+  if (VERBOSE) console.log("[updateStatusLabel] Rows affected:", count || 1);
+  if (VERBOSE) console.log("[updateStatusLabel] ========================================");
 
   // Revalidate the path so the board reflects changes when modal closes
   revalidatePath(dashPath(companyId, jobId));
@@ -1084,7 +1086,7 @@ export async function deleteStatusLabel(
 ) {
   const supabase = await createClient();
 
-  console.log("[deleteStatusLabel] Starting safe delete:", {
+  if (VERBOSE) console.log("[deleteStatusLabel] Starting safe delete:", {
     labelId,
     companyId,
     jobId,
@@ -1102,7 +1104,7 @@ export async function deleteStatusLabel(
     throw new Error("Label not found");
   }
 
-  console.log("[deleteStatusLabel] Label to delete:", labelToDelete);
+  if (VERBOSE) console.log("[deleteStatusLabel] Label to delete:", labelToDelete);
 
   // Step 2: Get all labels for this column to find the fallback
   const { data: allLabels, error: labelsError } = await supabase
@@ -1116,7 +1118,7 @@ export async function deleteStatusLabel(
     throw new Error("Failed to fetch column labels");
   }
 
-  console.log("[deleteStatusLabel] All labels in column:", allLabels);
+  if (VERBOSE) console.log("[deleteStatusLabel] All labels in column:", allLabels);
 
   // Step 3: Determine fallback label (first label or one named "None")
   let fallbackLabel = allLabels.find((l) => l.label.toLowerCase() === "none");
@@ -1124,7 +1126,7 @@ export async function deleteStatusLabel(
     fallbackLabel = allLabels[0];
   }
 
-  console.log("[deleteStatusLabel] Fallback label:", fallbackLabel);
+  if (VERBOSE) console.log("[deleteStatusLabel] Fallback label:", fallbackLabel);
 
   // Step 4: Prevent deletion of the fallback label
   if (labelToDelete.id === fallbackLabel?.id) {
@@ -1153,7 +1155,7 @@ export async function deleteStatusLabel(
     throw new Error("Failed to fetch column information");
   }
 
-  console.log("[deleteStatusLabel] Column info:", column);
+  if (VERBOSE) console.log("[deleteStatusLabel] Column info:", column);
 
   // Step 7: Reassign all cells using this label to the fallback label (ATOMIC TRANSACTION)
   // First, count how many cells will be affected
@@ -1163,7 +1165,7 @@ export async function deleteStatusLabel(
     .eq("value_status_label_id", labelId)
     .eq("column_id", labelToDelete.column_id);
 
-  console.log("[deleteStatusLabel] Cells to reassign:", affectedCells);
+  if (VERBOSE) console.log("[deleteStatusLabel] Cells to reassign:", affectedCells);
 
   // Reassign cells to fallback label
   if (affectedCells && affectedCells > 0) {
@@ -1178,7 +1180,7 @@ export async function deleteStatusLabel(
       throw new Error(`Failed to reassign cells: ${reassignError.message}`);
     }
 
-    console.log(`[deleteStatusLabel] Successfully reassigned ${affectedCells} cells to fallback label:`, {
+    if (VERBOSE) console.log(`[deleteStatusLabel] Successfully reassigned ${affectedCells} cells to fallback label:`, {
       fromLabel: labelToDelete.label,
       toLabel: fallbackLabel.label,
       cellsReassigned: affectedCells,
@@ -1196,7 +1198,7 @@ export async function deleteStatusLabel(
     throw new Error(`Failed to delete label: ${deleteError.message}`);
   }
 
-  console.log("[deleteStatusLabel] ✓ Successfully deleted label:", {
+  if (VERBOSE) console.log("[deleteStatusLabel] ✓ Successfully deleted label:", {
     labelId: labelToDelete.id,
     labelName: labelToDelete.label,
     cellsReassigned: affectedCells || 0,
@@ -1224,7 +1226,7 @@ export async function updateBoardCell(
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   // Log all parameters for debugging
-  console.log('[updateBoardCell] Called with parameters:', {
+  if (VERBOSE) console.log('[updateBoardCell] Called with parameters:', {
     companyId,
     jobId,
     applicantId,
@@ -1334,7 +1336,7 @@ export async function updateBoardCell(
     cellData.value_text = trimmed || null;
   }
 
-  console.log('[updateBoardCell] Upserting cell data:', cellData);
+  if (VERBOSE) console.log('[updateBoardCell] Upserting cell data:', cellData);
 
   const { error, data } = await supabase
     .from("board_cells")
@@ -1353,7 +1355,7 @@ export async function updateBoardCell(
     return { ok: false, kind: "server", message: "Something went wrong. Please try again." };
   }
 
-  console.log('[updateBoardCell] Success:', data);
+  if (VERBOSE) console.log('[updateBoardCell] Success:', data);
 
   // Sync FADV columns to applicant_integration_fields
   if (
@@ -1458,7 +1460,7 @@ export async function updateBoardCell(
         },
       });
 
-      console.log('[updateBoardCell] Automation trigger fired:', {
+      if (VERBOSE) console.log('[updateBoardCell] Automation trigger fired:', {
         trigger: 'board.status_changes_to',
         column: column?.name,
         oldLabel,
@@ -1504,7 +1506,7 @@ export async function bulkUpdateStatusCells(
   columnId: string,
   statusLabelId: string
 ) {
-  console.log('[bulkUpdateStatusCells] Called with:', {
+  if (VERBOSE) console.log('[bulkUpdateStatusCells] Called with:', {
     companyId,
     jobId,
     applicantIds,
@@ -1539,7 +1541,7 @@ export async function bulkUpdateStatusCells(
 
   const newLabel = newLabelData?.label || null;
 
-  console.log('[bulkUpdateStatusCells] Column and label info:', {
+  if (VERBOSE) console.log('[bulkUpdateStatusCells] Column and label info:', {
     columnName: column.name,
     boardId: column.board_id,
     newLabel,
@@ -1622,7 +1624,7 @@ export async function bulkUpdateStatusCells(
             },
           });
 
-          console.log(`[bulkUpdateStatusCells] Automation fired for applicant ${applicantId}:`, {
+          if (VERBOSE) console.log(`[bulkUpdateStatusCells] Automation fired for applicant ${applicantId}:`, {
             oldLabel,
             newLabel,
           });
@@ -1640,7 +1642,7 @@ export async function bulkUpdateStatusCells(
     }
   }
 
-  console.log('[bulkUpdateStatusCells] Bulk update complete:', {
+  if (VERBOSE) console.log('[bulkUpdateStatusCells] Bulk update complete:', {
     total: applicantIds.length,
     successful: results.length,
     failed: errors.length,
@@ -1673,7 +1675,7 @@ export async function moveApplicant(
   // Get current user info for debugging
   const { data: { user } } = await supabase.auth.getUser();
 
-  console.log('[moveApplicant] Called with:', {
+  if (VERBOSE) console.log('[moveApplicant] Called with:', {
     userId: user?.id,
     userEmail: user?.email,
     companyId,
@@ -1689,7 +1691,7 @@ export async function moveApplicant(
     .eq("id", applicantId)
     .maybeSingle();
 
-  console.log('[moveApplicant] Pre-move check:', {
+  if (VERBOSE) console.log('[moveApplicant] Pre-move check:', {
     found: !!existingApplicant,
     applicant: existingApplicant,
     checkError: checkError?.message,
@@ -1717,7 +1719,7 @@ export async function moveApplicant(
     .eq("id", companyId)
     .maybeSingle();
 
-  console.log('[moveApplicant] Permission check:', {
+  if (VERBOSE) console.log('[moveApplicant] Permission check:', {
     userMembership: membership,
     companyAccount: company?.account_id,
     hasPermission: membership?.account_id === company?.account_id,
@@ -1731,7 +1733,7 @@ export async function moveApplicant(
     .eq("id", groupId)
     .maybeSingle();
 
-  console.log('[moveApplicant] Target group check:', {
+  if (VERBOSE) console.log('[moveApplicant] Target group check:', {
     groupId,
     groupExists: !!targetGroup,
     groupName: targetGroup?.name,
@@ -1760,7 +1762,7 @@ export async function moveApplicant(
     throw new Error(`Move failed: ${error.message}`);
   }
 
-  console.log('[moveApplicant] Move result:', {
+  if (VERBOSE) console.log('[moveApplicant] Move result:', {
     movedCount: count,
     success: count === 1,
     fromGroup: existingApplicant.group_id,
@@ -1783,7 +1785,7 @@ export async function moveApplicant(
     throw new Error('Failed to move applicant. You may not have update permissions.');
   }
 
-  console.log('[moveApplicant] ✓ Successfully moved applicant:', {
+  if (VERBOSE) console.log('[moveApplicant] ✓ Successfully moved applicant:', {
     name: existingApplicant.full_name,
     fromGroup: existingApplicant.group_id,
     toGroup: targetGroup.name,
@@ -1818,7 +1820,7 @@ export async function deleteApplicant(
   // Get current user info for debugging
   const { data: { user } } = await supabase.auth.getUser();
 
-  console.log('[deleteApplicant] Called with:', {
+  if (VERBOSE) console.log('[deleteApplicant] Called with:', {
     userId: user?.id,
     userEmail: user?.email,
     companyId,
@@ -1833,7 +1835,7 @@ export async function deleteApplicant(
     .eq("id", applicantId)
     .maybeSingle();
 
-  console.log('[deleteApplicant] Pre-delete check:', {
+  if (VERBOSE) console.log('[deleteApplicant] Pre-delete check:', {
     found: !!existingApplicant,
     applicant: existingApplicant,
     checkError: checkError?.message,
@@ -1861,7 +1863,7 @@ export async function deleteApplicant(
     .eq("id", companyId)
     .maybeSingle();
 
-  console.log('[deleteApplicant] Permission check:', {
+  if (VERBOSE) console.log('[deleteApplicant] Permission check:', {
     userMembership: membership,
     companyAccount: company?.account_id,
     hasPermission: membership?.account_id === company?.account_id,
@@ -1885,7 +1887,7 @@ export async function deleteApplicant(
     throw new Error(`Delete failed: ${error.message}`);
   }
 
-  console.log('[deleteApplicant] Delete result:', {
+  if (VERBOSE) console.log('[deleteApplicant] Delete result:', {
     deletedCount: count,
     success: count === 1,
   });
@@ -1903,7 +1905,7 @@ export async function deleteApplicant(
     throw new Error('Failed to delete applicant. You may not have delete permissions.');
   }
 
-  console.log('[deleteApplicant] Successfully deleted applicant:', existingApplicant.full_name);
+  if (VERBOSE) console.log('[deleteApplicant] Successfully deleted applicant:', existingApplicant.full_name);
 
   // Log activity
   try {
@@ -2011,7 +2013,7 @@ export async function reorderApplicants(
   // Get current user info for debugging
   const { data: { user } } = await supabase.auth.getUser();
 
-  console.log('[reorderApplicants] Called with:', {
+  if (VERBOSE) console.log('[reorderApplicants] Called with:', {
     userId: user?.id,
     userEmail: user?.email,
     companyId,
@@ -2028,7 +2030,7 @@ export async function reorderApplicants(
     .eq("id", applicantId)
     .maybeSingle();
 
-  console.log('[reorderApplicants] Pre-reorder check:', {
+  if (VERBOSE) console.log('[reorderApplicants] Pre-reorder check:', {
     found: !!existingApplicant,
     applicant: existingApplicant,
     checkError: checkError?.message,
@@ -2061,7 +2063,7 @@ export async function reorderApplicants(
     throw new Error(`Reorder failed: ${error.message}`);
   }
 
-  console.log('[reorderApplicants] Reorder result:', {
+  if (VERBOSE) console.log('[reorderApplicants] Reorder result:', {
     updatedCount: count,
     success: count === 1,
     oldPosition: existingApplicant.position,
@@ -2083,7 +2085,7 @@ export async function reorderApplicants(
     throw new Error('Failed to reorder applicant. You may not have update permissions.');
   }
 
-  console.log('[reorderApplicants] ✓ Successfully reordered applicant:', {
+  if (VERBOSE) console.log('[reorderApplicants] ✓ Successfully reordered applicant:', {
     name: existingApplicant.full_name,
     position: `${existingApplicant.position} → ${newPosition}`,
     group: groupId || '(no group)',
@@ -2160,7 +2162,7 @@ export async function quickCreateApplicant(
     throw new Error(error.message);
   }
 
-  console.log("[quickCreateApplicant] Created:", newApplicant);
+  if (VERBOSE) console.log("[quickCreateApplicant] Created:", newApplicant);
 
   // Log activity
   try {

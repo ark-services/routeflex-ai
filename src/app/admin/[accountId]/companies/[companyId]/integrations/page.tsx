@@ -1,16 +1,14 @@
 import { requireAdmin } from "@/lib/rbac";
 import { requireCompanyAccess } from "@/lib/integrations/requireCompanyAccess";
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui/card";
-import { Mail, Check } from "lucide-react";
-import { GmailConnectButton } from "@/components/integrations/GmailConnectButton";
-import { GmailDisconnectButton } from "@/components/integrations/GmailDisconnectButton";
-import { GmailReconnectButton } from "@/components/integrations/GmailReconnectButton";
 import { getGmailConnection } from "@/components/integrations/actions";
+import { GmailCard } from "@/components/integrations/GmailCard";
 import { getTwilioConnection } from "@/components/integrations/twilio-actions";
 import { TwilioCard } from "@/components/integrations/TwilioCard";
 import { getFadvConnection } from "@/components/integrations/fadv-actions";
 import { FadvCard } from "@/components/integrations/FadvCard";
+import { getSafetyTrainerConnection } from "@/components/integrations/safety-trainer-actions";
+import { SafetyTrainerCard } from "@/components/integrations/SafetyTrainerCard";
 import { IntegrationsClient } from "./IntegrationsClient";
 
 export default async function CompanyIntegrationsPage({
@@ -28,13 +26,13 @@ export default async function CompanyIntegrationsPage({
   const company = await requireCompanyAccess(supabase, accountId, companyId);
 
   // 3. Fetch integration state
-  const [gmailConnection, twilioConnection, fadvConnection] = await Promise.all([
-    getGmailConnection(companyId),
-    getTwilioConnection(companyId),
-    getFadvConnection(companyId),
-  ]);
-
-  const gmailConnected = !!gmailConnection;
+  const [gmailConnection, twilioConnection, fadvConnection, safetyTrainerConnection] =
+    await Promise.all([
+      getGmailConnection(companyId),
+      getTwilioConnection(companyId),
+      getFadvConnection(companyId),
+      getSafetyTrainerConnection(companyId),
+    ]);
 
   return (
     <IntegrationsClient>
@@ -47,40 +45,11 @@ export default async function CompanyIntegrationsPage({
         </div>
 
         {/* ── Gmail ─────────────────────────────────────────────────────── */}
-        <Card className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                <Mail className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-stone-900">Gmail</h3>
-                <p className="text-sm text-stone-600 mt-1">
-                  Send automated emails through your Gmail account
-                </p>
-                {gmailConnected && (
-                  <div className="mt-3 flex items-center gap-2 text-sm flex-wrap">
-                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                    <span className="text-green-700 font-medium">Connected</span>
-                    <span className="text-stone-400">•</span>
-                    <span className="text-stone-500">{gmailConnection!.email}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:flex-shrink-0">
-              {gmailConnected ? (
-                <>
-                  <GmailReconnectButton accountId={accountId} companyId={companyId} />
-                  <GmailDisconnectButton accountId={accountId} companyId={companyId} />
-                </>
-              ) : (
-                <GmailConnectButton accountId={accountId} companyId={companyId} />
-              )}
-            </div>
-          </div>
-        </Card>
+        <GmailCard
+          companyId={companyId}
+          accountId={accountId}
+          initialConnection={gmailConnection}
+        />
 
         {/* ── Twilio ────────────────────────────────────────────────────── */}
         <TwilioCard
@@ -94,6 +63,13 @@ export default async function CompanyIntegrationsPage({
           companyId={companyId}
           accountId={accountId}
           initialConnection={fadvConnection}
+        />
+
+        {/* ── Impact Solutions Safety Trainer Hub ───────────────────── */}
+        <SafetyTrainerCard
+          companyId={companyId}
+          accountId={accountId}
+          initialConnection={safetyTrainerConnection}
         />
       </div>
     </IntegrationsClient>

@@ -13,17 +13,19 @@
  * file-lock fragility.
  *
  * Usage:
- *   const context = await launchFadvContext(clientId);
+ *   const dbCookies = await loadDbCookies(companyId);  // optional cold-start fallback
+ *   const context = await launchFadvContext(clientId, dbCookies ?? undefined);
  *   try {
  *     const page = await context.newPage();
  *     // ... automation
- *     await saveFadvCookies(context, clientId); // call after successful login
+ *     const cookies = await saveFadvCookies(context, clientId); // call after successful login
+ *     await saveDbCookies(companyId, cookies);                  // persist to DB too
  *   } finally {
  *     await context.close(); // closes both context AND the underlying browser
  *   }
  */
 
-import { chromium as playwrightChromium, BrowserContext } from "playwright-core";
+import { chromium as playwrightChromium, BrowserContext, Cookie } from "playwright-core";
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 
@@ -52,7 +54,12 @@ function cookiesPathForClient(clientId: string): string {
  * context.close() is patched to also close the underlying Browser so callers
  * don't need to track a separate browser reference.
  */
-export async function launchFadvContext(clientId = "default"): Promise<BrowserContext> {
+/**
+ * @param clientId   FADV Client ID — used as the filesystem cookie file key.
+ * @param seedCookies Optional cookies loaded from the database (cold-start fallback).
+ *                    Injected only when no filesystem cookie file exists.
+ */
+export async function launchFadvContext(clientId = "default", seedCookies?: Cookie[]): Promise<BrowserContext> {
   let context: BrowserContext;
 
   if (isServerless) {
@@ -68,7 +75,7 @@ export async function launchFadvContext(clientId = "default"): Promise<BrowserCo
   } else {
     console.log("[launchFadvContext] Playwright Chromium (ephemeral)");
     const browser = await playwrightChromium.launch({
-      headless: true,
+      headless: process.env.FADV_HEADED !== "true",
       // Remove --enable-automation (Playwright's default) — FADV's backend
       // detects it and silently rejects the login POST.
       ignoreDefaultArgs: ["--enable-automation"],
@@ -85,14 +92,25 @@ export async function launchFadvContext(clientId = "default"): Promise<BrowserCo
 
   // Inject previously saved FADV session cookies so the security question is
   // skipped on all runs after the first successful login.
+  //
+  // Precedence:
+  //   1. Filesystem cookies — primary store (local dev + warm serverless instances)
+  //   2. DB cookies (seedCookies) — cold-start fallback when no filesystem file exists
   const cookiesPath = cookiesPathForClient(clientId);
   if (existsSync(cookiesPath)) {
     try {
       const saved = JSON.parse(readFileSync(cookiesPath, "utf-8"));
       await context.addCookies(saved);
-      console.log(`[launchFadvContext] Injected ${saved.length} saved FADV cookies`);
+      console.log(`[launchFadvContext] Injected ${saved.length} saved FADV cookies (filesystem)`);
     } catch {
       console.warn("[launchFadvContext] Failed to load saved cookies — starting fresh");
+    }
+  } else if (seedCookies?.length) {
+    try {
+      await context.addCookies(seedCookies);
+      console.log(`[launchFadvContext] Injected ${seedCookies.length} FADV cookies (DB cold-start fallback)`);
+    } catch {
+      console.warn("[launchFadvContext] Failed to inject DB seed cookies — starting fresh");
     }
   }
 
@@ -102,20 +120,26 @@ export async function launchFadvContext(clientId = "default"): Promise<BrowserCo
 /**
  * Save the FADV session cookies from the current context to disk so the next
  * run can skip the security question. Call this after a successful login.
+ *
+ * Returns the saved cookie array so callers can also persist it to the database
+ * via saveDbCookies (for serverless cold-start resilience). Returns an empty
+ * array on error (non-fatal).
  */
 export async function saveFadvCookies(
   context: BrowserContext,
   clientId: string
-): Promise<void> {
+): Promise<Cookie[]> {
   try {
     const cookies = await context.cookies("https://enterprise.fadv.com");
     const cookiesPath = cookiesPathForClient(clientId);
     mkdirSync(dirname(cookiesPath), { recursive: true });
     writeFileSync(cookiesPath, JSON.stringify(cookies, null, 2));
     console.log(`[saveFadvCookies] Saved ${cookies.length} FADV cookies for client ${clientId}`);
+    return cookies;
   } catch (err) {
     // Non-fatal — next run will just need the security question again
     console.warn("[saveFadvCookies] Failed to save cookies:", err);
+    return [];
   }
 }
 

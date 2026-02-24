@@ -21,6 +21,7 @@
 
 import type { Page } from "playwright-core";
 import { launchFadvContext, saveFadvCookies } from "./browser";
+import { loadDbCookies, saveDbCookies } from "./cookie-store";
 import {
   FADV_PORTAL_URL,
   LOGIN_FRAME_NAME,
@@ -68,6 +69,12 @@ export interface FadvLoginParams {
   password: string;
   /** Decrypted FADV security answer */
   securityAnswer: string;
+  /**
+   * Supabase company UUID. When provided, session cookies are loaded from the
+   * database before launching the browser (cold-start fallback) and saved back
+   * to the database after a successful login (for serverless resilience).
+   */
+  companyId?: string;
 }
 
 // ── performFadvLogin ──────────────────────────────────────────────────────────
@@ -102,16 +109,23 @@ export async function performFadvLogin(
     // password + securityAnswer intentionally NOT logged
   });
 
+  // Load DB cookies as a cold-start fallback (serverless: /tmp is wiped on cold start)
+  const dbCookies = params.companyId ? await loadDbCookies(params.companyId) : undefined;
+
   // Persistent context — session cookies survive between test-connection runs.
-  const context = await launchFadvContext(params.clientId);
+  const context = await launchFadvContext(params.clientId, dbCookies ?? undefined);
   const page    = await context.newPage();
 
   try {
     const result = await doLoginSteps(page, params);
     if (!result.success) return result;
 
-    // Save FADV session cookies so the next run skips the security question
-    await saveFadvCookies(context, params.clientId);
+    // Save FADV session cookies so the next run skips the security question.
+    // Also persist to DB for serverless cold-start resilience.
+    const savedCookies = await saveFadvCookies(context, params.clientId);
+    if (params.companyId && savedCookies.length > 0) {
+      await saveDbCookies(params.companyId, savedCookies);
+    }
 
     // Extract all cookies as a serialized string for potential reuse
     const cookies = await context.cookies();
