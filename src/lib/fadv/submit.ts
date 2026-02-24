@@ -488,11 +488,14 @@ async function callFadvCreateSubject(params: {
 
     // Check "CC: Recruiter on Invitation Email" so the recruiter receives a copy
     // of the FADV invitation email sent to the applicant. Non-fatal if not found.
+    // GWT checkboxes respond to click events — use click() not check() so GWT's
+    // JavaScript handlers fire (same pattern as dispatchEvent on the agree button).
     try {
       const ccCheckbox = page.locator(SEL_CC_RECRUITER_INVITATION);
-      const isChecked  = await ccCheckbox.isChecked({ timeout: 5_000 });
+      await ccCheckbox.waitFor({ state: "visible", timeout: 5_000 });
+      const isChecked  = await ccCheckbox.isChecked();
       if (!isChecked) {
-        await ccCheckbox.check();
+        await ccCheckbox.click();
         console.log("[callFadvCreateSubject] Checked CC: Recruiter on Invitation Email");
       } else {
         console.log("[callFadvCreateSubject] CC: Recruiter on Invitation Email already checked");
