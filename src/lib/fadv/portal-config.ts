@@ -100,11 +100,12 @@ export const SEL_EMAIL        = "#CDC_NEW_SUBJECT_EMAIL_ADDRESS";
  * "CC: Recruiter on Invitation Email" checkbox in the Email Information section.
  * Checked so the recruiter receives a copy of the invitation email sent to the applicant.
  *
- * GWT renders this as a <label> wrapping an <input type="checkbox"> followed by the
- * text. Uses :has-text to locate by visible label text rather than a fragile generated ID.
+ * GWT renders this as a <span class="gwt-CheckBox" id="CDC_NEW_SUBJECT_COPY_CC_RECRUITER">
+ * containing an <input type="checkbox"> with a dynamic gwt-uid-* id. The label element is
+ * empty — the visible text lives in an adjacent <td>. Target the stable span id directly.
  */
 export const SEL_CC_RECRUITER_INVITATION =
-  'label:has-text("CC: Recruiter on Invitation Email") input[type="checkbox"]';
+  '#CDC_NEW_SUBJECT_COPY_CC_RECRUITER input[type="checkbox"]';
 
 /**
  * CSP ID dropdown. ID contains a dot so attribute-selector syntax is required.
