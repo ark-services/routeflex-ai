@@ -486,24 +486,6 @@ async function callFadvCreateSubject(params: {
     await page.fill(SEL_LAST_NAME,  params.lastName);
     await page.fill(SEL_EMAIL,      params.email);
 
-    // Check "CC: Recruiter on Invitation Email" so the recruiter receives a copy
-    // of the FADV invitation email sent to the applicant. Non-fatal if not found.
-    // GWT checkboxes respond to click events — use click() not check() so GWT's
-    // JavaScript handlers fire (same pattern as dispatchEvent on the agree button).
-    try {
-      const ccCheckbox = page.locator(SEL_CC_RECRUITER_INVITATION);
-      await ccCheckbox.waitFor({ state: "visible", timeout: 5_000 });
-      const isChecked  = await ccCheckbox.isChecked();
-      if (!isChecked) {
-        await ccCheckbox.click();
-        console.log("[callFadvCreateSubject] Checked CC: Recruiter on Invitation Email");
-      } else {
-        console.log("[callFadvCreateSubject] CC: Recruiter on Invitation Email already checked");
-      }
-    } catch {
-      console.warn("[callFadvCreateSubject] Could not check CC: Recruiter on Invitation Email — continuing");
-    }
-
     // CSP ID — select by value (e.g. "V0021753")
     await page.selectOption(SEL_CSP_ID, { value: params.cspId });
 
@@ -518,6 +500,28 @@ async function callFadvCreateSubject(params: {
     await page.selectOption(SEL_COMPANY_ID,    { value: params.companyIdValue });
     await page.selectOption(SEL_FACILITY_ID,   { value: params.facilityId });
     await page.selectOption(SEL_POSITION_TYPE, { value: params.positionType });
+
+    // Check "CC: Recruiter on Invitation Email" AFTER all dropdowns.
+    // Placed last because GWT dropdown selections can trigger server-side re-renders
+    // that reset checkbox state back to unchecked.
+    // Uses page.evaluate() to dispatch the exact MouseEvent that the console test
+    // confirmed works: new MouseEvent('click', { bubbles:true, cancelable:true, view:window }).
+    // Playwright's locator.dispatchEvent("click") does not pass bubbles:true by default,
+    // which is why the previous attempt failed even though the manual test worked.
+    try {
+      await page.waitForSelector(SEL_CC_RECRUITER_INVITATION, { state: "attached", timeout: 10_000 });
+      const checked = await page.evaluate((sel) => {
+        const input = document.querySelector(sel) as HTMLInputElement | null;
+        if (!input) return { found: false, checked: false };
+        if (!input.checked) {
+          input.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+        }
+        return { found: true, checked: input.checked };
+      }, SEL_CC_RECRUITER_INVITATION);
+      console.log("[callFadvCreateSubject] CC Recruiter checkbox:", checked);
+    } catch (err) {
+      console.warn("[callFadvCreateSubject] Could not check CC: Recruiter on Invitation Email — continuing:", err);
+    }
 
     // ── Step 4: Submit and capture the confirmation dialog ────────────────────
     //
