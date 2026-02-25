@@ -2,7 +2,12 @@
 -- Update get_or_create_action_period to:
 -- 1. Read quota from subscription_plans (instead of hardcoded values)
 -- 2. Expose extra_credits in the return type
+--
+-- Must DROP first because PostgreSQL does not allow CREATE OR REPLACE to
+-- change a function's return type (adding extra_credits column).
 -- ============================================================================
+
+drop function if exists public.get_or_create_action_period(uuid, timestamptz);
 
 create or replace function public.get_or_create_action_period(
   p_account_id uuid,
