@@ -30,7 +30,7 @@ export default async function DashboardLayout({
 
   const { data: companiesData } = await supabase
     .from("companies")
-    .select("id, name, slug, account_id, created_at")
+    .select("id, name, slug, account_id, lms_enabled, created_at")
     .in(
       "account_id",
       accountIds.length ? accountIds : ["00000000-0000-0000-0000-000000000000"]
@@ -49,17 +49,31 @@ export default async function DashboardLayout({
   const userRole = roleByAccount.get(currentCompany.account_id as any) ?? "viewer";
   const isAdmin = userRole === "admin";
   const canCreateCompany = isAdmin;
-  const canCreateJob = userRole !== "viewer";
 
   // Get jobs for current company
-  const { data: jobsData } = await supabase
+  const { data: jobsData, count: jobCount } = await supabase
     .from("jobs")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
   const jobs = (jobsData ?? []) as Job[];
   console.log("[DashboardLayout] Fetched", jobs.length, "jobs for company:", companyId);
+
+  // Fetch plan limits for this account
+  const { data: planLimitsRows } = await supabase.rpc("get_account_plan_limits", {
+    p_account_id: currentCompany.account_id as string,
+  });
+  const planLimits = (planLimitsRows as any)?.[0];
+
+  // Derive feature flags from plan + company settings
+  const hasTemplateAccess = planLimits?.template_access ?? false;
+  const hasLmsAccess = (currentCompany as any).lms_enabled ?? false;
+
+  // canCreateJob: role check + plan job limit check
+  const maxJobs = planLimits?.max_jobs_per_company ?? -1;
+  const atJobLimit = maxJobs !== -1 && (jobCount ?? 0) >= maxJobs;
+  const canCreateJob = userRole !== "viewer" && !atJobLimit;
 
   return (
     <AppShell
@@ -72,6 +86,8 @@ export default async function DashboardLayout({
       isAdmin={isAdmin}
       canCreateCompany={canCreateCompany}
       canCreateJob={canCreateJob}
+      hasTemplateAccess={hasTemplateAccess}
+      hasLmsAccess={hasLmsAccess}
     >
       {children}
     </AppShell>

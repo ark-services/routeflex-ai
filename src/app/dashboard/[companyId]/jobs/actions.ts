@@ -61,6 +61,19 @@ export async function addJob(formData: FormData) {
   console.log("[addJob] ============================================");
 
   // ========================================================================
+  // PLAN LIMIT CHECK: Verify the company hasn't hit its job limit
+  // ========================================================================
+  const { data: canCreate, error: limitError } = await supabase.rpc("can_create_job", {
+    p_company_id: companyId,
+  });
+  if (limitError) {
+    console.error("[addJob] Limit check error:", limitError);
+  }
+  if (!canCreate) {
+    throw new Error("You've reached the job limit for your plan. Please upgrade to add more jobs.");
+  }
+
+  // ========================================================================
   // STEP 1: Create the job
   // ========================================================================
   console.log("[addJob] Inserting job:", { company_id: companyId, title });

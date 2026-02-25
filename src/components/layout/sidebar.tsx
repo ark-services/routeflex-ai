@@ -19,6 +19,8 @@ interface SidebarProps {
   userEmail?: string;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  hasTemplateAccess?: boolean;
+  hasLmsAccess?: boolean;
 }
 
 export function Sidebar({
@@ -30,6 +32,8 @@ export function Sidebar({
   userEmail,
   mobileOpen = false,
   onMobileClose,
+  hasTemplateAccess = false,
+  hasLmsAccess = false,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [jobSelectOpen, setJobSelectOpen] = useState(false);
@@ -164,31 +168,35 @@ export function Sidebar({
 
         {/* Top-level navigation */}
         <div className="space-y-1">
-          {/* Template Center */}
-          <button
-            onClick={() => router.push(`/dashboard/${companyId}/template-center`)}
-            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
-              isOnTemplateCenter
-                ? "bg-blue-50 text-blue-700 font-medium"
-                : "text-stone-700 hover:bg-stone-100"
-            }`}
-          >
-            <LayoutGrid className={`h-4 w-4 ${isOnTemplateCenter ? "text-blue-600" : "text-stone-500"}`} />
-            Template Center
-          </button>
+          {/* Template Center — only shown if plan includes template_access */}
+          {hasTemplateAccess && (
+            <button
+              onClick={() => router.push(`/dashboard/${companyId}/template-center`)}
+              className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
+                isOnTemplateCenter
+                  ? "bg-blue-50 text-blue-700 font-medium"
+                  : "text-stone-700 hover:bg-stone-100"
+              }`}
+            >
+              <LayoutGrid className={`h-4 w-4 ${isOnTemplateCenter ? "text-blue-600" : "text-stone-500"}`} />
+              Template Center
+            </button>
+          )}
 
-          {/* Training */}
-          <button
-            onClick={() => router.push(`/dashboard/${companyId}/training`)}
-            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
-              isOnTraining
-                ? "bg-blue-50 text-blue-700 font-medium"
-                : "text-stone-700 hover:bg-stone-100"
-            }`}
-          >
-            <GraduationCap className={`h-4 w-4 ${isOnTraining ? "text-blue-600" : "text-stone-500"}`} />
-            Training
-          </button>
+          {/* Training — only shown if lms_enabled for this company */}
+          {hasLmsAccess && (
+            <button
+              onClick={() => router.push(`/dashboard/${companyId}/training`)}
+              className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
+                isOnTraining
+                  ? "bg-blue-50 text-blue-700 font-medium"
+                  : "text-stone-700 hover:bg-stone-100"
+              }`}
+            >
+              <GraduationCap className={`h-4 w-4 ${isOnTraining ? "text-blue-600" : "text-stone-500"}`} />
+              Training
+            </button>
+          )}
 
           {/* Settings */}
           <button

@@ -4,6 +4,13 @@ import { useState, useRef } from "react";
 import { Upload, X, Building2 } from "lucide-react";
 import { uploadCompanyLogo, removeCompanyLogo, updateCompanyName } from "./actions";
 
+const PLAN_COLORS: Record<string, string> = {
+  free:       "bg-stone-100 text-stone-600",
+  basic:      "bg-blue-50 text-blue-700",
+  pro:        "bg-violet-50 text-violet-700",
+  enterprise: "bg-amber-50 text-amber-700",
+};
+
 interface Props {
   companyId: string;
   company: {
@@ -12,9 +19,12 @@ interface Props {
     logo_url: string | null;
     lms_enabled: boolean;
   };
+  planId: string;
+  actionsUsed: number;
+  actionsQuota: number;
 }
 
-export function SettingsClient({ companyId, company }: Props) {
+export function SettingsClient({ companyId, company, planId, actionsUsed, actionsQuota }: Props) {
   const [name, setName] = useState(company.name);
   const [logoUrl, setLogoUrl] = useState<string | null>(company.logo_url);
   const [savingName, setSavingName] = useState(false);
@@ -163,7 +173,7 @@ export function SettingsClient({ companyId, company }: Props) {
         <p className="text-xs text-stone-500">
           {company.lms_enabled
             ? "The training module is enabled for your account."
-            : "The training module is not enabled for your account. Contact support to upgrade."}
+            : "The training module is not enabled for your account. Contact your account admin to upgrade your plan."}
         </p>
         <div className="mt-2 inline-flex items-center gap-1.5">
           <span
@@ -172,6 +182,25 @@ export function SettingsClient({ companyId, company }: Props) {
           <span className={`text-xs font-medium ${company.lms_enabled ? "text-green-700" : "text-stone-500"}`}>
             {company.lms_enabled ? "Enabled" : "Not enabled"}
           </span>
+        </div>
+      </div>
+
+      {/* Subscription */}
+      <div className="bg-white border border-stone-200 rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-stone-700 mb-3">Subscription</h2>
+        <div className="flex items-center gap-3 mb-3">
+          <span className={`px-2.5 py-1 text-xs font-semibold rounded-full capitalize ${PLAN_COLORS[planId] ?? PLAN_COLORS.free}`}>
+            {planId}
+          </span>
+          <span className="text-xs text-stone-500">
+            {actionsUsed.toLocaleString()} / {actionsQuota.toLocaleString()} actions this period
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-stone-100 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-blue-500 transition-all"
+            style={{ width: `${actionsQuota > 0 ? Math.min(100, (actionsUsed / actionsQuota) * 100) : 0}%` }}
+          />
         </div>
       </div>
     </div>

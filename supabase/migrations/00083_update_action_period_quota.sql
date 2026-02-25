@@ -1,0 +1,87 @@
+-- ============================================================================
+-- Update get_or_create_action_period to:
+-- 1. Read quota from subscription_plans (instead of hardcoded values)
+-- 2. Expose extra_credits in the return type
+-- ============================================================================
+
+create or replace function public.get_or_create_action_period(
+  p_account_id uuid,
+  p_at_date    timestamptz default now()
+)
+returns table(
+  period_start         timestamptz,
+  period_end           timestamptz,
+  quota_units          int,
+  used_units           int,
+  extra_credits        int,
+  locked_editing       boolean,
+  paused_execution     boolean,
+  carryover_debt_units int
+) as $$
+declare
+  v_period_start  timestamptz;
+  v_period_end    timestamptz;
+  v_quota         int;
+  v_period_exists boolean;
+begin
+  -- Get billing period
+  select bp.period_start, bp.period_end
+  into v_period_start, v_period_end
+  from public.get_billing_period(p_account_id, p_at_date) bp;
+
+  raise notice '[get_or_create_action_period] Period: % to %', v_period_start, v_period_end;
+
+  -- Check if period row exists
+  select exists(
+    select 1
+    from public.account_action_periods aap
+    where aap.account_id = p_account_id
+      and aap.period_start = v_period_start
+  ) into v_period_exists;
+
+  raise notice '[get_or_create_action_period] Period exists: %', v_period_exists;
+
+  -- Create period row if it doesn't exist
+  if not v_period_exists then
+    -- Read quota from subscription_plans (replaces hardcoded CASE)
+    select sp.actions_per_month into v_quota
+    from public.accounts a
+    join public.subscription_plans sp on sp.id = a.plan_type
+    where a.id = p_account_id;
+
+    -- Fallback safety net
+    if v_quota is null then
+      v_quota := 1000;
+    end if;
+
+    raise notice '[get_or_create_action_period] Creating period with quota: %', v_quota;
+
+    insert into public.account_action_periods
+      (account_id, period_start, period_end, quota_units)
+    values
+      (p_account_id, v_period_start, v_period_end, v_quota)
+    on conflict (account_id, period_start) do nothing;
+
+    raise notice '[get_or_create_action_period] ✓ Period created';
+  end if;
+
+  -- Return period data including extra_credits
+  return query
+  select
+    aap.period_start,
+    aap.period_end,
+    aap.quota_units,
+    aap.used_units,
+    aap.extra_credits,
+    aap.locked_editing,
+    aap.paused_execution,
+    aap.carryover_debt_units
+  from public.account_action_periods aap
+  where aap.account_id = p_account_id
+    and aap.period_start = v_period_start;
+end;
+$$ language plpgsql;
+
+do $$ begin
+  raise notice '✅ Updated get_or_create_action_period: reads quota from subscription_plans, exposes extra_credits';
+end $$;

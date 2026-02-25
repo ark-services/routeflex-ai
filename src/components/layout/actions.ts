@@ -37,6 +37,17 @@ export async function createCompany(formData: FormData) {
     return { error: "Only admins can create companies" };
   }
 
+  // Check company limit for this account's plan
+  const { data: canCreate, error: limitError } = await supabase.rpc("can_create_company", {
+    p_account_id: accountId,
+  });
+  if (limitError) {
+    console.error("[createCompany] Limit check error:", limitError);
+  }
+  if (!canCreate) {
+    return { error: "You've reached the company limit for your plan. Please upgrade to add more companies." };
+  }
+
   // Create slug from name
   const slug = name
     .toLowerCase()

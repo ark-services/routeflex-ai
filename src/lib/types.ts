@@ -3,6 +3,7 @@ export interface Company {
   name: string;
   slug?: string;
   account_id?: string;
+  lms_enabled?: boolean;
   created_at: string;
 }
 
@@ -18,10 +19,34 @@ export interface CompanyMember {
 export interface Account {
   id: string;
   name: string;
-  plan_type: "basic" | "pro" | "enterprise";
+  plan_type: "free" | "basic" | "pro" | "enterprise";
   max_seats: number;
   billing_anchor_day: number;
   created_at: string;
+}
+
+export interface SubscriptionPlan {
+  id: "free" | "basic" | "pro" | "enterprise";
+  name: string;
+  price_cents: number;
+  max_seats: number;            // -1 = unlimited
+  max_companies: number;        // -1 = unlimited
+  max_jobs_per_company: number; // -1 = unlimited
+  actions_per_month: number;
+  template_access: boolean;
+  lms_access: boolean;
+}
+
+export interface AccountPlanLimits {
+  plan_id: string;
+  plan_name: string;
+  price_cents: number;
+  max_seats: number;
+  max_companies: number;
+  max_jobs_per_company: number;
+  actions_per_month: number;
+  template_access: boolean;
+  lms_access: boolean;
 }
 
 export interface AccountMembership {

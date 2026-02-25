@@ -24,6 +24,8 @@ interface AppShellProps {
   isAdmin: boolean;
   canCreateCompany: boolean;
   canCreateJob: boolean;
+  hasTemplateAccess: boolean;
+  hasLmsAccess: boolean;
   children: React.ReactNode;
 }
 
@@ -37,6 +39,8 @@ export function AppShell({
   isAdmin,
   canCreateCompany,
   canCreateJob,
+  hasTemplateAccess,
+  hasLmsAccess,
   children,
 }: AppShellProps) {
   const [showCreateCompany, setShowCreateCompany] = useState(false);
@@ -112,6 +116,8 @@ export function AppShell({
           userEmail={userEmail}
           mobileOpen={mobileSidebarOpen}
           onMobileClose={() => setMobileSidebarOpen(false)}
+          hasTemplateAccess={hasTemplateAccess}
+          hasLmsAccess={hasLmsAccess}
         />
 
         <main className="flex-1 overflow-auto min-w-0 min-h-0">
