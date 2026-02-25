@@ -415,6 +415,7 @@ async function processSafetyTrainerSubmission(
     driverFedexId:  input_snapshot.driver_fedex_id  ?? "",
     startDate:      input_snapshot.start_date        ?? "",
     completionDate: input_snapshot.completion_date   ?? "",
+    contractNumber: input_snapshot.contract_number   ?? "",
   });
 
   const now = new Date().toISOString();

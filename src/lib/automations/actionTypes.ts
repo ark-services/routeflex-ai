@@ -37,6 +37,8 @@ export const AUTOMATION_ACTION_TYPES = [
   "fadv.add_subject",
   // ── Safety Trainer Hub ──────────────────────────────────────────────────────
   "safety_trainer.submit",
+  // ── LMS (Learning Management System) ───────────────────────────────────────
+  "lms.send_training_link",
 ] as const;
 
 /** TypeScript union of every allowed action type string. */

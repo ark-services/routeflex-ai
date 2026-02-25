@@ -1127,6 +1127,16 @@ export default function ApplicantsBoard({
                                         Send to FADV
                                       </button>
                                       <div className="my-1 border-t border-stone-100" />
+                                      <button
+                                        onClick={() => {
+                                          setRowMenuOpen(null);
+                                          router.push(`/dashboard/${companyId}/applicants/${a.id}/training`);
+                                        }}
+                                        className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50"
+                                      >
+                                        Training Progress
+                                      </button>
+                                      <div className="my-1 border-t border-stone-100" />
                                       <button onClick={() => onDuplicateApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">Duplicate</button>
                                       <button onClick={() => onDeleteApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
                                     </div>
@@ -2071,6 +2081,16 @@ function SortableRow({
                     </button>
                   </>
                 )}
+                <div className="my-1 border-t border-stone-100" />
+                <button
+                  onClick={() => {
+                    setRowMenuOpen(false);
+                    window.location.href = `/dashboard/${companyId}/applicants/${applicant.id}/training`;
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+                >
+                  Training Progress
+                </button>
                 <div className="my-1 border-t border-stone-100" />
                 <button
                   onClick={onDelete}

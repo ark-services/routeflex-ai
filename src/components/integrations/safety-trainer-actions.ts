@@ -47,7 +47,6 @@ export interface SafetyTrainerConnectionData {
   trainerEmail: string;
   trainerFedexId: string;
   companyEntityId: string;
-  contractNumber: string;
   companyName: string;
   /** Never returns the actual base64 data — only presence flag */
   hasSignature: boolean;
@@ -74,7 +73,7 @@ export async function getSafetyTrainerConnection(
   const { data } = await supabase
     .from("safety_trainer_connections")
     .select(
-      "id, company_id, trainer_name, trainer_email, trainer_fedex_id, company_entity_id, contract_number, company_name, signature_data_url, encrypted_trainer_password, is_enabled, created_at, updated_at"
+      "id, company_id, trainer_name, trainer_email, trainer_fedex_id, company_entity_id, company_name, signature_data_url, encrypted_trainer_password, is_enabled, created_at, updated_at"
     )
     .eq("company_id", companyId)
     .maybeSingle();
@@ -91,7 +90,6 @@ export async function getSafetyTrainerConnection(
     trainerEmail: data.trainer_email ?? "",
     trainerFedexId: data.trainer_fedex_id ?? "",
     companyEntityId: data.company_entity_id ?? "",
-    contractNumber: data.contract_number ?? "",
     companyName: data.company_name ?? "",
     hasSignature,
     hasPassword,
@@ -101,7 +99,6 @@ export async function getSafetyTrainerConnection(
       !!(data.trainer_email?.trim()) &&
       !!(data.trainer_fedex_id?.trim()) &&
       !!(data.company_entity_id?.trim()) &&
-      !!(data.contract_number?.trim()) &&
       !!(data.company_name?.trim()) &&
       hasSignature &&
       hasPassword,
@@ -120,7 +117,6 @@ export async function upsertSafetyTrainerConnection(
     trainerEmail: string;
     trainerFedexId: string;
     companyEntityId: string;
-    contractNumber: string;
     companyName: string;
     /** Pass null to keep the existing signature unchanged; pass a data URL to update it */
     signatureDataUrl: string | null;
@@ -140,7 +136,6 @@ export async function upsertSafetyTrainerConnection(
       trainerEmail,
       trainerFedexId,
       companyEntityId,
-      contractNumber,
       companyName,
       signatureDataUrl,
       trainerPassword,
@@ -152,7 +147,6 @@ export async function upsertSafetyTrainerConnection(
     if (!trainerEmail.trim())     return { success: false, error: "Trainer Email is required" };
     if (!trainerFedexId.trim())   return { success: false, error: "Trainer FedEx ID is required" };
     if (!companyEntityId.trim())  return { success: false, error: "Company Entity ID is required" };
-    if (!contractNumber.trim())   return { success: false, error: "Contract Number is required" };
     if (!companyName.trim())      return { success: false, error: "Company Name is required" };
 
     const svcClient = getServiceClient();
@@ -185,7 +179,6 @@ export async function upsertSafetyTrainerConnection(
       trainer_email:     trainerEmail.trim(),
       trainer_fedex_id:  trainerFedexId.trim(),
       company_entity_id: companyEntityId.trim(),
-      contract_number:   contractNumber.trim(),
       company_name:      companyName.trim(),
       is_enabled:        isEnabled,
       updated_at:        new Date().toISOString(),
@@ -270,7 +263,7 @@ export async function updateSafetyTrainerEnabled(
       const { data: row } = await svcClient
         .from("safety_trainer_connections")
         .select(
-          "trainer_name, trainer_email, trainer_fedex_id, company_entity_id, contract_number, company_name, signature_data_url, encrypted_trainer_password"
+          "trainer_name, trainer_email, trainer_fedex_id, company_entity_id, company_name, signature_data_url, encrypted_trainer_password"
         )
         .eq("company_id", companyId)
         .maybeSingle();
@@ -282,7 +275,6 @@ export async function updateSafetyTrainerEnabled(
       if (!row.trainer_email?.trim())           missing.push("Trainer Email");
       if (!row.trainer_fedex_id?.trim())        missing.push("Trainer FedEx ID");
       if (!row.company_entity_id?.trim())       missing.push("Company Entity ID");
-      if (!row.contract_number?.trim())         missing.push("Contract Number");
       if (!row.company_name?.trim())            missing.push("Company Name");
       if (!row.signature_data_url)              missing.push("Signature");
       if (!row.encrypted_trainer_password)      missing.push("Login Password");
@@ -381,7 +373,6 @@ export interface SafetyTrainerConfig {
   trainerEmail: string;
   trainerFedexId: string;
   companyEntityId: string;
-  contractNumber: string;
   companyName: string;
   signatureDataUrl: string;
   /** Decrypted login password for safetytrainer.kellyandersongroup.com */
@@ -400,7 +391,7 @@ export async function loadSafetyTrainerConfig(
   const { data, error } = await supabase
     .from("safety_trainer_connections")
     .select(
-      "trainer_name, trainer_email, trainer_fedex_id, company_entity_id, contract_number, company_name, signature_data_url, encrypted_trainer_password, is_enabled"
+      "trainer_name, trainer_email, trainer_fedex_id, company_entity_id, company_name, signature_data_url, encrypted_trainer_password, is_enabled"
     )
     .eq("company_id", companyId)
     .maybeSingle();
@@ -417,7 +408,6 @@ export async function loadSafetyTrainerConfig(
   if (!data.trainer_email?.trim())           missing.push("Trainer Email");
   if (!data.trainer_fedex_id?.trim())        missing.push("Trainer FedEx ID");
   if (!data.company_entity_id?.trim())       missing.push("Company Entity ID");
-  if (!data.contract_number?.trim())         missing.push("Contract Number");
   if (!data.company_name?.trim())            missing.push("Company Name");
   if (!data.signature_data_url)              missing.push("Signature");
   if (!data.encrypted_trainer_password)      missing.push("Login Password");
@@ -444,7 +434,6 @@ export async function loadSafetyTrainerConfig(
       trainerEmail:     data.trainer_email!,
       trainerFedexId:   data.trainer_fedex_id!,
       companyEntityId:  data.company_entity_id!,
-      contractNumber:   data.contract_number!,
       companyName:      data.company_name!,
       signatureDataUrl: data.signature_data_url!,
       trainerPassword,

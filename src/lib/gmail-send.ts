@@ -154,3 +154,36 @@ export async function sendEmail(
     };
   }
 }
+
+/**
+ * Builds the standard training link email subject + HTML body.
+ * Used by both the automation executor and the manual enrollment action
+ * so both paths send an identical email.
+ */
+export function buildTrainingLinkEmail(params: {
+  firstName: string;
+  companyName: string;
+  logoUrl?: string | null;
+  trainingUrl: string;
+}): { subject: string; body: string } {
+  const { firstName, companyName, logoUrl, trainingUrl } = params;
+  const subject = `Action required: Complete your safety training — ${companyName}`;
+  const body = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; padding: 32px 24px;">
+  ${logoUrl ? `<img src="${logoUrl}" alt="${companyName}" style="height: 48px; margin-bottom: 28px; display: block;" />` : `<p style="font-size: 18px; font-weight: 700; margin-bottom: 28px;">${companyName}</p>`}
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 12px;">Your safety training is ready</h2>
+  <p style="font-size: 15px; color: #555; margin: 0 0 28px; line-height: 1.6;">
+    Hi ${firstName}, please complete your required training before your start date.
+  </p>
+  <a href="${trainingUrl}"
+     style="display: inline-block; background: #1a1a1a; color: #ffffff; text-decoration: none;
+            padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+    Start Training →
+  </a>
+  <p style="font-size: 13px; color: #999; margin-top: 36px; line-height: 1.5;">
+    This link is unique to you and does not expire.<br>
+    If you have any questions, reply to this email.
+  </p>
+</div>`.trim();
+  return { subject, body };
+}

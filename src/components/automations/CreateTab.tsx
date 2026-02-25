@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, X, ChevronDown, Zap } from "lucide-react";
-import { createJobAutomation, updateJobAutomation, getJobBoardColumns } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
+import { createJobAutomation, updateJobAutomation, getJobBoardColumns, getLmsCoursesForCompany } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { EmailGmailEditor } from "./EmailGmailEditor";
 import { SendEmailGmailAction } from "./SendEmailGmailAction";
 import { TwilioSmsAction } from "./TwilioSmsAction";
@@ -116,6 +116,7 @@ export function CreateTab({
   const [actions, setActions] = useState<Action[]>([]);
   const [loading, setLoading] = useState(false);
   const [columns, setColumns] = useState<Column[]>([]);
+  const [lmsCourses, setLmsCourses] = useState<{ id: string; name: string }[]>([]);
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
 
   const isEditing = !!editingAutomation;
@@ -132,6 +133,19 @@ export function CreateTab({
     }
     fetchColumns();
   }, [companyId, jobId]);
+
+  // Fetch published LMS courses for this company (used by lms.send_training_link)
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        const courses = await getLmsCoursesForCompany(companyId);
+        setLmsCourses(courses || []);
+      } catch (err) {
+        console.error('Failed to fetch LMS courses:', err);
+      }
+    }
+    fetchCourses();
+  }, [companyId]);
 
   // Pre-fill form when editing
   useEffect(() => {
@@ -297,13 +311,24 @@ export function CreateTab({
         if (
           !action.config.driver_fedex_id_column_id ||
           !action.config.start_date_column_id ||
-          !action.config.completion_date_column_id
+          !action.config.completion_date_column_id ||
+          !action.config.contract_number_column_id
         ) {
-          alert("Please select all three input columns (Driver FedEx ID, Start Date, Completion Date) for the Impact Solutions Safety Cert action");
+          alert("Please select all four input columns (Driver FedEx ID, Start Date, Completion Date, Contract Number) for the Impact Solutions Safety Cert action");
           return;
         }
         if (!action.config.output_column_id) {
           alert("Please select an output column for the Impact Solutions Safety Cert action (where status messages will be written)");
+          return;
+        }
+      }
+      if (action.type === "lms.send_training_link") {
+        if (!action.config.course_id) {
+          alert("Please select a training course for the 'Send Training Link' action");
+          return;
+        }
+        if (!action.config.output_column_id) {
+          alert("Please select an output column for the 'Send Training Link' action (where status messages will be written)");
           return;
         }
       }
@@ -446,6 +471,8 @@ export function CreateTab({
           return "submit applicant to First Advantage";
         case "safety_trainer.submit":
           return "submit applicant to Impact Solutions Safety Cert";
+        case "lms.send_training_link":
+          return "send training link to applicant";
         default:
           return action.type;
       }
@@ -545,6 +572,7 @@ export function CreateTab({
                   index={index}
                   columns={columns}
                   groups={groups}
+                  lmsCourses={lmsCourses}
                   companyId={companyId}
                   accountId={accountId}
                   onChange={(updates) => updateAction(index, updates)}
@@ -940,6 +968,7 @@ function ActionEditor({
   index,
   columns,
   groups,
+  lmsCourses,
   companyId,
   accountId,
   onChange,
@@ -949,6 +978,7 @@ function ActionEditor({
   index: number;
   columns: Column[];
   groups: Group[];
+  lmsCourses: { id: string; name: string }[];
   companyId: string;
   accountId: string;
   onChange: (updates: Partial<Action>) => void;
@@ -969,6 +999,7 @@ function ActionEditor({
     { value: "integration.set_field", label: "Set integration field (FADV)" },
     { value: "fadv.add_subject", label: "Add to FADV" },
     { value: "safety_trainer.submit", label: "Submit Impact Solutions Safety Cert" },
+    { value: "lms.send_training_link", label: "Send Training Link (LMS)" },
   ];
 
   const FADV_FIELD_OPTIONS = [
@@ -1315,6 +1346,31 @@ function ActionEditor({
           </div>
         )}
 
+        {action.type === "lms.send_training_link" && (
+          <div className="w-full space-y-3 pt-1">
+            {/* Course selector */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-36 shrink-0">Send course</span>
+              <CoursePicker
+                courses={lmsCourses}
+                selectedId={action.config.course_id}
+                onSelect={(id) => onChange({ config: { ...action.config, course_id: id } })}
+              />
+            </div>
+
+            {/* Output column — text only */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
+              <span className="text-sm text-gray-500 w-36 shrink-0">Write result to</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "text")}
+                selectedId={action.config.output_column_id}
+                onSelect={(id) => onChange({ config: { ...action.config, output_column_id: id } })}
+                placeholder="output column"
+              />
+            </div>
+          </div>
+        )}
+
         {action.type === "safety_trainer.submit" && (
           <div className="w-full space-y-3 pt-1">
             {/* Driver FedEx ID column — text or number only */}
@@ -1351,6 +1407,19 @@ function ActionEditor({
                 selectedId={action.config.completion_date_column_id}
                 onSelect={(id) =>
                   onChange({ config: { ...action.config, completion_date_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Contract Number column — text or number */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-36 shrink-0">Contract Number from</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "text" || c.type === "number")}
+                selectedId={action.config.contract_number_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, contract_number_column_id: id } })
                 }
                 placeholder="column"
               />
@@ -1419,6 +1488,53 @@ function ColumnPicker({
           ))}
           {columns.length === 0 && (
             <div className="px-3 py-2 text-gray-500 text-sm">No columns available</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CoursePicker({
+  courses,
+  selectedId,
+  onSelect,
+}: {
+  courses: { id: string; name: string }[];
+  selectedId?: string;
+  onSelect: (id: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selected = courses.find((c) => c.id === selectedId);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-3 py-1.5 border-2 border-blue-400 bg-blue-100 rounded text-blue-700 font-semibold hover:bg-blue-200 transition-colors inline-flex items-center gap-1"
+      >
+        {selected ? selected.name : "choose course"}
+        <ChevronDown className="w-4 h-4" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[240px] max-h-60 overflow-y-auto">
+          {courses.map((course) => (
+            <button
+              key={course.id}
+              onClick={() => {
+                onSelect(course.id);
+                setIsOpen(false);
+              }}
+              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+            >
+              {course.name}
+            </button>
+          ))}
+          {courses.length === 0 && (
+            <div className="px-3 py-2 text-gray-500 text-sm">
+              No published courses — create and publish a course in Training first
+            </div>
           )}
         </div>
       )}

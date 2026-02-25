@@ -43,6 +43,8 @@ export interface SafetyTrainerSubmissionParams {
   startDate: string;
   /** Stage One Completion Date — "YYYY-MM-DD" or "MM/DD/YYYY" */
   completionDate: string;
+  /** Contract number — per-applicant board column value (varies by terminal) */
+  contractNumber: string;
 }
 
 export type SafetyTrainerSubmissionResult =
@@ -158,7 +160,7 @@ async function fillAndSubmitForm(
   page: import("playwright-core").Page,
   params: SafetyTrainerSubmissionParams
 ): Promise<SafetyTrainerSubmissionResult> {
-  const { config, applicant, driverFedexId, startDate, completionDate } = params;
+  const { config, applicant, driverFedexId, startDate, completionDate, contractNumber } = params;
 
   // ── Step 1: Log in ───────────────────────────────────────────────────────────
   const loginResult = await performSafetyTrainerLogin(
@@ -199,7 +201,7 @@ async function fillAndSubmitForm(
     ['[name="form_fields[field_f8e2610]"]', config.trainerEmail],
     ['[name="form_fields[trainername]"]',   config.trainerName],
     ['[name="form_fields[field_3358994]"]', config.companyEntityId],
-    ['[name="form_fields[field_e30a78b]"]', config.contractNumber],
+    ['[name="form_fields[field_e30a78b]"]', contractNumber],
     ['[name="form_fields[field_c8e7d3f]"]', config.companyName],
     // Driver fields (from applicant record + board columns)
     ['[name="form_fields[field_64da733]"]', driverFedexId],

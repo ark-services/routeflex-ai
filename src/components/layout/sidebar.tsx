@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useParams, usePathname } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, MoreVertical, LayoutGrid, ShieldAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings } from "lucide-react";
 import type { Job, Company } from "@/lib/types";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
@@ -53,6 +53,8 @@ export function Sidebar({
     currentJobId !== null &&
     pathname?.endsWith("/form");
   const isOnTemplateCenter = pathname?.includes("/template-center") ?? false;
+  const isOnTraining = pathname?.includes("/training") ?? false;
+  const isOnSettings = pathname?.includes("/settings") ?? false;
   const isSuperAdmin = userEmail === SUPER_ADMIN_EMAIL;
 
   const currentJob = jobs.find((j) => j.id === currentJobId);
@@ -173,6 +175,32 @@ export function Sidebar({
           >
             <LayoutGrid className={`h-4 w-4 ${isOnTemplateCenter ? "text-blue-600" : "text-stone-500"}`} />
             Template Center
+          </button>
+
+          {/* Training */}
+          <button
+            onClick={() => router.push(`/dashboard/${companyId}/training`)}
+            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
+              isOnTraining
+                ? "bg-blue-50 text-blue-700 font-medium"
+                : "text-stone-700 hover:bg-stone-100"
+            }`}
+          >
+            <GraduationCap className={`h-4 w-4 ${isOnTraining ? "text-blue-600" : "text-stone-500"}`} />
+            Training
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={() => router.push(`/dashboard/${companyId}/settings`)}
+            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors flex items-center gap-2 ${
+              isOnSettings
+                ? "bg-blue-50 text-blue-700 font-medium"
+                : "text-stone-700 hover:bg-stone-100"
+            }`}
+          >
+            <Settings className={`h-4 w-4 ${isOnSettings ? "text-blue-600" : "text-stone-500"}`} />
+            Settings
           </button>
 
           {/* Super Admin link — only visible to super admin */}

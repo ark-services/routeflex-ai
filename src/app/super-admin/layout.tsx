@@ -31,6 +31,12 @@ export default async function SuperAdminLayout({
           >
             Templates
           </Link>
+          <Link
+            href="/super-admin/training/templates"
+            className="text-sm text-stone-600 hover:text-stone-900 transition-colors"
+          >
+            Training
+          </Link>
         </nav>
         <div className="ml-auto">
           <Link

@@ -1,0 +1,62 @@
+import { createClient as createServiceClient } from "@supabase/supabase-js";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ModuleEditor } from "./ModuleEditor";
+
+function getSvc() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
+export default async function TemplateModulePage({
+  params,
+}: {
+  params: Promise<{ templateId: string; moduleId: string }>;
+}) {
+  const { templateId, moduleId } = await params;
+  const svc = getSvc();
+
+  const [{ data: template }, { data: mod }, { data: questions }] = await Promise.all([
+    svc.from("lms_course_templates").select("id, name").eq("id", templateId).single(),
+    svc
+      .from("lms_template_modules")
+      .select("id, title, content, is_final_exam, sort_order")
+      .eq("id", moduleId)
+      .single(),
+    svc
+      .from("lms_template_questions")
+      .select("id, question_text, options, correct_option_id, sort_order")
+      .eq("template_module_id", moduleId)
+      .order("sort_order", { ascending: true }),
+  ]);
+
+  if (!template || !mod) notFound();
+
+  return (
+    <div>
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-sm text-stone-500 mb-6">
+        <Link href="/super-admin/training/templates" className="hover:text-stone-700 transition-colors">
+          Training Templates
+        </Link>
+        <span>/</span>
+        <Link
+          href={`/super-admin/training/templates/${templateId}`}
+          className="hover:text-stone-700 transition-colors"
+        >
+          {template.name}
+        </Link>
+        <span>/</span>
+        <span className="text-stone-900 font-medium">{mod.title}</span>
+      </div>
+
+      <ModuleEditor
+        templateId={templateId}
+        module={mod}
+        questions={questions ?? []}
+      />
+    </div>
+  );
+}

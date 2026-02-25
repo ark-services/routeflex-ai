@@ -230,7 +230,6 @@ export function SafetyTrainerCard({
   const [trainerEmail, setTrainerEmail] = useState(initialConnection?.trainerEmail ?? "");
   const [trainerFedexId, setTrainerFedexId] = useState(initialConnection?.trainerFedexId ?? "");
   const [companyEntityId, setCompanyEntityId] = useState(initialConnection?.companyEntityId ?? "");
-  const [contractNumber, setContractNumber] = useState(initialConnection?.contractNumber ?? "");
   const [companyName, setCompanyName] = useState(initialConnection?.companyName ?? "");
   const [isEnabled, setIsEnabled] = useState(initialConnection?.isEnabled ?? true);
 
@@ -256,7 +255,6 @@ export function SafetyTrainerCard({
     setTrainerEmail(connection?.trainerEmail ?? "");
     setTrainerFedexId(connection?.trainerFedexId ?? "");
     setCompanyEntityId(connection?.companyEntityId ?? "");
-    setContractNumber(connection?.contractNumber ?? "");
     setCompanyName(connection?.companyName ?? "");
     setIsEnabled(connection?.isEnabled ?? true);
     setNewSignatureDataUrl(null);
@@ -275,7 +273,6 @@ export function SafetyTrainerCard({
         trainerEmail: trainerEmail.trim(),
         trainerFedexId: trainerFedexId.trim(),
         companyEntityId: companyEntityId.trim(),
-        contractNumber: contractNumber.trim(),
         companyName: companyName.trim(),
         signatureDataUrl: newSignatureDataUrl, // null = keep existing
         trainerPassword, // empty string = keep existing
@@ -528,14 +525,6 @@ export function SafetyTrainerCard({
                 </div>
                 <div>
                   <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
-                    Contract Number
-                  </p>
-                  <p className="text-sm font-mono text-stone-800">
-                    {connection.contractNumber || <span className="text-stone-400 italic not-italic font-sans">Not set</span>}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
                     Company Name
                   </p>
                   <p className="text-sm text-stone-800">
@@ -689,19 +678,6 @@ export function SafetyTrainerCard({
                       placeholder="e.g. 12345"
                       value={companyEntityId}
                       onChange={(e) => setCompanyEntityId(e.target.value)}
-                      autoComplete="off"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
-                      Contract Number<span className="text-red-500 ml-0.5">*</span>
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="e.g. CON-00123"
-                      value={contractNumber}
-                      onChange={(e) => setContractNumber(e.target.value)}
                       autoComplete="off"
                       required
                     />

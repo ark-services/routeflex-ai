@@ -619,6 +619,9 @@ async function executeAction(
     case 'safety_trainer.submit':
       return executeSafetyTrainerSubmit(supabase, companyId, jobId, config, payload);
 
+    case 'lms.send_training_link':
+      return executeLmsSendTrainingLink(supabase, companyId, jobId, config, payload);
+
     default:
       return { success: false, error: `Unknown action type: ${type}` };
   }
@@ -2138,6 +2141,7 @@ async function executeSafetyTrainerSubmit(
     driver_fedex_id_column_id,
     start_date_column_id,
     completion_date_column_id,
+    contract_number_column_id,
     output_column_id,
   } = config;
 
@@ -2147,6 +2151,7 @@ async function executeSafetyTrainerSubmit(
     driver_fedex_id_column_id,
     start_date_column_id,
     completion_date_column_id,
+    contract_number_column_id,
     output_column_id,
     applicantId,
     companyId,
@@ -2154,10 +2159,10 @@ async function executeSafetyTrainerSubmit(
   });
 
   // ── Validate config ─────────────────────────────────────────────────────────
-  if (!driver_fedex_id_column_id || !start_date_column_id || !completion_date_column_id) {
+  if (!driver_fedex_id_column_id || !start_date_column_id || !completion_date_column_id || !contract_number_column_id) {
     return {
       success: false,
-      error: 'safety_trainer.submit: driver_fedex_id_column_id, start_date_column_id, and completion_date_column_id are required in config',
+      error: 'safety_trainer.submit: driver_fedex_id_column_id, start_date_column_id, completion_date_column_id, and contract_number_column_id are required in config',
     };
   }
 
@@ -2193,6 +2198,7 @@ async function executeSafetyTrainerSubmit(
     driver_fedex_id_column_id,
     start_date_column_id,
     completion_date_column_id,
+    contract_number_column_id,
   ].filter(Boolean) as string[];
 
   const { data: cells, error: cellsError } = await supabase
@@ -2215,12 +2221,14 @@ async function executeSafetyTrainerSubmit(
   const driverFedexIdVal  = (cellMap[driver_fedex_id_column_id]   ?? '').trim();
   const startDateVal      = (cellMap[start_date_column_id]         ?? '').trim();
   const completionDateVal = (cellMap[completion_date_column_id]    ?? '').trim();
+  const contractNumberVal = (cellMap[contract_number_column_id]    ?? '').trim();
 
   // ── Validate field values ───────────────────────────────────────────────────
   const missing: string[] = [];
   if (!driverFedexIdVal)  missing.push('Driver FedEx ID');
   if (!startDateVal)      missing.push('Start Date');
   if (!completionDateVal) missing.push('Completion Date');
+  if (!contractNumberVal) missing.push('Contract Number');
 
   if (missing.length > 0) {
     const msg = `Safety Trainer not submitted: missing ${missing.join(', ')}`;
@@ -2277,6 +2285,7 @@ async function executeSafetyTrainerSubmit(
         driver_fedex_id:  driverFedexIdVal,
         start_date:       startDateVal,
         completion_date:  completionDateVal,
+        contract_number:  contractNumberVal,
       },
       output_column_id: output_column_id ?? null,
     })
@@ -2314,6 +2323,206 @@ async function executeSafetyTrainerSubmit(
     completionDateVal,
   });
 
+  return { success: true };
+}
+
+/**
+ * Action: lms.send_training_link
+ *
+ * Creates an LMS enrollment for the applicant (idempotent — skips if already enrolled)
+ * and sends them an email containing their unique magic-link training URL via the
+ * company's connected Gmail account.
+ *
+ * Config:
+ *   course_id        — UUID of the lms_courses row (must be published)
+ *   output_column_id — text column where status messages are written (optional)
+ *
+ * The learner portal URL is: /learn/[token]
+ */
+async function executeLmsSendTrainingLink(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const { course_id, output_column_id } = config;
+  const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
+
+  console.log('[executeLmsSendTrainingLink] Starting:', { course_id, output_column_id, applicantId, companyId });
+
+  if (!course_id) {
+    return { success: false, error: 'lms.send_training_link: course_id is required in config' };
+  }
+  if (!applicantId) {
+    return { success: false, error: 'lms.send_training_link: missing applicant_id in payload' };
+  }
+
+  async function writeOutput(message: string) {
+    if (!output_column_id) return;
+    try {
+      await supabase.from('board_cells').upsert(
+        {
+          applicant_id:          applicantId,
+          column_id:             output_column_id,
+          value_text:            message,
+          value_number:          null,
+          value_date:            null,
+          value_status_label_id: null,
+          value_file_path:       null,
+        },
+        { onConflict: 'applicant_id,column_id' }
+      );
+    } catch (err) {
+      console.error('[executeLmsSendTrainingLink] writeOutput error (non-fatal):', err);
+    }
+  }
+
+  // ── Verify course exists and is published ───────────────────────────────────
+  const { data: course, error: courseError } = await supabase
+    .from('lms_courses')
+    .select('id, name, company_id')
+    .eq('id', course_id)
+    .eq('is_published', true)
+    .maybeSingle();
+
+  if (courseError || !course) {
+    const msg = 'Training link not sent: course not found or not published';
+    await writeOutput(msg);
+    return { success: false, error: msg };
+  }
+
+  if (course.company_id !== companyId) {
+    return { success: false, error: 'lms.send_training_link: course does not belong to this company' };
+  }
+
+  // ── Fetch applicant info (name + email) ─────────────────────────────────────
+  const { data: applicant, error: applicantError } = await supabase
+    .from('applicants')
+    .select('id, full_name, email')
+    .eq('id', applicantId)
+    .maybeSingle();
+
+  if (applicantError || !applicant) {
+    return { success: false, error: `lms.send_training_link: applicant not found (${applicantId})` };
+  }
+
+  if (!applicant.email) {
+    const msg = 'Training link not sent: applicant has no email address';
+    await writeOutput(msg);
+    return { success: true }; // not a fatal error — treat as skip
+  }
+
+  // ── Idempotency: skip if already enrolled ───────────────────────────────────
+  const { data: existing } = await supabase
+    .from('lms_enrollments')
+    .select('id, token')
+    .eq('applicant_id', applicantId)
+    .eq('course_id', course_id)
+    .maybeSingle();
+
+  let token: string;
+
+  if (existing) {
+    console.log('[executeLmsSendTrainingLink] Already enrolled:', existing.id, '— resending link');
+    token = existing.token;
+  } else {
+    // ── Create enrollment ───────────────────────────────────────────────────
+    const { data: enrollment, error: enrollError } = await supabase
+      .from('lms_enrollments')
+      .insert({
+        applicant_id: applicantId,
+        course_id,
+        status: 'enrolled',
+      })
+      .select('id, token')
+      .single();
+
+    if (enrollError || !enrollment) {
+      console.error('[executeLmsSendTrainingLink] Failed to create enrollment:', enrollError);
+      return { success: false, error: `Failed to create LMS enrollment: ${enrollError?.message}` };
+    }
+
+    token = enrollment.token;
+    console.log('[executeLmsSendTrainingLink] Created enrollment:', enrollment.id, 'token:', token);
+  }
+
+  // ── Send email via company Gmail ────────────────────────────────────────────
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.routeflex.com';
+  const trainingUrl = `${appUrl}/learn/${token}`;
+
+  const { getGmailClientForCompany, sendEmail, buildTrainingLinkEmail } = await import('@/lib/gmail-send');
+  const gmail = await getGmailClientForCompany(supabase, companyId);
+
+  if (!gmail) {
+    // No Gmail connected — write status but don't fail the automation run
+    const msg = `Training link created (Gmail not connected — send manually): ${trainingUrl}`;
+    console.warn('[executeLmsSendTrainingLink] No Gmail connection — cannot send email');
+    await writeOutput(msg);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorType: 'automation',
+      eventType: 'lms.training_link.gmail_not_connected',
+      entityType: 'applicant',
+      entityId: applicantId,
+      summary: 'Training link created but not emailed (no Gmail connection)',
+      data: { applicant_id: applicantId, course_id, training_url: trainingUrl },
+    });
+    return { success: true };
+  }
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name, logo_url')
+    .eq('id', companyId)
+    .maybeSingle();
+
+  const companyName = company?.name ?? 'Your employer';
+  const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
+
+  const { subject, body: emailBody } = buildTrainingLinkEmail({
+    firstName,
+    companyName,
+    logoUrl: company?.logo_url,
+    trainingUrl,
+  });
+
+  const emailResult = await sendEmail(gmail.gmail, {
+    to: applicant.email,
+    subject,
+    body: emailBody,
+  });
+
+  if (!emailResult.success) {
+    const msg = `Training link created but email failed: ${emailResult.error}`;
+    console.error('[executeLmsSendTrainingLink] Email send failed:', emailResult.error);
+    await writeOutput(msg);
+    return { success: false, error: msg };
+  }
+
+  const sentMsg = `Training link sent ✅ ${new Date().toLocaleDateString()}`;
+  await writeOutput(sentMsg);
+
+  await logActivityEvent(supabase, {
+    companyId,
+    jobId,
+    actorType: 'automation',
+    eventType: 'lms.training_link.sent',
+    entityType: 'applicant',
+    entityId: applicantId,
+    summary: `Training link emailed to ${applicant.email} for course "${course.name}"`,
+    data: {
+      applicant_id:  applicantId,
+      course_id,
+      course_name:   course.name,
+      email:         applicant.email,
+      training_url:  trainingUrl,
+      message_id:    emailResult.messageId,
+    },
+  });
+
+  console.log('[executeLmsSendTrainingLink] ✓ Training link sent to:', applicant.email, 'url:', trainingUrl);
   return { success: true };
 }
 

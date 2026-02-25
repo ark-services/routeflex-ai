@@ -390,6 +390,20 @@ export async function getJobBoardColumns(companyId: string, jobId: string) {
 }
 
 /**
+ * Get published LMS courses for a company (for the lms.send_training_link action picker)
+ */
+export async function getLmsCoursesForCompany(companyId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("lms_courses")
+    .select("id, name")
+    .eq("company_id", companyId)
+    .eq("is_published", true)
+    .order("name", { ascending: true });
+  return data || [];
+}
+
+/**
  * Update an existing automation
  */
 export async function updateJobAutomation(
