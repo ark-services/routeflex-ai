@@ -3056,15 +3056,8 @@ function CellRenderer({
   boardId?: string;
   isCollapsed?: boolean;
 }) {
+  // All hooks must be declared unconditionally before any early returns
   const [isPending, startTransition] = useTransition();
-
-  // Per-group collapsed state takes priority; fall back to legacy column-level setting
-  const isCollapsed = isCollapsedProp ?? column.settings?.ui?.collapsed ?? false;
-  if (isCollapsed) {
-    return <span className="text-xs text-stone-400">—</span>;
-  }
-
-  // Local edit state - only save on blur/enter
   const [localValue, setLocalValue] = useState(value);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -3074,6 +3067,12 @@ function CellRenderer({
       setLocalValue(value);
     }
   }, [value, isEditing]);
+
+  // Per-group collapsed state takes priority; fall back to legacy column-level setting
+  const isCollapsed = isCollapsedProp ?? column.settings?.ui?.collapsed ?? false;
+  if (isCollapsed) {
+    return <span className="text-xs text-stone-400">—</span>;
+  }
 
   // Commit the edit to server
   const commitEdit = () => {
