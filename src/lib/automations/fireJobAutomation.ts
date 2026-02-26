@@ -2433,9 +2433,20 @@ async function executeLmsSendTrainingLink(
   }
 
   if (!applicant.email) {
-    const msg = 'Training link not sent: applicant has no email address';
+    const msg = `Training link not sent: ${applicant.full_name ?? 'Applicant'} has no email address on file`;
+    console.warn('[executeLmsSendTrainingLink] Applicant has no email:', applicantId);
     await writeOutput(msg);
-    return { success: true }; // not a fatal error — treat as skip
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorType: 'automation',
+      eventType: 'automation.run.warning',
+      entityType: 'applicant',
+      entityId: applicantId,
+      summary: msg,
+      data: { applicant_id: applicantId, applicant_name: applicant.full_name, course_id, error: 'No email address' },
+    });
+    return { success: false, error: msg };
   }
 
   // ── Idempotency: skip if already enrolled ───────────────────────────────────
