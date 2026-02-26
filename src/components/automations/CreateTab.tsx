@@ -327,10 +327,6 @@ export function CreateTab({
           alert("Please select a training course for the 'Send Training Link' action");
           return;
         }
-        if (!action.config.output_column_id) {
-          alert("Please select an output column for the 'Send Training Link' action (where status messages will be written)");
-          return;
-        }
       }
     }
 
@@ -1346,41 +1342,92 @@ function ActionEditor({
           </div>
         )}
 
-        {action.type === "lms.send_training_link" && (
-          <div className="w-full space-y-3 pt-1">
-            {/* Course selector */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-36 shrink-0">Send course</span>
-              <CoursePicker
-                courses={lmsCourses}
-                selectedId={action.config.course_id}
-                onSelect={(id) => onChange({ config: { ...action.config, course_id: id } })}
-              />
-            </div>
+        {action.type === "lms.send_training_link" && (() => {
+          const statusCol = columns.find((c) => c.id === action.config.status_column_id);
+          const statusLabels = statusCol?.labels ?? [];
+          return (
+            <div className="w-full space-y-3 pt-1">
+              {/* Course selector */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-700 w-36 shrink-0">Send course</span>
+                <CoursePicker
+                  courses={lmsCourses}
+                  selectedId={action.config.course_id}
+                  onSelect={(id) => onChange({ config: { ...action.config, course_id: id } })}
+                />
+              </div>
 
-            {/* Email column — email or text columns */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-36 shrink-0">Get email from</span>
-              <ColumnPicker
-                columns={columns.filter((c) => c.type === "email" || c.type === "text")}
-                selectedId={action.config.email_column_id}
-                onSelect={(id) => onChange({ config: { ...action.config, email_column_id: id } })}
-                placeholder="auto-detect"
-              />
-            </div>
+              {/* Email column — email or text columns */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-700 w-36 shrink-0">Get email from</span>
+                <ColumnPicker
+                  columns={columns.filter((c) => c.type === "email" || c.type === "text")}
+                  selectedId={action.config.email_column_id}
+                  onSelect={(id) => onChange({ config: { ...action.config, email_column_id: id } })}
+                  placeholder="auto-detect"
+                />
+              </div>
 
-            {/* Output column — text only */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-              <span className="text-sm text-gray-500 w-36 shrink-0">Write result to</span>
-              <ColumnPicker
-                columns={columns.filter((c) => c.type === "text")}
-                selectedId={action.config.output_column_id}
-                onSelect={(id) => onChange({ config: { ...action.config, output_column_id: id } })}
-                placeholder="output column"
-              />
+              {/* Status column + label pickers */}
+              <div className="space-y-2 pt-1 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-gray-700 w-36 shrink-0">Write status to</span>
+                  <ColumnPicker
+                    columns={columns.filter((c) => c.type === "status")}
+                    selectedId={action.config.status_column_id}
+                    onSelect={(id) => onChange({ config: {
+                      ...action.config, status_column_id: id,
+                      link_sent_label_id: undefined,
+                      in_progress_label_id: undefined,
+                      passed_label_id: undefined,
+                      failed_label_id: undefined,
+                    }})}
+                    placeholder="status column (optional)"
+                  />
+                </div>
+                {statusLabels.length > 0 && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2 pl-1">
+                      <span className="text-xs text-gray-400 w-36 shrink-0">↳ Link sent label</span>
+                      <LabelPicker labels={statusLabels} selectedId={action.config.link_sent_label_id}
+                        onSelect={(id) => onChange({ config: { ...action.config, link_sent_label_id: id } })}
+                        placeholder="choose label" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pl-1">
+                      <span className="text-xs text-gray-400 w-36 shrink-0">↳ In progress label</span>
+                      <LabelPicker labels={statusLabels} selectedId={action.config.in_progress_label_id}
+                        onSelect={(id) => onChange({ config: { ...action.config, in_progress_label_id: id } })}
+                        placeholder="choose label" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pl-1">
+                      <span className="text-xs text-gray-400 w-36 shrink-0">↳ Passed label</span>
+                      <LabelPicker labels={statusLabels} selectedId={action.config.passed_label_id}
+                        onSelect={(id) => onChange({ config: { ...action.config, passed_label_id: id } })}
+                        placeholder="choose label" />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pl-1">
+                      <span className="text-xs text-gray-400 w-36 shrink-0">↳ Failed label</span>
+                      <LabelPicker labels={statusLabels} selectedId={action.config.failed_label_id}
+                        onSelect={(id) => onChange({ config: { ...action.config, failed_label_id: id } })}
+                        placeholder="choose label" />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Output column — text only */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
+                <span className="text-sm text-gray-500 w-36 shrink-0">Write progress to</span>
+                <ColumnPicker
+                  columns={columns.filter((c) => c.type === "text")}
+                  selectedId={action.config.output_column_id}
+                  onSelect={(id) => onChange({ config: { ...action.config, output_column_id: id } })}
+                  placeholder="text column (optional)"
+                />
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {action.type === "safety_trainer.submit" && (
           <div className="w-full space-y-3 pt-1">
@@ -1499,6 +1546,62 @@ function ColumnPicker({
           ))}
           {columns.length === 0 && (
             <div className="px-3 py-2 text-gray-500 text-sm">No columns available</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LabelPicker({
+  labels,
+  selectedId,
+  onSelect,
+  placeholder,
+}: {
+  labels: Array<{ id: string; label: string; color: string }>;
+  selectedId?: string;
+  onSelect: (id: string) => void;
+  placeholder: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selected = labels.find((l) => l.id === selectedId);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-3 py-1.5 border-2 border-blue-400 bg-blue-100 rounded text-blue-700 font-semibold hover:bg-blue-200 transition-colors inline-flex items-center gap-1.5"
+      >
+        {selected ? (
+          <>
+            <span
+              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: selected.color || "#94a3b8" }}
+            />
+            {selected.label}
+          </>
+        ) : placeholder}
+        <ChevronDown className="w-4 h-4" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-60 overflow-y-auto">
+          {labels.map((lbl) => (
+            <button
+              key={lbl.id}
+              onClick={() => { onSelect(lbl.id); setIsOpen(false); }}
+              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2"
+            >
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: lbl.color || "#94a3b8" }}
+              />
+              {lbl.label}
+            </button>
+          ))}
+          {labels.length === 0 && (
+            <div className="px-3 py-2 text-gray-500 text-sm">No labels available</div>
           )}
         </div>
       )}

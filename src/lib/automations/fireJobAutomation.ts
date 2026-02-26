@@ -2371,7 +2371,15 @@ async function executeLmsSendTrainingLink(
   config: any,
   payload: Record<string, any>
 ): Promise<ActionResult> {
-  const { course_id, output_column_id } = config;
+  const {
+    course_id,
+    output_column_id,
+    status_column_id,
+    link_sent_label_id,
+    in_progress_label_id,
+    passed_label_id,
+    failed_label_id,
+  } = config;
   const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
 
   console.log('[executeLmsSendTrainingLink] Starting:', { course_id, output_column_id, applicantId, companyId });
@@ -2494,14 +2502,31 @@ async function executeLmsSendTrainingLink(
   if (existing) {
     console.log('[executeLmsSendTrainingLink] Already enrolled:', existing.id, '— resending link');
     token = existing.token;
+    // Update board refs in case the automation config changed
+    if (output_column_id || status_column_id) {
+      await supabase.from('lms_enrollments').update({
+        ...(output_column_id   && { output_column_id }),
+        ...(status_column_id   && { status_column_id }),
+        ...(link_sent_label_id && { link_sent_label_id }),
+        ...(in_progress_label_id && { in_progress_label_id }),
+        ...(passed_label_id    && { passed_label_id }),
+        ...(failed_label_id    && { failed_label_id }),
+      }).eq('id', existing.id);
+    }
   } else {
-    // ── Create enrollment ───────────────────────────────────────────────────
+    // ── Create enrollment with board column refs ─────────────────────────────
     const { data: enrollment, error: enrollError } = await supabase
       .from('lms_enrollments')
       .insert({
         applicant_id: applicantId,
         course_id,
         status: 'enrolled',
+        ...(output_column_id     && { output_column_id }),
+        ...(status_column_id     && { status_column_id }),
+        ...(link_sent_label_id   && { link_sent_label_id }),
+        ...(in_progress_label_id && { in_progress_label_id }),
+        ...(passed_label_id      && { passed_label_id }),
+        ...(failed_label_id      && { failed_label_id }),
       })
       .select('id, token')
       .single();
@@ -2513,6 +2538,19 @@ async function executeLmsSendTrainingLink(
 
     token = enrollment.token;
     console.log('[executeLmsSendTrainingLink] Created enrollment:', enrollment.id, 'token:', token);
+  }
+
+  // ── Set "Link Sent" status label on the board immediately ───────────────────
+  if (status_column_id && link_sent_label_id) {
+    try {
+      await supabase.from('board_cells').upsert(
+        { applicant_id: applicantId, column_id: status_column_id, value_status_label_id: link_sent_label_id,
+          value_text: null, value_number: null, value_date: null, value_file_path: null },
+        { onConflict: 'applicant_id,column_id' }
+      );
+    } catch (err) {
+      console.error('[executeLmsSendTrainingLink] Failed to set link_sent status label (non-fatal):', err);
+    }
   }
 
   // ── Send email via company Gmail ────────────────────────────────────────────

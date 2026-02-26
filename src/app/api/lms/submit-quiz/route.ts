@@ -33,6 +33,11 @@ export async function POST(req: NextRequest) {
         token,
         applicant_id,
         status,
+        output_column_id,
+        status_column_id,
+        in_progress_label_id,
+        passed_label_id,
+        failed_label_id,
         lms_courses (
           id,
           company_id,
@@ -101,64 +106,130 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Failed to record attempt" }, { status: 500 });
     }
 
+    // ── Board write helpers ───────────────────────────────────────────────────
+    const applicantId = enrollment.applicant_id;
+    const outputColId = (enrollment as any).output_column_id as string | null;
+    const statusColId = (enrollment as any).status_column_id as string | null;
+    const inProgressLabelId = (enrollment as any).in_progress_label_id as string | null;
+    const passedLabelId = (enrollment as any).passed_label_id as string | null;
+    const failedLabelId = (enrollment as any).failed_label_id as string | null;
+
+    async function writeTextCell(text: string) {
+      if (!outputColId) return;
+      await svc.from("board_cells").upsert(
+        { applicant_id: applicantId, column_id: outputColId, value_text: text,
+          value_number: null, value_date: null, value_status_label_id: null, value_file_path: null },
+        { onConflict: "applicant_id,column_id" }
+      );
+    }
+
+    async function writeStatusCell(labelId: string | null, applicant: { job_id: string; company_id: string; id: string }) {
+      if (!statusColId || !labelId) return;
+      const oldCell = await svc.from("board_cells").select("value_status_label_id")
+        .eq("applicant_id", applicantId).eq("column_id", statusColId).maybeSingle();
+      const oldLabelId = oldCell.data?.value_status_label_id ?? null;
+      await svc.from("board_cells").upsert(
+        { applicant_id: applicantId, column_id: statusColId, value_status_label_id: labelId,
+          value_text: null, value_number: null, value_date: null, value_file_path: null },
+        { onConflict: "applicant_id,column_id" }
+      );
+      // Fire board.status_changes_to trigger so downstream automations can chain
+      if (labelId !== oldLabelId) {
+        try {
+          await fireJobTrigger(svc, {
+            companyId: applicant.company_id,
+            jobId: applicant.job_id,
+            trigger_key: "board.status_changes_to",
+            subject_type: "applicant",
+            subject_id: applicant.id,
+            payload: {
+              company_id: applicant.company_id,
+              job_id: applicant.job_id,
+              applicant_id: applicant.id,
+              column_id: statusColId,
+              old_value: oldLabelId,
+              new_value: labelId,
+            },
+          });
+        } catch (err) {
+          console.error("[submit-quiz] Failed to fire board.status_changes_to (non-fatal):", err);
+        }
+      }
+    }
+
+    // Look up applicant once (needed for trigger + completion)
+    const { data: applicant } = await svc
+      .from("applicants")
+      .select("id, job_id, company_id")
+      .eq("id", applicantId)
+      .single();
+
     // Update enrollment status to in_progress if it was just enrolled
     if (enrollment.status === "enrolled") {
       await svc
         .from("lms_enrollments")
         .update({ status: "in_progress" })
         .eq("id", enrollmentId);
+      // Set In Progress status label
+      if (applicant) await writeStatusCell(inProgressLabelId, applicant);
     }
+
+    // ── Progress text update ─────────────────────────────────────────────────
+    // Count how many distinct modules have been passed (including this attempt if passed)
+    const { count: passedCount } = await svc
+      .from("lms_module_attempts")
+      .select("module_id", { count: "exact", head: true })
+      .eq("enrollment_id", enrollmentId)
+      .eq("passed", true);
+
+    const totalModules = allModules.length;
+    const regularModules = allModules.filter((m: any) => !m.is_final_exam).length;
+    const passedModules = Math.min(passedCount ?? 0, regularModules);
+    await writeTextCell(`In Progress · ${passedModules}/${regularModules} modules`);
 
     let courseCompleted = false;
 
-    // Check if this completion finishes the course
-    if (passed) {
-      const thisMod = allModules.find((m: any) => m.id === moduleId);
-      const isFinalExam = thisMod?.is_final_exam ?? false;
+    // Check if this is the final exam and handle pass/fail
+    const thisMod = allModules.find((m: any) => m.id === moduleId);
+    const isFinalExam = thisMod?.is_final_exam ?? false;
 
-      if (isFinalExam) {
-        // Final exam passed → course complete
-        const { error: completeErr } = await svc
-          .from("lms_enrollments")
-          .update({
-            status: "completed",
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", enrollmentId);
+    if (isFinalExam && passed) {
+      // Final exam passed → course complete
+      const { error: completeErr } = await svc
+        .from("lms_enrollments")
+        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .eq("id", enrollmentId);
 
-        if (!completeErr) {
-          courseCompleted = true;
+      if (!completeErr) {
+        courseCompleted = true;
+        await writeTextCell(`Completed ✅ · ${score}% on final exam`);
+        if (applicant) await writeStatusCell(passedLabelId, applicant);
 
-          // Fire lms.course_completed automation trigger
-          try {
-            // Look up the applicant to find their job
-            const { data: applicant } = await svc
-              .from("applicants")
-              .select("id, job_id, company_id")
-              .eq("id", enrollment.applicant_id)
-              .single();
-
-            if (applicant) {
-              await fireJobTrigger(svc, {
-                companyId: applicant.company_id,
-                jobId: applicant.job_id,
-                trigger_key: "lms.course_completed",
-                subject_type: "applicant",
-                subject_id: applicant.id,
-                payload: {
-                  applicant_id: applicant.id,
-                  enrollment_id: enrollmentId,
-                  course_id: course.id,
-                  score,
-                },
-              });
-            }
-          } catch (triggerErr) {
-            // Don't fail the response if trigger firing fails
-            console.error("[submit-quiz] Failed to fire lms.course_completed trigger:", triggerErr);
+        // Fire lms.course_completed automation trigger
+        try {
+          if (applicant) {
+            await fireJobTrigger(svc, {
+              companyId: applicant.company_id,
+              jobId: applicant.job_id,
+              trigger_key: "lms.course_completed",
+              subject_type: "applicant",
+              subject_id: applicant.id,
+              payload: {
+                applicant_id: applicant.id,
+                enrollment_id: enrollmentId,
+                course_id: course.id,
+                score,
+              },
+            });
           }
+        } catch (triggerErr) {
+          console.error("[submit-quiz] Failed to fire lms.course_completed trigger:", triggerErr);
         }
       }
+    } else if (isFinalExam && !passed) {
+      // Final exam failed
+      await writeTextCell(`Exam failed · ${score}% (need ${passingThreshold}%)`);
+      if (applicant) await writeStatusCell(failedLabelId, applicant);
     }
 
     return NextResponse.json({ score, passed, correct, total, courseCompleted });
