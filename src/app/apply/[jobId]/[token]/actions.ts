@@ -5,6 +5,7 @@ import { uploadResume } from "@/lib/storage/resumeUpload";
 import { getOrCreateApplicantsBoard, type BoardGroup } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { revalidatePath } from "next/cache";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
+import { validatePhone } from "@/lib/validation/columnValidation";
 
 /**
  * Submit a public job application.
@@ -327,8 +328,22 @@ export async function submitApplication(
           return { error: `${field.label} is required` };
         }
         // If optional and no file, don't add a value row
+      } else if (field.type === "phone") {
+        // Phone: validate format and normalize to E.164
+        if (value && typeof value === 'string' && value.trim()) {
+          const validation = validatePhone(value as string);
+          if (!validation.valid) {
+            await supabase.from("applicants").delete().eq("id", applicant.id);
+            return { error: `${field.label}: ${validation.error}` };
+          }
+          fieldValue.value_text = validation.normalized!;
+          fieldValues.push(fieldValue);
+        } else if (field.required) {
+          await supabase.from("applicants").delete().eq("id", applicant.id);
+          return { error: `${field.label} is required` };
+        }
       } else {
-        // Text, email, phone, textarea, select, radio, etc.
+        // Text, email, textarea, select, radio, etc.
         if (value && typeof value === 'string' && value.trim()) {
           fieldValue.value_text = value;
           fieldValues.push(fieldValue);

@@ -447,7 +447,7 @@ export async function reconcileSyncedColumns(
   // 3. All existing columns for this board (including hidden ones)
   const { data: columns } = await supabase
     .from("board_columns")
-    .select("id, field_id, name, system_key")
+    .select("id, field_id, name, type, system_key")
     .eq("board_id", board.id);
 
   const existingColumns = columns ?? [];
@@ -458,7 +458,25 @@ export async function reconcileSyncedColumns(
   for (const field of fields) {
     // ── Step 1: direct link already exists ──────────────────────────────────
     const directMatch = existingColumns.find((c) => c.field_id === field.id);
-    if (directMatch) continue;
+    if (directMatch) {
+      // Correct the column type if it no longer matches (e.g. text → status
+      // after the select/radio mapping was introduced).
+      const expectedType = mapFieldTypeToColumnType(field.type);
+      if ((directMatch as any).type !== expectedType) {
+        await supabase
+          .from("board_columns")
+          .update({ type: expectedType })
+          .eq("id", directMatch.id);
+        // Seed status labels for newly-promoted status columns
+        if (expectedType === "status") {
+          const options: string[] = (field as any).settings?.options ?? [];
+          if (options.length > 0) {
+            await createStatusLabelsForColumn(supabase, directMatch.id, options);
+          }
+        }
+      }
+      continue;
+    }
 
     // ── Step 2: canonical key match (system_key) ────────────────────────────
     let matchedColumn: (typeof existingColumns)[number] | undefined;
@@ -484,17 +502,27 @@ export async function reconcileSyncedColumns(
     }
 
     if (matchedColumn) {
-      // Re-link the existing column to this field
+      // Re-link the existing column to this field, and correct type if needed
+      const expectedType = mapFieldTypeToColumnType(field.type);
       await supabase
         .from("board_columns")
         .update({
           field_id: field.id,
+          type: expectedType,
           // Preserve or assign system_key for canonical fields
           ...(CANONICAL_KEYS.has(field.key) && !matchedColumn.system_key
             ? { system_key: field.key }
             : {}),
         })
         .eq("id", matchedColumn.id);
+
+      // Seed status labels when linking to a status-type field
+      if (expectedType === "status") {
+        const options: string[] = (field as any).settings?.options ?? [];
+        if (options.length > 0) {
+          await createStatusLabelsForColumn(supabase, matchedColumn.id, options);
+        }
+      }
 
       // Update local cache so subsequent iterations don't double-match
       matchedColumn.field_id = field.id;
