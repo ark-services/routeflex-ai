@@ -21,6 +21,7 @@ type ChecklistItem = {
   id: string;
   column_id: string;
   pass_label_id?: string | null;
+  date_column_id?: string | null;
 };
 
 export default async function StatusPortalPage({
@@ -82,12 +83,13 @@ export default async function StatusPortalPage({
   );
 
   // ── 3. Checklist + name data ─────────────────────────────────────────────────
-  // Gather all column_ids referenced in any checklist
+  // Gather all column_ids referenced in any checklist (both primary + linked date cols)
   const allChecklistColumnIds = new Set<string>();
   for (const group of visibleGroups) {
     const checklist: ChecklistItem[] = (group as any).settings?.portal_checklist ?? [];
     for (const item of checklist) {
       if (item.column_id) allChecklistColumnIds.add(item.column_id);
+      if ((item as any).date_column_id) allChecklistColumnIds.add((item as any).date_column_id);
     }
   }
 
@@ -136,7 +138,7 @@ export default async function StatusPortalPage({
         checklistColumnIds.length > 0
           ? svc
               .from("board_status_labels")
-              .select("id, name, color")
+              .select("id, label, color")
               .in("column_id", checklistColumnIds)
           : Promise.resolve({ data: [] as any[] }),
         svc
@@ -147,7 +149,7 @@ export default async function StatusPortalPage({
       ]);
 
       for (const label of labels ?? []) {
-        labelInfoMap.set(label.id, { name: label.name, color: label.color ?? null });
+        labelInfoMap.set(label.id, { name: label.label, color: label.color ?? null });
       }
 
       for (const cell of cells ?? []) {
@@ -341,6 +343,11 @@ export default async function StatusPortalPage({
                               ? cellDisplayMap.get(item.column_id)
                               : null;
 
+                            // For status items with a linked date column
+                            const linkedDateValue = isActive && item.date_column_id
+                              ? cellDisplayMap.get(item.date_column_id)
+                              : null;
+
                             return (
                               <div key={item.id} className="flex items-center gap-2">
                                 {done ? (
@@ -370,14 +377,29 @@ export default async function StatusPortalPage({
                                     </span>
                                   )}
 
-                                  {/* Date column: show date or "No date scheduled" */}
+                                  {/* Linked date column shown inline after status badge */}
+                                  {colType === "status" && item.date_column_id && isActive && (
+                                    <span
+                                      className={`ml-1.5 ${
+                                        linkedDateValue
+                                          ? done
+                                            ? "text-stone-400"
+                                            : "text-stone-600 font-medium"
+                                          : "text-stone-400 italic"
+                                      }`}
+                                    >
+                                      {linkedDateValue ?? "No date scheduled"}
+                                    </span>
+                                  )}
+
+                                  {/* Standalone date column: show date or placeholder */}
                                   {colType === "date" && isActive && (
                                     <span
                                       className={`ml-1.5 ${
                                         currentDisplayValue
                                           ? done
                                             ? "text-stone-400"
-                                            : "text-stone-700 font-medium"
+                                            : "text-stone-600 font-medium"
                                           : "text-stone-400 italic"
                                       }`}
                                     >

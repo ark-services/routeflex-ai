@@ -2693,52 +2693,76 @@ function SortableGroupHeader({
                       {(group.settings?.portal_checklist ?? []).map((item, idx) => {
                         const itemLabels = labelsByColumn.get(item.column_id) ?? [];
                         const col = columns.find((c) => c.id === item.column_id);
+                        const dateColumns = columns.filter((c) => c.type === "date");
+                        const isStatusCol = col?.type === "status";
                         return (
-                          <div key={item.id} className="flex items-center gap-1.5">
-                            {/* Column picker */}
-                            <select
-                              value={item.column_id}
-                              onChange={(e) => {
-                                const next = (group.settings?.portal_checklist ?? []).map((it, i) =>
-                                  i === idx ? { ...it, column_id: e.target.value, pass_label_id: null } : it
-                                );
-                                onUpdatePortalChecklist(next);
-                              }}
-                              className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
-                            >
-                              {columns.map((c) => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                            </select>
-                            {/* Label picker — only for status columns */}
-                            {col?.type === "status" && (
+                          <div key={item.id} className="space-y-1">
+                            {/* Row 1: column picker + remove */}
+                            <div className="flex items-center gap-1.5">
                               <select
-                                value={item.pass_label_id ?? ""}
+                                value={item.column_id}
                                 onChange={(e) => {
                                   const next = (group.settings?.portal_checklist ?? []).map((it, i) =>
-                                    i === idx ? { ...it, pass_label_id: e.target.value || null } : it
+                                    i === idx ? { ...it, column_id: e.target.value, pass_label_id: null, date_column_id: null } : it
                                   );
                                   onUpdatePortalChecklist(next);
                                 }}
-                                className="w-28 shrink-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                                className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
                               >
-                                <option value="">any value</option>
-                                {itemLabels.map((l) => (
-                                  <option key={l.id} value={l.id}>{l.label}</option>
+                                {columns.map((c) => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                               </select>
+                              <button
+                                onClick={() => {
+                                  const next = (group.settings?.portal_checklist ?? []).filter((_, i) => i !== idx);
+                                  onUpdatePortalChecklist(next);
+                                }}
+                                className="flex-shrink-0 text-stone-400 hover:text-red-500 transition-colors text-base leading-none px-0.5"
+                                title="Remove"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            {/* Row 2: label picker + date picker (status cols only) */}
+                            {isStatusCol && (
+                              <div className="flex items-center gap-1.5">
+                                {/* Pass label */}
+                                <select
+                                  value={item.pass_label_id ?? ""}
+                                  onChange={(e) => {
+                                    const next = (group.settings?.portal_checklist ?? []).map((it, i) =>
+                                      i === idx ? { ...it, pass_label_id: e.target.value || null } : it
+                                    );
+                                    onUpdatePortalChecklist(next);
+                                  }}
+                                  className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                                >
+                                  <option value="">any value</option>
+                                  {itemLabels.map((l) => (
+                                    <option key={l.id} value={l.id}>{l.label}</option>
+                                  ))}
+                                </select>
+                                {/* Linked date column */}
+                                <select
+                                  value={item.date_column_id ?? ""}
+                                  onChange={(e) => {
+                                    const next = (group.settings?.portal_checklist ?? []).map((it, i) =>
+                                      i === idx ? { ...it, date_column_id: e.target.value || null } : it
+                                    );
+                                    onUpdatePortalChecklist(next);
+                                  }}
+                                  className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                                >
+                                  <option value="">+ date col</option>
+                                  {dateColumns.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))}
+                                </select>
+                                {/* spacer to align with remove button above */}
+                                <div className="w-4 flex-shrink-0" />
+                              </div>
                             )}
-                            {/* Remove */}
-                            <button
-                              onClick={() => {
-                                const next = (group.settings?.portal_checklist ?? []).filter((_, i) => i !== idx);
-                                onUpdatePortalChecklist(next);
-                              }}
-                              className="flex-shrink-0 text-stone-400 hover:text-red-500 transition-colors text-base leading-none px-0.5"
-                              title="Remove"
-                            >
-                              ×
-                            </button>
                           </div>
                         );
                       })}

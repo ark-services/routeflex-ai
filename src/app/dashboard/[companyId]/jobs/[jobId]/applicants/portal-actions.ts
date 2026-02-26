@@ -28,9 +28,10 @@ export async function updateBoardGroupPortalSettings(
 }
 
 export type PortalChecklistItem = {
-  id: string;           // client-generated UUID (stable list key)
-  column_id: string;
-  pass_label_id?: string | null; // null = any non-empty value counts as complete
+  id: string;              // client-generated UUID (stable list key)
+  column_id: string;       // status (or any) column
+  pass_label_id?: string | null;  // null = any non-empty value counts as complete
+  date_column_id?: string | null; // optional: show a linked date column alongside the status
 };
 
 export async function updateBoardGroupPortalChecklist(
