@@ -55,11 +55,17 @@ export default async function StatusPortalPage({
   const isHired = applicant.status === "hired";
   const isRejected = applicant.status === "rejected";
 
-  // ── 2. Board groups (visible pipeline stages) ──────────────────────────────
+  // ── 2. Board for this job → groups for that board only ─────────────────────
+  const { data: board } = await svc
+    .from("boards")
+    .select("id")
+    .eq("job_id", job?.id)
+    .maybeSingle();
+
   const { data: allGroups } = await svc
     .from("board_groups")
     .select("id, name, color, sort_order, visible_to_applicants, applicant_note")
-    .eq("company_id", companyId)
+    .eq("board_id", board?.id ?? "00000000-0000-0000-0000-000000000000")
     .order("sort_order", { ascending: true });
 
   const visibleGroups = (allGroups ?? []).filter(
