@@ -214,6 +214,7 @@ export interface TemplateGroup {
   name: string;
   color?: string;
   sort_order: number;
+  settings?: Record<string, unknown>;
   rows?: TemplateRow[];
 }
 

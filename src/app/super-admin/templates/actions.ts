@@ -265,7 +265,7 @@ export async function captureJobLayoutToTemplate(
   // ── 3. Fetch board groups ─────────────────────────────────────────────────
   const { data: rawGroups } = await supabase
     .from("board_groups")
-    .select("id, name, color, sort_order")
+    .select("id, name, color, sort_order, settings")
     .eq("board_id", boardId)
     .order("sort_order", { ascending: true });
 
@@ -472,6 +472,7 @@ export async function captureJobLayoutToTemplate(
         name: g.name,
         color: g.color ?? "#0073ea",
         sort_order: g.sort_order,
+        settings: g.settings ?? {},
         rows,
       };
     })

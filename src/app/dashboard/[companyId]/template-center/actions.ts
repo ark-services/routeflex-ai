@@ -435,6 +435,7 @@ export async function applyTemplate(
           name: g.name,
           color: g.color ?? "#0073ea",
           sort_order: maxSortOrder + g.sort_order,
+          settings: g.settings ?? {},
         })
         .select("id")
         .single();

@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
+import {
+  ArrowLeftRight,
+  PencilLine,
+  Trash2,
+  ChevronsLeftRight,
+  Plus,
+  RotateCcw,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -257,11 +265,11 @@ export default function ApplicantsBoard({
       + ADD_COL_BTN_WIDTH;
   }, [columnWidths, visibleColumns]);
 
-  /** Per-group table width — collapsed columns contribute a fixed 48 px instead of their full width. */
+  /** Per-group table width — collapsed columns contribute a fixed 32 px instead of their full width. */
   function getGroupTableWidth(collapsedColIds: Set<string>) {
     return STICKY_COL_WIDTH
       + visibleColumns.reduce((sum, col) =>
-          sum + (collapsedColIds.has(col.id) ? 48 : (columnWidths[col.id] ?? getDefaultWidth(col.type))),
+          sum + (collapsedColIds.has(col.id) ? 32 : (columnWidths[col.id] ?? getDefaultWidth(col.type))),
         0)
       + ADD_COL_BTN_WIDTH;
   }
@@ -1335,7 +1343,7 @@ export default function ApplicantsBoard({
                             {visibleColumns.map(col => (
                               <col
                                 key={col.id}
-                                style={{ width: collapsedColIds.has(col.id) ? "48px" : `${getColumnWidth(col.id, col.type)}px` }}
+                                style={{ width: collapsedColIds.has(col.id) ? "32px" : `${getColumnWidth(col.id, col.type)}px` }}
                               />
                             ))}
                             <col style={{ width: `${ADD_COL_BTN_WIDTH}px` }} />
@@ -1823,23 +1831,26 @@ function SortableColumnHeader({
       ref={setNodeRef}
       style={{ ...style, position: 'relative' }}
       className={`group py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0 ${
-        isCollapsed ? "px-1 w-12" : "px-3"
+        isCollapsed ? "px-0 w-8" : "px-3"
       }${!isEditing && !isCollapsed && !column.is_system ? " cursor-grab active:cursor-grabbing" : ""}`}
       {...attributes}
       {...listeners}
     >
       {isCollapsed ? (
-        <div className="flex items-center justify-center">
+        <div className="relative flex items-center justify-center group/collapsed">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleMinimize();
             }}
-            className="text-stone-600 hover:text-stone-900 cursor-pointer text-sm"
-            title={`Expand ${column.name}`}
+            className="text-stone-400 hover:text-stone-700 cursor-pointer text-xs leading-none"
           >
             ↔
           </button>
+          {/* Instant tooltip — drops below header so it's never clipped by thead overflow */}
+          <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 bg-stone-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/collapsed:opacity-100 z-[200]">
+            Expand &ldquo;{column.name}&rdquo;
+          </div>
         </div>
       ) : (
         <div className="flex items-center w-full min-w-0">
@@ -1904,55 +1915,67 @@ function SortableColumnHeader({
             onClick={() => setMenuOpen(false)}
           />
           <div
-            className="fixed z-[999] w-48 rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+            className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
             }}
           >
-            <button
-              onClick={() => {
-                onToggleMinimize();
-                setMenuOpen(false);
-              }}
-              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-            >
-              Minimize column
-            </button>
-            <button
-              onClick={() => {
-                onAddRight();
-                setMenuOpen(false);
-              }}
-              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-            >
-              Add column to right
-            </button>
-            <button
-              onClick={() => {
-                setIsEditing(true);
-                setMenuOpen(false);
-              }}
-              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-            >
-              Rename column
-            </button>
-            <button
-              onClick={() => { onWidthReset(); setMenuOpen(false); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-            >
-              Reset column width
-            </button>
-            <div className="my-1 border-t border-stone-100" />
-            <button
-              onClick={() => {
-                onDelete();
-                setMenuOpen(false);
-              }}
-              className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
-            >
-              Delete column
-            </button>
+            {/* Column name header */}
+            <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
+              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">{column.name}</p>
+            </div>
+
+            {/* Section 1 — layout actions */}
+            <div className="py-2">
+              <button
+                onClick={() => { onToggleMinimize(); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <ChevronsLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                Minimize column
+              </button>
+              <button
+                onClick={() => { onAddRight(); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <Plus className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                Add column to right
+              </button>
+            </div>
+
+            <div className="border-t border-stone-100" />
+
+            {/* Section 2 — edit actions */}
+            <div className="py-2">
+              <button
+                onClick={() => { setIsEditing(true); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <PencilLine className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                Rename column
+              </button>
+              <button
+                onClick={() => { onWidthReset(); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <RotateCcw className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                Reset column width
+              </button>
+            </div>
+
+            <div className="border-t border-stone-100" />
+
+            {/* Section 3 — danger */}
+            <div className="py-2">
+              <button
+                onClick={() => { onDelete(); setMenuOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+              >
+                <Trash2 className="w-4 h-4 flex-shrink-0" />
+                Delete column
+              </button>
+            </div>
           </div>
         </>,
         document.body
