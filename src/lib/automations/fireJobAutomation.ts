@@ -42,8 +42,10 @@ export async function fireJobTrigger(
     payload,
   });
 
-  // Mark this trigger as automation-sourced to prevent infinite loops
-  const isFromAutomation = payload.source === 'automation';
+  // Chain depth: 0 = user-initiated, 1 = fired by an automation action.
+  // We allow depth 1 so that e.g. "move_group" can chain into "send_training_link".
+  // Depth 2+ is blocked to prevent runaway cascades.
+  const chainDepth = payload._chain_depth ?? 0;
 
   try {
     // Find enabled automations for this job + trigger
@@ -86,11 +88,11 @@ export async function fireJobTrigger(
         filter: automation.filter,
       });
 
-      // Skip automations triggered by other automations unless explicitly allowed
-      // This prevents infinite loops (e.g., move_group triggering applicant.moved_group)
-      if (isFromAutomation) {
-        const skipReason = 'Triggered by another automation (infinite loop prevention)';
-        console.log('[fireJobTrigger] Skipping automation:', skipReason);
+      // Block automation chains beyond depth 1 to prevent infinite loops.
+      // Depth 0 = user action, depth 1 = automation chained from another automation.
+      if (chainDepth >= 2) {
+        const skipReason = 'Automation chain limit reached (max 1 level of chaining)';
+        console.log('[fireJobTrigger] Skipping automation (chain depth limit):', skipReason);
         await supabase.from('automation_runs').insert({
           company_id: companyId,
           job_id: jobId,
@@ -748,6 +750,29 @@ async function executeMoveGroup(
     toGroupName: targetGroup.name,
     rowsAffected: count,
   });
+
+  // Fire applicant.moved_group so downstream automations can react
+  // (e.g., "when moved to Road Test → send training link").
+  // We increment _chain_depth so cascading chains beyond depth 1 are blocked.
+  try {
+    await fireJobTrigger(supabase, {
+      companyId,
+      jobId,
+      trigger_key: 'applicant.moved_group',
+      subject_type: 'applicant',
+      subject_id: applicantId,
+      payload: {
+        company_id: companyId,
+        job_id: jobId,
+        applicant_id: applicantId,
+        from_group_id: currentApplicant.group_id,
+        to_group_id,
+        _chain_depth: (payload._chain_depth ?? 0) + 1,
+      },
+    });
+  } catch (chainErr) {
+    console.warn('[executeMoveGroup] Chain trigger error (non-fatal):', chainErr);
+  }
 
   return { success: true };
 }
