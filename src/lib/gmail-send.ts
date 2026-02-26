@@ -110,6 +110,12 @@ export async function getGmailClientForCompany(
 /**
  * Send email via Gmail API
  */
+/** RFC 2047 encode a header value so non-ASCII characters (e.g. em dash) survive MIME transport. */
+function encodeHeader(value: string): string {
+  if (/^[\x00-\x7F]*$/.test(value)) return value; // pure ASCII — no encoding needed
+  return `=?UTF-8?B?${Buffer.from(value, 'utf-8').toString('base64')}?=`;
+}
+
 export async function sendEmail(
   gmail: gmail_v1.Gmail,
   params: { to: string; subject: string; body: string; from?: string }
@@ -118,7 +124,7 @@ export async function sendEmail(
     // Build RFC 2822 formatted message
     const messageParts = [
       `To: ${params.to}`,
-      `Subject: ${params.subject}`,
+      `Subject: ${encodeHeader(params.subject)}`,
       'MIME-Version: 1.0',
       'Content-Type: text/html; charset=utf-8',
       '',
