@@ -300,7 +300,7 @@ export default async function ApplicantsPage({
     const { data: boardCellData, error: boardCellErr } = await supabase
       .from("board_cells")
       .select(
-        "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id,value_file_path"
+        "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id,value_file_path,value_bool"
       )
       .in("applicant_id", applicantIds);
 
@@ -349,6 +349,24 @@ export default async function ApplicantsPage({
       }
     }
 
+    // Build column type map: column_id → type
+    const columnTypeMap = new Map<string, string>();
+    for (const col of columns ?? []) {
+      columnTypeMap.set(col.id, col.type);
+    }
+
+    // Build status label lookup: column_id → Map<label_text_lower, label_id>
+    // Used to resolve select/radio form answers (plain text) → status label IDs
+    const labelTextMap = new Map<string, Map<string, string>>();
+    for (const lbl of statusLabels) {
+      let inner = labelTextMap.get(lbl.column_id);
+      if (!inner) {
+        inner = new Map<string, string>();
+        labelTextMap.set(lbl.column_id, inner);
+      }
+      inner.set(lbl.label.toLowerCase(), lbl.id);
+    }
+
     if (VERBOSE) console.log('[Applicants Page] Field to column mapping:', {
       mappingCount: fieldToColumnMap.size,
       mappings: Array.from(fieldToColumnMap.entries()).map(([fieldId, colId]) => ({
@@ -368,13 +386,24 @@ export default async function ApplicantsPage({
           return null;
         }
 
+        const colType = columnTypeMap.get(columnId);
+
+        // For status columns linked to a select/radio form field, resolve the
+        // plain-text answer to a status label ID so the board renders correctly.
+        let value_status_label_id: string | null = null;
+        if (colType === "status" && fv.value_text) {
+          const inner = labelTextMap.get(columnId);
+          value_status_label_id = inner?.get(fv.value_text.toLowerCase()) ?? null;
+        }
+
         return {
           applicant_id: fv.applicant_id,
           column_id: columnId,
           value_text: fv.value_text || fv.value_file_path, // Use value_text for files too
           value_number: fv.value_number,
           value_date: fv.value_date,
-          value_status_label_id: null, // field values don't have status labels
+          value_bool: fv.value_bool ?? null,
+          value_status_label_id,
         };
       })
       .filter((v): v is NonNullable<typeof v> => v !== null);

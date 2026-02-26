@@ -124,7 +124,7 @@ export interface BoardGroup {
 }
 
 export const COLUMN_TYPES = [
-  "text", "number", "date", "file", "status", "email", "phone", "location",
+  "text", "number", "date", "file", "status", "checkbox", "email", "phone", "location",
   "fadv.package", "fadv.location", "fadv.facility_id", "fadv.position_type",
 ] as const;
 export type ColumnType = (typeof COLUMN_TYPES)[number];
@@ -174,6 +174,7 @@ export interface BoardCell {
   value_text: string | null;
   value_number: number | null;
   value_date: string | null;
+  value_bool: boolean | null;
   value_status_label_id: string | null;
   value_file_path: string | null;
   created_at: string;

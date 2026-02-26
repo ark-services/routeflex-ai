@@ -95,19 +95,31 @@ export async function createFormField(
 
   if (board) {
     const columnType = mapFieldTypeToColumnType(field.type);
-    await supabase.from("board_columns").insert({
-      board_id: board.id,
-      company_id: companyId,
-      field_id: data.id,
-      name: field.label,
-      type: columnType,
-      sort_order: nextSortOrder,
-      is_system: false,
-      settings: {},
-      // Stamp canonical system_key so reconcile can re-link by key if the
-      // column is ever hard-deleted from the board.
-      system_key: CANONICAL_KEYS.has(field.key) ? field.key : null,
-    });
+    const { data: newCol } = await supabase
+      .from("board_columns")
+      .insert({
+        board_id: board.id,
+        company_id: companyId,
+        field_id: data.id,
+        name: field.label,
+        type: columnType,
+        sort_order: nextSortOrder,
+        is_system: false,
+        settings: {},
+        // Stamp canonical system_key so reconcile can re-link by key if the
+        // column is ever hard-deleted from the board.
+        system_key: CANONICAL_KEYS.has(field.key) ? field.key : null,
+      })
+      .select("id")
+      .single();
+
+    // For select/radio fields, auto-create a status label per option
+    if (newCol && (field.type === "select" || field.type === "radio")) {
+      const options: string[] = (field.settings as any)?.options ?? [];
+      if (options.length > 0) {
+        await createStatusLabelsForColumn(supabase, newCol.id, options);
+      }
+    }
   }
 
   revalidatePath(dashPath(companyId, jobId));
@@ -341,11 +353,44 @@ function mapFieldTypeToColumnType(fieldType: string): string {
     number: "number",
     date: "date",
     file: "file",
-    checkbox: "text",
-    radio: "text",
-    select: "text",
+    checkbox: "checkbox",
+    radio: "status",
+    select: "status",
   };
   return typeMap[fieldType] || "text";
+}
+
+/** Default color palette for auto-generated status labels. */
+const STATUS_LABEL_COLORS = [
+  "#6b7280", // gray
+  "#3b82f6", // blue
+  "#10b981", // green
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#8b5cf6", // purple
+  "#ec4899", // pink
+  "#14b8a6", // teal
+  "#f97316", // orange
+  "#06b6d4", // cyan
+];
+
+/**
+ * Insert one status label per option for a newly-created board column.
+ * Silently skips duplicates (unique constraint on column_id + color).
+ */
+async function createStatusLabelsForColumn(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  columnId: string,
+  options: string[]
+) {
+  for (let i = 0; i < options.length; i++) {
+    const label = String(options[i]).trim();
+    if (!label) continue;
+    const color = STATUS_LABEL_COLORS[i % STATUS_LABEL_COLORS.length];
+    await supabase
+      .from("board_status_labels")
+      .upsert({ column_id: columnId, label, color, sort_order: i }, { onConflict: "column_id,color" });
+  }
 }
 
 /**
@@ -382,7 +427,7 @@ export async function reconcileSyncedColumns(
   // 1. Active form fields, in sort order
   const { data: fields } = await supabase
     .from("job_application_fields")
-    .select("id, key, label, type, sort_order")
+    .select("id, key, label, type, sort_order, settings")
     .eq("form_id", formId)
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
@@ -457,17 +502,30 @@ export async function reconcileSyncedColumns(
     } else {
       // ── Step 4: create a brand-new board column ────────────────────────────
       const columnType = mapFieldTypeToColumnType(field.type);
-      await supabase.from("board_columns").insert({
-        board_id: board.id,
-        company_id: companyId,
-        field_id: field.id,
-        name: field.label,
-        type: columnType,
-        sort_order: field.sort_order,
-        is_system: false,
-        settings: {},
-        system_key: CANONICAL_KEYS.has(field.key) ? field.key : null,
-      });
+      const { data: newCol } = await supabase
+        .from("board_columns")
+        .insert({
+          board_id: board.id,
+          company_id: companyId,
+          field_id: field.id,
+          name: field.label,
+          type: columnType,
+          sort_order: field.sort_order,
+          is_system: false,
+          settings: {},
+          system_key: CANONICAL_KEYS.has(field.key) ? field.key : null,
+        })
+        .select("id")
+        .single();
+
+      // For select/radio fields, auto-create a status label per option
+      if (newCol && (field.type === "select" || field.type === "radio")) {
+        const options: string[] = (field as any).settings?.options ?? [];
+        if (options.length > 0) {
+          await createStatusLabelsForColumn(supabase, newCol.id, options);
+        }
+      }
+
       created++;
     }
   }

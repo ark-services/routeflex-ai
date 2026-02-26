@@ -847,6 +847,7 @@ export default function ApplicantsBoard({
     if (column.type === "number") return cell.value_number;
     if (column.type === "date") return cell.value_date;
     if (column.type === "status") return cell.value_status_label_id;
+    if (column.type === "checkbox") return cell.value_bool ?? false;
     if (column.type === "email") return cell.value_text;
     if (column.type === "phone") return cell.value_text;
     if (column.type === "location") return cell.value_text;
@@ -909,7 +910,7 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", value: any) {
+  function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "checkbox" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", value: any) {
     startTransition(async () => {
       // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
       // update all selected rows with the new status value
@@ -1544,6 +1545,7 @@ export default function ApplicantsBoard({
                     <option value="location">Location</option>
                     <option value="file">File</option>
                     <option value="status">Status</option>
+                    <option value="checkbox">Checkbox</option>
                     <optgroup label="First Advantage (FADV)">
                       <option value="fadv.package">FADV: Package</option>
                       <option value="fadv.location">FADV: Location</option>
@@ -1973,7 +1975,7 @@ function SortableRow({
   selected: boolean;
   onToggle: () => void;
   getCellValue: (col: BoardColumn) => any;
-  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", val: any) => void;
+  onUpdateCell: (colId: string, colType: "text" | "number" | "date" | "status" | "checkbox" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", val: any) => void;
   labelsByColumn: Map<string, StatusLabel[]>;
   onEditLabels: (colId: string) => void;
   rowMenuOpen: boolean;
@@ -3214,6 +3216,36 @@ function CellRenderer({
           </div>
         )}
       </div>
+    );
+  }
+
+  // CHECKBOX TYPE — boolean toggle (like Monday's checkbox column)
+  if (column.type === "checkbox") {
+    const checked = Boolean(value);
+    return (
+      <button
+        type="button"
+        onClick={() => startTransition(() => onUpdate(!checked))}
+        className="flex h-8 w-full items-center justify-center"
+        aria-label={checked ? "Uncheck" : "Check"}
+      >
+        <div
+          className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${
+            checked
+              ? "bg-green-500"
+              : "border-2 border-stone-300 hover:border-stone-400 bg-white"
+          }`}
+        >
+          {checked && (
+            <svg viewBox="0 0 12 12" className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="2,6 5,9 10,3" />
+            </svg>
+          )}
+        </div>
+        {isPending && (
+          <div className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-green-500" />
+        )}
+      </button>
     );
   }
 

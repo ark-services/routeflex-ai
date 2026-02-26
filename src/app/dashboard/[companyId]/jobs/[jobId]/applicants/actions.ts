@@ -1219,7 +1219,7 @@ export async function updateBoardCell(
   jobId: string,
   applicantId: string,
   columnId: string,
-  columnType: "text" | "number" | "date" | "status" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type",
+  columnType: "text" | "number" | "date" | "status" | "checkbox" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type",
   value: any
 ): Promise<CellUpdateResult> {
   // UUID validation regex
@@ -1273,11 +1273,14 @@ export async function updateBoardCell(
     value_text: null,
     value_number: null,
     value_date: null,
+    value_bool: null,
     value_status_label_id: null,
     value_file_path: null,
   };
 
-  if (columnType === "text") {
+  if (columnType === "checkbox") {
+    cellData.value_bool = Boolean(value);
+  } else if (columnType === "text") {
     cellData.value_text = value;
   } else if (columnType === "number") {
     cellData.value_number = value;
