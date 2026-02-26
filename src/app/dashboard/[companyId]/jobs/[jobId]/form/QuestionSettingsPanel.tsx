@@ -32,6 +32,7 @@ export default function QuestionSettingsPanel({
   const [defaultChecked, setDefaultChecked] = useState(
     field?.settings?.defaultChecked ?? false
   );
+  const [hidden, setHidden] = useState(field?.settings?.hidden ?? false);
 
   // Update local state when field changes
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function QuestionSettingsPanel({
       setPlaceholder(field.settings?.placeholder || "");
       setOptions(field.settings?.options || ["Option 1", "Option 2"]);
       setDefaultChecked(field.settings?.defaultChecked ?? false);
+      setHidden(field.settings?.hidden ?? false);
     }
   }, [field]);
 
@@ -88,6 +90,12 @@ export default function QuestionSettingsPanel({
     await onUpdate({ settings: { ...field.settings, defaultChecked: newVal } });
   };
 
+  const handleHiddenToggle = async () => {
+    const newVal = !hidden;
+    setHidden(newVal);
+    await onUpdate({ settings: { ...field.settings, hidden: newVal } });
+  };
+
   const supportsPlaceholder = ["text", "textarea", "email", "phone", "number", "location"].includes(field.type);
   const supportsOptions = ["radio", "checkbox", "select"].includes(field.type);
   const supportsDefaultChecked = field.type === "checkbox";
@@ -128,6 +136,33 @@ export default function QuestionSettingsPanel({
           </label>
           <p className="text-xs text-gray-500 mt-1">
             Applicants must answer this question
+          </p>
+        </div>
+
+        {/* Hidden toggle */}
+        <div>
+          <label className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              </svg>
+              <span className="text-sm font-medium text-gray-700">Hidden from Form</span>
+            </div>
+            <div
+              onClick={handleHiddenToggle}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                hidden ? "bg-amber-500" : "bg-gray-300"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  hidden ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </div>
+          </label>
+          <p className="text-xs text-gray-500 mt-1">
+            Question won&apos;t appear on the form but the board column is preserved
           </p>
         </div>
 

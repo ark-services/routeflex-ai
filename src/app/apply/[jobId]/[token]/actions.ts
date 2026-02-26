@@ -78,9 +78,9 @@ export async function submitApplication(
     fieldKeys: fields.map((f: any) => ({ key: f.key, type: f.type, required: f.required }))
   });
 
-  // Validate required fields
+  // Validate required fields (skip hidden fields — they don't appear on the form)
   for (const field of fields) {
-    if (field.required) {
+    if (field.required && !field.settings?.hidden) {
       const value = formData.get(field.key);
 
       // Special handling for file fields

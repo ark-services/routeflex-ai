@@ -128,7 +128,7 @@ export default function PublicApplicationForm({
         </div>
       )}
 
-      {fields.map((field) => (
+      {fields.filter((field) => !field.settings?.hidden).map((field) => (
         <div key={field.field_id} className="space-y-1.5">
           <label
             htmlFor={field.key}
