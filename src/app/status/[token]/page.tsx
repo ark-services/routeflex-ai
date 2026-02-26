@@ -77,13 +77,12 @@ export default async function StatusPortalPage({
     (g: any) => g.visible_to_applicants !== false
   );
 
-  // Determine step state for each group
   const currentGroupIndex = visibleGroups.findIndex(
     (g: any) => g.id === applicant.group_id
   );
 
-  // ── 3. Checklist data ───────────────────────────────────────────────────────
-  // Gather all unique column_ids referenced in any group's portal_checklist
+  // ── 3. Checklist + name data ─────────────────────────────────────────────────
+  // Gather all column_ids referenced in any checklist
   const allChecklistColumnIds = new Set<string>();
   for (const group of visibleGroups) {
     const checklist: ChecklistItem[] = (group as any).settings?.portal_checklist ?? [];
@@ -92,36 +91,93 @@ export default async function StatusPortalPage({
     }
   }
 
-  const columnIds = Array.from(allChecklistColumnIds);
+  const checklistColumnIds = Array.from(allChecklistColumnIds);
   const columnNameMap = new Map<string, string>(); // columnId → display name
-  const labelInfoMap = new Map<string, { name: string; color: string | null }>(); // labelId → display info
-  const cellValueMap = new Map<string, string>(); // columnId → applicant's current label_id value
+  const columnTypeMap = new Map<string, string>(); // columnId → 'text'|'status'|'date'|'number'
+  const labelInfoMap = new Map<string, { name: string; color: string | null }>(); // labelId → info
+  const cellLabelIdMap = new Map<string, string>();  // columnId → current label_id (status cols)
+  const cellDisplayMap = new Map<string, string>();  // columnId → formatted display string (other cols)
 
-  if (columnIds.length > 0) {
-    const [{ data: columns }, { data: labels }, { data: cells }] = await Promise.all([
-      svc
-        .from("board_columns")
-        .select("id, name")
-        .in("id", columnIds),
-      svc
-        .from("board_status_labels")
-        .select("id, name, color, column_id")
-        .in("column_id", columnIds),
-      svc
-        .from("board_cells")
-        .select("column_id, value")
-        .eq("applicant_id", applicant.id)
-        .in("column_id", columnIds),
-    ]);
+  // Start with the full_name from DB; may be overridden by board cell values below
+  let displayName: string = applicant.full_name;
 
-    for (const col of columns ?? []) {
-      columnNameMap.set(col.id, col.name);
+  if (board?.id) {
+    // Fetch ALL columns for this board so we can find "First Name"/"Last Name" for display
+    const { data: allBoardColumns } = await svc
+      .from("board_columns")
+      .select("id, name, type")
+      .eq("board_id", board.id);
+
+    // Populate name/type maps for checklist columns
+    for (const col of allBoardColumns ?? []) {
+      if (allChecklistColumnIds.has(col.id)) {
+        columnNameMap.set(col.id, col.name);
+        columnTypeMap.set(col.id, col.type);
+      }
     }
-    for (const label of labels ?? []) {
-      labelInfoMap.set(label.id, { name: label.name, color: label.color ?? null });
-    }
-    for (const cell of cells ?? []) {
-      if (cell.value) cellValueMap.set(cell.column_id, cell.value);
+
+    // Identify first/last name columns by name (case-insensitive)
+    const firstNameCol = (allBoardColumns ?? []).find(
+      (c) => c.name.trim().toLowerCase() === "first name"
+    );
+    const lastNameCol = (allBoardColumns ?? []).find(
+      (c) => c.name.trim().toLowerCase() === "last name"
+    );
+
+    // Fetch cells for: checklist columns + name columns
+    const cellFetchIds = [...checklistColumnIds];
+    if (firstNameCol && !cellFetchIds.includes(firstNameCol.id))
+      cellFetchIds.push(firstNameCol.id);
+    if (lastNameCol && !cellFetchIds.includes(lastNameCol.id))
+      cellFetchIds.push(lastNameCol.id);
+
+    if (cellFetchIds.length > 0) {
+      const [{ data: labels }, { data: cells }] = await Promise.all([
+        checklistColumnIds.length > 0
+          ? svc
+              .from("board_status_labels")
+              .select("id, name, color")
+              .in("column_id", checklistColumnIds)
+          : Promise.resolve({ data: [] as any[] }),
+        svc
+          .from("board_cells")
+          .select("column_id, value_text, value_number, value_date, value_status_label_id")
+          .eq("applicant_id", applicant.id)
+          .in("column_id", cellFetchIds),
+      ]);
+
+      for (const label of labels ?? []) {
+        labelInfoMap.set(label.id, { name: label.name, color: label.color ?? null });
+      }
+
+      for (const cell of cells ?? []) {
+        if (cell.value_status_label_id) {
+          cellLabelIdMap.set(cell.column_id, cell.value_status_label_id);
+        } else if (cell.value_date) {
+          cellDisplayMap.set(
+            cell.column_id,
+            new Date(cell.value_date + "T00:00:00").toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+          );
+        } else if (cell.value_text) {
+          cellDisplayMap.set(cell.column_id, cell.value_text);
+        } else if (cell.value_number != null) {
+          cellDisplayMap.set(cell.column_id, String(cell.value_number));
+        }
+      }
+
+      // Build display name from board cells if available
+      const fn = firstNameCol
+        ? (cells ?? []).find((c) => c.column_id === firstNameCol.id)?.value_text ?? ""
+        : "";
+      const ln = lastNameCol
+        ? (cells ?? []).find((c) => c.column_id === lastNameCol.id)?.value_text ?? ""
+        : "";
+      const nameFromCells = [fn, ln].filter(Boolean).join(" ");
+      if (nameFromCells) displayName = nameFromCells;
     }
   }
 
@@ -144,7 +200,6 @@ export default async function StatusPortalPage({
     `)
     .eq("applicant_id", applicant.id);
 
-  // Load passed module attempts for each enrollment
   const enrollmentIds = (enrollments ?? []).map((e: any) => e.id);
   let passedModuleIds = new Set<string>();
   if (enrollmentIds.length > 0) {
@@ -163,12 +218,18 @@ export default async function StatusPortalPage({
     year: "numeric",
   });
 
-  // ── Helper: is a checklist item complete for this applicant? ─────────────────
+  // ── Helper: is a checklist item complete? ───────────────────────────────────
   function isItemComplete(item: ChecklistItem): boolean {
-    const cellVal = cellValueMap.get(item.column_id);
-    if (!cellVal) return false;
-    if (item.pass_label_id) return cellVal === item.pass_label_id;
-    return true; // any non-empty value counts
+    const colType = columnTypeMap.get(item.column_id);
+    if (colType === "status") {
+      const labelId = cellLabelIdMap.get(item.column_id);
+      if (!labelId) return false;
+      if (item.pass_label_id) return labelId === item.pass_label_id;
+      return true; // any label = complete if no specific pass label required
+    } else {
+      // date / text / number: any non-empty value counts
+      return cellDisplayMap.has(item.column_id);
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -176,7 +237,7 @@ export default async function StatusPortalPage({
     <div className="space-y-6">
       {/* ── Applicant header ── */}
       <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="text-lg font-bold text-stone-900">{applicant.full_name}</p>
+        <p className="text-lg font-bold text-stone-900">{displayName}</p>
         <p className="text-sm text-stone-500 mt-0.5">
           Applied for <span className="font-medium text-stone-700">{job?.title}</span>
           {" · "}Applied {appliedDate}
@@ -263,14 +324,22 @@ export default async function StatusPortalPage({
                       {!isCompleted && checklist.length > 0 && (
                         <div className="mt-3 space-y-1.5">
                           {checklist.map((item) => {
-                            // For active stage: show real completion + current value
-                            // For upcoming stages: all pending, no live values
                             const done = isActive ? isItemComplete(item) : false;
                             const colName = columnNameMap.get(item.column_id) ?? "—";
+                            const colType = columnTypeMap.get(item.column_id) ?? "text";
 
-                            // Current value the applicant has right now
-                            const currentLabelId = isActive ? cellValueMap.get(item.column_id) : null;
-                            const currentLabel = currentLabelId ? labelInfoMap.get(currentLabelId) : null;
+                            // Status columns: show current label badge
+                            const currentLabelId = isActive
+                              ? cellLabelIdMap.get(item.column_id)
+                              : null;
+                            const currentLabel = currentLabelId
+                              ? labelInfoMap.get(currentLabelId)
+                              : null;
+
+                            // Date / text / number columns: show display value
+                            const currentDisplayValue = isActive
+                              ? cellDisplayMap.get(item.column_id)
+                              : null;
 
                             return (
                               <div key={item.id} className="flex items-center gap-2">
@@ -285,8 +354,9 @@ export default async function StatusPortalPage({
                                   }`}
                                 >
                                   {colName}
-                                  {/* Show current label value if one exists */}
-                                  {currentLabel && (
+
+                                  {/* Status column: colored label badge */}
+                                  {colType === "status" && currentLabel && (
                                     <span
                                       className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded font-medium"
                                       style={{
@@ -299,6 +369,30 @@ export default async function StatusPortalPage({
                                       {currentLabel.name}
                                     </span>
                                   )}
+
+                                  {/* Date column: show date or "No date scheduled" */}
+                                  {colType === "date" && isActive && (
+                                    <span
+                                      className={`ml-1.5 ${
+                                        currentDisplayValue
+                                          ? done
+                                            ? "text-stone-400"
+                                            : "text-stone-700 font-medium"
+                                          : "text-stone-400 italic"
+                                      }`}
+                                    >
+                                      {currentDisplayValue ?? "No date scheduled"}
+                                    </span>
+                                  )}
+
+                                  {/* Text / number column: show raw value */}
+                                  {colType !== "status" &&
+                                    colType !== "date" &&
+                                    currentDisplayValue && (
+                                      <span className="ml-1.5 text-stone-600">
+                                        {currentDisplayValue}
+                                      </span>
+                                    )}
                                 </span>
                               </div>
                             );
