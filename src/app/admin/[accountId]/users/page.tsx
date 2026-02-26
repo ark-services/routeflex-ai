@@ -20,15 +20,17 @@ export default async function AdminUsersPage({
   const supabase = await createClient();
   const svc = getSvc();
 
-  const [{ data: members }, { count: memberCount }, { data: linkRow }] =
+  // Use service role for member fetches — the regular client's JOIN to auth.users
+  // (for emails) is blocked by PostgREST and silently drops all rows.
+  const [{ data: memberships }, { count: memberCount }, { data: linkRow }] =
     await Promise.all([
-      supabase
+      svc
         .from("account_memberships")
-        .select("id, user_id, role, created_at, users:user_id(email)")
+        .select("id, user_id, role, created_at")
         .eq("account_id", accountId)
         .order("created_at", { ascending: true }),
 
-      supabase
+      svc
         .from("account_memberships")
         .select("*", { count: "exact", head: true })
         .eq("account_id", accountId),
@@ -45,6 +47,26 @@ export default async function AdminUsersPage({
         .limit(1)
         .maybeSingle(),
     ]);
+
+  // Fetch emails from auth.users via the admin API (service role only)
+  const userIds = (memberships ?? []).map((m) => m.user_id as string);
+  const emailByUserId = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: { users: authUsers } } = await svc.auth.admin.listUsers({
+      perPage: 1000,
+    });
+    for (const au of authUsers ?? []) {
+      if (userIds.includes(au.id)) {
+        emailByUserId.set(au.id, au.email ?? "");
+      }
+    }
+  }
+
+  // Shape members to match the format the client component expects
+  const members = (memberships ?? []).map((m) => ({
+    ...m,
+    users: { email: emailByUserId.get(m.user_id as string) ?? "" },
+  }));
 
   const canInviteMore = (memberCount ?? 0) < membership.account.max_seats;
 
