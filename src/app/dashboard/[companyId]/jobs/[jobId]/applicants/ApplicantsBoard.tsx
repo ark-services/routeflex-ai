@@ -8,6 +8,10 @@ import {
   ChevronsLeftRight,
   Plus,
   RotateCcw,
+  Copy,
+  Send,
+  GraduationCap,
+  MoveRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -799,6 +803,33 @@ export default function ApplicantsBoard({
     });
   }
 
+  function onMinimizeAllColumns(groupId: string) {
+    const allColumnIds = visibleColumns.map((c) => c.id);
+    setLocalGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, settings: { ...g.settings, collapsed_columns: allColumnIds } }
+          : g
+      )
+    );
+    startTransition(async () => {
+      await updateGroupCollapsedColumns(companyId, jobId, boardId, groupId, allColumnIds);
+    });
+  }
+
+  function onExpandAllColumns(groupId: string) {
+    setLocalGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, settings: { ...g.settings, collapsed_columns: [] } }
+          : g
+      )
+    );
+    startTransition(async () => {
+      await updateGroupCollapsedColumns(companyId, jobId, boardId, groupId, []);
+    });
+  }
+
   function onColumnWidthChange(columnId: string, width: number) {
     setColumnWidths(prev => ({ ...prev, [columnId]: width }));
   }
@@ -1129,42 +1160,71 @@ export default function ApplicantsBoard({
                                 {menuOpen && (
                                   <>
                                     <div className="fixed inset-0 z-[30]" onClick={() => setRowMenuOpen(null)} />
-                                    <div className="absolute right-0 top-full mt-1 z-[31] w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl">
-                                      <div className="px-3 py-1 text-xs font-medium text-stone-400">Move to</div>
-                                      {localGroups.map((grp) => (
+                                    <div className="absolute right-0 top-full mt-1 z-[31] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden">
+                                      {/* Applicant name header */}
+                                      <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
+                                        <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">
+                                          {a.full_name ?? "Applicant"}
+                                        </p>
+                                      </div>
+                                      {/* Move to */}
+                                      <div className="py-2">
+                                        <p className="px-4 py-1.5 text-xs font-semibold text-stone-400 uppercase tracking-wider">Move to</p>
+                                        {localGroups.map((grp) => (
+                                          <button
+                                            key={grp.id}
+                                            onClick={() => { onMoveApplicant(a.id, grp.id); setRowMenuOpen(null); }}
+                                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                          >
+                                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: grp.color }} />
+                                            {grp.name}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <div className="border-t border-stone-100" />
+                                      {/* Actions */}
+                                      <div className="py-2">
                                         <button
-                                          key={grp.id}
-                                          onClick={() => onMoveApplicant(a.id, grp.id)}
-                                          className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50"
+                                          onClick={() => { setRowMenuOpen(null); onDuplicateApplicant(a.id); }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
                                         >
-                                          {grp.name}
+                                          <Copy className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                          Duplicate
                                         </button>
-                                      ))}
-                                      <div className="my-1 border-t border-stone-100" />
-                                      <button
-                                        onClick={async () => {
-                                          setRowMenuOpen(null);
-                                          const r = await sendToFadv(companyId, jobId, a.id);
-                                          if (!r.success) alert(`FADV: ${r.error}`);
-                                          else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
-                                        }}
-                                        className="w-full px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50"
-                                      >
-                                        Send to FADV
-                                      </button>
-                                      <div className="my-1 border-t border-stone-100" />
-                                      <button
-                                        onClick={() => {
-                                          setRowMenuOpen(null);
-                                          router.push(`/dashboard/${companyId}/applicants/${a.id}/training`);
-                                        }}
-                                        className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50"
-                                      >
-                                        Training Progress
-                                      </button>
-                                      <div className="my-1 border-t border-stone-100" />
-                                      <button onClick={() => onDuplicateApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">Duplicate</button>
-                                      <button onClick={() => onDeleteApplicant(a.id)} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
+                                        <button
+                                          onClick={async () => {
+                                            setRowMenuOpen(null);
+                                            const r = await sendToFadv(companyId, jobId, a.id);
+                                            if (!r.success) alert(`FADV: ${r.error}`);
+                                            else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                                          }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition-colors text-left"
+                                        >
+                                          <Send className="w-4 h-4 flex-shrink-0" />
+                                          Send to FADV
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setRowMenuOpen(null);
+                                            router.push(`/dashboard/${companyId}/applicants/${a.id}/training`);
+                                          }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                        >
+                                          <GraduationCap className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                          Training Progress
+                                        </button>
+                                      </div>
+                                      <div className="border-t border-stone-100" />
+                                      {/* Danger */}
+                                      <div className="py-2">
+                                        <button
+                                          onClick={() => { setRowMenuOpen(null); onDeleteApplicant(a.id); }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                                        >
+                                          <Trash2 className="w-4 h-4 flex-shrink-0" />
+                                          Delete
+                                        </button>
+                                      </div>
                                     </div>
                                   </>
                                 )}
@@ -1321,6 +1381,14 @@ export default function ApplicantsBoard({
                         onDelete={() => {
                           setGroupToDelete(g);
                           setDeleteGroupModalOpen(true);
+                          setGroupMenuOpen(null);
+                        }}
+                        onMinimizeAll={() => {
+                          onMinimizeAllColumns(g.id);
+                          setGroupMenuOpen(null);
+                        }}
+                        onExpandAll={() => {
+                          onExpandAllColumns(g.id);
                           setGroupMenuOpen(null);
                         }}
                       />
@@ -2116,57 +2184,78 @@ function SortableRow({
                 onClick={() => setRowMenuOpen(false)}
               />
               <div
-                className="fixed z-[999] w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+                className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden"
                 style={{
                   top: `${menuPosition.top}px`,
                   left: `${menuPosition.left}px`,
                 }}
               >
-                <div className="px-3 py-1 text-xs font-medium text-stone-400">Move to</div>
-                {groups.map((g) => (
+                {/* Applicant name header */}
+                <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">
+                    {applicant.full_name ?? "Applicant"}
+                  </p>
+                </div>
+
+                {/* Section 1 — Move to */}
+                <div className="py-2">
+                  <p className="px-4 py-1.5 text-xs font-semibold text-stone-400 uppercase tracking-wider">Move to</p>
+                  {groups.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => { onMove(g.id); setRowMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="border-t border-stone-100" />
+
+                {/* Section 2 — actions */}
+                <div className="py-2">
                   <button
-                    key={g.id}
-                    onClick={() => onMove(g.id)}
-                    className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+                    onClick={() => { setRowMenuOpen(false); onDuplicate(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
                   >
-                    {g.name}
+                    <Copy className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                    Duplicate
                   </button>
-                ))}
-                <div className="my-1 border-t border-stone-100" />
-                <button
-                  onClick={onDuplicate}
-                  className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-                >
-                  Duplicate
-                </button>
-                {onSendToFadv && (
-                  <>
-                    <div className="my-1 border-t border-stone-100" />
+                  {onSendToFadv && (
                     <button
                       onClick={() => { setRowMenuOpen(false); onSendToFadv(); }}
-                      className="w-full px-3 py-1.5 text-left text-sm text-blue-700 hover:bg-blue-50"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition-colors text-left"
                     >
+                      <Send className="w-4 h-4 flex-shrink-0" />
                       Send to FADV
                     </button>
-                  </>
-                )}
-                <div className="my-1 border-t border-stone-100" />
-                <button
-                  onClick={() => {
-                    setRowMenuOpen(false);
-                    window.location.href = `/dashboard/${companyId}/applicants/${applicant.id}/training`;
-                  }}
-                  className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-                >
-                  Training Progress
-                </button>
-                <div className="my-1 border-t border-stone-100" />
-                <button
-                  onClick={onDelete}
-                  className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
-                >
-                  Delete
-                </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setRowMenuOpen(false);
+                      window.location.href = `/dashboard/${companyId}/applicants/${applicant.id}/training`;
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                  >
+                    <GraduationCap className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                    Training Progress
+                  </button>
+                </div>
+
+                <div className="border-t border-stone-100" />
+
+                {/* Section 3 — danger */}
+                <div className="py-2">
+                  <button
+                    onClick={() => { setRowMenuOpen(false); onDelete(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <Trash2 className="w-4 h-4 flex-shrink-0" />
+                    Delete
+                  </button>
+                </div>
               </div>
             </>,
             document.body
@@ -2246,6 +2335,8 @@ function SortableGroupHeader({
   onMenuToggle,
   onRename,
   onDelete,
+  onMinimizeAll,
+  onExpandAll,
   canDelete = true,
 }: {
   group: Group;
@@ -2263,6 +2354,8 @@ function SortableGroupHeader({
   onMenuToggle: () => void;
   onRename: () => void;
   onDelete: () => void;
+  onMinimizeAll: () => void;
+  onExpandAll: () => void;
   canDelete?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -2422,27 +2515,60 @@ function SortableGroupHeader({
             onClick={onMenuToggle}
           />
           <div
-            className="fixed z-[999] w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+            className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
             }}
           >
-            <button
-              onClick={onRename}
-              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-            >
-              Rename
-            </button>
+            {/* Group name header */}
+            <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
+              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">{group.name}</p>
+            </div>
+
+            {/* Section 1 — column visibility */}
+            <div className="py-2">
+              <button
+                onClick={onMinimizeAll}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <ChevronsLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                Minimize all columns
+              </button>
+              <button
+                onClick={onExpandAll}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <ArrowLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                Expand all columns
+              </button>
+            </div>
+
+            <div className="border-t border-stone-100" />
+
+            {/* Section 2 — edit */}
+            <div className="py-2">
+              <button
+                onClick={onRename}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <PencilLine className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                Rename
+              </button>
+            </div>
+
             {canDelete && (
               <>
-                <div className="my-1 border-t border-stone-100" />
-                <button
-                  onClick={onDelete}
-                  className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
-                >
-                  Delete
-                </button>
+                <div className="border-t border-stone-100" />
+                <div className="py-2">
+                  <button
+                    onClick={onDelete}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                  >
+                    <Trash2 className="w-4 h-4 flex-shrink-0" />
+                    Delete
+                  </button>
+                </div>
               </>
             )}
           </div>
