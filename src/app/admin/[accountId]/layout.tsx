@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/rbac";
-import { Header } from "@/components/header";
+import { AdminHeader } from "@/components/admin/admin-header";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
 export default async function AdminLayout({
@@ -13,19 +13,19 @@ export default async function AdminLayout({
   const membership = await requireAdmin(accountId);
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Header companyName={membership.account.name} />
-        {/*
-          On mobile: flex-col → AdminSidebar horizontal tab bar on top, main below.
-          On desktop: flex-row → AdminSidebar vertical aside on left, main beside.
-        */}
-        <div className="flex flex-col md:flex-row gap-0 md:gap-8 pb-16">
-          <AdminSidebar accountId={accountId} />
-          <main className="flex-1 min-w-0 pt-4 md:pt-0">
-            {children}
-          </main>
-        </div>
+    <div className="min-h-screen flex flex-col bg-stone-50">
+      {/* Full-width sticky top bar */}
+      <AdminHeader
+        accountName={membership.account.name}
+        accountId={accountId}
+      />
+
+      {/* Sidebar + content */}
+      <div className="flex flex-col md:flex-row flex-1">
+        <AdminSidebar accountId={accountId} />
+        <main className="flex-1 min-w-0 px-6 py-8 max-w-5xl">
+          {children}
+        </main>
       </div>
     </div>
   );

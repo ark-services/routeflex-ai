@@ -8,22 +8,22 @@ const navItems = [
   {
     href: "",
     label: "Overview",
-    icon: LayoutDashboard
+    icon: LayoutDashboard,
   },
   {
     href: "/users",
     label: "Users",
-    icon: Users
+    icon: Users,
   },
   {
     href: "/automations",
     label: "Automations",
-    icon: Zap
+    icon: Zap,
   },
   {
     href: "/integrations",
     label: "Integrations",
-    icon: Puzzle
+    icon: Puzzle,
   },
 ];
 
@@ -38,7 +38,7 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
   return (
     <>
       {/* Mobile: horizontal scrollable tab bar */}
-      <div className="md:hidden w-full overflow-x-auto border-b border-stone-200 bg-white mb-4">
+      <div className="md:hidden w-full overflow-x-auto border-b border-stone-200 bg-white">
         <nav className="flex min-w-max px-4 gap-1 py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -66,12 +66,12 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
       </div>
 
       {/* Desktop: vertical sidebar */}
-      <aside className="hidden md:block w-56 flex-shrink-0">
-        <div className="sticky top-6 space-y-1">
-          <h2 className="px-3 mb-4 text-xs font-semibold text-stone-500 uppercase tracking-wider">
-            Admin Center
-          </h2>
-          <nav className="space-y-1">
+      <aside className="hidden md:flex flex-col w-56 flex-shrink-0 bg-white border-r border-stone-200 min-h-[calc(100vh-3.5rem)]">
+        <div className="sticky top-0 pt-6 px-3 pb-4">
+          <p className="px-3 mb-3 text-[11px] font-semibold text-stone-400 uppercase tracking-widest">
+            General
+          </p>
+          <nav className="space-y-0.5">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
@@ -89,7 +89,7 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
                     }
                   `}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-blue-600" : "text-stone-400"}`} />
                   {item.label}
                 </Link>
               );
