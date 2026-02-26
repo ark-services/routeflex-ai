@@ -75,8 +75,21 @@ export async function POST(req: NextRequest) {
 
     // Score the attempt
     let correct = 0;
+    const review: Array<{
+      questionId: string;
+      isCorrect: boolean;
+      chosenOptionId: string;
+      correctOptionId: string;
+    }> = [];
     for (const q of questions) {
-      if (answers[q.id] === q.correct_option_id) correct++;
+      const isCorrect = answers[q.id] === q.correct_option_id;
+      if (isCorrect) correct++;
+      review.push({
+        questionId: q.id,
+        isCorrect,
+        chosenOptionId: answers[q.id] ?? "",
+        correctOptionId: q.correct_option_id,
+      });
     }
     const total = questions.length;
     const score = Math.round((correct / total) * 100);
@@ -232,7 +245,7 @@ export async function POST(req: NextRequest) {
       if (applicant) await writeStatusCell(failedLabelId, applicant);
     }
 
-    return NextResponse.json({ score, passed, correct, total, courseCompleted });
+    return NextResponse.json({ score, passed, correct, total, courseCompleted, review });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[submit-quiz] Unexpected error:", msg);
