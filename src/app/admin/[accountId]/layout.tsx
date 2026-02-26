@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/rbac";
+import { createClient } from "@/lib/supabase/server";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 
@@ -12,12 +13,26 @@ export default async function AdminLayout({
   const { accountId } = await params;
   const membership = await requireAdmin(accountId);
 
+  // Get user email for avatar (requireAdmin already validated the session)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Resolve the first company for this account so Back → Job Board
+  const { data: companies } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("account_id", accountId)
+    .limit(1);
+  const firstCompanyId = companies?.[0]?.id ?? null;
+
   return (
     <div className="min-h-screen flex flex-col bg-stone-50">
       {/* Full-width sticky top bar */}
       <AdminHeader
         accountName={membership.account.name}
         accountId={accountId}
+        userEmail={user?.email ?? ""}
+        backHref={firstCompanyId ? `/dashboard/${firstCompanyId}` : "/"}
       />
 
       {/* Sidebar + content */}
