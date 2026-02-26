@@ -2688,16 +2688,16 @@ function SortableGroupHeader({
 
                   {/* Completion requirements */}
                   <div>
-                    <p className="text-xs font-medium text-stone-500 mb-1.5">Completion requirements</p>
-                    <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-stone-500 mb-2">Completion requirements</p>
+                    <div className="space-y-2">
                       {(group.settings?.portal_checklist ?? []).map((item, idx) => {
                         const itemLabels = labelsByColumn.get(item.column_id) ?? [];
                         const col = columns.find((c) => c.id === item.column_id);
                         const dateColumns = columns.filter((c) => c.type === "date");
                         const isStatusCol = col?.type === "status";
                         return (
-                          <div key={item.id} className="space-y-1">
-                            {/* Row 1: column picker + remove */}
+                          <div key={item.id} className="rounded-lg border border-stone-200 bg-stone-50 p-2 space-y-1.5">
+                            {/* Column picker + remove */}
                             <div className="flex items-center gap-1.5">
                               <select
                                 value={item.column_id}
@@ -2724,10 +2724,9 @@ function SortableGroupHeader({
                                 ×
                               </button>
                             </div>
-                            {/* Row 2: label picker + date picker (status cols only) */}
+                            {/* Pass label + optional date column (status cols only) */}
                             {isStatusCol && (
                               <div className="flex items-center gap-1.5">
-                                {/* Pass label */}
                                 <select
                                   value={item.pass_label_id ?? ""}
                                   onChange={(e) => {
@@ -2743,7 +2742,6 @@ function SortableGroupHeader({
                                     <option key={l.id} value={l.id}>{l.label}</option>
                                   ))}
                                 </select>
-                                {/* Linked date column */}
                                 <select
                                   value={item.date_column_id ?? ""}
                                   onChange={(e) => {
@@ -2754,13 +2752,11 @@ function SortableGroupHeader({
                                   }}
                                   className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
                                 >
-                                  <option value="">+ date col</option>
+                                  <option value="">+ date</option>
                                   {dateColumns.map((c) => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                   ))}
                                 </select>
-                                {/* spacer to align with remove button above */}
-                                <div className="w-4 flex-shrink-0" />
                               </div>
                             )}
                           </div>
