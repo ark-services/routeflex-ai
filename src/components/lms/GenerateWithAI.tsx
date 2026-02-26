@@ -39,7 +39,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
   }
 
   // Compress image to max 1280px on the longest side, JPEG quality 0.85.
-  // Turns a ~2.5MB slide PNG into ~150KB — 10 slides stay well under 4MB total.
+  // Turns a ~2.5MB slide PNG into ~150KB — 20 slides stay well under 4MB total.
   async function compressImage(dataUrl: string, maxDim = 1280, quality = 0.85): Promise<string> {
     return new Promise((resolve) => {
       const img = new Image();
@@ -69,7 +69,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
     const imageFiles = fileArr.filter((f) => f.type.startsWith("image/"));
     if (imageFiles.length === 0) return;
 
-    const remaining = 10 - images.length;
+    const remaining = 20 - images.length;
     const toProcess = imageFiles.slice(0, remaining);
 
     const loaded = await Promise.all(
@@ -185,7 +185,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
               Drag &amp; drop slide images here, or{" "}
               <span className="text-purple-600 font-medium">click to browse</span>
             </p>
-            <p className="text-xs text-stone-400 mt-1">PNG, JPG, WebP · max 10 slides · 5 MB each</p>
+            <p className="text-xs text-stone-400 mt-1">PNG, JPG, WebP · max 20 slides · 5 MB each</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -219,7 +219,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
                   </div>
                 </div>
               ))}
-              {images.length < 10 && (
+              {images.length < 20 && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -275,7 +275,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
             </button>
             {images.length > 0 && (
               <span className="ml-auto text-xs text-stone-400">
-                {images.length} / 10 slides
+                {images.length} / 20 slides
               </span>
             )}
           </div>

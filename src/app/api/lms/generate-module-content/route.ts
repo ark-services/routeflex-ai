@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const MAX_IMAGES = 10;
+const MAX_IMAGES = 20;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB decoded
 
 export async function POST(req: NextRequest) {
