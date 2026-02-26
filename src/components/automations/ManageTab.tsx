@@ -128,6 +128,7 @@ export function ManageTab({
         'fadv.add_subject':         'add to fadv',
         'safety_trainer.submit':    'impact solutions safety cert',
         'lms.send_training_link':   'send training link',
+        'portal.send_link':         'send status portal link',
       };
       return (labelMap[action.type] || action.type).includes(query);
     });

@@ -469,6 +469,8 @@ export function CreateTab({
           return "submit applicant to Impact Solutions Safety Cert";
         case "lms.send_training_link":
           return "send training link to applicant";
+        case "portal.send_link":
+          return "send status portal link to applicant";
         default:
           return action.type;
       }
@@ -996,6 +998,7 @@ function ActionEditor({
     { value: "fadv.add_subject", label: "Add to FADV" },
     { value: "safety_trainer.submit", label: "Submit Impact Solutions Safety Cert" },
     { value: "lms.send_training_link", label: "Send Training Link (LMS)" },
+    { value: "portal.send_link", label: "Send Applicant Status Portal Link" },
   ];
 
   const FADV_FIELD_OPTIONS = [
@@ -1428,6 +1431,20 @@ function ActionEditor({
             </div>
           );
         })()}
+
+        {action.type === "portal.send_link" && (
+          <div className="w-full space-y-3 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-36 shrink-0">Get email from</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "email" || c.type === "text")}
+                selectedId={action.config.email_column_id}
+                onSelect={(id) => onChange({ config: { ...action.config, email_column_id: id } })}
+                placeholder="auto-detect"
+              />
+            </div>
+          </div>
+        )}
 
         {action.type === "safety_trainer.submit" && (
           <div className="w-full space-y-3 pt-1">

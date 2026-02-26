@@ -26,6 +26,7 @@ type ApplicantRow = {
   jobs: { title: string } | null;
   group_id: string | null;
   position: number;
+  portal_token?: string | null;
 };
 
 interface ApplicantsBoardContainerProps {

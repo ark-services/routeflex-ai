@@ -623,6 +623,8 @@ async function executeAction(
 
     case 'lms.send_training_link':
       return executeLmsSendTrainingLink(supabase, companyId, jobId, config, payload);
+    case 'portal.send_link':
+      return executePortalSendLink(supabase, companyId, jobId, config, payload);
 
     default:
       return { success: false, error: `Unknown action type: ${type}` };
@@ -2628,6 +2630,158 @@ async function executeLmsSendTrainingLink(
   });
 
   console.log('[executeLmsSendTrainingLink] ✓ Training link sent to:', resolvedEmail, 'url:', trainingUrl);
+  return { success: true };
+}
+
+/**
+ * Action: portal.send_link
+ *
+ * Emails the applicant a link to their personal status portal (/status/[token]).
+ * The portal_token is persistent and already exists on the applicant row —
+ * no enrollment or record creation is needed.
+ *
+ * Config:
+ *   email_column_id — UUID of a board column to use as email source (optional)
+ */
+async function executePortalSendLink(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
+
+  console.log('[executePortalSendLink] Starting:', { applicantId, companyId });
+
+  if (!applicantId) {
+    return { success: false, error: 'portal.send_link: missing applicant_id in payload' };
+  }
+
+  // ── Fetch applicant (name, email, portal_token) ─────────────────────────────
+  const { data: applicant, error: applicantError } = await supabase
+    .from('applicants')
+    .select('id, full_name, email, portal_token')
+    .eq('id', applicantId)
+    .maybeSingle();
+
+  if (applicantError || !applicant) {
+    return { success: false, error: `portal.send_link: applicant not found (${applicantId})` };
+  }
+
+  if (!applicant.portal_token) {
+    return { success: false, error: 'portal.send_link: applicant has no portal_token' };
+  }
+
+  // ── Resolve email ───────────────────────────────────────────────────────────
+  let resolvedEmail = applicant.email ?? null;
+  if (!resolvedEmail && config.email_column_id) {
+    const { data: configuredCell } = await supabase
+      .from('board_cells')
+      .select('value_text')
+      .eq('applicant_id', applicantId)
+      .eq('column_id', config.email_column_id)
+      .maybeSingle();
+    resolvedEmail = configuredCell?.value_text ?? null;
+  }
+  if (!resolvedEmail) {
+    const { data: emailCell } = await supabase
+      .from('board_cells')
+      .select('value_text, board_columns!inner(type, board_id, boards!inner(job_id))')
+      .eq('applicant_id', applicantId)
+      .eq('board_columns.type', 'email')
+      .eq('board_columns.boards.job_id', jobId)
+      .not('value_text', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    resolvedEmail = emailCell?.value_text ?? null;
+  }
+
+  if (!resolvedEmail) {
+    const msg = `Status portal link not sent: ${applicant.full_name ?? 'Applicant'} has no email address on file`;
+    console.warn('[executePortalSendLink] Applicant has no email:', applicantId);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorType: 'automation',
+      eventType: 'automation.run.warning',
+      entityType: 'applicant',
+      entityId: applicantId,
+      summary: msg,
+      data: { applicant_id: applicantId, applicant_name: applicant.full_name, error: 'No email address' },
+    });
+    return { success: false, error: msg };
+  }
+
+  // ── Build portal URL ────────────────────────────────────────────────────────
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.routeflex.com';
+  const portalUrl = `${appUrl}/status/${applicant.portal_token}`;
+
+  // ── Send email via company Gmail ────────────────────────────────────────────
+  const { getGmailClientForCompany, sendEmail, buildPortalLinkEmail } = await import('@/lib/gmail-send');
+  const gmail = await getGmailClientForCompany(supabase, companyId);
+
+  if (!gmail) {
+    const msg = 'Status portal link not sent: no Gmail account connected. Go to Settings → Integrations to connect Gmail.';
+    console.warn('[executePortalSendLink] No Gmail connection — cannot send email');
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorType: 'automation',
+      eventType: 'automation.run.warning',
+      entityType: 'applicant',
+      entityId: applicantId,
+      summary: `Status portal link not sent for ${applicant.full_name ?? applicantId}: no Gmail account connected`,
+      data: { applicant_id: applicantId, applicant_name: applicant.full_name, portal_url: portalUrl, error: 'Gmail not connected' },
+    });
+    return { success: false, error: msg };
+  }
+
+  const { data: company } = await supabase
+    .from('companies')
+    .select('name, logo_url')
+    .eq('id', companyId)
+    .maybeSingle();
+
+  const companyName = company?.name ?? 'Your employer';
+  const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
+
+  const { subject, body: emailBody } = buildPortalLinkEmail({
+    firstName,
+    companyName,
+    logoUrl: company?.logo_url,
+    portalUrl,
+  });
+
+  const emailResult = await sendEmail(gmail.gmail, {
+    to: resolvedEmail,
+    subject,
+    body: emailBody,
+  });
+
+  if (!emailResult.success) {
+    const msg = `Status portal link email failed: ${emailResult.error}`;
+    console.error('[executePortalSendLink] Email send failed:', emailResult.error);
+    return { success: false, error: msg };
+  }
+
+  await logActivityEvent(supabase, {
+    companyId,
+    jobId,
+    actorType: 'automation',
+    eventType: 'portal.link_sent',
+    entityType: 'applicant',
+    entityId: applicantId,
+    summary: `Status portal link emailed to ${resolvedEmail}`,
+    data: {
+      applicant_id: applicantId,
+      email: resolvedEmail,
+      portal_url: portalUrl,
+      message_id: emailResult.messageId,
+    },
+  });
+
+  console.log('[executePortalSendLink] ✓ Portal link sent to:', resolvedEmail, 'url:', portalUrl);
   return { success: true };
 }
 

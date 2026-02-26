@@ -189,7 +189,7 @@ export async function getOrCreateApplicantsBoard(
     // ========================================================================
     const { data: existingGroups, error: groupsFetchError } = await supabase
       .from("board_groups")
-      .select("id, name, sort_order, color, is_collapsed, is_default_for_applications, settings")
+      .select("id, name, sort_order, color, is_collapsed, is_default_for_applications, settings, visible_to_applicants, applicant_note")
       .eq("company_id", companyId)
       .eq("board_id", boardId)
       .order("sort_order", { ascending: true });
@@ -248,7 +248,7 @@ export async function getOrCreateApplicantsBoard(
       // Re-fetch all groups to get complete list
       const { data: allGroups, error: refetchError } = await supabase
         .from("board_groups")
-        .select("id, name, sort_order, color, is_collapsed, is_default_for_applications, settings")
+        .select("id, name, sort_order, color, is_collapsed, is_default_for_applications, settings, visible_to_applicants, applicant_note")
         .eq("company_id", companyId)
         .eq("board_id", boardId)
         .order("sort_order", { ascending: true });

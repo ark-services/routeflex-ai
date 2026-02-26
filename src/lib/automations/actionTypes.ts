@@ -39,6 +39,8 @@ export const AUTOMATION_ACTION_TYPES = [
   "safety_trainer.submit",
   // ── LMS (Learning Management System) ───────────────────────────────────────
   "lms.send_training_link",
+  // ── Applicant Portal ────────────────────────────────────────────────────────
+  "portal.send_link",
 ] as const;
 
 /** TypeScript union of every allowed action type string. */

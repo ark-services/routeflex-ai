@@ -193,3 +193,34 @@ export function buildTrainingLinkEmail(params: {
 </div>`.trim();
   return { subject, body };
 }
+
+export function buildPortalLinkEmail(params: {
+  firstName: string;
+  companyName: string;
+  logoUrl?: string | null;
+  portalUrl: string;
+}): { subject: string; body: string } {
+  const { firstName, companyName, logoUrl, portalUrl } = params;
+  const subject = `Your application status - ${companyName}`;
+  const body = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; padding: 32px 24px;">
+  ${logoUrl ? `<img src="${logoUrl}" alt="${companyName}" style="height: 48px; margin-bottom: 28px; display: block;" />` : `<p style="font-size: 18px; font-weight: 700; margin-bottom: 28px;">${companyName}</p>`}
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 12px;">Track your application</h2>
+  <p style="font-size: 15px; color: #555; margin: 0 0 8px; line-height: 1.6;">
+    Hi ${firstName},
+  </p>
+  <p style="font-size: 15px; color: #555; margin: 0 0 28px; line-height: 1.6;">
+    Use the link below to check where you are in the hiring process and see what's next.
+  </p>
+  <a href="${portalUrl}"
+     style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none;
+            padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+    View My Application Status →
+  </a>
+  <p style="font-size: 13px; color: #999; margin-top: 36px; line-height: 1.5;">
+    This link is permanent - you can check your status anytime.<br>
+    If you have any questions, reply to this email.
+  </p>
+</div>`.trim();
+  return { subject, body };
+}

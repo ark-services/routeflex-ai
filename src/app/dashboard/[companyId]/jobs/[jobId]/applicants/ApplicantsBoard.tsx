@@ -12,6 +12,7 @@ import {
   Send,
   GraduationCap,
   MoveRight,
+  Link2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -63,6 +64,7 @@ import {
   updateGroupCollapsedColumns,
   type CellUpdateResult,
 } from "./actions";
+import { updateBoardGroupPortalSettings } from "./portal-actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
 import { statusColorArray, STATUS_COLOR_PALETTE } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
@@ -78,6 +80,8 @@ type Group = {
   color: string;
   is_collapsed: boolean;
   settings?: { collapsed_columns?: string[] };
+  visible_to_applicants?: boolean;
+  applicant_note?: string | null;
 };
 
 type ApplicantRow = {
@@ -91,6 +95,7 @@ type ApplicantRow = {
   jobs: { title: string } | null;
   group_id: string | null;
   position: number;
+  portal_token?: string | null;
 };
 
 // Extend BoardColumn with job-specific UI fields
@@ -830,6 +835,24 @@ export default function ApplicantsBoard({
     });
   }
 
+  function onUpdateGroupPortalVisibility(groupId: string, visible: boolean) {
+    setLocalGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, visible_to_applicants: visible } : g))
+    );
+    startTransition(async () => {
+      await updateBoardGroupPortalSettings(companyId, groupId, { visible_to_applicants: visible });
+    });
+  }
+
+  function onUpdateGroupPortalNote(groupId: string, note: string) {
+    setLocalGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, applicant_note: note } : g))
+    );
+    startTransition(async () => {
+      await updateBoardGroupPortalSettings(companyId, groupId, { applicant_note: note });
+    });
+  }
+
   function onColumnWidthChange(columnId: string, width: number) {
     setColumnWidths(prev => ({ ...prev, [columnId]: width }));
   }
@@ -1213,6 +1236,20 @@ export default function ApplicantsBoard({
                                           <GraduationCap className="w-4 h-4 text-stone-400 flex-shrink-0" />
                                           Training Progress
                                         </button>
+                                        {a.portal_token && (
+                                          <button
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(
+                                                `${window.location.origin}/status/${a.portal_token}`
+                                              );
+                                              setRowMenuOpen(null);
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                          >
+                                            <Link2 className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                            Copy status link
+                                          </button>
+                                        )}
                                       </div>
                                       <div className="border-t border-stone-100" />
                                       {/* Danger */}
@@ -1391,6 +1428,8 @@ export default function ApplicantsBoard({
                           onExpandAllColumns(g.id);
                           setGroupMenuOpen(null);
                         }}
+                        onUpdatePortalVisibility={(visible) => onUpdateGroupPortalVisibility(g.id, visible)}
+                        onUpdatePortalNote={(note) => onUpdateGroupPortalNote(g.id, note)}
                       />
 
                     {/* Group table */}
@@ -2242,6 +2281,20 @@ function SortableRow({
                     <GraduationCap className="w-4 h-4 text-stone-400 flex-shrink-0" />
                     Training Progress
                   </button>
+                  {applicant.portal_token && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `${window.location.origin}/status/${applicant.portal_token}`
+                        );
+                        setRowMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                    >
+                      <Link2 className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                      Copy status link
+                    </button>
+                  )}
                 </div>
 
                 <div className="border-t border-stone-100" />
@@ -2337,6 +2390,8 @@ function SortableGroupHeader({
   onDelete,
   onMinimizeAll,
   onExpandAll,
+  onUpdatePortalVisibility,
+  onUpdatePortalNote,
   canDelete = true,
 }: {
   group: Group;
@@ -2356,6 +2411,8 @@ function SortableGroupHeader({
   onDelete: () => void;
   onMinimizeAll: () => void;
   onExpandAll: () => void;
+  onUpdatePortalVisibility: (visible: boolean) => void;
+  onUpdatePortalNote: (note: string) => void;
   canDelete?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -2555,6 +2612,30 @@ function SortableGroupHeader({
                 <PencilLine className="w-4 h-4 text-stone-400 flex-shrink-0" />
                 Rename
               </button>
+            </div>
+
+            {/* Section 3 — applicant portal settings */}
+            <div className="border-t border-stone-100" />
+            <div className="px-4 py-3">
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2.5">Applicant Portal</p>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={group.visible_to_applicants !== false}
+                  onChange={(e) => onUpdatePortalVisibility(e.target.checked)}
+                  className="w-4 h-4 rounded border-stone-300 text-blue-600"
+                />
+                <span className="text-sm text-stone-700">Show this step to applicants</span>
+              </label>
+              {group.visible_to_applicants !== false && (
+                <textarea
+                  rows={2}
+                  className="mt-2.5 w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 resize-none placeholder:text-stone-400 focus:outline-none focus:border-blue-300"
+                  placeholder="Note shown to applicants at this step…"
+                  defaultValue={group.applicant_note ?? ""}
+                  onBlur={(e) => onUpdatePortalNote(e.target.value.trim())}
+                />
+              )}
             </div>
 
             {canDelete && (

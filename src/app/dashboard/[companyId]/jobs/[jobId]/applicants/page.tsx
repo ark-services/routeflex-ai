@@ -130,7 +130,7 @@ export default async function ApplicantsPage({
   const { data: applicants, error: appErr } = await supabase
     .from("applicants")
     .select(
-      "id,full_name,email,phone,status,created_at,resume_path,group_id,position,job_id,board_id"
+      "id,full_name,email,phone,status,created_at,resume_path,group_id,position,job_id,board_id,portal_token"
     )
     .eq("company_id", companyId)
     .eq("job_id", jobId)
