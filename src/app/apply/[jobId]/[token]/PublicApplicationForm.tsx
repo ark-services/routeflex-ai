@@ -140,6 +140,21 @@ export default function PublicApplicationForm({
             )}
           </label>
 
+          {/* Optional description */}
+          {field.settings?.description && (
+            <p className="text-xs text-stone-500">{field.settings.description}</p>
+          )}
+
+          {/* Optional question image */}
+          {field.settings?.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={field.settings.imageUrl}
+              alt=""
+              className="w-full rounded-lg object-contain max-h-60 border border-stone-200 bg-stone-50"
+            />
+          )}
+
           {field.type === "text" && (
             <input
               id={field.key}

@@ -19,7 +19,6 @@ export function CreateJobModal({
   companyId,
 }: CreateJobModalProps) {
   const [title, setTitle] = useState("");
-  const [location, setLocation] = useState("");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -28,12 +27,11 @@ export function CreateJobModal({
   useEffect(() => {
     if (open) {
       setTitle("");
-      setLocation("");
       setError("");
     }
   }, [open]);
 
-  const isFormValid = title.trim().length > 0 && location.trim().length > 0;
+  const isFormValid = title.trim().length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +42,6 @@ export function CreateJobModal({
     const formData = new FormData();
     formData.append("companyId", companyId);
     formData.append("title", title.trim());
-    formData.append("location", location.trim());
     formData.append("template", "scratch");
 
     startTransition(async () => {
@@ -78,18 +75,6 @@ export function CreateJobModal({
               placeholder="Job title"
               required
               autoFocus
-              disabled={isPending}
-              className="h-12 text-base"
-            />
-          </div>
-
-          <div>
-            <Input
-              name="location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Location"
-              required
               disabled={isPending}
               className="h-12 text-base"
             />

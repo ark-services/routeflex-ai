@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 type FormField = {
@@ -33,6 +33,8 @@ export default function QuestionSettingsPanel({
     field?.settings?.defaultChecked ?? false
   );
   const [hidden, setHidden] = useState(field?.settings?.hidden ?? false);
+  const [imageUrl, setImageUrl] = useState<string>(field?.settings?.imageUrl || "");
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Update local state when field changes
   useEffect(() => {
@@ -42,6 +44,7 @@ export default function QuestionSettingsPanel({
       setOptions(field.settings?.options || ["Option 1", "Option 2"]);
       setDefaultChecked(field.settings?.defaultChecked ?? false);
       setHidden(field.settings?.hidden ?? false);
+      setImageUrl(field.settings?.imageUrl || "");
     }
   }, [field]);
 
@@ -94,6 +97,24 @@ export default function QuestionSettingsPanel({
     const newVal = !hidden;
     setHidden(newVal);
     await onUpdate({ settings: { ...field.settings, hidden: newVal } });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setImageUrl(dataUrl);
+      await onUpdate({ settings: { ...field.settings, imageUrl: dataUrl } });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageRemove = async () => {
+    setImageUrl("");
+    if (imageInputRef.current) imageInputRef.current.value = "";
+    await onUpdate({ settings: { ...field.settings, imageUrl: "" } });
   };
 
   const supportsPlaceholder = ["text", "textarea", "email", "phone", "number", "location"].includes(field.type);
@@ -247,6 +268,56 @@ export default function QuestionSettingsPanel({
             </button>
           </div>
         )}
+
+        {/* Question Image */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Question Image
+          </label>
+          {imageUrl ? (
+            <div className="space-y-2">
+              <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt="Question image preview"
+                  className="w-full object-contain max-h-48 bg-gray-50"
+                />
+              </div>
+              <button
+                onClick={handleImageRemove}
+                className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Remove image
+              </button>
+            </div>
+          ) : (
+            <div>
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full flex flex-col items-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/40 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M13.5 10.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM18 12h.008v.008H18V12z" />
+                </svg>
+                Upload image
+              </button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+            </div>
+          )}
+          <p className="text-xs text-gray-500 mt-1.5">
+            Displayed below the question description
+          </p>
+        </div>
 
         {/* Field Type Info */}
         <div className="pt-4 border-t border-gray-200">

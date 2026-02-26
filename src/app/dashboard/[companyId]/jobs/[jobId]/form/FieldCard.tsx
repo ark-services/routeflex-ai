@@ -310,6 +310,18 @@ export default function FieldCard({
         )}
       </div>
 
+      {/* Question Image */}
+      {field.settings?.imageUrl && (
+        <div className="mb-4 rounded-lg overflow-hidden border border-gray-200">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={field.settings.imageUrl}
+            alt=""
+            className="w-full object-contain max-h-48 bg-gray-50"
+          />
+        </div>
+      )}
+
       {/* Field Preview */}
       <div className="mb-4">
         {renderFieldPreview()}
