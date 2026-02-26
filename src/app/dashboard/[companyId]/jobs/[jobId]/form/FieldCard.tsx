@@ -179,6 +179,23 @@ export default function FieldCard({
             ))}
           </select>
         );
+      case "location":
+        return (
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+              <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder={placeholderText || "123 Main St, City, State"}
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-500 cursor-not-allowed"
+              disabled
+            />
+          </div>
+        );
       default:
         return (
           <input

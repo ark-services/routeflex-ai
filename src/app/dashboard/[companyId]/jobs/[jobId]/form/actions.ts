@@ -356,6 +356,7 @@ function mapFieldTypeToColumnType(fieldType: string): string {
     checkbox: "checkbox",
     radio: "status",
     select: "status",
+    location: "location",
   };
   return typeMap[fieldType] || "text";
 }
