@@ -1492,6 +1492,13 @@ export async function updateBoardCell(
         const { data: { user } } = await supabase.auth.getUser();
         const actor = actorName(user);
         if (newLabel) {
+          // Fetch applicant name for richer log entry
+          const { data: applicantRow } = await supabase
+            .from("applicants")
+            .select("full_name")
+            .eq("id", applicantId)
+            .maybeSingle();
+          const applicantName = applicantRow?.full_name ?? "an applicant";
           await logActivityEvent(supabase, {
             companyId,
             jobId,
@@ -1500,8 +1507,8 @@ export async function updateBoardCell(
             eventType: "cell.updated",
             entityType: "applicant",
             entityId: applicantId,
-            summary: `${actor} changed ${column?.name ?? "status"} → ${newLabel}`,
-            data: { actor_name: actor, column_name: column?.name, old_label: oldLabel, new_label: newLabel },
+            summary: `${actor} changed ${applicantName}'s ${column?.name ?? "status"} → ${newLabel}`,
+            data: { actor_name: actor, applicant_name: applicantName, column_name: column?.name, old_label: oldLabel, new_label: newLabel },
           });
         }
       } catch {}

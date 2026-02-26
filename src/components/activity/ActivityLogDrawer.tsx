@@ -67,14 +67,14 @@ function EventRow({ event }: { event: ActivityEvent }) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         <p className="text-sm text-stone-800 leading-snug">{event.summary}</p>
-        {event.data?.group_name && (
-          <p className="text-xs text-stone-400 mt-0.5">Group: {event.data.group_name}</p>
-        )}
         {event.data?.automation_name && (
           <p className="text-xs text-stone-400 mt-0.5">Automation: {event.data.automation_name}</p>
         )}
+        {event.data?.group_name && (
+          <p className="text-xs text-stone-400 mt-0.5">Group: {event.data.group_name}</p>
+        )}
         {event.data?.error && (
-          <p className="text-xs text-red-500 mt-0.5 truncate">{event.data.error}</p>
+          <p className="text-xs text-red-500 mt-0.5">{event.data.error}</p>
         )}
       </div>
 

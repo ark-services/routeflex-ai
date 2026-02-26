@@ -2480,21 +2480,20 @@ async function executeLmsSendTrainingLink(
   const gmail = await getGmailClientForCompany(supabase, companyId);
 
   if (!gmail) {
-    // No Gmail connected — write status but don't fail the automation run
-    const msg = `Training link created (Gmail not connected — send manually): ${trainingUrl}`;
+    const msg = `Training link not sent: no Gmail account connected. Go to Settings → Integrations to connect Gmail.`;
     console.warn('[executeLmsSendTrainingLink] No Gmail connection — cannot send email');
     await writeOutput(msg);
     await logActivityEvent(supabase, {
       companyId,
       jobId,
       actorType: 'automation',
-      eventType: 'lms.training_link.gmail_not_connected',
+      eventType: 'automation.run.warning',
       entityType: 'applicant',
       entityId: applicantId,
-      summary: 'Training link created but not emailed (no Gmail connection)',
-      data: { applicant_id: applicantId, course_id, training_url: trainingUrl },
+      summary: `Training link not sent for ${applicant.full_name ?? applicantId}: no Gmail account connected`,
+      data: { applicant_id: applicantId, applicant_name: applicant.full_name, course_id, training_url: trainingUrl, error: 'Gmail not connected' },
     });
-    return { success: true };
+    return { success: false, error: msg };
   }
 
   const { data: company } = await supabase
