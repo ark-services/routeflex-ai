@@ -48,6 +48,7 @@ import {
   reorderGroups,
   quickCreateApplicant,
   sendToFadv,
+  updateGroupCollapsedColumns,
   type CellUpdateResult,
 } from "./actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
@@ -64,6 +65,7 @@ type Group = {
   sort_order: number;
   color: string;
   is_collapsed: boolean;
+  settings?: { collapsed_columns?: string[] };
 };
 
 type ApplicantRow = {
@@ -254,6 +256,15 @@ export default function ApplicantsBoard({
       + visibleColumns.reduce((sum, col) => sum + (columnWidths[col.id] ?? getDefaultWidth(col.type)), 0)
       + ADD_COL_BTN_WIDTH;
   }, [columnWidths, visibleColumns]);
+
+  /** Per-group table width — collapsed columns contribute a fixed 48 px instead of their full width. */
+  function getGroupTableWidth(collapsedColIds: Set<string>) {
+    return STICKY_COL_WIDTH
+      + visibleColumns.reduce((sum, col) =>
+          sum + (collapsedColIds.has(col.id) ? 48 : (columnWidths[col.id] ?? getDefaultWidth(col.type))),
+        0)
+      + ADD_COL_BTN_WIDTH;
+  }
 
   const hiddenColumns = useMemo(() => {
     return localColumns.filter((col) => col.is_hidden);
@@ -756,21 +767,27 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onToggleMinimizeColumn(columnId: string) {
-    const column = localColumns.find((col) => col.id === columnId);
-    if (!column) return;
+  function onToggleMinimizeColumn(columnId: string, groupId: string) {
+    const group = localGroups.find((g) => g.id === groupId);
+    if (!group) return;
 
-    const isCurrentlyCollapsed = column.settings?.ui?.collapsed || false;
-    const newSettings = {
-      ...column.settings,
-      ui: {
-        ...column.settings?.ui,
-        collapsed: !isCurrentlyCollapsed,
-      },
-    };
+    const current: string[] = group.settings?.collapsed_columns ?? [];
+    const isCollapsed = current.includes(columnId);
+    const next = isCollapsed
+      ? current.filter((id) => id !== columnId)
+      : [...current, columnId];
+
+    // Optimistic update
+    setLocalGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, settings: { ...g.settings, collapsed_columns: next } }
+          : g
+      )
+    );
 
     startTransition(async () => {
-      await updateBoardColumn(companyId, jobId, columnId, { settings: newSettings });
+      await updateGroupCollapsedColumns(companyId, jobId, boardId, groupId, next);
     });
   }
 
@@ -1301,21 +1318,24 @@ export default function ApplicantsBoard({
                       />
 
                     {/* Group table */}
-                    {!g.is_collapsed && (
+                    {!g.is_collapsed && (() => {
+                      const collapsedColIds = new Set<string>(g.settings?.collapsed_columns ?? []);
+                      const groupTableWidth = getGroupTableWidth(collapsedColIds);
+                      return (
                       <div
                         className="overflow-visible rounded-lg border border-stone-200 bg-white border-l-[4px]"
                         style={{ borderLeftColor: g.color }}
                       >
                         <table
                           className="text-left border-collapse"
-                          style={{ tableLayout: 'fixed', width: `${totalTableWidth}px` }}
+                          style={{ tableLayout: 'fixed', width: `${groupTableWidth}px` }}
                         >
                           <colgroup>
                             <col style={{ width: `${STICKY_COL_WIDTH}px` }} />
                             {visibleColumns.map(col => (
                               <col
                                 key={col.id}
-                                style={{ width: `${getColumnWidth(col.id, col.type)}px` }}
+                                style={{ width: collapsedColIds.has(col.id) ? "48px" : `${getColumnWidth(col.id, col.type)}px` }}
                               />
                             ))}
                             <col style={{ width: `${ADD_COL_BTN_WIDTH}px` }} />
@@ -1357,8 +1377,9 @@ export default function ApplicantsBoard({
                                     onWidthReset={() => onColumnWidthReset(col.id, col.type)}
                                     onSaveEdit={(newName) => onSaveColumnName(col.id, newName)}
                                     onDelete={() => onDeleteColumn(col.id)}
-                                    onToggleMinimize={() => onToggleMinimizeColumn(col.id)}
+                                    onToggleMinimize={() => onToggleMinimizeColumn(col.id, g.id)}
                                     onAddRight={() => onAddColumnRight(col.id)}
+                                    isCollapsed={collapsedColIds.has(col.id)}
                                   />
                                 ))}
                               </SortableContext>
@@ -1413,6 +1434,7 @@ export default function ApplicantsBoard({
                                       if (!r.success) alert(`FADV: ${r.error}`);
                                       else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
                                     }}
+                                    collapsedColumnIds={collapsedColIds}
                                   />
                                 ))}
                               </SortableContext>
@@ -1437,7 +1459,7 @@ export default function ApplicantsBoard({
                           </tbody>
                         </table>
                       </div>
-                    )}
+                    )})()}
                     </section>
                   );
                 })}
@@ -1698,6 +1720,7 @@ function SortableColumnHeader({
   onToggleMinimize,
   onAddRight,
   onSaveEdit,
+  isCollapsed: isCollapsedProp,
 }: {
   column: BoardColumn;
   width: number;
@@ -1708,13 +1731,14 @@ function SortableColumnHeader({
   onToggleMinimize: () => void;
   onAddRight: () => void;
   onSaveEdit: (newName: string) => void;
+  isCollapsed?: boolean;
 }) {
   // Local edit state - matches CellRenderer pattern exactly
   const [localValue, setLocalValue] = useState(column.name);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isCollapsed = column.settings?.ui?.collapsed || false;
+  const isCollapsed = isCollapsedProp ?? column.settings?.ui?.collapsed ?? false;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `col-${column.id}`,
@@ -1987,6 +2011,7 @@ function SortableRow({
   boardId,
   fadvReady = false,
   onSendToFadv,
+  collapsedColumnIds = new Set(),
 }: {
   applicant: ApplicantRow;
   columns: BoardColumn[];
@@ -2006,6 +2031,7 @@ function SortableRow({
   boardId: string;
   fadvReady?: boolean;
   onSendToFadv?: () => Promise<void>;
+  collapsedColumnIds?: Set<string>;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `row-${applicant.id}`,
@@ -2143,7 +2169,7 @@ function SortableRow({
 
   // Dynamic board columns
   for (const col of columns) {
-    const isCollapsed = col.settings?.ui?.collapsed || false;
+    const isCollapsed = collapsedColumnIds.has(col.id);
     cellEls.push(
       <td
         key={col.id}
@@ -2158,6 +2184,7 @@ function SortableRow({
           onEditLabels={() => onEditLabels(col.id)}
           companyId={companyId}
           boardId={boardId}
+          isCollapsed={isCollapsed}
         />
       </td>
     );
@@ -3017,6 +3044,7 @@ function CellRenderer({
   onEditLabels,
   companyId,
   boardId,
+  isCollapsed: isCollapsedProp,
 }: {
   applicant: ApplicantRow;
   column: BoardColumn;
@@ -3026,11 +3054,12 @@ function CellRenderer({
   onEditLabels: () => void;
   companyId?: string;
   boardId?: string;
+  isCollapsed?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
 
-  // If column is collapsed, show minimal content
-  const isCollapsed = column.settings?.ui?.collapsed || false;
+  // Per-group collapsed state takes priority; fall back to legacy column-level setting
+  const isCollapsed = isCollapsedProp ?? column.settings?.ui?.collapsed ?? false;
   if (isCollapsed) {
     return <span className="text-xs text-stone-400">—</span>;
   }

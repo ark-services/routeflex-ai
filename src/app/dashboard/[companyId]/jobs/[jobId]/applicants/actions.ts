@@ -436,6 +436,23 @@ export async function createGroup(
   return { error: `Could not find a unique group name after ${MAX_RETRIES} attempts.` };
 }
 
+export async function updateGroupCollapsedColumns(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  groupId: string,
+  collapsedColumns: string[]
+) {
+  const supabase = await createClient();
+  await supabase
+    .from("board_groups")
+    .update({ settings: { collapsed_columns: collapsedColumns } })
+    .eq("id", groupId)
+    .eq("company_id", companyId)
+    .eq("board_id", boardId);
+  revalidatePath(dashPath(companyId, jobId));
+}
+
 export async function toggleGroupCollapse(
   companyId: string,
   jobId: string,
