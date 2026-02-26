@@ -611,6 +611,7 @@ export default function FormBuilder({
                   type="text"
                   value={publicUrl}
                   readOnly
+                  onChange={() => {}}
                   className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono text-gray-700 focus:outline-none"
                 />
                 <button

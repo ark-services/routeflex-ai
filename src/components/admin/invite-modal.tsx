@@ -152,6 +152,7 @@ export function InviteModal({
                       : (inviteLink ?? "")
                   }
                   readOnly
+                  onChange={() => {}}
                   className="flex-1 bg-transparent text-sm text-stone-600 focus:outline-none min-w-0 truncate"
                 />
                 <Button

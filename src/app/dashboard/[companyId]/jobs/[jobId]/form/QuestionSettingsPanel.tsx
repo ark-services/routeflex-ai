@@ -107,6 +107,7 @@ export default function QuestionSettingsPanel({
             type="text"
             value={field.key}
             readOnly
+            onChange={() => {}}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-600 cursor-not-allowed"
           />
           <p className="text-xs text-gray-500 mt-1">
