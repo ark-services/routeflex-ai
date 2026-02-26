@@ -2432,7 +2432,25 @@ async function executeLmsSendTrainingLink(
     return { success: false, error: `lms.send_training_link: applicant not found (${applicantId})` };
   }
 
-  if (!applicant.email) {
+  // If applicants.email is empty, fall back to any board cell of type 'email' for this applicant
+  let resolvedEmail = applicant.email ?? null;
+  if (!resolvedEmail) {
+    const { data: emailCell } = await supabase
+      .from('board_cells')
+      .select('value_text, board_columns!inner(type, board_id, boards!inner(job_id))')
+      .eq('applicant_id', applicantId)
+      .eq('board_columns.type', 'email')
+      .eq('board_columns.boards.job_id', jobId)
+      .not('value_text', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    resolvedEmail = emailCell?.value_text ?? null;
+    if (resolvedEmail) {
+      console.log('[executeLmsSendTrainingLink] Resolved email from board cell:', resolvedEmail);
+    }
+  }
+
+  if (!resolvedEmail) {
     const msg = `Training link not sent: ${applicant.full_name ?? 'Applicant'} has no email address on file`;
     console.warn('[executeLmsSendTrainingLink] Applicant has no email:', applicantId);
     await writeOutput(msg);
@@ -2524,7 +2542,7 @@ async function executeLmsSendTrainingLink(
   });
 
   const emailResult = await sendEmail(gmail.gmail, {
-    to: applicant.email,
+    to: resolvedEmail,
     subject,
     body: emailBody,
   });
@@ -2546,18 +2564,18 @@ async function executeLmsSendTrainingLink(
     eventType: 'lms.training_link.sent',
     entityType: 'applicant',
     entityId: applicantId,
-    summary: `Training link emailed to ${applicant.email} for course "${course.name}"`,
+    summary: `Training link emailed to ${resolvedEmail} for course "${course.name}"`,
     data: {
       applicant_id:  applicantId,
       course_id,
       course_name:   course.name,
-      email:         applicant.email,
+      email:         resolvedEmail,
       training_url:  trainingUrl,
       message_id:    emailResult.messageId,
     },
   });
 
-  console.log('[executeLmsSendTrainingLink] ✓ Training link sent to:', applicant.email, 'url:', trainingUrl);
+  console.log('[executeLmsSendTrainingLink] ✓ Training link sent to:', resolvedEmail, 'url:', trainingUrl);
   return { success: true };
 }
 
