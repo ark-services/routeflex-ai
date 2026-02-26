@@ -7,9 +7,9 @@ import { Card } from "@/components/ui/card";
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; redirectTo?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, redirectTo } = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center py-12">
@@ -26,6 +26,9 @@ export default async function SignupPage({
           <p className="text-sm text-red-600 text-center mb-6">{error}</p>
         )}
         <form action={signup} className="space-y-4">
+          {redirectTo && (
+            <input type="hidden" name="redirectTo" value={redirectTo} />
+          )}
           <div>
             <label
               htmlFor="email"
@@ -57,7 +60,7 @@ export default async function SignupPage({
         <p className="text-sm text-stone-500 text-center mt-6">
           Already have an account?{" "}
           <Link
-            href="/login"
+            href={redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : "/login"}
             className="text-stone-900 hover:text-stone-700 font-medium"
           >
             Log in

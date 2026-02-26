@@ -60,7 +60,7 @@ export default async function LoginPage({
         <p className="text-sm text-stone-500 text-center mt-6">
           Don&apos;t have an account?{" "}
           <Link
-            href="/signup"
+            href={redirectTo ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}` : "/signup"}
             className="text-stone-900 hover:text-stone-700 font-medium"
           >
             Sign up
