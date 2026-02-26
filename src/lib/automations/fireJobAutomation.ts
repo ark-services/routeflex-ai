@@ -2432,9 +2432,23 @@ async function executeLmsSendTrainingLink(
     return { success: false, error: `lms.send_training_link: applicant not found (${applicantId})` };
   }
 
-  // If applicants.email is empty, fall back to any board cell of type 'email' for this applicant
+  // Resolve email: applicants.email → configured email_column_id → auto-detect any email-type board cell
   let resolvedEmail = applicant.email ?? null;
+  if (!resolvedEmail && config.email_column_id) {
+    // Use the explicitly configured column
+    const { data: configuredCell } = await supabase
+      .from('board_cells')
+      .select('value_text')
+      .eq('applicant_id', applicantId)
+      .eq('column_id', config.email_column_id)
+      .maybeSingle();
+    resolvedEmail = configuredCell?.value_text ?? null;
+    if (resolvedEmail) {
+      console.log('[executeLmsSendTrainingLink] Resolved email from configured column:', config.email_column_id);
+    }
+  }
   if (!resolvedEmail) {
+    // Auto-detect: first board cell with an email-type column on this job
     const { data: emailCell } = await supabase
       .from('board_cells')
       .select('value_text, board_columns!inner(type, board_id, boards!inner(job_id))')
@@ -2446,7 +2460,7 @@ async function executeLmsSendTrainingLink(
       .maybeSingle();
     resolvedEmail = emailCell?.value_text ?? null;
     if (resolvedEmail) {
-      console.log('[executeLmsSendTrainingLink] Resolved email from board cell:', resolvedEmail);
+      console.log('[executeLmsSendTrainingLink] Resolved email via auto-detect board cell');
     }
   }
 

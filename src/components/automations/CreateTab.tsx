@@ -1358,6 +1358,17 @@ function ActionEditor({
               />
             </div>
 
+            {/* Email column — email or text columns */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-36 shrink-0">Get email from</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "email" || c.type === "text")}
+                selectedId={action.config.email_column_id}
+                onSelect={(id) => onChange({ config: { ...action.config, email_column_id: id } })}
+                placeholder="auto-detect"
+              />
+            </div>
+
             {/* Output column — text only */}
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
               <span className="text-sm text-gray-500 w-36 shrink-0">Write result to</span>
