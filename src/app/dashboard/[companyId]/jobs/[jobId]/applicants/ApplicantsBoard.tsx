@@ -1320,9 +1320,9 @@ export default function ApplicantsBoard({
                             ))}
                             <col style={{ width: `${ADD_COL_BTN_WIDTH}px` }} />
                           </colgroup>
-                          <thead className="bg-stone-50/80">
+                          <thead className="bg-stone-50 sticky top-[41px] z-20">
                             <tr className="border-b border-stone-200">
-                              <th className="sticky left-0 z-20 w-10 bg-stone-50/80 px-4 py-2"></th>
+                              <th className="sticky left-0 z-20 w-10 bg-stone-50 px-4 py-2"></th>
 
                               {/* Sortable columns */}
                               <SortableContext
