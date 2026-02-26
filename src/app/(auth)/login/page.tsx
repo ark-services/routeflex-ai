@@ -7,9 +7,9 @@ import { Card } from "@/components/ui/card";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; redirectTo?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, redirectTo } = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center py-12">
@@ -26,6 +26,9 @@ export default async function LoginPage({
           <p className="text-sm text-red-600 text-center mb-6">{error}</p>
         )}
         <form action={login} className="space-y-4">
+          {redirectTo && (
+            <input type="hidden" name="redirectTo" value={redirectTo} />
+          )}
           <div>
             <label
               htmlFor="email"

@@ -32,8 +32,9 @@ export async function middleware(request: NextRequest) {
   const isCallbackRoute = path.startsWith("/auth/callback");
   const isApiRoute = path.startsWith("/api/");
   const isLearnRoute = path.startsWith("/learn/");
+  const isInviteRoute = path.startsWith("/invite/");
 
-  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute) {
+  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute && !isInviteRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const redirectResponse = NextResponse.redirect(url);

@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MemberListTable } from "@/components/admin/member-list-table";
 import { InviteModal } from "@/components/admin/invite-modal";
 import { Toast } from "@/components/ui/toast";
 import { Search, UserPlus } from "lucide-react";
+import {
+  getOrCreateInviteLink,
+  regenerateInviteLink,
+  sendEmailInvites,
+} from "@/app/admin/[accountId]/users/actions";
 
 export function UsersPageClient({
   accountId,
@@ -16,6 +21,7 @@ export function UsersPageClient({
   canInviteMore,
   memberCount,
   maxSeats,
+  initialInviteLinkToken,
 }: {
   accountId: string;
   members: any[];
@@ -24,30 +30,70 @@ export function UsersPageClient({
   canInviteMore: boolean;
   memberCount: number;
   maxSeats: number;
+  initialInviteLinkToken: string | null;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+
+  // Invite link state — seeded from server, updated client-side
+  const [inviteLinkToken, setInviteLinkToken] = useState<string | null>(
+    initialInviteLinkToken
+  );
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const inviteLink = inviteLinkToken
+    ? `${typeof window !== "undefined" ? window.location.origin : "https://routeflex.ai"}/invite/${inviteLinkToken}`
+    : null;
 
   const filteredMembers = useMemo(() => {
     if (!searchQuery.trim()) return members;
-
     const query = searchQuery.toLowerCase();
     return members.filter((member) => {
       const email = member.users?.email?.toLowerCase() || "";
-      const name = email.split("@")[0];
-      return email.includes(query) || name.includes(query);
+      return email.includes(query) || email.split("@")[0].includes(query);
     });
   }, [members, searchQuery]);
 
+  const handleOpenInviteModal = async () => {
+    setShowInviteModal(true);
+    // Load / create the invite link if we don't have one yet
+    if (!inviteLinkToken) {
+      setIsLoadingLink(true);
+      try {
+        const { token } = await getOrCreateInviteLink(accountId);
+        setInviteLinkToken(token);
+      } finally {
+        setIsLoadingLink(false);
+      }
+    }
+  };
+
+  const handleRegenerate = async (role: string) => {
+    setIsLoadingLink(true);
+    try {
+      const { token } = await regenerateInviteLink(accountId, role);
+      setInviteLinkToken(token);
+    } finally {
+      setIsLoadingLink(false);
+    }
+  };
+
   const handleInvite = async (emails: string, role: string) => {
-    // TODO: Implement actual invite API call
-    console.log("Inviting:", { emails, role, accountId });
-
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    setToast({ message: "Invitation sent", type: "success" });
+    const { results } = await sendEmailInvites(accountId, emails, role);
+    const failed = results.filter((r) => r.error);
+    if (failed.length) {
+      setToast({
+        message: `Some invites failed: ${failed.map((f) => f.email).join(", ")}`,
+        type: "error",
+      });
+    } else {
+      setToast({ message: "Invitation(s) sent!", type: "success" });
+    }
   };
 
   return (
@@ -64,7 +110,7 @@ export function UsersPageClient({
         </div>
         <Button
           variant="secondary"
-          onClick={() => setShowInviteModal(true)}
+          onClick={handleOpenInviteModal}
           disabled={!canInviteMore}
           className="gap-2"
         >
@@ -85,9 +131,8 @@ export function UsersPageClient({
         </Card>
       )}
 
-      {/* Search and Table Card */}
+      {/* Search and Table */}
       <Card className="overflow-hidden">
-        {/* Search Bar */}
         <div className="p-4 border-b border-stone-200">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
@@ -100,8 +145,6 @@ export function UsersPageClient({
             />
           </div>
         </div>
-
-        {/* Table */}
         <div className="p-6">
           {filteredMembers.length > 0 ? (
             <MemberListTable
@@ -113,7 +156,9 @@ export function UsersPageClient({
           ) : (
             <div className="text-center py-12">
               <p className="text-sm text-stone-500">
-                {searchQuery ? "No users found matching your search" : "No team members yet"}
+                {searchQuery
+                  ? "No users found matching your search"
+                  : "No team members yet"}
               </p>
             </div>
           )}
@@ -125,9 +170,12 @@ export function UsersPageClient({
         open={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onInvite={handleInvite}
+        inviteLink={inviteLink}
+        isLoadingLink={isLoadingLink}
+        onRegenerateLink={handleRegenerate}
       />
 
-      {/* Toast Notification */}
+      {/* Toast */}
       {toast && (
         <Toast
           message={toast.message}

@@ -51,3 +51,5 @@ scripts/archive/
 # FADV session cookies and browser profiles (contain live session credentials)
 .fadv-cookies/
 .fadv-profiles/
+.claude/
+.claude/

@@ -6,16 +6,20 @@ import { createClient } from "@/lib/supabase/server";
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
+  const redirectTo = (formData.get("redirectTo") as string | null) || "/";
+
   const { error } = await supabase.auth.signInWithPassword({
     email: formData.get("email") as string,
     password: formData.get("password") as string,
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    const params = new URLSearchParams({ error: error.message });
+    if (redirectTo !== "/") params.set("redirectTo", redirectTo);
+    redirect(`/login?${params.toString()}`);
   }
 
-  redirect("/");
+  redirect(redirectTo);
 }
 
 export async function signup(formData: FormData) {
