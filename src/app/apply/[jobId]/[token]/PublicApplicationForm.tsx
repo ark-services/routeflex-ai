@@ -232,6 +232,7 @@ export default function PublicApplicationForm({
                 type="checkbox"
                 name={field.key}
                 required={field.required}
+                defaultChecked={field.settings?.defaultChecked ?? false}
                 className="h-4 w-4 rounded border-stone-300 text-blue-600 focus:ring-blue-500/30"
               />
               <span className="text-sm text-stone-600">{field.label}</span>

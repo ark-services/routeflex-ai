@@ -7,6 +7,7 @@ import {
   deleteFormField,
   updateFormMeta,
   reconcileSyncedColumns,
+  reorderFormFields,
 } from "./actions";
 import FieldCard from "./FieldCard";
 import FieldTypePicker from "./FieldTypePicker";
@@ -221,6 +222,7 @@ export default function FormBuilder({
       radio: "Choose One",
       checkbox: "Select All That Apply",
       select: "Select from Dropdown",
+      location: "Home Address",
     };
 
     try {
@@ -295,6 +297,17 @@ export default function FormBuilder({
     }
   };
 
+  const handleReorderFields = async (reorderedFields: FormField[]) => {
+    // Optimistically update local state immediately
+    setFields(reorderedFields);
+    try {
+      await reorderFormFields(companyId, jobId, reorderedFields.map((f) => f.id));
+    } catch {
+      // Revert on failure
+      setFields(fields);
+    }
+  };
+
   const selectedField = fields.find((f) => f.id === selectedFieldId) || null;
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -364,6 +377,7 @@ export default function FormBuilder({
               .getElementById(`field-${id}`)
               ?.scrollIntoView({ behavior: "smooth", block: "center" });
           }}
+          onReorder={handleReorderFields}
         />
 
         {/* Canvas — full-page background driven by design settings, matching live page */}

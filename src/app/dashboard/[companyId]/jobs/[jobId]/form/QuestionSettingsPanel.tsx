@@ -29,6 +29,9 @@ export default function QuestionSettingsPanel({
   const [options, setOptions] = useState<string[]>(
     field?.settings?.options || ["Option 1", "Option 2"]
   );
+  const [defaultChecked, setDefaultChecked] = useState(
+    field?.settings?.defaultChecked ?? false
+  );
 
   // Update local state when field changes
   useEffect(() => {
@@ -36,6 +39,7 @@ export default function QuestionSettingsPanel({
       setRequired(field.required);
       setPlaceholder(field.settings?.placeholder || "");
       setOptions(field.settings?.options || ["Option 1", "Option 2"]);
+      setDefaultChecked(field.settings?.defaultChecked ?? false);
     }
   }, [field]);
 
@@ -78,8 +82,15 @@ export default function QuestionSettingsPanel({
     }
   };
 
-  const supportsPlaceholder = ["text", "textarea", "email", "phone", "number"].includes(field.type);
+  const handleDefaultCheckedToggle = async () => {
+    const newVal = !defaultChecked;
+    setDefaultChecked(newVal);
+    await onUpdate({ settings: { ...field.settings, defaultChecked: newVal } });
+  };
+
+  const supportsPlaceholder = ["text", "textarea", "email", "phone", "number", "location"].includes(field.type);
   const supportsOptions = ["radio", "checkbox", "select"].includes(field.type);
+  const supportsDefaultChecked = field.type === "checkbox";
 
   return (
     <div className="w-80 bg-white border-l border-gray-200 sticky top-0 h-screen flex flex-col">
@@ -119,6 +130,30 @@ export default function QuestionSettingsPanel({
             Applicants must answer this question
           </p>
         </div>
+
+        {/* Selected by default (checkbox only) */}
+        {supportsDefaultChecked && (
+          <div>
+            <label className="flex items-center justify-between cursor-pointer">
+              <span className="text-sm font-medium text-gray-700">Selected by Default</span>
+              <div
+                onClick={handleDefaultCheckedToggle}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  defaultChecked ? "bg-blue-600" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    defaultChecked ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </div>
+            </label>
+            <p className="text-xs text-gray-500 mt-1">
+              Checkbox will be pre-checked when the form loads
+            </p>
+          </div>
+        )}
 
         {/* Placeholder (for text-based fields) */}
         {supportsPlaceholder && (

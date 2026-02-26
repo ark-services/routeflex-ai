@@ -1,5 +1,21 @@
 "use client";
 
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
 type FormField = {
   id: string;
   key: string;
@@ -14,13 +30,100 @@ type FormBuilderSidebarProps = {
   fields: FormField[];
   selectedFieldId: string | null;
   onSelectField: (fieldId: string) => void;
+  onReorder: (reorderedFields: FormField[]) => void;
 };
+
+function SortableFieldItem({
+  field,
+  index,
+  selectedFieldId,
+  onSelectField,
+}: {
+  field: FormField;
+  index: number;
+  selectedFieldId: string | null;
+  onSelectField: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: field.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative">
+      <button
+        onClick={() => onSelectField(field.id)}
+        className={`w-full flex items-start gap-2 px-2 py-2 rounded-lg text-left transition-colors ${
+          selectedFieldId === field.id
+            ? "bg-blue-50 text-blue-700"
+            : "text-gray-700 hover:bg-gray-50"
+        }`}
+      >
+        {/* Drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 mt-1 flex-shrink-0"
+        >
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 12 16">
+            <circle cx="3" cy="2.5" r="1.2" />
+            <circle cx="9" cy="2.5" r="1.2" />
+            <circle cx="3" cy="7" r="1.2" />
+            <circle cx="9" cy="7" r="1.2" />
+            <circle cx="3" cy="11.5" r="1.2" />
+            <circle cx="9" cy="11.5" r="1.2" />
+          </svg>
+        </div>
+
+        <span className="text-xs font-medium text-gray-400 mt-0.5 flex-shrink-0 w-4 text-right">
+          {index + 1}
+        </span>
+
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{field.label}</div>
+          <div className="text-xs text-gray-500 capitalize mt-0.5">
+            {field.type}
+            {field.required && (
+              <span className="ml-1 text-red-600">*</span>
+            )}
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+}
 
 export default function FormBuilderSidebar({
   fields,
   selectedFieldId,
   onSelectField,
+  onReorder,
 }: FormBuilderSidebarProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = fields.findIndex((f) => f.id === active.id);
+    const newIndex = fields.findIndex((f) => f.id === over.id);
+    onReorder(arrayMove(fields, oldIndex, newIndex));
+  };
+
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-full overflow-y-auto flex flex-col">
       {/* Sidebar Header */}
@@ -32,49 +135,40 @@ export default function FormBuilderSidebar({
 
       {/* Form Structure */}
       <div className="flex-1 py-2">
-        {/* Page 1 */}
         <div className="mt-1 mb-2 px-4">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             Page 1
           </div>
         </div>
 
-        {/* Field List */}
         <div className="space-y-0.5 px-2">
           {fields.length === 0 ? (
             <div className="px-2 py-3 text-sm text-gray-400 italic">
               No questions yet
             </div>
           ) : (
-            fields.map((field, index) => (
-              <button
-                key={field.id}
-                onClick={() => onSelectField(field.id)}
-                className={`w-full flex items-start gap-3 px-2 py-2 rounded-lg text-left transition-colors ${
-                  selectedFieldId === field.id
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={fields.map((f) => f.id)}
+                strategy={verticalListSortingStrategy}
               >
-                <span className="text-xs font-medium text-gray-400 mt-0.5 flex-shrink-0">
-                  {index + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">
-                    {field.label}
-                  </div>
-                  <div className="text-xs text-gray-500 capitalize mt-0.5">
-                    {field.type}
-                    {field.required && (
-                      <span className="ml-1 text-red-600">*</span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))
+                {fields.map((field, index) => (
+                  <SortableFieldItem
+                    key={field.id}
+                    field={field}
+                    index={index}
+                    selectedFieldId={selectedFieldId}
+                    onSelectField={onSelectField}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           )}
         </div>
-
       </div>
 
       {/* Sidebar Footer Info */}

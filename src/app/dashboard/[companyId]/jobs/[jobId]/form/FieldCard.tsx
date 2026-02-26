@@ -156,15 +156,15 @@ export default function FieldCard({
           </div>
         );
       case "checkbox":
-        const checkboxOptions = field.settings?.options || ["Option 1", "Option 2"];
         return (
-          <div className="space-y-2">
-            {checkboxOptions.map((option: string, idx: number) => (
-              <label key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                <input type="checkbox" disabled className="cursor-not-allowed" />
-                {option}
-              </label>
-            ))}
+          <div className="flex items-center gap-2.5">
+            <input
+              type="checkbox"
+              disabled
+              defaultChecked={field.settings?.defaultChecked ?? false}
+              className="h-4 w-4 rounded border-gray-300 cursor-not-allowed"
+            />
+            <span className="text-sm text-gray-500">{field.label}</span>
           </div>
         );
       case "select":

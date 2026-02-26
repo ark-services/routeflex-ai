@@ -128,6 +128,27 @@ export async function createFormField(
 }
 
 /**
+ * Reorder form fields by updating their sort_order values.
+ * fieldIds should be the full ordered list of field IDs.
+ */
+export async function reorderFormFields(
+  companyId: string,
+  jobId: string,
+  fieldIds: string[]
+) {
+  const supabase = await createClient();
+  await Promise.all(
+    fieldIds.map((id, index) =>
+      supabase
+        .from("job_application_fields")
+        .update({ sort_order: index + 1 })
+        .eq("id", id)
+    )
+  );
+  revalidatePath(dashPath(companyId, jobId));
+}
+
+/**
  * Update a form field
  */
 export async function updateFormField(
@@ -309,34 +330,6 @@ export async function deleteFormField(
   await supabase
     .from("board_columns")
     .update({ settings: { hidden: true } })
-    .eq("field_id", fieldId);
-
-  revalidatePath(dashPath(companyId, jobId));
-  revalidatePath(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
-}
-
-/**
- * Reorder form fields
- */
-export async function reorderFormFields(
-  companyId: string,
-  jobId: string,
-  fieldId: string,
-  newSortOrder: number
-) {
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("job_application_fields")
-    .update({ sort_order: newSortOrder })
-    .eq("id", fieldId);
-
-  if (error) throw new Error(error.message);
-
-  // Also update the corresponding board column sort order
-  await supabase
-    .from("board_columns")
-    .update({ sort_order: newSortOrder })
     .eq("field_id", fieldId);
 
   revalidatePath(dashPath(companyId, jobId));
