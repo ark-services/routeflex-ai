@@ -1322,7 +1322,25 @@ export default function ApplicantsBoard({
                           </colgroup>
                           <thead className="bg-stone-50 sticky top-[41px] z-20">
                             <tr className="border-b border-stone-200">
-                              <th className="sticky left-0 z-20 w-10 bg-stone-50 px-4 py-2"></th>
+                              <th className="sticky left-0 z-20 w-10 bg-stone-50 px-4 py-2">
+                                <div className="flex items-center gap-2">
+                                  {/* invisible spacer matching the hidden ⋮ row-menu button */}
+                                  <div className="opacity-0 text-sm select-none">⋮</div>
+                                  {rows.length > 0 && (() => {
+                                    const allSelected = rows.every((r) => selected[r.id]);
+                                    const someSelected = !allSelected && rows.some((r) => selected[r.id]);
+                                    return (
+                                      <input
+                                        type="checkbox"
+                                        checked={allSelected}
+                                        ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                                        onChange={() => toggleAllInGroup(g.id, rows)}
+                                        className="h-4 w-4 rounded border-stone-300 cursor-pointer accent-green-600"
+                                      />
+                                    );
+                                  })()}
+                                </div>
+                              </th>
 
                               {/* Sortable columns */}
                               <SortableContext

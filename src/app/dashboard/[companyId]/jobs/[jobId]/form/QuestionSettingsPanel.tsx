@@ -98,23 +98,6 @@ export default function QuestionSettingsPanel({
 
       {/* Settings Content (scrollable) */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-        {/* Field Key (readonly) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Field Key
-          </label>
-          <input
-            type="text"
-            value={field.key}
-            readOnly
-            onChange={() => {}}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-600 cursor-not-allowed"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Used for data storage (cannot be changed)
-          </p>
-        </div>
-
         {/* Required Toggle */}
         <div>
           <label className="flex items-center justify-between cursor-pointer">
