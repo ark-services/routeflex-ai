@@ -64,7 +64,8 @@ import {
   updateGroupCollapsedColumns,
   type CellUpdateResult,
 } from "./actions";
-import { updateBoardGroupPortalSettings } from "./portal-actions";
+import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist } from "./portal-actions";
+import type { PortalChecklistItem } from "./portal-actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
 import { statusColorArray, STATUS_COLOR_PALETTE } from "@/lib/brand-colors";
 import { StatusDropdown } from "@/components/ui/status-dropdown";
@@ -79,7 +80,7 @@ type Group = {
   sort_order: number;
   color: string;
   is_collapsed: boolean;
-  settings?: { collapsed_columns?: string[] };
+  settings?: { collapsed_columns?: string[]; portal_checklist?: PortalChecklistItem[] };
   visible_to_applicants?: boolean;
   applicant_note?: string | null;
 };
@@ -853,6 +854,19 @@ export default function ApplicantsBoard({
     });
   }
 
+  function onUpdateGroupPortalChecklist(groupId: string, checklist: PortalChecklistItem[]) {
+    setLocalGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, settings: { ...g.settings, portal_checklist: checklist } }
+          : g
+      )
+    );
+    startTransition(async () => {
+      await updateBoardGroupPortalChecklist(companyId, groupId, checklist);
+    });
+  }
+
   function onColumnWidthChange(columnId: string, width: number) {
     setColumnWidths(prev => ({ ...prev, [columnId]: width }));
   }
@@ -1430,6 +1444,9 @@ export default function ApplicantsBoard({
                         }}
                         onUpdatePortalVisibility={(visible) => onUpdateGroupPortalVisibility(g.id, visible)}
                         onUpdatePortalNote={(note) => onUpdateGroupPortalNote(g.id, note)}
+                        onUpdatePortalChecklist={(checklist) => onUpdateGroupPortalChecklist(g.id, checklist)}
+                        columns={visibleColumns}
+                        labelsByColumn={labelsByColumn}
                       />
 
                     {/* Group table */}
@@ -2392,6 +2409,9 @@ function SortableGroupHeader({
   onExpandAll,
   onUpdatePortalVisibility,
   onUpdatePortalNote,
+  onUpdatePortalChecklist,
+  columns,
+  labelsByColumn,
   canDelete = true,
 }: {
   group: Group;
@@ -2413,6 +2433,9 @@ function SortableGroupHeader({
   onExpandAll: () => void;
   onUpdatePortalVisibility: (visible: boolean) => void;
   onUpdatePortalNote: (note: string) => void;
+  onUpdatePortalChecklist: (checklist: PortalChecklistItem[]) => void;
+  columns: BoardColumn[];
+  labelsByColumn: Map<string, StatusLabel[]>;
   canDelete?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -2616,8 +2639,10 @@ function SortableGroupHeader({
 
             {/* Section 3 — applicant portal settings */}
             <div className="border-t border-stone-100" />
-            <div className="px-4 py-3">
-              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2.5">Applicant Portal</p>
+            <div className="px-4 py-3 space-y-3">
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Applicant Portal</p>
+
+              {/* Visibility toggle */}
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -2627,14 +2652,92 @@ function SortableGroupHeader({
                 />
                 <span className="text-sm text-stone-700">Show this step to applicants</span>
               </label>
+
               {group.visible_to_applicants !== false && (
-                <textarea
-                  rows={2}
-                  className="mt-2.5 w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 resize-none placeholder:text-stone-400 focus:outline-none focus:border-blue-300"
-                  placeholder="Note shown to applicants at this step…"
-                  defaultValue={group.applicant_note ?? ""}
-                  onBlur={(e) => onUpdatePortalNote(e.target.value.trim())}
-                />
+                <>
+                  {/* Note */}
+                  <textarea
+                    rows={2}
+                    className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 resize-none placeholder:text-stone-400 focus:outline-none focus:border-blue-300"
+                    placeholder="Note shown to applicants at this step…"
+                    defaultValue={group.applicant_note ?? ""}
+                    onBlur={(e) => onUpdatePortalNote(e.target.value.trim())}
+                  />
+
+                  {/* Completion requirements */}
+                  <div>
+                    <p className="text-xs font-medium text-stone-500 mb-1.5">Completion requirements</p>
+                    <div className="space-y-1.5">
+                      {(group.settings?.portal_checklist ?? []).map((item, idx) => {
+                        const itemLabels = labelsByColumn.get(item.column_id) ?? [];
+                        const col = columns.find((c) => c.id === item.column_id);
+                        return (
+                          <div key={item.id} className="flex items-center gap-1.5">
+                            {/* Column picker */}
+                            <select
+                              value={item.column_id}
+                              onChange={(e) => {
+                                const next = (group.settings?.portal_checklist ?? []).map((it, i) =>
+                                  i === idx ? { ...it, column_id: e.target.value, pass_label_id: null } : it
+                                );
+                                onUpdatePortalChecklist(next);
+                              }}
+                              className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                            >
+                              {columns.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                            {/* Label picker — only for status columns */}
+                            {col?.type === "status" && (
+                              <select
+                                value={item.pass_label_id ?? ""}
+                                onChange={(e) => {
+                                  const next = (group.settings?.portal_checklist ?? []).map((it, i) =>
+                                    i === idx ? { ...it, pass_label_id: e.target.value || null } : it
+                                  );
+                                  onUpdatePortalChecklist(next);
+                                }}
+                                className="w-28 shrink-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                              >
+                                <option value="">any value</option>
+                                {itemLabels.map((l) => (
+                                  <option key={l.id} value={l.id}>{l.label}</option>
+                                ))}
+                              </select>
+                            )}
+                            {/* Remove */}
+                            <button
+                              onClick={() => {
+                                const next = (group.settings?.portal_checklist ?? []).filter((_, i) => i !== idx);
+                                onUpdatePortalChecklist(next);
+                              }}
+                              className="flex-shrink-0 text-stone-400 hover:text-red-500 transition-colors text-base leading-none px-0.5"
+                              title="Remove"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (columns.length === 0) return;
+                        const first = columns[0];
+                        const newItem: PortalChecklistItem = {
+                          id: crypto.randomUUID(),
+                          column_id: first.id,
+                          pass_label_id: null,
+                        };
+                        onUpdatePortalChecklist([...(group.settings?.portal_checklist ?? []), newItem]);
+                      }}
+                      className="mt-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      + Add requirement
+                    </button>
+                  </div>
+                </>
               )}
             </div>
 

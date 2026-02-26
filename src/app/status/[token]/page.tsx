@@ -17,6 +17,12 @@ function getSvc() {
   );
 }
 
+type ChecklistItem = {
+  id: string;
+  column_id: string;
+  pass_label_id?: string | null;
+};
+
 export default async function StatusPortalPage({
   params,
 }: {
@@ -51,7 +57,6 @@ export default async function StatusPortalPage({
   if (!applicant) notFound();
 
   const job = (applicant as any).jobs;
-  const companyId: string = job?.company_id;
   const isHired = applicant.status === "hired";
   const isRejected = applicant.status === "rejected";
 
@@ -64,7 +69,7 @@ export default async function StatusPortalPage({
 
   const { data: allGroups } = await svc
     .from("board_groups")
-    .select("id, name, color, sort_order, visible_to_applicants, applicant_note")
+    .select("id, name, color, sort_order, visible_to_applicants, applicant_note, settings")
     .eq("board_id", board?.id ?? "00000000-0000-0000-0000-000000000000")
     .order("sort_order", { ascending: true });
 
@@ -77,7 +82,50 @@ export default async function StatusPortalPage({
     (g: any) => g.id === applicant.group_id
   );
 
-  // ── 3. LMS enrollments ─────────────────────────────────────────────────────
+  // ── 3. Checklist data ───────────────────────────────────────────────────────
+  // Gather all unique column_ids referenced in any group's portal_checklist
+  const allChecklistColumnIds = new Set<string>();
+  for (const group of visibleGroups) {
+    const checklist: ChecklistItem[] = (group as any).settings?.portal_checklist ?? [];
+    for (const item of checklist) {
+      if (item.column_id) allChecklistColumnIds.add(item.column_id);
+    }
+  }
+
+  const columnIds = Array.from(allChecklistColumnIds);
+  const columnNameMap = new Map<string, string>(); // columnId → display name
+  const labelInfoMap = new Map<string, { name: string; color: string | null }>(); // labelId → display info
+  const cellValueMap = new Map<string, string>(); // columnId → applicant's current label_id value
+
+  if (columnIds.length > 0) {
+    const [{ data: columns }, { data: labels }, { data: cells }] = await Promise.all([
+      svc
+        .from("board_columns")
+        .select("id, name")
+        .in("id", columnIds),
+      svc
+        .from("board_status_labels")
+        .select("id, name, color, column_id")
+        .in("column_id", columnIds),
+      svc
+        .from("board_cells")
+        .select("column_id, value")
+        .eq("applicant_id", applicant.id)
+        .in("column_id", columnIds),
+    ]);
+
+    for (const col of columns ?? []) {
+      columnNameMap.set(col.id, col.name);
+    }
+    for (const label of labels ?? []) {
+      labelInfoMap.set(label.id, { name: label.name, color: label.color ?? null });
+    }
+    for (const cell of cells ?? []) {
+      if (cell.value) cellValueMap.set(cell.column_id, cell.value);
+    }
+  }
+
+  // ── 4. LMS enrollments ─────────────────────────────────────────────────────
   const { data: enrollments } = await svc
     .from("lms_enrollments")
     .select(`
@@ -114,6 +162,14 @@ export default async function StatusPortalPage({
     day: "numeric",
     year: "numeric",
   });
+
+  // ── Helper: is a checklist item complete for this applicant? ─────────────────
+  function isItemComplete(item: ChecklistItem): boolean {
+    const cellVal = cellValueMap.get(item.column_id);
+    if (!cellVal) return false;
+    if (item.pass_label_id) return cellVal === item.pass_label_id;
+    return true; // any non-empty value counts
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -160,59 +216,107 @@ export default async function StatusPortalPage({
             {visibleGroups.map((group: any, idx: number) => {
               const isCompleted = isHired || idx < currentGroupIndex;
               const isActive = !isHired && idx === currentGroupIndex;
-              const isUpcoming = !isHired && idx > currentGroupIndex;
+              const checklist: ChecklistItem[] = group.settings?.portal_checklist ?? [];
 
               return (
-                <div key={group.id} className="flex items-start gap-4 px-5 py-4">
-                  {/* State icon */}
-                  <div className="flex-shrink-0 mt-0.5">
-                    {isCompleted ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    ) : isActive ? (
-                      <div
-                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-                        style={{ borderColor: group.color ?? "#3b82f6" }}
-                      >
+                <div key={group.id} className="px-5 py-4">
+                  <div className="flex items-start gap-4">
+                    {/* State icon */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      {isCompleted ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      ) : isActive ? (
                         <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: group.color ?? "#3b82f6" }}
-                        />
-                      </div>
-                    ) : (
-                      <Circle className="w-5 h-5 text-stone-300" />
+                          className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+                          style={{ borderColor: group.color ?? "#3b82f6" }}
+                        >
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: group.color ?? "#3b82f6" }}
+                          />
+                        </div>
+                      ) : (
+                        <Circle className="w-5 h-5 text-stone-300" />
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`text-sm font-medium ${
+                          isCompleted
+                            ? "text-stone-400 line-through"
+                            : isActive
+                            ? "text-stone-900"
+                            : "text-stone-400"
+                        }`}
+                      >
+                        {group.name}
+                      </p>
+
+                      {/* Note — only on active stage */}
+                      {isActive && group.applicant_note && (
+                        <p className="text-sm text-stone-500 mt-1">{group.applicant_note}</p>
+                      )}
+
+                      {/* Checklist — shown for active & upcoming stages, hidden for completed */}
+                      {!isCompleted && checklist.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          {checklist.map((item) => {
+                            // For active stage: show real completion; for upcoming: always pending
+                            const done = isActive ? isItemComplete(item) : false;
+                            const colName = columnNameMap.get(item.column_id) ?? "—";
+                            const reqLabel = item.pass_label_id
+                              ? labelInfoMap.get(item.pass_label_id)
+                              : null;
+
+                            return (
+                              <div key={item.id} className="flex items-center gap-2">
+                                {done ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                                ) : (
+                                  <Circle className="w-3.5 h-3.5 text-stone-300 flex-shrink-0" />
+                                )}
+                                <span
+                                  className={`text-xs leading-snug ${
+                                    done ? "text-stone-400 line-through" : "text-stone-500"
+                                  }`}
+                                >
+                                  {colName}
+                                  {reqLabel && (
+                                    <span
+                                      className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded font-medium"
+                                      style={{
+                                        backgroundColor: reqLabel.color
+                                          ? `${reqLabel.color}22`
+                                          : "#f3f4f6",
+                                        color: reqLabel.color ?? "#6b7280",
+                                      }}
+                                    >
+                                      {reqLabel.name}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Active badge */}
+                    {isActive && (
+                      <span
+                        className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full"
+                        style={{
+                          backgroundColor: `${group.color ?? "#3b82f6"}18`,
+                          color: group.color ?? "#3b82f6",
+                        }}
+                      >
+                        Current
+                      </span>
                     )}
                   </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`text-sm font-medium ${
-                        isCompleted
-                          ? "text-stone-400 line-through"
-                          : isActive
-                          ? "text-stone-900"
-                          : "text-stone-400"
-                      }`}
-                    >
-                      {group.name}
-                    </p>
-                    {isActive && group.applicant_note && (
-                      <p className="text-sm text-stone-500 mt-1">{group.applicant_note}</p>
-                    )}
-                  </div>
-
-                  {/* Active badge */}
-                  {isActive && (
-                    <span
-                      className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full"
-                      style={{
-                        backgroundColor: `${group.color ?? "#3b82f6"}18`,
-                        color: group.color ?? "#3b82f6",
-                      }}
-                    >
-                      Current
-                    </span>
-                  )}
                 </div>
               );
             })}

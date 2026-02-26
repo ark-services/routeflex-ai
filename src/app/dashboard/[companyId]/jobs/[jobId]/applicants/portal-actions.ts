@@ -10,7 +10,6 @@ export async function updateBoardGroupPortalSettings(
 ) {
   const supabase = await createClient();
 
-  // Verify membership
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -19,6 +18,51 @@ export async function updateBoardGroupPortalSettings(
   const { error } = await supabase
     .from("board_groups")
     .update(data)
+    .eq("id", groupId)
+    .eq("company_id", companyId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/${companyId}`);
+  return { success: true };
+}
+
+export type PortalChecklistItem = {
+  id: string;           // client-generated UUID (stable list key)
+  column_id: string;
+  pass_label_id?: string | null; // null = any non-empty value counts as complete
+};
+
+export async function updateBoardGroupPortalChecklist(
+  companyId: string,
+  groupId: string,
+  checklist: PortalChecklistItem[]
+) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  // Read current settings, merge portal_checklist key, write back
+  const { data: group, error: fetchErr } = await supabase
+    .from("board_groups")
+    .select("settings")
+    .eq("id", groupId)
+    .eq("company_id", companyId)
+    .single();
+
+  if (fetchErr || !group) return { error: fetchErr?.message ?? "Group not found" };
+
+  const newSettings = {
+    ...(group.settings ?? {}),
+    portal_checklist: checklist,
+  };
+
+  const { error } = await supabase
+    .from("board_groups")
+    .update({ settings: newSettings })
     .eq("id", groupId)
     .eq("company_id", companyId);
 
