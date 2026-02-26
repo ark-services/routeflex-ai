@@ -173,7 +173,7 @@ export function buildTrainingLinkEmail(params: {
   trainingUrl: string;
 }): { subject: string; body: string } {
   const { firstName, companyName, logoUrl, trainingUrl } = params;
-  const subject = `Action required: Complete your safety training — ${companyName}`;
+  const subject = `Action required: Complete your safety training - ${companyName}`;
   const body = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; padding: 32px 24px;">
   ${logoUrl ? `<img src="${logoUrl}" alt="${companyName}" style="height: 48px; margin-bottom: 28px; display: block;" />` : `<p style="font-size: 18px; font-weight: 700; margin-bottom: 28px;">${companyName}</p>`}
