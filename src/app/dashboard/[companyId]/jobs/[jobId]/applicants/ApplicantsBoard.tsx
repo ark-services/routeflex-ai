@@ -2456,20 +2456,37 @@ function SortableGroupHeader({
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    maxHeight: number;
+  } | null>(null);
   const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
   const [clientMounted, setClientMounted] = useState(false);
 
   useEffect(() => { setClientMounted(true); }, []);
 
-  // Calculate menu position when it opens
+  // Calculate menu position when it opens — flip upward if not enough space below
   useEffect(() => {
     if (menuOpen && menuButtonRef.current) {
       const rect = menuButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-      });
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const MARGIN = 12;
+      if (spaceBelow >= 240 || spaceBelow >= spaceAbove) {
+        setMenuPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          maxHeight: spaceBelow - MARGIN,
+        });
+      } else {
+        setMenuPosition({
+          bottom: window.innerHeight - rect.top + (window.scrollY > 0 ? 0 : 0),
+          left: rect.left + window.scrollX,
+          maxHeight: spaceAbove - MARGIN,
+        });
+      }
     } else {
       setMenuPosition(null);
     }
@@ -2595,16 +2612,21 @@ function SortableGroupHeader({
             onClick={onMenuToggle}
           />
           <div
-            className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden"
+            className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl flex flex-col"
             style={{
-              top: `${menuPosition.top}px`,
+              top: menuPosition.top != null ? `${menuPosition.top}px` : undefined,
+              bottom: menuPosition.bottom != null ? `${menuPosition.bottom}px` : undefined,
               left: `${menuPosition.left}px`,
+              maxHeight: `${menuPosition.maxHeight}px`,
             }}
           >
             {/* Group name header */}
-            <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
+            <div className="px-4 py-3 border-b border-stone-100 bg-stone-50 flex-shrink-0 rounded-t-xl">
               <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">{group.name}</p>
             </div>
+
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 min-h-0">
 
             {/* Section 1 — column visibility */}
             <div className="py-2">
@@ -2755,6 +2777,9 @@ function SortableGroupHeader({
                 </div>
               </>
             )}
+
+            {/* End scrollable body */}
+            </div>
           </div>
         </>,
         document.body

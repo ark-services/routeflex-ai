@@ -263,12 +263,14 @@ export default async function StatusPortalPage({
                       {!isCompleted && checklist.length > 0 && (
                         <div className="mt-3 space-y-1.5">
                           {checklist.map((item) => {
-                            // For active stage: show real completion; for upcoming: always pending
+                            // For active stage: show real completion + current value
+                            // For upcoming stages: all pending, no live values
                             const done = isActive ? isItemComplete(item) : false;
                             const colName = columnNameMap.get(item.column_id) ?? "—";
-                            const reqLabel = item.pass_label_id
-                              ? labelInfoMap.get(item.pass_label_id)
-                              : null;
+
+                            // Current value the applicant has right now
+                            const currentLabelId = isActive ? cellValueMap.get(item.column_id) : null;
+                            const currentLabel = currentLabelId ? labelInfoMap.get(currentLabelId) : null;
 
                             return (
                               <div key={item.id} className="flex items-center gap-2">
@@ -283,17 +285,18 @@ export default async function StatusPortalPage({
                                   }`}
                                 >
                                   {colName}
-                                  {reqLabel && (
+                                  {/* Show current label value if one exists */}
+                                  {currentLabel && (
                                     <span
                                       className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded font-medium"
                                       style={{
-                                        backgroundColor: reqLabel.color
-                                          ? `${reqLabel.color}22`
+                                        backgroundColor: currentLabel.color
+                                          ? `${currentLabel.color}22`
                                           : "#f3f4f6",
-                                        color: reqLabel.color ?? "#6b7280",
+                                        color: currentLabel.color ?? "#6b7280",
                                       }}
                                     >
-                                      {reqLabel.name}
+                                      {currentLabel.name}
                                     </span>
                                   )}
                                 </span>
