@@ -2360,14 +2360,6 @@ function SortableRow({
       className="sticky left-0 z-10 bg-white group-hover:bg-stone-50/60 px-4 py-2 border-r border-stone-100"
     >
       <div className="flex items-center gap-2">
-        {isSample && (
-          <span
-            className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-500 border border-stone-300 border-dashed whitespace-nowrap italic"
-            title="This is a sample row created when the job was set up. You can delete it or edit it."
-          >
-            Sample
-          </span>
-        )}
         {fadvReady && (
           <span
             className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap"
@@ -2516,13 +2508,23 @@ function SortableRow({
   );
 
   // Dynamic board columns
+  let isFirstDataColumn = true;
   for (const col of columns) {
     const isCollapsed = collapsedColumnIds.has(col.id);
+    const showSampleBadge = isSample && isFirstDataColumn && !isCollapsed;
     cellEls.push(
       <td
         key={col.id}
-        className={`py-2 border-r border-stone-100 last:border-r-0 ${isCollapsed ? "px-1 w-12" : "px-4"}`}
+        className={`py-2 border-r border-stone-100 last:border-r-0 relative ${isCollapsed ? "px-1 w-12" : "px-4"}`}
       >
+        {showSampleBadge && (
+          <span
+            className="absolute top-1 right-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-stone-100 text-stone-400 border border-dashed border-stone-300 whitespace-nowrap pointer-events-none z-10 italic"
+            title="Sample row — edit any cell to convert this into a real applicant"
+          >
+            Sample
+          </span>
+        )}
         <CellRenderer
           applicant={applicant}
           column={col}
@@ -2536,6 +2538,7 @@ function SortableRow({
         />
       </td>
     );
+    isFirstDataColumn = false;
   }
 
   // Empty cell for + button column
