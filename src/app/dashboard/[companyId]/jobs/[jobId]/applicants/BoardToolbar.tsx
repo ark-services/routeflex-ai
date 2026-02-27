@@ -232,6 +232,7 @@ export function BoardToolbar({
           <AutomateButton
             companyId={companyId}
             jobId={jobId}
+            jobTitle={jobTitle}
             accountId={accountId}
             automations={automations}
             triggers={triggers}

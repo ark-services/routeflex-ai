@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical, Power, PowerOff, Trash2, Copy, Pencil } from "lucide-react";
+import { MoreVertical, Trash2, Copy, Pencil } from "lucide-react";
 import {
   toggleJobAutomation,
   deleteJobAutomation,
@@ -38,6 +38,38 @@ interface ManageTabProps {
   automations: Automation[];
   triggers: Trigger[];
   onEdit: (automation: Automation) => void;
+}
+
+function formatRecipeName(name: string): ReactNode {
+  // Pattern: "When {trigger} [AND only if {conditions}] → {actions}"
+  const arrowIdx = name.indexOf(" → ");
+  if (arrowIdx === -1) return name;
+
+  const whenPart = name.slice(0, arrowIdx);
+  const actionPart = name.slice(arrowIdx + 3);
+
+  // Strip "When " prefix
+  const withoutWhen = whenPart.startsWith("When ") ? whenPart.slice(5) : whenPart;
+
+  // Check for "AND only if" conditions
+  const andIdx = withoutWhen.indexOf(" AND only if ");
+  const triggerText = andIdx !== -1 ? withoutWhen.slice(0, andIdx) : withoutWhen;
+  const conditionText = andIdx !== -1 ? withoutWhen.slice(andIdx + 13) : null;
+
+  return (
+    <>
+      <span className="text-gray-500 font-normal">When </span>
+      <strong>{triggerText}</strong>
+      {conditionText && (
+        <>
+          <span className="text-gray-500 font-normal"> AND only if </span>
+          <strong>{conditionText}</strong>
+        </>
+      )}
+      <span className="text-gray-400 font-normal"> &rarr; </span>
+      <strong>{actionPart}</strong>
+    </>
+  );
 }
 
 export function ManageTab({
@@ -196,8 +228,8 @@ export function ManageTab({
                 <div className="flex-1">
                   {/* Recipe sentence */}
                   <div className="flex items-center gap-3 mb-2">
-                    <p className="text-gray-900 font-medium text-lg">
-                      {automation.name}
+                    <p className="text-gray-900 text-lg">
+                      {formatRecipeName(automation.name)}
                     </p>
                     <span
                       className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${
@@ -227,24 +259,24 @@ export function ManageTab({
 
                 {/* Actions */}
                 <div className="flex items-center gap-2 ml-4">
-                  {/* Toggle */}
+                  {/* Toggle switch */}
                   <button
+                    role="switch"
+                    aria-checked={automation.is_enabled}
                     onClick={() =>
                       handleToggle(automation.id, automation.is_enabled)
                     }
                     disabled={actionLoading === automation.id}
-                    className={`p-2 rounded-lg transition-colors ${
-                      automation.is_enabled
-                        ? "text-green-600 hover:bg-green-100"
-                        : "text-gray-400 hover:bg-gray-100"
-                    } disabled:opacity-50`}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 ${
+                      automation.is_enabled ? "bg-green-500" : "bg-stone-300"
+                    }`}
                     title={automation.is_enabled ? "Disable" : "Enable"}
                   >
-                    {automation.is_enabled ? (
-                      <Power className="w-5 h-5" />
-                    ) : (
-                      <PowerOff className="w-5 h-5" />
-                    )}
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                        automation.is_enabled ? "translate-x-4" : "translate-x-1"
+                      }`}
+                    />
                   </button>
 
                   {/* Kebab menu */}

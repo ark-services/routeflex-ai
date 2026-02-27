@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, X, ChevronDown, Zap } from "lucide-react";
+import { Plus, X, ChevronDown, Search, ArrowRight, RefreshCw, Trash2, Calendar, Hash, TrendingUp, Mail, MessageSquare, Phone, PhoneCall, ExternalLink, GraduationCap, Settings, Shield, Award } from "lucide-react";
 import { createJobAutomation, updateJobAutomation, getJobBoardColumns, getLmsCoursesForCompany } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { EmailGmailEditor } from "./EmailGmailEditor";
 import { SendEmailGmailAction } from "./SendEmailGmailAction";
@@ -99,6 +99,7 @@ interface CreateTabProps {
   onCreated: () => void;
   editingAutomation?: Automation | null;
   onCancelEdit?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export function CreateTab({
@@ -110,6 +111,7 @@ export function CreateTab({
   onCreated,
   editingAutomation,
   onCancelEdit,
+  onDirtyChange,
 }: CreateTabProps) {
   const [selectedTrigger, setSelectedTrigger] = useState<Trigger | null>(null);
   const [triggerConfig, setTriggerConfig] = useState<Record<string, any>>({});
@@ -120,6 +122,12 @@ export function CreateTab({
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
 
   const isEditing = !!editingAutomation;
+
+  // Track dirty state for unsaved changes guard
+  useEffect(() => {
+    const isDirty = selectedTrigger !== null || actions.length > 0;
+    onDirtyChange?.(isDirty);
+  }, [selectedTrigger, actions.length, onDirtyChange]);
 
   // Fetch board columns when component mounts
   useEffect(() => {
@@ -503,102 +511,64 @@ export function CreateTab({
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
-      {/* Title */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 bg-purple-100 px-4 py-2 rounded-full">
-          <Zap className="w-4 h-4 text-purple-600" />
-          <span className="text-sm font-medium text-purple-900">
-            {isEditing ? "Edit Automation Recipe" : "Create Automation Recipe"}
-          </span>
-        </div>
-      </div>
+    <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+      <div className="space-y-3">
+        {/* Trigger Selector */}
+        <TriggerSelector
+          triggers={triggers}
+          selectedTrigger={selectedTrigger}
+          onSelect={setSelectedTrigger}
+          triggerConfig={triggerConfig}
+          onConfigChange={setTriggerConfig}
+          columns={columns}
+          groups={groups}
+          filterConditions={filterConditions}
+          onFilterConditionsChange={setFilterConditions}
+        />
 
-      {/* Recipe Builder */}
-      <div className="space-y-8">
-        {/* WHEN THIS HAPPENS */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-            When this happens...
-          </h3>
-
-          {/* Trigger Selector */}
-          <TriggerSelector
-            triggers={triggers}
-            selectedTrigger={selectedTrigger}
-            onSelect={setSelectedTrigger}
-            triggerConfig={triggerConfig}
-            onConfigChange={setTriggerConfig}
-            columns={columns}
-            groups={groups}
-          />
-        </div>
-
-        {/* AND ONLY IF — optional filter conditions */}
-        {selectedTrigger && (
-          <FilterConditionsEditor
-            conditions={filterConditions}
-            columns={columns}
-            groups={groups}
-            onChange={setFilterConditions}
-          />
-        )}
-
-        {/* Arrow */}
+        {/* Connector line */}
         {selectedTrigger && (
           <div className="flex justify-center">
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </div>
+            <div className="w-px h-4 bg-gray-300" />
           </div>
         )}
 
-        {/* THEN DO THIS */}
+        {/* Actions */}
         {selectedTrigger && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-              Then do this...
-            </h3>
+          <div className="space-y-2">
+            {actions.map((action, index) => (
+              <ActionEditor
+                key={index}
+                action={action}
+                index={index}
+                columns={columns}
+                groups={groups}
+                lmsCourses={lmsCourses}
+                companyId={companyId}
+                accountId={accountId}
+                onChange={(updates) => updateAction(index, updates)}
+                onRemove={() => removeAction(index)}
+              />
+            ))}
 
-            <div className="space-y-3">
-              {actions.map((action, index) => (
-                <ActionEditor
-                  key={index}
-                  action={action}
-                  index={index}
-                  columns={columns}
-                  groups={groups}
-                  lmsCourses={lmsCourses}
-                  companyId={companyId}
-                  accountId={accountId}
-                  onChange={(updates) => updateAction(index, updates)}
-                  onRemove={() => removeAction(index)}
-                />
-              ))}
-
-              {actions.length < 5 && (
-                <button
-                  onClick={addAction}
-                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors flex items-center justify-center gap-2 font-medium"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add action
-                </button>
-              )}
-            </div>
+            {actions.length < 5 && (
+              <ActionTypePicker
+                onSelect={(type) => {
+                  setActions([...actions, { type, config: {} }]);
+                }}
+              />
+            )}
           </div>
         )}
 
         {/* Create/Update Buttons */}
         {selectedTrigger && actions.length > 0 && (
-          <div className="flex flex-col sm:flex-row justify-center gap-3 pt-6">
+          <div className="flex justify-center gap-2 pt-3">
             {isEditing && onCancelEdit && (
               <button
                 onClick={onCancelEdit}
                 disabled={loading}
-                className="px-8 py-3 min-h-[44px] bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 font-medium"
+                className="px-5 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 font-medium"
               >
                 Cancel
               </button>
@@ -606,7 +576,7 @@ export function CreateTab({
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="px-8 py-3 min-h-[44px] bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium shadow-lg"
+              className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
             >
               {loading
                 ? isEditing
@@ -616,14 +586,6 @@ export function CreateTab({
                 ? "Update automation"
                 : "Create automation"}
             </button>
-          </div>
-        )}
-
-        {/* Recipe Preview */}
-        {selectedTrigger && actions.length > 0 && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700">
-            <span className="font-medium text-gray-900">Recipe: </span>
-            {buildRecipeName()}
           </div>
         )}
       </div>
@@ -643,6 +605,8 @@ function TriggerSelector({
   onConfigChange,
   columns,
   groups,
+  filterConditions = [],
+  onFilterConditionsChange,
 }: {
   triggers: Trigger[];
   selectedTrigger: Trigger | null;
@@ -651,6 +615,8 @@ function TriggerSelector({
   onConfigChange: (config: Record<string, any>) => void;
   columns: Column[];
   groups: Group[];
+  filterConditions?: FilterCondition[];
+  onFilterConditionsChange?: (conditions: FilterCondition[]) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -676,14 +642,14 @@ function TriggerSelector({
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-6 py-4 border-2 border-gray-300 rounded-lg text-left flex items-center justify-between hover:border-blue-400 transition-colors bg-white"
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-left flex items-center justify-between hover:border-blue-400 transition-colors bg-white text-sm"
         >
-          <span className="text-gray-500">Choose a trigger...</span>
-          <ChevronDown className="w-5 h-5 text-gray-400" />
+          <span className="text-gray-500">When this happens...</span>
+          <ChevronDown className="w-4 h-4 text-gray-400" />
         </button>
 
         {isOpen && (
-          <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
             {sortedTriggers.map((trigger) => (
               <button
                 key={trigger.id}
@@ -691,11 +657,11 @@ function TriggerSelector({
                   onSelect(trigger);
                   setIsOpen(false);
                 }}
-                className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
               >
-                <p className="font-medium text-gray-900">{trigger.name}</p>
+                <p className="text-sm font-medium text-gray-900">{trigger.name}</p>
                 {trigger.description && (
-                  <p className="text-sm text-gray-500 mt-0.5">{trigger.description}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{trigger.description}</p>
                 )}
               </button>
             ))}
@@ -707,22 +673,20 @@ function TriggerSelector({
 
   // Render interactive sentence for selected trigger
   return (
-    <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <p className="text-sm text-blue-600 font-medium mb-2">Trigger</p>
-
+    <div className="border border-blue-200 bg-blue-50/60 rounded-lg px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center gap-1.5 text-sm flex-1 min-w-0">
           {/* Interactive Sentence */}
           {selectedTrigger.key === "board.status_changes_to" && (
-            <div className="flex flex-wrap items-center gap-2 text-lg">
-              <span>When</span>
+            <>
+              <span className="text-gray-600">When</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "status")}
                 selectedId={triggerConfig.column_id}
                 onSelect={(id) => onConfigChange({ ...triggerConfig, column_id: id, changes_to: undefined })}
                 placeholder="status column"
               />
-              <span>changes to</span>
+              <span className="text-gray-600">changes to</span>
               {triggerConfig.column_id && (
                 <StatusLabelPicker
                   column={columns.find((c) => c.id === triggerConfig.column_id)}
@@ -731,12 +695,12 @@ function TriggerSelector({
                   placeholder="value"
                 />
               )}
-            </div>
+            </>
           )}
 
           {selectedTrigger.key === "applicant.moved_group" && (
-            <div className="flex flex-wrap items-center gap-2 text-lg">
-              <span>When applicant moved to</span>
+            <>
+              <span className="text-gray-600">When applicant moved to</span>
               <GroupPicker
                 groups={groups}
                 selectedId={triggerConfig.to_group_id}
@@ -744,35 +708,77 @@ function TriggerSelector({
                 placeholder="group"
                 allowAny
               />
-            </div>
+            </>
           )}
 
           {selectedTrigger.key === "applicant.created" && (
-            <div className="text-lg">
-              <span>When applicant is created</span>
-            </div>
+            <span className="text-gray-600">When applicant is created</span>
           )}
 
           {selectedTrigger.key === "form.submitted" && (
-            <div className="text-lg">
-              <span>When application form is submitted</span>
-            </div>
+            <span className="text-gray-600">When application form is submitted</span>
+          )}
+
+          {/* Fallback for any trigger without a custom sentence */}
+          {!["board.status_changes_to", "applicant.moved_group", "applicant.created", "form.submitted"].includes(selectedTrigger.key) && (
+            <span className="text-gray-600">When {selectedTrigger.name.toLowerCase()}</span>
           )}
         </div>
 
         <button
           onClick={() => onSelect(null)}
-          className="p-1 hover:bg-blue-100 rounded ml-4"
+          className="p-1 hover:bg-blue-100 rounded ml-2 flex-shrink-0"
         >
-          <X className="w-5 h-5 text-gray-600" />
+          <X className="w-3.5 h-3.5 text-gray-500" />
         </button>
       </div>
+
+      {/* Inline "and only if..." conditions */}
+      {onFilterConditionsChange && (
+        filterConditions.length === 0 ? (
+          <button
+            onClick={() => onFilterConditionsChange([{ type: "text_equals", column_id: undefined, value: "" }])}
+            className="text-xs text-blue-400 hover:text-blue-600 transition-colors flex items-center gap-1 mt-2"
+          >
+            <Plus className="w-3 h-3" />
+            and only if...
+          </button>
+        ) : (
+          <div className="mt-2 pt-2 border-t border-blue-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-blue-600">and only if...</span>
+              <button
+                onClick={() => onFilterConditionsChange([...filterConditions, { type: "text_equals", column_id: undefined, value: "" }])}
+                className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-0.5 transition-colors"
+              >
+                <Plus className="w-3 h-3" /> Add
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {filterConditions.map((cond, index) => (
+                <FilterConditionRow
+                  key={index}
+                  condition={cond}
+                  columns={columns}
+                  groups={groups}
+                  onChange={(updates) => {
+                    const next = [...filterConditions];
+                    next[index] = { ...next[index], ...updates };
+                    onFilterConditionsChange(next);
+                  }}
+                  onRemove={() => onFilterConditionsChange(filterConditions.filter((_, i) => i !== index))}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      )}
     </div>
   );
 }
 
 // ============================================================================
-// Filter Conditions Editor ("and only if…")
+// Filter Conditions Editor ("and only if…") — standalone (kept for reference)
 // ============================================================================
 
 function FilterConditionsEditor({
@@ -874,12 +880,12 @@ function FilterConditionRow({
   const isDateCondition   = condition.type.startsWith("date_");
 
   return (
-    <div className="flex flex-wrap items-center gap-2 bg-white border border-amber-200 rounded-lg px-3 py-2">
+    <div className="flex flex-wrap items-center gap-1.5 bg-white border border-blue-200 rounded px-2 py-1.5">
       {/* Condition type selector */}
       <select
         value={condition.type}
         onChange={(e) => onChange({ type: e.target.value, column_id: undefined, value: "" })}
-        className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+        className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
       >
         {CONDITION_TYPES.map((t) => (
           <option key={t.value} value={t.value}>{t.label}</option>
@@ -921,7 +927,7 @@ function FilterConditionRow({
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
           placeholder="value…"
-          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white min-w-[120px] focus:outline-none focus:ring-1 focus:ring-amber-400"
+          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white min-w-[100px] focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
       )}
 
@@ -933,7 +939,7 @@ function FilterConditionRow({
             onChange({ value: e.target.value === "" ? "" : parseFloat(e.target.value) })
           }
           placeholder="0"
-          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white w-24 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white w-20 focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
       )}
 
@@ -942,7 +948,7 @@ function FilterConditionRow({
           type="date"
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
-          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
         />
       )}
 
@@ -1009,32 +1015,23 @@ function ActionEditor({
   ];
 
   return (
-    <div className="border-2 border-gray-300 rounded-lg p-6 bg-white">
-      <div className="flex items-start justify-between mb-4">
-        <span className="text-xs font-medium text-gray-500">Action {index + 1}</span>
+    <div className="border border-green-200 bg-green-50/60 rounded-lg px-4 py-3">
+      <div className="flex items-center justify-between mb-1">
+        <ActionTypeLabel
+          type={action.type}
+          actionTypes={actionTypes}
+          onChange={(type) => onChange({ type, config: {} })}
+        />
         <button
           onClick={onRemove}
-          className="p-1 hover:bg-gray-100 rounded"
+          className="p-1 hover:bg-green-100 rounded flex-shrink-0"
         >
-          <X className="w-4 h-4 text-gray-600" />
+          <X className="w-3.5 h-3.5 text-gray-500" />
         </button>
       </div>
 
-      {/* Action Type Selector */}
-      <select
-        value={action.type}
-        onChange={(e) => onChange({ type: e.target.value, config: {} })}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 font-medium"
-      >
-        {actionTypes.map((type) => (
-          <option key={type.value} value={type.value}>
-            {type.label}
-          </option>
-        ))}
-      </select>
-
       {/* Interactive Sentence for Action Config */}
-      <div className="flex flex-wrap items-center gap-2 text-base">
+      <div className="flex flex-wrap items-center gap-1.5 text-sm">
         {action.type === "move_group" && (
           <>
             <span>move item to</span>
@@ -1085,7 +1082,7 @@ function ActionEditor({
             <select
               value={action.config.value || ""}
               onChange={(e) => onChange({ config: { ...action.config, value: e.target.value } })}
-              className="px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
             >
               <option value="">Choose...</option>
               <option value="today">Today</option>
@@ -1109,7 +1106,7 @@ function ActionEditor({
               value={action.config.value || ""}
               onChange={(e) => onChange({ config: { ...action.config, value: parseFloat(e.target.value) } })}
               placeholder="0"
-              className="w-24 px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="w-20 px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
             />
           </>
         )}
@@ -1119,7 +1116,7 @@ function ActionEditor({
             <select
               value={action.config.operation || ""}
               onChange={(e) => onChange({ config: { ...action.config, operation: e.target.value } })}
-              className="px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
             >
               <option value="">Choose...</option>
               <option value="increment">Increase</option>
@@ -1137,7 +1134,7 @@ function ActionEditor({
               value={action.config.amount || 1}
               onChange={(e) => onChange({ config: { ...action.config, amount: parseInt(e.target.value) } })}
               placeholder="1"
-              className="w-20 px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="w-16 px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
             />
           </>
         )}
@@ -1216,7 +1213,7 @@ function ActionEditor({
                   },
                 })
               }
-              className="px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
             >
               <option value="">choose field…</option>
               {FADV_FIELD_OPTIONS.map((opt) => (
@@ -1233,7 +1230,7 @@ function ActionEditor({
                 onChange({ config: { ...action.config, value: e.target.value } })
               }
               placeholder="value…"
-              className="px-3 py-1.5 border border-blue-300 rounded bg-white text-blue-700 font-medium min-w-[140px]"
+              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium min-w-[120px]"
             />
           </>
         )}
@@ -1520,6 +1517,205 @@ function ActionEditor({
 }
 
 // ============================================================================
+// Action Type Picker (Searchable Popover)
+// ============================================================================
+
+const ACTION_CATEGORIES = [
+  {
+    label: "Move & Organize",
+    actions: [
+      { value: "move_group", label: "Move to group", icon: ArrowRight },
+      { value: "change_status", label: "Change status", icon: RefreshCw },
+      { value: "delete_item", label: "Delete item", icon: Trash2 },
+      { value: "set_date", label: "Set date", icon: Calendar },
+      { value: "set_number", label: "Set number", icon: Hash },
+      { value: "inc_dec", label: "Increase / decrease", icon: TrendingUp },
+    ],
+  },
+  {
+    label: "Communicate",
+    actions: [
+      { value: "send_email_gmail", label: "Send email (Gmail)", icon: Mail },
+      { value: "send_slack", label: "Send Slack notification", icon: MessageSquare },
+      { value: "twilio.send_sms", label: "Send SMS", icon: Phone },
+      { value: "twilio.make_call_say", label: "Call and say", icon: PhoneCall },
+      { value: "portal.send_link", label: "Send portal link", icon: ExternalLink },
+      { value: "lms.send_training_link", label: "Send training link", icon: GraduationCap },
+    ],
+  },
+  {
+    label: "Integrations",
+    actions: [
+      { value: "integration.set_field", label: "Set FADV field", icon: Settings },
+      { value: "fadv.add_subject", label: "Submit to First Advantage", icon: Shield },
+      { value: "safety_trainer.submit", label: "Submit Safety Cert", icon: Award },
+    ],
+  },
+];
+
+function ActionTypePicker({ onSelect }: { onSelect: (type: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = ACTION_CATEGORIES.map((cat) => ({
+    ...cat,
+    actions: cat.actions.filter((a) =>
+      a.label.toLowerCase().includes(search.toLowerCase())
+    ),
+  })).filter((cat) => cat.actions.length > 0);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-green-400 hover:text-green-600 transition-colors flex items-center justify-center gap-1.5 text-sm"
+      >
+        <Plus className="w-4 h-4" />
+        Add action
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => { setIsOpen(false); setSearch(""); }} />
+          <div className="absolute z-20 left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl max-h-80 overflow-hidden flex flex-col">
+            {/* Search */}
+            <div className="p-2 border-b border-gray-100">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search actions..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-green-400"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Categories */}
+            <div className="overflow-y-auto">
+              {filtered.map((cat) => (
+                <div key={cat.label}>
+                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                    {cat.label}
+                  </div>
+                  {cat.actions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <button
+                        key={action.value}
+                        onClick={() => {
+                          onSelect(action.value);
+                          setIsOpen(false);
+                          setSearch("");
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-green-50 transition-colors flex items-center gap-2.5 text-sm"
+                      >
+                        <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span className="text-gray-800">{action.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="px-3 py-4 text-sm text-gray-500 text-center">No matching actions</div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ActionTypeLabel({
+  type,
+  actionTypes,
+  onChange,
+}: {
+  type: string;
+  actionTypes: Array<{ value: string; label: string }>;
+  onChange: (type: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const current = actionTypes.find((t) => t.value === type);
+
+  const filtered = ACTION_CATEGORIES.map((cat) => ({
+    ...cat,
+    actions: cat.actions.filter((a) =>
+      a.label.toLowerCase().includes(search.toLowerCase())
+    ),
+  })).filter((cat) => cat.actions.length > 0);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-xs font-medium text-green-700 hover:text-green-900 hover:bg-green-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+      >
+        {current?.label || type}
+        <ChevronDown className="w-3 h-3" />
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => { setIsOpen(false); setSearch(""); }} />
+          <div className="absolute z-20 left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-72 w-64 overflow-hidden flex flex-col">
+            <div className="p-2 border-b border-gray-100">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search actions..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-green-400"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto">
+              {filtered.map((cat) => (
+                <div key={cat.label}>
+                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                    {cat.label}
+                  </div>
+                  {cat.actions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <button
+                        key={action.value}
+                        onClick={() => {
+                          onChange(action.value);
+                          setIsOpen(false);
+                          setSearch("");
+                        }}
+                        className={`w-full px-3 py-2 text-left hover:bg-green-50 transition-colors flex items-center gap-2.5 text-sm ${
+                          action.value === type ? "bg-green-50 text-green-700" : ""
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span>{action.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="px-3 py-4 text-sm text-gray-500 text-center">No matching actions</div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // Reusable Picker Components
 // ============================================================================
 
@@ -1541,14 +1737,14 @@ function ColumnPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 border-2 border-blue-400 bg-blue-100 rounded text-blue-700 font-semibold hover:bg-blue-200 transition-colors inline-flex items-center gap-1"
+        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.name : placeholder}
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[200px] max-h-60 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-52 overflow-y-auto">
           {columns.map((col) => (
             <button
               key={col.id}
@@ -1556,13 +1752,13 @@ function ColumnPicker({
                 onSelect(col.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
             >
               {col.name}
             </button>
           ))}
           {columns.length === 0 && (
-            <div className="px-3 py-2 text-gray-500 text-sm">No columns available</div>
+            <div className="px-3 py-1.5 text-gray-500 text-xs">No columns available</div>
           )}
         </div>
       )}
@@ -1588,37 +1784,37 @@ function LabelPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 border-2 border-blue-400 bg-blue-100 rounded text-blue-700 font-semibold hover:bg-blue-200 transition-colors inline-flex items-center gap-1.5"
+        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-1"
       >
         {selected ? (
           <>
             <span
-              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+              className="inline-block w-2 h-2 rounded-full flex-shrink-0"
               style={{ backgroundColor: selected.color || "#94a3b8" }}
             />
             {selected.label}
           </>
         ) : placeholder}
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-60 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[160px] max-h-52 overflow-y-auto">
           {labels.map((lbl) => (
             <button
               key={lbl.id}
               onClick={() => { onSelect(lbl.id); setIsOpen(false); }}
-              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
             >
               <span
-                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+                className="inline-block w-2 h-2 rounded-full flex-shrink-0"
                 style={{ backgroundColor: lbl.color || "#94a3b8" }}
               />
               {lbl.label}
             </button>
           ))}
           {labels.length === 0 && (
-            <div className="px-3 py-2 text-gray-500 text-sm">No labels available</div>
+            <div className="px-3 py-1.5 text-gray-500 text-xs">No labels available</div>
           )}
         </div>
       )}
@@ -1642,14 +1838,14 @@ function CoursePicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 border-2 border-blue-400 bg-blue-100 rounded text-blue-700 font-semibold hover:bg-blue-200 transition-colors inline-flex items-center gap-1"
+        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.name : "choose course"}
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[240px] max-h-60 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px] max-h-52 overflow-y-auto">
           {courses.map((course) => (
             <button
               key={course.id}
@@ -1657,13 +1853,13 @@ function CoursePicker({
                 onSelect(course.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
             >
               {course.name}
             </button>
           ))}
           {courses.length === 0 && (
-            <div className="px-3 py-2 text-gray-500 text-sm">
+            <div className="px-3 py-1.5 text-gray-500 text-xs">
               No published courses — create and publish a course in Training first
             </div>
           )}
@@ -1692,14 +1888,14 @@ function StatusLabelPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 border-2 border-blue-400 bg-blue-100 rounded text-blue-700 font-semibold hover:bg-blue-200 transition-colors inline-flex items-center gap-1"
+        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.label : placeholder}
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[150px] max-h-60 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
           {labels.map((label) => (
             <button
               key={label.id}
@@ -1707,17 +1903,17 @@ function StatusLabelPicker({
                 onSelect(label.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
             >
               <div
-                className="w-3 h-3 rounded-full"
+                className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: label.color }}
               />
               {label.label}
             </button>
           ))}
           {labels.length === 0 && (
-            <div className="px-3 py-2 text-gray-500 text-sm">No labels available</div>
+            <div className="px-3 py-1.5 text-gray-500 text-xs">No labels available</div>
           )}
         </div>
       )}
@@ -1745,21 +1941,21 @@ function GroupPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-1.5 border-2 border-blue-400 bg-blue-100 rounded text-blue-700 font-semibold hover:bg-blue-200 transition-colors inline-flex items-center gap-1"
+        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.name : selectedId === undefined && allowAny ? "any group" : placeholder}
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[150px] max-h-60 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
           {allowAny && (
             <button
               onClick={() => {
                 onSelect(undefined);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100"
             >
               <span className="text-gray-500 italic">Any group</span>
             </button>
@@ -1771,10 +1967,10 @@ function GroupPicker({
                 onSelect(group.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
             >
               <div
-                className="w-3 h-3 rounded-full"
+                className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: group.color }}
               />
               {group.name}

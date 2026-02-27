@@ -247,7 +247,13 @@ export async function listJobAutomationRuns(
       subject_id,
       status,
       error,
-      created_at
+      skip_reason,
+      created_at,
+      actions_attempted,
+      actions_succeeded,
+      actions_failed,
+      duration_ms,
+      action_results
     `)
     .eq("company_id", companyId)
     .eq("job_id", jobId)
