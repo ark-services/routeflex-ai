@@ -1427,14 +1427,25 @@ export async function updateBoardCell(
 
   // TRIGGER AUTOMATION: Detect status change and fire Monday.com-style trigger.
   // Wrapped in after() so automations run after the response is sent — doesn't block the client.
+  // IMPORTANT: The cookie-based supabase client is NOT safe inside after() because the request
+  // context (cookies) is gone by the time after() runs. We pre-capture the user here (during the
+  // main request) and create a service role client inside after() for all DB operations.
   if (columnType === "status" && oldStatusLabelId !== value) {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
     after(async () => {
       try {
+        // Service role client — no cookies needed, safe to use inside after()
+        const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+        const svc = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
         // Import fireJobTrigger dynamically to avoid circular dependencies
         const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
 
         // Get column name for logging
-        const { data: column } = await supabase
+        const { data: column } = await svc
           .from("board_columns")
           .select("name, board_id")
           .eq("id", columnId)
@@ -1445,7 +1456,7 @@ export async function updateBoardCell(
         let newLabel: string | null = null;
 
         if (oldStatusLabelId) {
-          const { data: oldLabelData } = await supabase
+          const { data: oldLabelData } = await svc
             .from("board_status_labels")
             .select("label")
             .eq("id", oldStatusLabelId)
@@ -1454,7 +1465,7 @@ export async function updateBoardCell(
         }
 
         if (value) {
-          const { data: newLabelData } = await supabase
+          const { data: newLabelData } = await svc
             .from("board_status_labels")
             .select("label")
             .eq("id", value)
@@ -1463,7 +1474,7 @@ export async function updateBoardCell(
         }
 
         // Fire the board.status_changes_to trigger
-        await fireJobTrigger(supabase, {
+        await fireJobTrigger(svc, {
           companyId,
           jobId,
           trigger_key: "board.status_changes_to",
@@ -1490,22 +1501,21 @@ export async function updateBoardCell(
           newLabel,
         });
 
-        // Log cell.updated activity
+        // Log cell.updated activity using pre-captured user (cookies unavailable in after())
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          const actor = actorName(user);
+          const actor = actorName(currentUser);
           if (newLabel) {
             // Fetch applicant name for richer log entry
-            const { data: applicantRow } = await supabase
+            const { data: applicantRow } = await svc
               .from("applicants")
               .select("full_name")
               .eq("id", applicantId)
               .maybeSingle();
             const applicantName = applicantRow?.full_name ?? "an applicant";
-            await logActivityEvent(supabase, {
+            await logActivityEvent(svc, {
               companyId,
               jobId,
-              actorUserId: user?.id ?? null,
+              actorUserId: currentUser?.id ?? null,
               actorType: "user",
               eventType: "cell.updated",
               entityType: "applicant",
@@ -1633,15 +1643,23 @@ export async function bulkUpdateStatusCells(
 
       // Fire automation trigger (only if status actually changed).
       // Wrapped in after() so automations run after the response is sent.
+      // Uses service role client inside after() — cookie-based client is unsafe post-response.
       if (oldStatusLabelId !== statusLabelId) {
         const _applicantId = applicantId;
         const _oldStatusLabelId = oldStatusLabelId;
         const _oldLabel = oldLabel;
         after(async () => {
           try {
+            // Service role client — no cookies needed, safe to use inside after()
+            const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+            const svc = createServiceClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY!
+            );
+
             const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
 
-            await fireJobTrigger(supabase, {
+            await fireJobTrigger(svc, {
               companyId,
               jobId,
               trigger_key: "board.status_changes_to",
