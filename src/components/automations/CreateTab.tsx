@@ -511,7 +511,7 @@ export function CreateTab({
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+    <div className="p-4 sm:p-6">
       <div className="space-y-3">
         {/* Trigger Selector */}
         <TriggerSelector
