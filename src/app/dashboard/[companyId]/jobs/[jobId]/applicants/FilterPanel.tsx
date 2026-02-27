@@ -338,8 +338,8 @@ export function FilterPanel({
         top: pos.top,
         left: pos.left,
         zIndex: 9999,
-        minWidth: 520,
-        maxWidth: "calc(100vw - 32px)",
+        minWidth: 480,
+        maxWidth: Math.min(680, window.innerWidth - 32),
       }}
       className="bg-white rounded-xl border border-stone-200 shadow-xl"
     >
@@ -391,11 +391,11 @@ export function FilterPanel({
                 </select>
               )}
 
-              {/* Column selector */}
+              {/* Column selector — max-width prevents long question names from blowing out the panel */}
               <select
                 value={f.columnId}
                 onChange={(e) => updateFilter(f.id, { columnId: e.target.value })}
-                className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="h-8 max-w-[220px] rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
                 {columns.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
