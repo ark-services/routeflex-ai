@@ -183,6 +183,10 @@ export default function ApplicantsBoard({
   const [addColumnError, setAddColumnError] = useState<string | null>(null);
   const [addAfterColumnId, setAddAfterColumnId] = useState<string | null>(null);
 
+  // Optimistic cell overrides: key="${applicantId}::${columnId}", value=raw cell value
+  // Set immediately on change; rolls back on server error; cleared when cells prop refreshes
+  const [cellOverrides, setCellOverrides] = useState<Map<string, any>>(new Map());
+
   // Cell-level error toast (validation / server errors from updateBoardCell)
   const [cellErrorMsg, setCellErrorMsg] = useState<string | null>(null);
   const cellErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -933,6 +937,10 @@ export default function ApplicantsBoard({
       return null;
     }
 
+    // Check optimistic overrides first — applied immediately on user change before server confirms
+    const overrideKey = `${applicant.id}::${column.id}`;
+    if (cellOverrides.has(overrideKey)) return cellOverrides.get(overrideKey);
+
     const cell = cellsByApplicantAndColumn.get(`${applicant.id}::${column.id}`);
     if (!cell) return null;
 
@@ -1004,48 +1012,63 @@ export default function ApplicantsBoard({
   }
 
   function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "checkbox" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", value: any) {
-    startTransition(async () => {
-      // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
-      // update all selected rows with the new status value
-      if (columnType === "status" && selectedIds.length > 1 && selected[applicantId]) {
-        if (VERBOSE) console.log('[onUpdateCell] Bulk status update triggered:', {
-          applicantId,
-          columnId,
-          statusLabelId: value,
-          selectedCount: selectedIds.length,
-          selectedIds,
-        });
+    // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
+    // update all selected rows with the new status value
+    if (columnType === "status" && selectedIds.length > 1 && selected[applicantId]) {
+      if (VERBOSE) console.log('[onUpdateCell] Bulk status update triggered:', {
+        applicantId, columnId, statusLabelId: value, selectedCount: selectedIds.length, selectedIds,
+      });
 
+      // Optimistically update all selected rows immediately
+      setCellOverrides(prev => {
+        const next = new Map(prev);
+        for (const id of selectedIds) next.set(`${id}::${columnId}`, value);
+        return next;
+      });
+
+      startTransition(async () => {
         try {
-          const result = await bulkUpdateStatusCells(
-            companyId,
-            jobId,
-            selectedIds,
-            columnId,
-            value
-          );
-
+          const result = await bulkUpdateStatusCells(companyId, jobId, selectedIds, columnId, value);
           if (VERBOSE) console.log('[onUpdateCell] Bulk update result:', result);
-
           if (result.failed > 0) {
-            // Show partial failure warning
+            // Partial failure — roll back all overrides for this column
+            setCellOverrides(prev => {
+              const next = new Map(prev);
+              for (const id of selectedIds) next.delete(`${id}::${columnId}`);
+              return next;
+            });
             alert(`Updated ${result.successful} of ${selectedIds.length} applicants. ${result.failed} failed.`);
           }
-
-          // Keep selection after bulk status update for multiple operations
         } catch (error) {
           console.error('[onUpdateCell] Bulk update failed:', error);
+          setCellOverrides(prev => {
+            const next = new Map(prev);
+            for (const id of selectedIds) next.delete(`${id}::${columnId}`);
+            return next;
+          });
           alert('Failed to update selected applicants. Please try again.');
         }
-      } else {
-        // Single cell update — handle structured result, never let errors crash the page
+      });
+    } else {
+      // Single cell — apply optimistic override immediately, then confirm with server
+      const key = `${applicantId}::${columnId}`;
+      setCellOverrides(prev => new Map(prev).set(key, value));
+
+      startTransition(async () => {
         const result = await updateBoardCell(companyId, jobId, applicantId, columnId, columnType, value);
         if (!result.ok) {
+          // Roll back the optimistic value
+          setCellOverrides(prev => {
+            const next = new Map(prev);
+            next.delete(key);
+            return next;
+          });
           console.warn('[onUpdateCell] Cell update rejected:', result);
           showCellError(result.message);
         }
-      }
-    });
+        // On success: override stays until cells prop refreshes via revalidatePath
+      });
+    }
   }
 
   if (!mounted) {
