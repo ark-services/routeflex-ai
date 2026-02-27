@@ -1518,7 +1518,9 @@ export async function updateBoardCell(
     }
   }
 
-  revalidatePath(dashPath(companyId, jobId));
+  // NOTE: revalidatePath intentionally omitted — cell values are handled
+  // optimistically on the client (cellOverrides in ApplicantsBoard). A full
+  // RSC re-render here would negate the instant UI update.
   return { ok: true };
 }
 
@@ -1680,7 +1682,7 @@ export async function bulkUpdateStatusCells(
     throw new Error("All bulk updates failed");
   }
 
-  revalidatePath(dashPath(companyId, jobId));
+  // NOTE: revalidatePath intentionally omitted — see updateBoardCell comment above.
 
   return {
     successful: results.length,
