@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { validateEmail, validatePhone, validateLocation } from "@/lib/validation/columnValidation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
@@ -1424,98 +1425,100 @@ export async function updateBoardCell(
     }
   }
 
-  // TRIGGER AUTOMATION: Detect status change and fire Monday.com-style trigger
+  // TRIGGER AUTOMATION: Detect status change and fire Monday.com-style trigger.
+  // Wrapped in after() so automations run after the response is sent — doesn't block the client.
   if (columnType === "status" && oldStatusLabelId !== value) {
-    try {
-      // Import fireJobTrigger dynamically to avoid circular dependencies
-      const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
-
-      // Get column name for logging
-      const { data: column } = await supabase
-        .from("board_columns")
-        .select("name, board_id")
-        .eq("id", columnId)
-        .single();
-
-      // Get label text for old and new values
-      let oldLabel: string | null = null;
-      let newLabel: string | null = null;
-
-      if (oldStatusLabelId) {
-        const { data: oldLabelData } = await supabase
-          .from("board_status_labels")
-          .select("label")
-          .eq("id", oldStatusLabelId)
-          .single();
-        oldLabel = oldLabelData?.label || null;
-      }
-
-      if (value) {
-        const { data: newLabelData } = await supabase
-          .from("board_status_labels")
-          .select("label")
-          .eq("id", value)
-          .single();
-        newLabel = newLabelData?.label || null;
-      }
-
-      // Fire the board.status_changes_to trigger
-      await fireJobTrigger(supabase, {
-        companyId,
-        jobId,
-        trigger_key: "board.status_changes_to",
-        subject_type: "applicant",
-        subject_id: applicantId,
-        payload: {
-          company_id: companyId,
-          job_id: jobId,
-          board_id: column?.board_id,
-          applicant_id: applicantId,
-          column_id: columnId,
-          column_name: column?.name || "Unknown Column",
-          old_value: oldStatusLabelId,
-          new_value: value,
-          old_label: oldLabel,
-          new_label: newLabel,
-        },
-      });
-
-      if (VERBOSE) console.log('[updateBoardCell] Automation trigger fired:', {
-        trigger: 'board.status_changes_to',
-        column: column?.name,
-        oldLabel,
-        newLabel,
-      });
-
-      // Log cell.updated activity
+    after(async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        const actor = actorName(user);
-        if (newLabel) {
-          // Fetch applicant name for richer log entry
-          const { data: applicantRow } = await supabase
-            .from("applicants")
-            .select("full_name")
-            .eq("id", applicantId)
-            .maybeSingle();
-          const applicantName = applicantRow?.full_name ?? "an applicant";
-          await logActivityEvent(supabase, {
-            companyId,
-            jobId,
-            actorUserId: user?.id ?? null,
-            actorType: "user",
-            eventType: "cell.updated",
-            entityType: "applicant",
-            entityId: applicantId,
-            summary: `${actor} changed ${applicantName}'s ${column?.name ?? "status"} → ${newLabel}`,
-            data: { actor_name: actor, applicant_name: applicantName, column_name: column?.name, old_label: oldLabel, new_label: newLabel },
-          });
+        // Import fireJobTrigger dynamically to avoid circular dependencies
+        const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
+
+        // Get column name for logging
+        const { data: column } = await supabase
+          .from("board_columns")
+          .select("name, board_id")
+          .eq("id", columnId)
+          .single();
+
+        // Get label text for old and new values
+        let oldLabel: string | null = null;
+        let newLabel: string | null = null;
+
+        if (oldStatusLabelId) {
+          const { data: oldLabelData } = await supabase
+            .from("board_status_labels")
+            .select("label")
+            .eq("id", oldStatusLabelId)
+            .single();
+          oldLabel = oldLabelData?.label || null;
         }
-      } catch {}
-    } catch (automationError) {
-      console.error('[updateBoardCell] Error firing automation:', automationError);
-      // Don't throw - automation errors should not block the cell update
-    }
+
+        if (value) {
+          const { data: newLabelData } = await supabase
+            .from("board_status_labels")
+            .select("label")
+            .eq("id", value)
+            .single();
+          newLabel = newLabelData?.label || null;
+        }
+
+        // Fire the board.status_changes_to trigger
+        await fireJobTrigger(supabase, {
+          companyId,
+          jobId,
+          trigger_key: "board.status_changes_to",
+          subject_type: "applicant",
+          subject_id: applicantId,
+          payload: {
+            company_id: companyId,
+            job_id: jobId,
+            board_id: column?.board_id,
+            applicant_id: applicantId,
+            column_id: columnId,
+            column_name: column?.name || "Unknown Column",
+            old_value: oldStatusLabelId,
+            new_value: value,
+            old_label: oldLabel,
+            new_label: newLabel,
+          },
+        });
+
+        if (VERBOSE) console.log('[updateBoardCell] Automation trigger fired:', {
+          trigger: 'board.status_changes_to',
+          column: column?.name,
+          oldLabel,
+          newLabel,
+        });
+
+        // Log cell.updated activity
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          const actor = actorName(user);
+          if (newLabel) {
+            // Fetch applicant name for richer log entry
+            const { data: applicantRow } = await supabase
+              .from("applicants")
+              .select("full_name")
+              .eq("id", applicantId)
+              .maybeSingle();
+            const applicantName = applicantRow?.full_name ?? "an applicant";
+            await logActivityEvent(supabase, {
+              companyId,
+              jobId,
+              actorUserId: user?.id ?? null,
+              actorType: "user",
+              eventType: "cell.updated",
+              entityType: "applicant",
+              entityId: applicantId,
+              summary: `${actor} changed ${applicantName}'s ${column?.name ?? "status"} → ${newLabel}`,
+              data: { actor_name: actor, applicant_name: applicantName, column_name: column?.name, old_label: oldLabel, new_label: newLabel },
+            });
+          }
+        } catch {}
+      } catch (automationError) {
+        console.error('[updateBoardCell] Error firing automation:', automationError);
+      }
+    });
   }
 
   // NOTE: revalidatePath intentionally omitted — cell values are handled
@@ -1628,39 +1631,44 @@ export async function bulkUpdateStatusCells(
         continue;
       }
 
-      // Fire automation trigger (only if status actually changed)
+      // Fire automation trigger (only if status actually changed).
+      // Wrapped in after() so automations run after the response is sent.
       if (oldStatusLabelId !== statusLabelId) {
-        try {
-          const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
+        const _applicantId = applicantId;
+        const _oldStatusLabelId = oldStatusLabelId;
+        const _oldLabel = oldLabel;
+        after(async () => {
+          try {
+            const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
 
-          await fireJobTrigger(supabase, {
-            companyId,
-            jobId,
-            trigger_key: "board.status_changes_to",
-            subject_type: "applicant",
-            subject_id: applicantId,
-            payload: {
-              company_id: companyId,
-              job_id: jobId,
-              board_id: column.board_id,
-              applicant_id: applicantId,
-              column_id: columnId,
-              column_name: column.name,
-              old_value: oldStatusLabelId,
-              new_value: statusLabelId,
-              old_label: oldLabel,
-              new_label: newLabel,
-            },
-          });
+            await fireJobTrigger(supabase, {
+              companyId,
+              jobId,
+              trigger_key: "board.status_changes_to",
+              subject_type: "applicant",
+              subject_id: _applicantId,
+              payload: {
+                company_id: companyId,
+                job_id: jobId,
+                board_id: column.board_id,
+                applicant_id: _applicantId,
+                column_id: columnId,
+                column_name: column.name,
+                old_value: _oldStatusLabelId,
+                new_value: statusLabelId,
+                old_label: _oldLabel,
+                new_label: newLabel,
+              },
+            });
 
-          if (VERBOSE) console.log(`[bulkUpdateStatusCells] Automation fired for applicant ${applicantId}:`, {
-            oldLabel,
-            newLabel,
-          });
-        } catch (automationError) {
-          console.error(`[bulkUpdateStatusCells] Automation error for applicant ${applicantId}:`, automationError);
-          // Continue - don't block on automation errors
-        }
+            if (VERBOSE) console.log(`[bulkUpdateStatusCells] Automation fired for applicant ${_applicantId}:`, {
+              oldLabel: _oldLabel,
+              newLabel,
+            });
+          } catch (automationError) {
+            console.error(`[bulkUpdateStatusCells] Automation error for applicant ${_applicantId}:`, automationError);
+          }
+        });
       }
 
       results.push({ applicantId, success: true });
