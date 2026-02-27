@@ -2335,3 +2335,22 @@ export async function setApplicantIntegrationField(
     return { success: false, error: err.message ?? "Unknown error" };
   }
 }
+
+// ============================================================
+// clearApplicantSampleFlag
+// Called the first time any board cell is edited on a sample
+// row.  Clears is_sample so the "Sample" badge disappears and
+// the row is treated as a real applicant going forward.
+// ============================================================
+export async function clearApplicantSampleFlag(
+  companyId: string,
+  applicantId: string
+): Promise<void> {
+  const supabase = await createClient();
+  await supabase
+    .from("applicants")
+    .update({ is_sample: false })
+    .eq("id", applicantId)
+    .eq("company_id", companyId)
+    .eq("is_sample", true); // no-op if already cleared
+}

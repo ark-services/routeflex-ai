@@ -211,7 +211,7 @@ export function BoardToolbar({
           {isSuperAdmin && (
             <button
               onClick={() => setSaveAsTemplateOpen(true)}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 text-sm font-medium transition-colors"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300 text-sm font-medium transition-colors"
               title="Save this job's layout as a template (Super Admin)"
             >
               <BookTemplate className="h-3.5 w-3.5 shrink-0" />
@@ -294,7 +294,11 @@ export function BoardToolbar({
       {/* ── Row 3: Utility toolbar — Search · Filter (tertiary) ──────────────
            Separated from tabs by a hairline border, making it clearly a
            utility layer rather than part of the navigation hierarchy. */}
-      <div className="flex items-center gap-2 px-6 py-2 border-t border-stone-100">
+      {/* suppressHydrationWarning on this row + its inputs/buttons because Dashlane
+           injects data-dashlane-* attributes onto form-adjacent elements after SSR,
+           causing a React hydration mismatch. This prop tells React to ignore
+           attribute differences on these specific nodes only. */}
+      <div className="flex items-center gap-2 px-6 py-2 border-t border-stone-100" suppressHydrationWarning>
 
         {/* Search — collapses/expands on focus */}
         <div
@@ -303,6 +307,7 @@ export function BoardToolbar({
         >
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400 pointer-events-none" />
           <input
+            suppressHydrationWarning
             ref={searchRef}
             type="text"
             value={searchQuery}
@@ -327,6 +332,7 @@ export function BoardToolbar({
 
         {/* Filter */}
         <button
+          suppressHydrationWarning
           ref={filterBtnRef}
           onClick={() => setFilterOpen((o) => !o)}
           className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0 ${

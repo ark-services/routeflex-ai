@@ -259,6 +259,7 @@ export async function addJob(formData: FormData) {
         phone: "555-555-5555",
         status: "applied",
         position: 0,
+        is_sample: true,
       });
 
       if (applicantErr && !applicantErr.message?.includes("unique")) {

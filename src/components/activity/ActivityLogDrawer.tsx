@@ -256,9 +256,10 @@ export function ActivityLogDrawer({ open, onClose, companyId, jobId }: ActivityL
               Loading…
             </div>
           ) : events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 gap-2 text-stone-400">
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-stone-400 px-6 text-center">
               <ScrollText className="w-8 h-8 opacity-30" />
-              <span className="text-sm">No activity yet</span>
+              <span className="text-sm font-medium text-stone-500">No activity yet</span>
+              <span className="text-xs text-stone-400 leading-relaxed">Activity will appear here when applicants are added, moved, or updated.</span>
             </div>
           ) : (
             <>

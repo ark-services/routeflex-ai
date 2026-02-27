@@ -13,6 +13,10 @@ import {
   GraduationCap,
   MoveRight,
   Link2,
+  ExternalLink,
+  X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -62,6 +66,7 @@ import {
   quickCreateApplicant,
   sendToFadv,
   updateGroupCollapsedColumns,
+  clearApplicantSampleFlag,
   type CellUpdateResult,
 } from "./actions";
 import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist } from "./portal-actions";
@@ -97,6 +102,7 @@ type ApplicantRow = {
   group_id: string | null;
   position: number;
   portal_token?: string | null;
+  is_sample?: boolean;
 };
 
 // Extend BoardColumn with job-specific UI fields
@@ -187,6 +193,9 @@ export default function ApplicantsBoard({
   // Set immediately on change; rolls back on server error; cleared when cells prop refreshes
   const [cellOverrides, setCellOverrides] = useState<Map<string, any>>(new Map());
 
+  // Applicant detail side panel
+  const [detailApplicantId, setDetailApplicantId] = useState<string | null>(null);
+
   // Cell-level error toast (validation / server errors from updateBoardCell)
   const [cellErrorMsg, setCellErrorMsg] = useState<string | null>(null);
   const cellErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -198,7 +207,6 @@ export default function ApplicantsBoard({
   const [rowMenuOpen, setRowMenuOpen] = useState<string | null>(null);
 
   // Hidden columns dropdown
-  const [showHiddenColumnsMenu, setShowHiddenColumnsMenu] = useState(false);
 
   // Group editing state
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -899,6 +907,12 @@ export default function ApplicantsBoard({
     });
   }
 
+  function onHideColumn(columnId: string) {
+    startTransition(async () => {
+      await updateBoardColumn(companyId, jobId, columnId, { is_hidden: true });
+    });
+  }
+
   function onAddColumnRight(afterColumnId: string) {
     setAddAfterColumnId(afterColumnId);
     setShowAddColumnModal(true);
@@ -1012,6 +1026,16 @@ export default function ApplicantsBoard({
   }
 
   function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "checkbox" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", value: any) {
+    // If this is a sample/example row being edited for the first time, promote it to a
+    // real applicant: clear the badge optimistically in local state and persist to DB.
+    const editedApplicant = localApplicants.find((a) => a.id === applicantId);
+    if (editedApplicant?.is_sample) {
+      setLocalApplicants((prev) =>
+        prev.map((a) => a.id === applicantId ? { ...a, is_sample: false } : a)
+      );
+      clearApplicantSampleFlag(companyId, applicantId); // fire-and-forget
+    }
+
     // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
     // update all selected rows with the new status value
     if (columnType === "status" && selectedIds.length > 1 && selected[applicantId]) {
@@ -1109,44 +1133,6 @@ export default function ApplicantsBoard({
       )}
 
       <div className="flex flex-col h-full min-h-0 bg-stone-50">
-        {/* Hidden Columns Control */}
-        {hiddenColumns.length > 0 && (
-          <div className="px-6 py-3 border-b border-stone-200 bg-white">
-            <div className="relative inline-block">
-              <button
-                onClick={() => setShowHiddenColumnsMenu(!showHiddenColumnsMenu)}
-                className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
-              >
-                <span>Hidden Columns ({hiddenColumns.length})</span>
-                <span className="text-xs">▼</span>
-              </button>
-              {showHiddenColumnsMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setShowHiddenColumnsMenu(false)}
-                  />
-                  <div className="absolute left-0 top-full mt-2 w-64 rounded-lg border border-stone-200 bg-white shadow-lg z-20">
-                    <div className="py-1 max-h-64 overflow-y-auto">
-                      {hiddenColumns.map((col) => (
-                        <button
-                          key={col.id}
-                          onClick={() => {
-                            onShowColumn(col.id);
-                            setShowHiddenColumnsMenu(false);
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
-                        >
-                          {col.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* ====== MOBILE CARD VIEW (hidden on md+) ====== */}
         <div className="md:hidden flex-1 overflow-auto min-h-0">
@@ -1232,6 +1218,16 @@ export default function ApplicantsBoard({
                                         <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">
                                           {a.full_name ?? "Applicant"}
                                         </p>
+                                      </div>
+                                      {/* Open detail */}
+                                      <div className="py-2 border-b border-stone-100">
+                                        <button
+                                          onClick={() => { setRowMenuOpen(null); setDetailApplicantId(a.id); }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                        >
+                                          <ExternalLink className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                          Open
+                                        </button>
                                       </div>
                                       {/* Move to */}
                                       <div className="py-2">
@@ -1471,6 +1467,9 @@ export default function ApplicantsBoard({
                           onExpandAllColumns(g.id);
                           setGroupMenuOpen(null);
                         }}
+                        allColumns={localColumns}
+                        onHideColumn={onHideColumn}
+                        onShowColumn={onShowColumn}
                         onUpdatePortalVisibility={(visible) => onUpdateGroupPortalVisibility(g.id, visible)}
                         onUpdatePortalNote={(note) => onUpdateGroupPortalNote(g.id, note)}
                         onUpdatePortalChecklist={(checklist) => onUpdateGroupPortalChecklist(g.id, checklist)}
@@ -1584,6 +1583,7 @@ export default function ApplicantsBoard({
                                     rowMenuOpen={rowMenuOpen === a.id}
                                     setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
                                     groups={groups}
+                                    onOpen={() => setDetailApplicantId(a.id)}
                                     onMove={(groupId) => onMoveApplicant(a.id, groupId)}
                                     onDuplicate={() => onDuplicateApplicant(a.id)}
                                     onDelete={() => onDeleteApplicant(a.id)}
@@ -1674,6 +1674,7 @@ export default function ApplicantsBoard({
                               rowMenuOpen={rowMenuOpen === a.id}
                               setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
                               groups={groups}
+                              onOpen={() => setDetailApplicantId(a.id)}
                               onMove={(groupId) => onMoveApplicant(a.id, groupId)}
                               onDuplicate={() => onDuplicateApplicant(a.id)}
                               onDelete={() => onDeleteApplicant(a.id)}
@@ -1865,7 +1866,117 @@ export default function ApplicantsBoard({
           />
         )}
       </div>
+
+      {/* Applicant detail side panel */}
+      {detailApplicantId && (() => {
+        const detailApplicant = localApplicants.find((a) => a.id === detailApplicantId);
+        if (!detailApplicant) return null;
+        const detailGroup = localGroups.find((g) => g.id === detailApplicant.group_id);
+        return (
+          <ApplicantDetailPanel
+            applicant={detailApplicant}
+            group={detailGroup}
+            columns={localColumns}
+            cells={cells}
+            labelsByColumn={labelsByColumn}
+            onClose={() => setDetailApplicantId(null)}
+          />
+        );
+      })()}
     </DndContext>
+  );
+}
+
+// ===== Applicant Detail Panel =====
+
+function ApplicantDetailPanel({
+  applicant,
+  group,
+  columns,
+  cells,
+  labelsByColumn,
+  onClose,
+}: {
+  applicant: { id: string; full_name: string; email: string; group_id: string | null };
+  group: Group | undefined;
+  columns: BoardColumn[];
+  cells: BoardCell[];
+  labelsByColumn: Map<string, StatusLabel[]>;
+  onClose: () => void;
+}) {
+  const appCells = cells.filter((c) => c.applicant_id === applicant.id);
+
+  return (
+    <div className="fixed inset-0 z-[900] flex" role="dialog" aria-modal="true" aria-label={`Details for ${applicant.full_name}`}>
+      {/* Backdrop */}
+      <div className="flex-1 bg-black/20" onClick={onClose} />
+      {/* Panel */}
+      <div className="w-96 max-w-full bg-white shadow-2xl border-l border-stone-200 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between shrink-0">
+          <h2 className="text-base font-semibold text-stone-900 truncate">{applicant.full_name || "Applicant"}</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close detail panel"
+            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Stage */}
+        {group && (
+          <div className="px-5 py-2.5 border-b border-stone-100 flex items-center gap-2 shrink-0">
+            <span className="text-xs text-stone-400 font-medium">Stage</span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: group.color }}>
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+              {group.name}
+            </span>
+          </div>
+        )}
+
+        {/* Fields */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {columns.filter((col) => !col.is_hidden).map((col) => {
+            const cell = appCells.find((c) => c.column_id === col.id);
+            const labels = labelsByColumn.get(col.id) ?? [];
+
+            if (col.type === "status") {
+              const label = labels.find((l) => l.id === cell?.value_status_label_id);
+              return (
+                <div key={col.id}>
+                  <p className="text-xs font-medium text-stone-400 mb-1">{col.name}</p>
+                  {label ? (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
+                      <span className="text-sm text-stone-700">{label.label}</span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-stone-300">—</span>
+                  )}
+                </div>
+              );
+            }
+
+            let displayValue: string | null = null;
+            if (col.type === "text" || col.type === "email" || col.type === "phone" || col.type === "location") {
+              displayValue = cell?.value_text ?? null;
+            } else if (col.type === "number") {
+              displayValue = cell?.value_number != null ? String(cell.value_number) : null;
+            } else if (col.type === "date") {
+              displayValue = cell?.value_date ? new Date(cell.value_date).toLocaleDateString() : null;
+            }
+
+            return (
+              <div key={col.id}>
+                <p className="text-xs font-medium text-stone-400 mb-1">{col.name}</p>
+                <p className="text-sm text-stone-700 break-words">{displayValue ?? <span className="text-stone-300">—</span>}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2180,6 +2291,7 @@ function SortableRow({
   rowMenuOpen,
   setRowMenuOpen,
   groups,
+  onOpen,
   onMove,
   onDuplicate,
   onDelete,
@@ -2200,6 +2312,7 @@ function SortableRow({
   rowMenuOpen: boolean;
   setRowMenuOpen: (open: boolean) => void;
   groups: Group[];
+  onOpen: () => void;
   onMove: (groupId: string) => void;
   onDuplicate: () => void;
   onDelete: () => void;
@@ -2221,6 +2334,9 @@ function SortableRow({
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+
+  // Use the DB-backed flag set during job seeding (migration 00090)
+  const isSample = applicant.is_sample === true;
 
   const cellEls: React.ReactNode[] = [];
 
@@ -2244,6 +2360,14 @@ function SortableRow({
       className="sticky left-0 z-10 bg-white group-hover:bg-stone-50/60 px-4 py-2 border-r border-stone-100"
     >
       <div className="flex items-center gap-2">
+        {isSample && (
+          <span
+            className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-500 border border-stone-300 border-dashed whitespace-nowrap italic"
+            title="This is a sample row created when the job was set up. You can delete it or edit it."
+          >
+            Sample
+          </span>
+        )}
         {fadvReady && (
           <span
             className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap"
@@ -2257,6 +2381,7 @@ function SortableRow({
             ref={menuButtonRef}
             onClick={() => setRowMenuOpen(!rowMenuOpen)}
             className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-stone-700 transition text-sm"
+            aria-label="Row options"
           >
             ⋮
           </button>
@@ -2280,6 +2405,17 @@ function SortableRow({
                   <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">
                     {applicant.full_name ?? "Applicant"}
                   </p>
+                </div>
+
+                {/* Open detail panel */}
+                <div className="py-2 border-b border-stone-100">
+                  <button
+                    onClick={() => { setRowMenuOpen(false); onOpen(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                  >
+                    <ExternalLink className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                    Open
+                  </button>
                 </div>
 
                 {/* Section 1 — Move to */}
@@ -2371,6 +2507,7 @@ function SortableRow({
         <button
           {...listeners}
           className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 text-xs opacity-0 group-hover:opacity-100"
+          aria-label="Drag to reorder row"
         >
           ⋮⋮
         </button>
@@ -2408,7 +2545,9 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className="group border-b border-stone-100 hover:bg-stone-50/60 relative"
+      className={`group border-b border-stone-100 hover:bg-stone-50/60 relative ${
+        isSample ? "bg-stone-50/70 opacity-70 hover:opacity-90" : ""
+      }`}
       {...attributes}
     >
       {cellEls}
@@ -2436,6 +2575,9 @@ function SortableGroupHeader({
   onDelete,
   onMinimizeAll,
   onExpandAll,
+  allColumns,
+  onHideColumn,
+  onShowColumn,
   onUpdatePortalVisibility,
   onUpdatePortalNote,
   onUpdatePortalChecklist,
@@ -2460,6 +2602,9 @@ function SortableGroupHeader({
   onDelete: () => void;
   onMinimizeAll: () => void;
   onExpandAll: () => void;
+  allColumns: BoardColumn[];
+  onHideColumn: (columnId: string) => void;
+  onShowColumn: (columnId: string) => void;
   onUpdatePortalVisibility: (visible: boolean) => void;
   onUpdatePortalNote: (note: string) => void;
   onUpdatePortalChecklist: (checklist: PortalChecklistItem[]) => void;
@@ -2552,6 +2697,7 @@ function SortableGroupHeader({
       <button
         {...listeners}
         className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 text-sm transition-opacity"
+        aria-label="Drag to reorder group"
       >
         ⋮⋮
       </button>
@@ -2560,6 +2706,7 @@ function SortableGroupHeader({
       <button
         onClick={onToggleCollapse}
         className="text-stone-500 hover:text-stone-800 text-sm"
+        aria-label={isCollapsed ? `Expand ${group.name} group` : `Collapse ${group.name} group`}
       >
         {isCollapsed ? "▶" : "▼"}
       </button>
@@ -2659,20 +2806,47 @@ function SortableGroupHeader({
 
             {/* Section 1 — column visibility */}
             <div className="py-2">
-              <button
-                onClick={onMinimizeAll}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
-              >
-                <ChevronsLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
-                Minimize all columns
-              </button>
-              <button
-                onClick={onExpandAll}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
-              >
-                <ArrowLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
-                Expand all columns
-              </button>
+              {/* Show / hide individual columns */}
+              <p className="px-4 pt-1 pb-1.5 text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
+                Columns
+              </p>
+              {allColumns.filter((col) => !col.is_system).map((col) => (
+                <label
+                  key={col.id}
+                  className="flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 cursor-pointer"
+                >
+                  {col.is_hidden ? (
+                    <EyeOff className="w-4 h-4 text-stone-300 flex-shrink-0" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                  )}
+                  <span className={col.is_hidden ? "text-stone-400" : ""}>{col.name}</span>
+                  <input
+                    type="checkbox"
+                    checked={!col.is_hidden}
+                    onChange={() => col.is_hidden ? onShowColumn(col.id) : onHideColumn(col.id)}
+                    className="ml-auto h-4 w-4 rounded border-stone-300 text-blue-600 cursor-pointer"
+                  />
+                </label>
+              ))}
+
+              {/* Minimize / expand width shortcuts */}
+              <div className="border-t border-stone-100 mt-1 pt-1">
+                <button
+                  onClick={onMinimizeAll}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 transition-colors text-left"
+                >
+                  <ChevronsLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                  Minimize all
+                </button>
+                <button
+                  onClick={onExpandAll}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 transition-colors text-left"
+                >
+                  <ArrowLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                  Expand all
+                </button>
+              </div>
             </div>
 
             <div className="border-t border-stone-100" />
@@ -3517,20 +3691,20 @@ function CellRenderer({
 
   if (column.is_system) {
     if (column.type === "text") {
-      return <span className="text-sm text-stone-700">{value || "—"}</span>;
+      return <span className="text-sm text-stone-700 truncate" title={value || undefined}>{value || "—"}</span>;
     }
     if (column.type === "status") {
       const selectedLabel = labels.find((l) => l.label.toLowerCase() === value?.toLowerCase());
       return (
         <div className="flex items-center gap-2">
           {selectedLabel && (
-            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedLabel.color }} />
+            <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: selectedLabel.color }} />
           )}
-          <span className="text-sm text-stone-700">{value || "—"}</span>
+          <span className="text-sm text-stone-700 truncate" title={value || undefined}>{value || "—"}</span>
         </div>
       );
     }
-    return <span className="text-sm text-stone-700">{value || "—"}</span>;
+    return <span className="text-sm text-stone-700 truncate" title={value || undefined}>{value || "—"}</span>;
   }
 
   if (column.type === "text") {
@@ -3545,6 +3719,7 @@ function CellRenderer({
           onKeyDown={handleKeyDown}
           className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="—"
+          title={localValue || undefined}
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -3629,6 +3804,7 @@ function CellRenderer({
           onKeyDown={handleKeyDown}
           className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
           placeholder="City, State"
+          title={localValue || undefined}
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -3788,6 +3964,7 @@ function EmailCell({
           error ? "border-red-400 bg-red-50 focus:border-red-500" : "border-transparent"
         }`}
         placeholder="email@example.com"
+        title={!isEditing && value ? value : undefined}
       />
       {error && (
         <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
@@ -3879,6 +4056,7 @@ function PhoneCell({
           error ? "border-red-400 bg-red-50 focus:border-red-500" : "border-transparent"
         }`}
         placeholder="+15551234567"
+        title={!isEditing && value ? value : undefined}
       />
       {error && (
         <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
