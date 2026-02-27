@@ -1038,6 +1038,9 @@ export default function ApplicantsBoard({
               return next;
             });
             alert(`Updated ${result.successful} of ${selectedIds.length} applicants. ${result.failed} failed.`);
+          } else {
+            // Refresh to pick up automation-triggered group moves
+            setTimeout(() => router.refresh(), 1500);
           }
         } catch (error) {
           console.error('[onUpdateCell] Bulk update failed:', error);
@@ -1065,8 +1068,11 @@ export default function ApplicantsBoard({
           });
           console.warn('[onUpdateCell] Cell update rejected:', result);
           showCellError(result.message);
+        } else if (columnType === 'status') {
+          // Status changes can trigger automations (e.g. move_group) that run in after().
+          // Refresh after a short delay to pick up any automation-triggered group moves.
+          setTimeout(() => router.refresh(), 1500);
         }
-        // On success: override stays until cells prop refreshes via revalidatePath
       });
     }
   }
