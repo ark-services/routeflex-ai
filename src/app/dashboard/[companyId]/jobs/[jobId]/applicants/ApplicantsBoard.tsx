@@ -2641,6 +2641,7 @@ function SortableGroupHeader({
   } | null>(null);
   const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
   const [clientMounted, setClientMounted] = useState(false);
+  const [showColumnsSection, setShowColumnsSection] = useState(false);
 
   useEffect(() => { setClientMounted(true); }, []);
 
@@ -2809,29 +2810,45 @@ function SortableGroupHeader({
 
             {/* Section 1 — column visibility */}
             <div className="py-2">
-              {/* Show / hide individual columns */}
-              <p className="px-4 pt-1 pb-1.5 text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
-                Columns
-              </p>
-              {allColumns.filter((col) => !col.is_system).map((col) => (
-                <label
-                  key={col.id}
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 cursor-pointer"
-                >
-                  {col.is_hidden ? (
-                    <EyeOff className="w-4 h-4 text-stone-300 flex-shrink-0" />
-                  ) : (
-                    <Eye className="w-4 h-4 text-stone-400 flex-shrink-0" />
-                  )}
-                  <span className={col.is_hidden ? "text-stone-400" : ""}>{col.name}</span>
-                  <input
-                    type="checkbox"
-                    checked={!col.is_hidden}
-                    onChange={() => col.is_hidden ? onShowColumn(col.id) : onHideColumn(col.id)}
-                    className="ml-auto h-4 w-4 rounded border-stone-300 text-blue-600 cursor-pointer"
-                  />
-                </label>
-              ))}
+              {/* Collapsible "Columns" accordion header */}
+              <button
+                onClick={() => setShowColumnsSection((v) => !v)}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+              >
+                <Eye className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <span className="flex-1 font-medium">Columns</span>
+                {allColumns.filter((c) => !c.is_system && c.is_hidden).length > 0 && (
+                  <span className="text-[10px] font-semibold bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 leading-none">
+                    {allColumns.filter((c) => !c.is_system && c.is_hidden).length} hidden
+                  </span>
+                )}
+                <span className="text-xs text-stone-400 ml-1">{showColumnsSection ? "▲" : "▼"}</span>
+              </button>
+
+              {/* Expanded: per-column checkboxes */}
+              {showColumnsSection && (
+                <div className="pb-1">
+                  {allColumns.filter((col) => !col.is_system).map((col) => (
+                    <label
+                      key={col.id}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 cursor-pointer"
+                    >
+                      {col.is_hidden ? (
+                        <EyeOff className="w-4 h-4 text-stone-300 flex-shrink-0" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                      )}
+                      <span className={col.is_hidden ? "text-stone-400" : ""}>{col.name}</span>
+                      <input
+                        type="checkbox"
+                        checked={!col.is_hidden}
+                        onChange={() => col.is_hidden ? onShowColumn(col.id) : onHideColumn(col.id)}
+                        className="ml-auto h-4 w-4 rounded border-stone-300 text-blue-600 cursor-pointer"
+                      />
+                    </label>
+                  ))}
+                </div>
+              )}
 
               {/* Minimize / expand width shortcuts */}
               <div className="border-t border-stone-100 mt-1 pt-1">
