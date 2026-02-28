@@ -84,8 +84,8 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
                   className={`
                     flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors
                     ${active
-                      ? "bg-[rgba(77,143,255,0.10)] text-white"
-                      : "text-white/50 hover:text-white hover:bg-white/5"
+                      ? "bg-rf-blue-tint text-rf-blue"
+                      : "text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
                     }
                   `}
                 >

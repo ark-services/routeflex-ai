@@ -27,7 +27,6 @@ type ApplicantRow = {
   group_id: string | null;
   position: number;
   portal_token?: string | null;
-  is_sample?: boolean;
 };
 
 interface ApplicantsBoardContainerProps {

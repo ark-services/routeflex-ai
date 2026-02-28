@@ -66,7 +66,6 @@ import {
   quickCreateApplicant,
   sendToFadv,
   updateGroupCollapsedColumns,
-  clearApplicantSampleFlag,
   type CellUpdateResult,
 } from "./actions";
 import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist } from "./portal-actions";
@@ -102,7 +101,6 @@ type ApplicantRow = {
   group_id: string | null;
   position: number;
   portal_token?: string | null;
-  is_sample?: boolean;
 };
 
 // Extend BoardColumn with job-specific UI fields
@@ -902,12 +900,14 @@ export default function ApplicantsBoard({
   }
 
   function onShowColumn(columnId: string) {
+    setLocalColumns((prev) => prev.map((c) => c.id === columnId ? { ...c, is_hidden: false } : c));
     startTransition(async () => {
       await updateBoardColumn(companyId, jobId, columnId, { is_hidden: false });
     });
   }
 
   function onHideColumn(columnId: string) {
+    setLocalColumns((prev) => prev.map((c) => c.id === columnId ? { ...c, is_hidden: true } : c));
     startTransition(async () => {
       await updateBoardColumn(companyId, jobId, columnId, { is_hidden: true });
     });
@@ -1026,16 +1026,6 @@ export default function ApplicantsBoard({
   }
 
   function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "checkbox" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", value: any) {
-    // If this is a sample/example row being edited for the first time, promote it to a
-    // real applicant: clear the badge optimistically in local state and persist to DB.
-    const editedApplicant = localApplicants.find((a) => a.id === applicantId);
-    if (editedApplicant?.is_sample) {
-      setLocalApplicants((prev) =>
-        prev.map((a) => a.id === applicantId ? { ...a, is_sample: false } : a)
-      );
-      clearApplicantSampleFlag(companyId, applicantId); // fire-and-forget
-    }
-
     // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
     // update all selected rows with the new status value
     if (columnType === "status" && selectedIds.length > 1 && selected[applicantId]) {
@@ -1500,9 +1490,9 @@ export default function ApplicantsBoard({
                             ))}
                             <col style={{ width: `${ADD_COL_BTN_WIDTH}px` }} />
                           </colgroup>
-                          <thead className="bg-rf-surface-page sticky top-[41px] z-20">
+                          <thead className="bg-rf-surface-card sticky top-[41px] z-20">
                             <tr className="border-b border-rf-border">
-                              <th className="sticky left-0 z-20 w-10 bg-rf-surface-page px-4 py-2">
+                              <th className="sticky left-0 z-20 w-10 bg-rf-surface-card px-4 py-2">
                                 <div className="flex items-center gap-2">
                                   {/* invisible spacer matching the hidden ⋮ row-menu button */}
                                   <div className="opacity-0 text-sm select-none">⋮</div>
@@ -2094,7 +2084,7 @@ function SortableColumnHeader({
     <th
       ref={setNodeRef}
       style={{ ...style, position: 'relative' }}
-      className={`group py-2 text-xs font-medium text-rf-ink-700 border-r border-rf-border last:border-r-0 ${
+      className={`group py-2 text-sm font-medium text-rf-ink-700 border-r border-rf-border last:border-r-0 ${
         isCollapsed ? "px-0 w-8" : "px-3"
       }${!isEditing && !isCollapsed && !column.is_system ? " cursor-grab active:cursor-grabbing" : ""}`}
       {...attributes}
@@ -2335,9 +2325,6 @@ function SortableRow({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
-  // Use the DB-backed flag set during job seeding (migration 00090)
-  const isSample = applicant.is_sample === true;
-
   const cellEls: React.ReactNode[] = [];
 
   // Calculate menu position when it opens
@@ -2508,23 +2495,13 @@ function SortableRow({
   );
 
   // Dynamic board columns
-  let isFirstDataColumn = true;
   for (const col of columns) {
     const isCollapsed = collapsedColumnIds.has(col.id);
-    const showSampleBadge = isSample && isFirstDataColumn && !isCollapsed;
     cellEls.push(
       <td
         key={col.id}
         className={`py-2 border-r border-rf-ink-100 last:border-r-0 relative ${isCollapsed ? "px-1 w-12" : "px-4"}`}
       >
-        {showSampleBadge && (
-          <span
-            className="absolute top-1 right-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-rf-ink-100 text-rf-text-muted border border-dashed border-rf-ink-100 whitespace-nowrap pointer-events-none z-10 italic"
-            title="Sample row — edit any cell to convert this into a real applicant"
-          >
-            Sample
-          </span>
-        )}
         <CellRenderer
           applicant={applicant}
           column={col}
@@ -2538,7 +2515,6 @@ function SortableRow({
         />
       </td>
     );
-    isFirstDataColumn = false;
   }
 
   // Empty cell for + button column
@@ -2548,9 +2524,7 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`group border-b border-rf-ink-100 hover:bg-rf-surface-page/60 relative ${
-        isSample ? "bg-rf-surface-page/70 opacity-70 hover:opacity-90" : ""
-      }`}
+      className="group border-b border-rf-ink-100 hover:bg-rf-surface-page/60 relative"
       {...attributes}
     >
       {cellEls}
