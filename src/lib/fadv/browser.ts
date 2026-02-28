@@ -65,9 +65,20 @@ export async function launchFadvContext(clientId = "default", seedCookies?: Cook
   if (isServerless) {
     const sparticuz = (await import("@sparticuz/chromium")).default;
     console.log("[launchFadvContext] Serverless Chromium");
+    // On Vercel, @sparticuz/chromium's bin/ directory may not be present in
+    // the deployed bundle. Passing a remote URL causes it to download and
+    // decompress the packed binary into /tmp on first cold start.
+    // Override via CHROMIUM_EXECUTABLE_PATH to supply your own binary path,
+    // or CHROMIUM_REMOTE_EXECUTABLE_PATH to use a different remote tar URL.
+    const remoteTar =
+      process.env.CHROMIUM_REMOTE_EXECUTABLE_PATH ??
+      `https://github.com/Sparticuz/chromium/releases/download/v143.0.0/chromium-v143.0.0-pack.tar`;
+    const executablePath =
+      process.env.CHROMIUM_EXECUTABLE_PATH ??
+      (await sparticuz.executablePath(remoteTar));
     const browser = await playwrightChromium.launch({
       args: sparticuz.args,
-      executablePath: await sparticuz.executablePath(),
+      executablePath,
       headless: true,
     });
     context = await browser.newContext({ userAgent: USER_AGENT });
