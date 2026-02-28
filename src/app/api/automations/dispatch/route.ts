@@ -25,6 +25,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Verify company belongs to the claimed account
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id')
+      .eq('id', companyId)
+      .eq('account_id', accountId)
+      .single();
+
+    if (!company) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // 1. Create status change event
     const { data: event, error: eventError } = await supabase.from('status_change_events').insert({
       account_id: accountId, company_id: companyId, applicant_id: applicantId, column_id: columnId,

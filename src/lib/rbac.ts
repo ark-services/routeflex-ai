@@ -43,6 +43,23 @@ export async function requireMemberOrAbove(accountId: string) {
   return membership;
 }
 
+/**
+ * Assert that the current user has access to a company.
+ * Uses the authenticated Supabase client so RLS enforces the check.
+ * Throws if not authenticated or if the user has no access.
+ */
+export async function assertCompanyAccess(companyId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  const { data } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("id", companyId)
+    .single();
+  if (!data) throw new Error("Forbidden");
+}
+
 export function canEditBoards(role: Role): boolean {
   return role === "admin" || role === "member";
 }

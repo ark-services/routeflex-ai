@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertCompanyAccess } from "@/lib/rbac";
 import { fireTrigger } from "@/lib/automations/fire";
 import { AutomationActionType } from "@/lib/automations/actionTypes";
 
@@ -49,6 +50,7 @@ export async function createAutomation(
     }>;
   }
 ) {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   // Get current user
@@ -102,6 +104,7 @@ export async function toggleAutomation(
   automationId: string,
   is_enabled: boolean
 ) {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -116,6 +119,7 @@ export async function toggleAutomation(
 }
 
 export async function deleteAutomation(companyId: string, automationId: string) {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -142,6 +146,7 @@ export async function testFireAutomation(
     payload: Record<string, any>;
   }
 ) {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   await fireTrigger(supabase, {

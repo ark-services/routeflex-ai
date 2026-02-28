@@ -1134,6 +1134,22 @@ async function executeIncDec(
 }
 
 /**
+ * Validate that a webhook URL is safe (not targeting internal infrastructure).
+ */
+function isAllowedWebhookUrl(raw: string): boolean {
+  try {
+    const parsed = new URL(raw);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    const host = parsed.hostname.toLowerCase();
+    if (['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(host)) return false;
+    if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(host)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Action: webhook
  * Config: { url: text, method?: 'POST', headers?: object }
  */
@@ -1148,6 +1164,10 @@ async function executeWebhook(
 
   if (!url) {
     return { success: false, error: 'Missing url in config' };
+  }
+
+  if (!isAllowedWebhookUrl(url)) {
+    return { success: false, error: 'Webhook URL targets a blocked address (localhost or private network)' };
   }
 
   try {
@@ -1247,6 +1267,10 @@ async function executeSendSlack(
 
   if (!webhook_url) {
     return { success: false, error: 'Missing webhook_url in config' };
+  }
+
+  if (!isAllowedWebhookUrl(webhook_url)) {
+    return { success: false, error: 'Slack webhook URL targets a blocked address (localhost or private network)' };
   }
 
   if (!message) {

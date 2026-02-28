@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { assertCompanyAccess } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
 // ─── Types (shared with client components) ────────────────────────────────────
@@ -65,6 +66,7 @@ export async function createBoardView(
   name: string,
   query: BoardViewQuery
 ): Promise<{ data?: BoardView; error?: string }> {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   // Max position
@@ -104,6 +106,7 @@ export async function updateBoardView(
   viewId: string,
   updates: Partial<{ name: string; query: BoardViewQuery; position: number }>
 ): Promise<{ error?: string }> {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
   const { error } = await supabase
     .from("board_views")
@@ -123,6 +126,7 @@ export async function deleteBoardView(
   jobId: string,
   viewId: string
 ): Promise<{ error?: string }> {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
   const { error } = await supabase
     .from("board_views")
@@ -143,6 +147,7 @@ export async function duplicateBoardView(
   boardId: string,
   viewId: string
 ): Promise<{ data?: BoardView; error?: string }> {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   const { data: original } = await supabase
@@ -189,6 +194,7 @@ export async function reorderBoardViews(
   jobId: string,
   viewIds: string[]
 ): Promise<{ error?: string }> {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   for (let i = 0; i < viewIds.length; i++) {

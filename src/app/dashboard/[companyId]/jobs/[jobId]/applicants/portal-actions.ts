@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { assertCompanyAccess } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
 export async function updateBoardGroupPortalSettings(
@@ -8,6 +9,7 @@ export async function updateBoardGroupPortalSettings(
   groupId: string,
   data: { visible_to_applicants?: boolean; applicant_note?: string }
 ) {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   const {
@@ -39,6 +41,7 @@ export async function updateBoardGroupPortalChecklist(
   groupId: string,
   checklist: PortalChecklistItem[]
 ) {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   const {

@@ -3,10 +3,12 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertCompanyAccess } from "@/lib/rbac";
 import type { Stage } from "@/lib/types";
 
 export async function addCandidate(formData: FormData) {
   const companyId = formData.get("companyId") as string;
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
   const { error } = await supabase.from("candidates").insert({
@@ -28,6 +30,7 @@ export async function addCandidate(formData: FormData) {
 
 export async function updateCandidateStage(formData: FormData) {
   const companyId = formData.get("companyId") as string;
+  await assertCompanyAccess(companyId);
   const candidateId = formData.get("candidateId") as string;
   const stage = formData.get("stage") as Stage;
   const supabase = await createClient();

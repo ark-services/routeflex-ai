@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { assertCompanyAccess } from "@/lib/rbac";
 import type { JobStatus } from "@/lib/types";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 
@@ -48,6 +49,7 @@ const TEMPLATE_GROUPS: Record<JobTemplate, GroupConfig[]> = {
  */
 export async function addJob(formData: FormData) {
   const companyId = formData.get("companyId") as string;
+  await assertCompanyAccess(companyId);
   const title = (formData.get("title") as string).trim();
   const location = ((formData.get("location") as string | null) ?? "").trim();
   const template = (formData.get("template") as JobTemplate) || "scratch";

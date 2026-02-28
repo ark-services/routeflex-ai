@@ -1,12 +1,14 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { assertCompanyAccess } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
 export async function uploadCompanyLogo(
   companyId: string,
   formData: FormData
 ): Promise<{ success: true; logoUrl: string } | { success: false; error: string }> {
+  await assertCompanyAccess(companyId);
   const file = formData.get("logo") as File | null;
   if (!file || file.size === 0) return { success: false, error: "No file provided" };
 
@@ -38,6 +40,7 @@ export async function uploadCompanyLogo(
 }
 
 export async function removeCompanyLogo(companyId: string): Promise<void> {
+  await assertCompanyAccess(companyId);
   const supabase = await createClient();
   await supabase.from("companies").update({ logo_url: null }).eq("id", companyId);
   revalidatePath(`/dashboard/${companyId}/settings`);
@@ -47,6 +50,7 @@ export async function updateCompanyName(
   companyId: string,
   name: string
 ): Promise<void> {
+  await assertCompanyAccess(companyId);
   if (!name.trim()) throw new Error("Name is required");
   const supabase = await createClient();
   const { error } = await supabase
