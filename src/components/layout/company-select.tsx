@@ -16,6 +16,7 @@ interface CompanySelectProps {
   onCreateCompany: () => void;
   accountId: string;
   userRole: string;
+  variant?: "light" | "dark";
 }
 
 export function CompanySelect({
@@ -25,6 +26,7 @@ export function CompanySelect({
   onCreateCompany,
   accountId,
   userRole,
+  variant = "light",
 }: CompanySelectProps) {
   const [open, setOpen] = useState(false);
   const [companyMenuOpen, setCompanyMenuOpen] = useState<string | null>(null);
@@ -97,10 +99,14 @@ export function CompanySelect({
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-2 rounded-lg border border-rf-border bg-rf-surface-card px-3 py-2 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page transition-colors focus:outline-none focus:ring-2 focus:ring-rf-blue focus:ring-offset-2"
+        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rf-blue focus:ring-offset-2 ${
+          variant === "dark"
+            ? "border-white/[0.15] bg-white/[0.08] text-white hover:bg-white/[0.12]"
+            : "border-rf-border bg-rf-surface-card text-rf-ink-700 hover:bg-rf-surface-page"
+        }`}
       >
         <span>{currentCompany?.name || "Select company"}</span>
-        <ChevronDown className="h-4 w-4 text-rf-text-muted" />
+        <ChevronDown className={`h-4 w-4 ${variant === "dark" ? "text-white/40" : "text-rf-text-muted"}`} />
       </button>
 
       {open && (
