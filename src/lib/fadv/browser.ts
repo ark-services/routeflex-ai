@@ -70,9 +70,12 @@ export async function launchFadvContext(clientId = "default", seedCookies?: Cook
     // decompress the packed binary into /tmp on first cold start.
     // Override via CHROMIUM_EXECUTABLE_PATH to supply your own binary path,
     // or CHROMIUM_REMOTE_EXECUTABLE_PATH to use a different remote tar URL.
+    // Pack tars are architecture-specific since @sparticuz/chromium v115+.
+    // Vercel runs on x64 Linux; fall back to arm64 for any other arch.
+    const arch = process.arch === "arm64" ? "arm64" : "x64";
     const remoteTar =
       process.env.CHROMIUM_REMOTE_EXECUTABLE_PATH ??
-      `https://github.com/Sparticuz/chromium/releases/download/v143.0.0/chromium-v143.0.0-pack.tar`;
+      `https://github.com/Sparticuz/chromium/releases/download/v143.0.0/chromium-v143.0.0-pack.${arch}.tar`;
     const executablePath =
       process.env.CHROMIUM_EXECUTABLE_PATH ??
       (await sparticuz.executablePath(remoteTar));
