@@ -2016,7 +2016,7 @@ function SortableColumnHeader({
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number } | null>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
   const isResizing = useRef(false);
@@ -2067,14 +2067,26 @@ function SortableColumnHeader({
     }
   }, [isEditing]);
 
-  // Calculate menu position when it opens
+  // Calculate menu position when it opens — flip upward if not enough space below
   useEffect(() => {
     if (menuOpen && menuButtonRef.current) {
       const rect = menuButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-      });
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const MARGIN = 12;
+      if (spaceBelow >= 240 || spaceBelow >= spaceAbove) {
+        setMenuPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          maxHeight: spaceBelow - MARGIN,
+        });
+      } else {
+        setMenuPosition({
+          bottom: window.innerHeight - rect.top,
+          left: rect.left + window.scrollX,
+          maxHeight: spaceAbove - MARGIN,
+        });
+      }
     } else {
       setMenuPosition(null);
     }
@@ -2169,10 +2181,12 @@ function SortableColumnHeader({
             onClick={() => setMenuOpen(false)}
           />
           <div
-            className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-hidden"
+            className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-y-auto"
             style={{
-              top: `${menuPosition.top}px`,
+              top: menuPosition.top != null ? `${menuPosition.top}px` : undefined,
+              bottom: menuPosition.bottom != null ? `${menuPosition.bottom}px` : undefined,
               left: `${menuPosition.left}px`,
+              maxHeight: `${menuPosition.maxHeight}px`,
             }}
           >
             {/* Column name header */}
@@ -2323,18 +2337,30 @@ function SortableRow({
   };
 
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number } | null>(null);
 
   const cellEls: React.ReactNode[] = [];
 
-  // Calculate menu position when it opens
+  // Calculate menu position when it opens — flip upward if not enough space below
   useEffect(() => {
     if (rowMenuOpen && menuButtonRef.current) {
       const rect = menuButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-      });
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const MARGIN = 12;
+      if (spaceBelow >= 240 || spaceBelow >= spaceAbove) {
+        setMenuPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          maxHeight: spaceBelow - MARGIN,
+        });
+      } else {
+        setMenuPosition({
+          bottom: window.innerHeight - rect.top,
+          left: rect.left + window.scrollX,
+          maxHeight: spaceAbove - MARGIN,
+        });
+      }
     } else {
       setMenuPosition(null);
     }
@@ -2373,10 +2399,12 @@ function SortableRow({
                 onClick={() => setRowMenuOpen(false)}
               />
               <div
-                className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-hidden"
+                className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-y-auto"
                 style={{
-                  top: `${menuPosition.top}px`,
+                  top: menuPosition.top != null ? `${menuPosition.top}px` : undefined,
+                  bottom: menuPosition.bottom != null ? `${menuPosition.bottom}px` : undefined,
                   left: `${menuPosition.left}px`,
+                  maxHeight: `${menuPosition.maxHeight}px`,
                 }}
               >
                 {/* Applicant name header */}
