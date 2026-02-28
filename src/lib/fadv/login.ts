@@ -228,17 +228,17 @@ export async function doLoginSteps(
     type FrameOrPage = import("playwright-core").Frame | import("playwright-core").Page;
     let loginContext: FrameOrPage = page;
 
-    // FADV creates the login iframe dynamically via JavaScript — its `name` is set
-    // as a JS property, not an HTML attribute, so waitForSelector('iframe[name=...]')
-    // never resolves even though page.frame() can already see it.
-    // Strategy: check if already attached, then fall back to the frameattached event.
-    console.log(`[doLoginSteps] Step 1: waiting for frame "${LOGIN_FRAME_NAME}" to attach...`);
+    // FADV's login form may live inside an iframe named LOGIN_FRAME_NAME, or
+    // directly on the main page (as of a 2026 layout update). Use a short wait
+    // (3 s) for the named iframe so we don't burn the full 30 s on pages where
+    // FADV dropped the iframe wrapper, then fall through to a frame+main scan.
+    console.log(`[doLoginSteps] Step 1: checking for frame "${LOGIN_FRAME_NAME}"...`);
     const loginFrame =
       page.frame({ name: LOGIN_FRAME_NAME }) ??
       await page
         .waitForEvent("frameattached", {
           predicate: (f) => f.name() === LOGIN_FRAME_NAME,
-          timeout: NAV_TIMEOUT_MS,
+          timeout: 3_000,
         })
         .catch(() => null);
     // Detect login form style: Angular (/angular/login, shadow-DOM components)
@@ -257,20 +257,24 @@ export async function doLoginSteps(
       });
       loginContext = loginFrame;
     } else {
-      // Fallback: scan all frames, checking for Angular selectors first then legacy
-      console.log("[doLoginSteps] Step 1: named frame not found, scanning all frames...");
-      for (const frame of page.frames()) {
-        const elAngular = await frame.$(SEL_ANG_CLIENT_ID).catch(() => null);
+      // Fallback: scan all frames AND the main page, Angular selectors first then legacy.
+      // As of early 2026 the login form is rendered directly on the main page (no iframe).
+      console.log("[doLoginSteps] Step 1: named frame not found, scanning main page + frames...");
+      const allContexts = [page, ...page.frames()];
+      for (const ctx of allContexts) {
+        const elAngular = await ctx.$(SEL_ANG_CLIENT_ID).catch(() => null);
         if (elAngular) {
-          loginContext   = frame;
+          loginContext   = ctx;
           isAngularLogin = true;
-          console.log(`[doLoginSteps] Step 1: Angular login form found in frame "${frame.name() || "(main)"}" @ ${frame.url().split("?")[0]}`);
+          const label = ctx === page ? "(main page)" : `frame "${(ctx as import("playwright-core").Frame).name() || "(unnamed)"}"`;
+          console.log(`[doLoginSteps] Step 1: Angular login form found in ${label} @ ${ctx.url().split("?")[0]}`);
           break;
         }
-        const elLegacy = await frame.$(SEL_CLIENT_ID).catch(() => null);
+        const elLegacy = await ctx.$(SEL_CLIENT_ID).catch(() => null);
         if (elLegacy) {
-          loginContext = frame;
-          console.log(`[doLoginSteps] Step 1: legacy login form found in frame "${frame.name() || "(main)"}" @ ${frame.url().split("?")[0]}`);
+          loginContext = ctx;
+          const label = ctx === page ? "(main page)" : `frame "${(ctx as import("playwright-core").Frame).name() || "(unnamed)"}"`;
+          console.log(`[doLoginSteps] Step 1: legacy login form found in ${label} @ ${ctx.url().split("?")[0]}`);
           break;
         }
       }
