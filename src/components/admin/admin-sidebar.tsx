@@ -38,7 +38,7 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
   return (
     <>
       {/* Mobile: horizontal scrollable tab bar */}
-      <div className="md:hidden w-full overflow-x-auto border-b border-white/[0.07] bg-rf-ink-900">
+      <div className="md:hidden w-full overflow-x-auto border-b border-rf-border bg-rf-surface-card">
         <nav className="flex min-w-max px-4 gap-1 py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -52,12 +52,12 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
                 className={`
                   flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap min-h-[44px]
                   ${active
-                    ? "bg-[rgba(77,143,255,0.10)] text-white"
-                    : "text-white/50 hover:text-white hover:bg-white/5"
+                    ? "bg-rf-blue-tint text-rf-blue"
+                    : "text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
                   }
                 `}
               >
-                <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-rf-blue-light" : "text-white/30"}`} />
+                <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-rf-blue" : "text-rf-text-muted"}`} />
                 {item.label}
               </Link>
             );
@@ -66,9 +66,9 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
       </div>
 
       {/* Desktop: vertical sidebar */}
-      <aside className="hidden md:flex flex-col w-56 flex-shrink-0 bg-rf-ink-900 border-r border-white/[0.07] min-h-[calc(100vh-3.5rem)]">
+      <aside className="hidden md:flex flex-col w-56 flex-shrink-0 bg-rf-surface-card border-r border-rf-border min-h-[calc(100vh-3.5rem)]">
         <div className="sticky top-0 pt-6 px-3 pb-4">
-          <p className="px-3 mb-3 text-[9px] font-bold text-white/25 uppercase tracking-[0.2em]">
+          <p className="px-3 mb-3 text-[9px] font-bold text-rf-text-muted uppercase tracking-[0.2em]">
             General
           </p>
           <nav className="space-y-0.5">
@@ -89,7 +89,7 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
                     }
                   `}
                 >
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-rf-blue-light" : "text-white/30"}`} />
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-rf-blue" : "text-rf-text-muted"}`} />
                   {item.label}
                 </Link>
               );

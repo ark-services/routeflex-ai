@@ -24,28 +24,26 @@ export function AdminHeader({
     .toUpperCase();
 
   return (
-    <header className="h-14 bg-rf-ink-900 border-b border-white/[0.07] flex items-center gap-4 px-5 flex-shrink-0">
+    <header className="h-14 bg-rf-surface-card border-b border-rf-border flex items-center gap-4 px-5 flex-shrink-0">
       {/* ── Back / Exit to Job Board ─────────────────── */}
       <Link
         href={backHref}
-        className="flex items-center gap-1.5 text-sm font-medium text-white/50 hover:text-white transition-colors"
+        className="flex items-center gap-1.5 text-sm font-medium text-rf-text-secondary hover:text-rf-text-primary transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
       </Link>
 
       {/* Divider */}
-      <div className="w-px h-5 bg-white/[0.10] flex-shrink-0" />
+      <div className="w-px h-5 bg-rf-ink-100 flex-shrink-0" />
 
       {/* ── Branding ────────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <div data-theme="dark">
-          <Link href="/" className="hover:opacity-75 transition-opacity">
-            <RouteFlexLogo size="nav" />
-          </Link>
-        </div>
-        <span className="text-white/25 text-sm">·</span>
-        <span className="text-sm font-medium text-white/50">Admin Center</span>
+        <Link href="/" className="hover:opacity-75 transition-opacity">
+          <RouteFlexLogo size="nav" />
+        </Link>
+        <span className="text-rf-text-muted text-sm">·</span>
+        <span className="text-sm font-medium text-rf-text-secondary">Admin Center</span>
       </div>
 
       {/* ── Spacer ──────────────────────────────────── */}
@@ -57,17 +55,17 @@ export function AdminHeader({
           <Avatar>
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
-          <span className="hidden sm:block text-sm font-medium text-white/70 max-w-[160px] truncate">
+          <span className="hidden sm:block text-sm font-medium text-rf-ink-700 max-w-[160px] truncate">
             {accountName}
           </span>
         </div>
 
-        <div className="w-px h-5 bg-white/[0.10] flex-shrink-0" />
+        <div className="w-px h-5 bg-rf-ink-100 flex-shrink-0" />
 
         <form action={logout}>
           <button
             type="submit"
-            className="text-sm text-white/50 hover:text-white transition-colors"
+            className="text-sm text-rf-text-secondary hover:text-rf-text-primary transition-colors"
           >
             Log out
           </button>

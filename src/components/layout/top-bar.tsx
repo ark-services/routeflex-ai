@@ -29,23 +29,21 @@ export function TopBar({
   onMenuOpen,
 }: TopBarProps) {
   return (
-    <header className="h-14 md:h-16 border-b border-white/[0.07] bg-rf-ink-900 flex items-center justify-between px-4 md:px-6 flex-shrink-0">
+    <header className="h-14 md:h-16 border-b border-rf-border bg-rf-surface-card flex items-center justify-between px-4 md:px-6 flex-shrink-0">
       <div className="flex items-center gap-3">
         {/* Hamburger – mobile only */}
         {onMenuOpen && (
           <button
             onClick={onMenuOpen}
-            className="md:hidden p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+            className="md:hidden p-1.5 hover:bg-rf-surface-page rounded-lg transition-colors"
             aria-label="Open navigation"
           >
-            <Menu className="h-5 w-5 text-white/50" />
+            <Menu className="h-5 w-5 text-rf-ink-500" />
           </button>
         )}
-        <div data-theme="dark">
-          <Link href="/">
-            <RouteFlexLogo size="nav" />
-          </Link>
-        </div>
+        <Link href="/">
+          <RouteFlexLogo size="nav" />
+        </Link>
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
@@ -56,7 +54,7 @@ export function TopBar({
           onCreateCompany={onCreateCompany}
           accountId={accountId || ""}
           userRole={userRole}
-          variant="dark"
+          variant="light"
         />
         <UserMenu
           userEmail={userEmail}

@@ -151,15 +151,15 @@ export function Sidebar({
   };
 
   const sidebarContent = (
-    <div className="w-64 border-r border-white/[0.07] bg-rf-ink-900 flex flex-col h-full group">
+    <div className="w-64 border-r border-rf-border bg-rf-surface-card flex flex-col h-full group">
       {/* Sidebar Header — collapse arrow only, revealed on sidebar hover */}
-      <div className="flex items-center justify-end px-3 py-1.5 border-b border-white/[0.07] min-h-[36px]">
+      <div className="flex items-center justify-end px-3 py-1.5 border-b border-rf-border min-h-[36px]">
         <button
           onClick={() => setCollapsed(true)}
-          className="p-1 hover:bg-white/5 rounded transition opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
+          className="p-1 hover:bg-rf-surface-page rounded transition opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
           title="Collapse sidebar"
         >
-          <ChevronLeft className="h-4 w-4 text-white/30" />
+          <ChevronLeft className="h-4 w-4 text-rf-text-muted" />
         </button>
       </div>
 
@@ -174,11 +174,11 @@ export function Sidebar({
               onClick={() => router.push(`/dashboard/${companyId}/template-center`)}
               className={`w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 ${
                 isOnTemplateCenter
-                  ? "bg-[rgba(77,143,255,0.10)] text-white"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
+                  ? "bg-rf-blue-tint text-rf-blue"
+                  : "text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
               }`}
             >
-              <LayoutGrid className={`h-4 w-4 ${isOnTemplateCenter ? "text-rf-blue-light" : "text-white/30"}`} />
+              <LayoutGrid className={`h-4 w-4 ${isOnTemplateCenter ? "text-rf-blue" : "text-rf-text-muted"}`} />
               Template Center
             </button>
           )}
@@ -189,11 +189,11 @@ export function Sidebar({
               onClick={() => router.push(`/dashboard/${companyId}/training`)}
               className={`w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 ${
                 isOnTraining
-                  ? "bg-[rgba(77,143,255,0.10)] text-white"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
+                  ? "bg-rf-blue-tint text-rf-blue"
+                  : "text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
               }`}
             >
-              <GraduationCap className={`h-4 w-4 ${isOnTraining ? "text-rf-blue-light" : "text-white/30"}`} />
+              <GraduationCap className={`h-4 w-4 ${isOnTraining ? "text-rf-blue" : "text-rf-text-muted"}`} />
               Training
             </button>
           )}
@@ -203,11 +203,11 @@ export function Sidebar({
             onClick={() => router.push(`/dashboard/${companyId}/settings`)}
             className={`w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 ${
               isOnSettings
-                ? "bg-[rgba(77,143,255,0.10)] text-white"
-                : "text-white/50 hover:text-white hover:bg-white/5"
+                ? "bg-rf-blue-tint text-rf-blue"
+                : "text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
             }`}
           >
-            <Settings className={`h-4 w-4 ${isOnSettings ? "text-rf-blue-light" : "text-white/30"}`} />
+            <Settings className={`h-4 w-4 ${isOnSettings ? "text-rf-blue" : "text-rf-text-muted"}`} />
             Settings
           </button>
 
@@ -215,9 +215,9 @@ export function Sidebar({
           {isSuperAdmin && (
             <button
               onClick={() => router.push("/super-admin/templates")}
-              className="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 text-white/30 hover:text-white hover:bg-white/5"
+              className="w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 text-rf-text-muted hover:text-rf-text-primary hover:bg-rf-surface-page"
             >
-              <ShieldAlert className="h-4 w-4 text-white/20" />
+              <ShieldAlert className="h-4 w-4 text-rf-text-muted" />
               Super Admin
             </button>
           )}
@@ -226,16 +226,16 @@ export function Sidebar({
         {/* Jobs Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/25">
+            <h3 className="text-[9px] font-bold uppercase tracking-[0.2em] text-rf-text-muted">
               Jobs
             </h3>
             {canCreateJob && (
               <button
                 onClick={onCreateJob}
-                className="p-1 hover:bg-white/5 rounded transition-colors"
+                className="p-1 hover:bg-rf-surface-page rounded transition-colors"
                 title="Create job"
               >
-                <Plus className="h-4 w-4 text-white/30" />
+                <Plus className="h-4 w-4 text-rf-text-muted" />
               </button>
             )}
           </div>
@@ -246,12 +246,12 @@ export function Sidebar({
               {/* Main job selector button */}
               <button
                 onClick={() => setJobSelectOpen(!jobSelectOpen)}
-                className="w-full text-left rounded-lg border border-white/10 bg-white/5 px-3 py-2 pr-10 text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-colors flex items-center justify-between"
+                className="w-full text-left rounded-lg border border-rf-border bg-rf-surface-page px-3 py-2 pr-10 text-sm font-semibold text-rf-ink-700 hover:bg-rf-ink-100 transition-colors flex items-center justify-between"
               >
                 <span className="truncate">
                   {currentJob?.title || "Select job"}
                 </span>
-                <ChevronDown className="h-4 w-4 text-white/30 flex-shrink-0 ml-2" />
+                <ChevronDown className="h-4 w-4 text-rf-text-muted flex-shrink-0 ml-2" />
               </button>
 
               {/* Kebab button positioned absolutely */}
@@ -262,10 +262,10 @@ export function Sidebar({
                     e.stopPropagation();
                     setJobActionsMenuOpen(!jobActionsMenuOpen);
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity z-10"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-rf-ink-100 rounded transition-opacity z-10"
                   title="Job actions"
                 >
-                  <MoreVertical className="h-3 w-3 text-white/40" />
+                  <MoreVertical className="h-3 w-3 text-rf-ink-500" />
                 </button>
               )}
 
@@ -338,7 +338,7 @@ export function Sidebar({
               )}
             </div>
           ) : (
-            <div className="text-xs text-white/25 px-3 py-2">
+            <div className="text-xs text-rf-text-muted px-3 py-2">
               No jobs yet
             </div>
           )}
@@ -366,11 +366,11 @@ export function Sidebar({
                   }}
                   className={`w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 cursor-pointer select-none ${
                     isOnApplicants
-                      ? "bg-[rgba(77,143,255,0.10)] text-white"
-                      : "text-white/50 hover:text-white hover:bg-white/5"
+                      ? "bg-rf-blue-tint text-rf-blue"
+                      : "text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
                   }`}
                 >
-                  <LayoutDashboard className={`h-4 w-4 ${isOnApplicants ? "text-rf-blue-light" : "text-white/30"}`} />
+                  <LayoutDashboard className={`h-4 w-4 ${isOnApplicants ? "text-rf-blue" : "text-rf-text-muted"}`} />
                   <span className="flex-1">Applicants Board</span>
                   <button
                     type="button"
@@ -378,12 +378,12 @@ export function Sidebar({
                       e.stopPropagation();
                       setApplicantsMenuOpen(!applicantsMenuOpen);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/10 rounded transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rf-ink-100 rounded transition-opacity"
                     title="More actions"
                     aria-haspopup="menu"
                     aria-expanded={applicantsMenuOpen}
                   >
-                    <MoreVertical className="h-3 w-3 text-white/40" />
+                    <MoreVertical className="h-3 w-3 text-rf-ink-500" />
                   </button>
                 </div>
 
@@ -443,11 +443,11 @@ export function Sidebar({
                 }}
                 className={`w-full text-left px-3 py-2 text-sm font-semibold rounded-lg transition-colors flex items-center gap-2 cursor-pointer select-none ${
                   isOnForm
-                    ? "bg-[rgba(77,143,255,0.10)] text-white"
-                    : "text-white/50 hover:text-white hover:bg-white/5"
+                    ? "bg-rf-blue-tint text-rf-blue"
+                    : "text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
                 }`}
               >
-                <FileText className={`h-4 w-4 ${isOnForm ? "text-rf-blue-light" : "text-white/30"}`} />
+                <FileText className={`h-4 w-4 ${isOnForm ? "text-rf-blue" : "text-rf-text-muted"}`} />
                 <span className="flex-1">Application Form</span>
               </div>
             </div>
@@ -492,14 +492,14 @@ export function Sidebar({
             aria-hidden="true"
           />
           {/* Drawer panel */}
-          <div className="fixed inset-y-0 left-0 z-50 flex flex-col bg-rf-ink-900 shadow-rf-xl overflow-y-auto">
-            <div className="flex items-center justify-end px-4 py-3 border-b border-white/[0.07]">
+          <div className="fixed inset-y-0 left-0 z-50 flex flex-col bg-rf-surface-card shadow-rf-xl overflow-y-auto">
+            <div className="flex items-center justify-end px-4 py-3 border-b border-rf-border">
               <button
                 onClick={onMobileClose}
-                className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                className="p-1.5 hover:bg-rf-surface-page rounded-lg transition-colors"
                 aria-label="Close menu"
               >
-                <ChevronLeft className="h-5 w-5 text-white/40" />
+                <ChevronLeft className="h-5 w-5 text-rf-text-muted" />
               </button>
             </div>
             {sidebarContent}
@@ -509,13 +509,13 @@ export function Sidebar({
 
       {/* Desktop persistent sidebar (collapsed or expanded) */}
       {collapsed ? (
-        <div className="hidden md:flex w-16 border-r border-white/[0.07] bg-rf-ink-900 flex-col items-center py-4">
+        <div className="hidden md:flex w-16 border-r border-rf-border bg-rf-surface-card flex-col items-center py-4">
           <button
             onClick={() => setCollapsed(false)}
-            className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+            className="p-2 hover:bg-rf-surface-page rounded-lg transition-colors"
             title="Expand sidebar"
           >
-            <ChevronRight className="h-5 w-5 text-white/40" />
+            <ChevronRight className="h-5 w-5 text-rf-text-muted" />
           </button>
         </div>
       ) : (
