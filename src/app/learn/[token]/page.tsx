@@ -171,7 +171,7 @@ export default async function LearnIndexPage({
             {allRegularPassed && (
               <Link
                 href={`/learn/${token}/modules/${finalExam.id}`}
-                className="flex items-center gap-1 text-xs text-rf-blue font-medium hover:text-blue-800"
+                className="flex items-center gap-1 text-xs text-rf-blue font-medium hover:text-rf-blue-dark"
               >
                 {passedModuleIds.has(finalExam.id) ? "Review" : "Start"}
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -229,7 +229,7 @@ function ModuleRow({
       {unlocked && (
         <Link
           href={`/learn/${token}/modules/${module.id}`}
-          className="flex items-center gap-1 text-xs text-rf-blue font-medium hover:text-blue-800"
+          className="flex items-center gap-1 text-xs text-rf-blue font-medium hover:text-rf-blue-dark"
         >
           {passed ? "Review" : "Start"}
           <ChevronRight className="w-3.5 h-3.5" />

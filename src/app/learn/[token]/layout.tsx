@@ -1,6 +1,7 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
 
 function getSvc() {
   return createServiceClient(
@@ -73,8 +74,9 @@ export default async function LearnLayout({
         </div>
       </main>
 
-      <footer className="border-t border-rf-border py-4 text-center text-xs text-rf-text-muted">
-        Powered by RouteFlex
+      <footer className="border-t border-rf-border py-4 flex flex-col items-center gap-1.5">
+        <RouteFlexLogo size="nav" />
+        <span className="text-xs text-rf-text-muted">Powered by RouteFlex</span>
       </footer>
     </div>
   );

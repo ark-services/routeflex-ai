@@ -100,7 +100,7 @@ export default async function ModuleContentPage({
       {/* Content (only for regular modules) */}
       {!mod.is_final_exam && mod.content && (
         <div className="bg-rf-surface-card border border-rf-border rounded-xl p-6">
-          <div className="prose prose-stone prose-sm max-w-none">
+          <div className="prose prose-neutral prose-sm max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {mod.content}
             </ReactMarkdown>
@@ -119,7 +119,7 @@ export default async function ModuleContentPage({
         <div className="bg-rf-blue-tint border border-rf-blue-tint rounded-xl p-5 flex items-center gap-4">
           <ClipboardList className="w-6 h-6 text-rf-blue flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-medium text-blue-900">
+            <p className="font-medium text-rf-ink-900">
               {mod.is_final_exam ? "Ready for the Final Exam?" : "Ready to test your knowledge?"}
             </p>
             <p className="text-sm text-rf-blue mt-0.5">

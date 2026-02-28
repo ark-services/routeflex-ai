@@ -244,7 +244,7 @@ export function QuizForm({
                   key={option.id}
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                     selected
-                      ? "border-blue-400 bg-rf-blue-tint"
+                      ? "border-rf-blue bg-rf-blue-tint"
                       : "border-rf-border hover:border-rf-ink-100 hover:bg-rf-surface-page"
                   }`}
                 >
