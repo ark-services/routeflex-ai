@@ -260,12 +260,14 @@ export async function doLoginSteps(
       // Fallback: scan all frames AND the main page, Angular selectors first then legacy.
       // As of early 2026 the login form is rendered directly on the main page (no iframe).
       console.log("[doLoginSteps] Step 1: named frame not found, scanning main page + frames...");
+      let loginFormFound = false;
       const allContexts = [page, ...page.frames()];
       for (const ctx of allContexts) {
         const elAngular = await ctx.$(SEL_ANG_CLIENT_ID).catch(() => null);
         if (elAngular) {
           loginContext   = ctx;
           isAngularLogin = true;
+          loginFormFound = true;
           const label = ctx === page ? "(main page)" : `frame "${(ctx as import("playwright-core").Frame).name() || "(unnamed)"}"`;
           console.log(`[doLoginSteps] Step 1: Angular login form found in ${label} @ ${ctx.url().split("?")[0]}`);
           break;
@@ -273,10 +275,43 @@ export async function doLoginSteps(
         const elLegacy = await ctx.$(SEL_CLIENT_ID).catch(() => null);
         if (elLegacy) {
           loginContext = ctx;
+          loginFormFound = true;
           const label = ctx === page ? "(main page)" : `frame "${(ctx as import("playwright-core").Frame).name() || "(unnamed)"}"`;
           console.log(`[doLoginSteps] Step 1: legacy login form found in ${label} @ ${ctx.url().split("?")[0]}`);
           break;
         }
+      }
+
+      // ── CAPTCHA / bot-detection check ───────────────────────────────────────
+      // FADV may show a CAPTCHA challenge to datacenter IPs. Check for known
+      // CAPTCHA elements before proceeding, so we give a clear error.
+      if (!loginFormFound) {
+        const captchaPresent = await page.$('#cImage, #captcha, [class*="captcha"], [id*="captcha"], iframe[src*="recaptcha"], iframe[src*="hcaptcha"]').catch(() => null);
+        if (captchaPresent) {
+          console.error("[doLoginSteps] Step 1: CAPTCHA detected — automated login blocked");
+          return {
+            success: false,
+            errorType: "captcha_or_mfa",
+            message: "FADV is showing a CAPTCHA challenge (likely due to datacenter IP). Manual login required to establish a session.",
+          };
+        }
+
+        // No login form and no CAPTCHA — dump page state for diagnostics
+        const pageTitle = await page.title().catch(() => "(unknown)");
+        const bodyText = await page.evaluate(() =>
+          (document.body?.innerText || "").slice(0, 500)
+        ).catch(() => "(could not read body)");
+        console.error("[doLoginSteps] Step 1: NO login form found anywhere.", {
+          url: page.url(),
+          title: pageTitle,
+          bodyPreview: bodyText,
+          frames: page.frames().map((f) => `"${f.name() || "(main)"}@${f.url().split("?")[0]}"`),
+        });
+        return {
+          success: false,
+          errorType: "layout_change",
+          message: `No login form found on page. URL: ${page.url()} | Title: ${pageTitle} | Body: ${bodyText.slice(0, 200)}`,
+        };
       }
     }
 
@@ -513,27 +548,43 @@ export async function doLoginSteps(
 
     // ── Verify we reached the dashboard ────────────────────────────────────
     if (!page.url().includes("shell.jsp")) {
+      const pageTitle = await page.title().catch(() => "(unknown)");
+      const bodyText = await page.evaluate(() =>
+        (document.body?.innerText || "").slice(0, 500)
+      ).catch(() => "(could not read body)");
+      console.error("[doLoginSteps] Final: did NOT reach shell.jsp", {
+        url: page.url(),
+        title: pageTitle,
+        bodyPreview: bodyText,
+      });
       return {
         success: false,
         errorType: "layout_change",
-        message: `Unexpected URL after login: ${page.url()}`,
+        message: `Did not reach dashboard. URL: ${page.url()} | Title: ${pageTitle} | Body: ${bodyText.slice(0, 200)}`,
       };
     }
 
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    const currentUrl = await page.url?.() ?? "(no page)";
+    const pageTitle = await page.title?.().catch(() => "(unknown)") ?? "(unknown)";
+    console.error("[doLoginSteps] Caught exception", {
+      error: message,
+      url: currentUrl,
+      title: pageTitle,
+    });
     if (message.includes("Timeout") || message.includes("timeout")) {
       return {
         success: false,
         errorType: "network_error",
-        message: `Timeout during FADV login: ${message}`,
+        message: `Timeout during FADV login at ${currentUrl}: ${message}`,
       };
     }
     return {
       success: false,
       errorType: "layout_change",
-      message: `Unexpected error during login: ${message}`,
+      message: `Error during login at ${currentUrl}: ${message}`,
     };
   }
 }

@@ -452,13 +452,18 @@ export async function testFadvConnection(
         invalid_credentials:   "Login failed — check your Client ID, User ID, and Password",
         wrong_security_answer: "Security Answer was rejected by FADV",
         captcha_or_mfa:        "Login was blocked by a CAPTCHA or multi-factor challenge",
-        layout_change:         "FADV login page layout has changed — integration may need updating",
         network_error:         "Could not reach FADV — check network connectivity",
         config_missing:        "Required login fields are missing",
       };
+      // For layout_change and unknown types, include the diagnostic detail
+      // from loginResult.message so the user can see the actual error.
+      const friendlyMsg = errorMessages[loginResult.errorType];
+      const detail = loginResult.message;
       return {
         success: false,
-        error: errorMessages[loginResult.errorType] ?? loginResult.message,
+        error: friendlyMsg
+          ? `${friendlyMsg}${detail ? ` (${detail})` : ""}`
+          : detail || "Unknown FADV error",
       };
     }
 
