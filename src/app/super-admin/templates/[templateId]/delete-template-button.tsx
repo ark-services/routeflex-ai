@@ -31,26 +31,26 @@ export function DeleteTemplateButton({ templateId }: { templateId: string }) {
     return (
       <div className="flex flex-col items-end gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-stone-600">Delete this template?</span>
+          <span className="text-sm text-rf-ink-500">Delete this template?</span>
           <button
             onClick={handleDelete}
             disabled={isPending}
-            className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm bg-rf-danger text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
           >
             {isPending ? "Deleting…" : "Yes, delete"}
           </button>
           <button
             onClick={() => { setConfirmOpen(false); setErrorMsg(null); }}
-            className="px-3 py-1.5 text-sm text-stone-600 hover:text-stone-900 transition-colors"
+            className="px-3 py-1.5 text-sm text-rf-ink-500 hover:text-rf-text-primary transition-colors"
           >
             Cancel
           </button>
         </div>
-        <p className="text-xs text-stone-400">
+        <p className="text-xs text-rf-text-muted">
           Existing jobs that used this template will not be affected.
         </p>
         {errorMsg && (
-          <p className="text-xs text-red-600">{errorMsg}</p>
+          <p className="text-xs text-rf-danger">{errorMsg}</p>
         )}
       </div>
     );
@@ -59,7 +59,7 @@ export function DeleteTemplateButton({ templateId }: { templateId: string }) {
   return (
     <button
       onClick={() => setConfirmOpen(true)}
-      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-rf-danger border border-red-200 rounded-lg hover:bg-rf-danger-bg transition-colors"
     >
       <Trash2 className="h-4 w-4" />
       Delete

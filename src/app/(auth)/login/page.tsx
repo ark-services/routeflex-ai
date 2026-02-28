@@ -15,15 +15,15 @@ export default async function LoginPage({
     <div className="flex min-h-screen items-center justify-center py-12">
       <Card className="w-full max-w-sm p-8">
         <div className="text-center space-y-1 mb-8">
-          <p className="text-sm font-semibold tracking-tight text-stone-400">
+          <p className="text-sm font-semibold tracking-tight text-rf-text-muted">
             RouteFlex AI
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+          <h1 className="text-3xl font-semibold tracking-tight text-rf-text-primary">
             Log in
           </h1>
         </div>
         {error && (
-          <p className="text-sm text-red-600 text-center mb-6">{error}</p>
+          <p className="text-sm text-rf-danger text-center mb-6">{error}</p>
         )}
         <form action={login} className="space-y-4">
           {redirectTo && (
@@ -32,7 +32,7 @@ export default async function LoginPage({
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
+              className="block text-sm font-medium text-rf-ink-700 mb-1.5"
             >
               Email
             </label>
@@ -41,7 +41,7 @@ export default async function LoginPage({
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-stone-700 mb-1.5"
+              className="block text-sm font-medium text-rf-ink-700 mb-1.5"
             >
               Password
             </label>
@@ -57,11 +57,11 @@ export default async function LoginPage({
             Log in
           </Button>
         </form>
-        <p className="text-sm text-stone-500 text-center mt-6">
+        <p className="text-sm text-rf-text-secondary text-center mt-6">
           Don&apos;t have an account?{" "}
           <Link
             href={redirectTo ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}` : "/signup"}
-            className="text-stone-900 hover:text-stone-700 font-medium"
+            className="text-rf-text-primary hover:text-rf-ink-700 font-medium"
           >
             Sign up
           </Link>

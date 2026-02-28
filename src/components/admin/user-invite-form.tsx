@@ -14,13 +14,13 @@ export function UserInviteForm({ accountId, disabled }: { accountId: string; dis
         placeholder="email@example.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="flex-1 rounded-lg border border-stone-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+        className="flex-1 rounded-lg border border-rf-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
         disabled={disabled}
       />
       <select
         value={role}
         onChange={(e) => setRole(e.target.value as "admin" | "member" | "viewer")}
-        className="rounded-lg border border-stone-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+        className="rounded-lg border border-rf-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
         disabled={disabled}
       >
         <option value="admin">Admin</option>

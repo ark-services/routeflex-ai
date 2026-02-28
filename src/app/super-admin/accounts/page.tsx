@@ -58,8 +58,8 @@ export default async function SuperAdminAccountsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-stone-900">Accounts</h1>
-        <p className="text-sm text-stone-500 mt-1">
+        <h1 className="text-lg font-semibold text-rf-text-primary">Accounts</h1>
+        <p className="text-sm text-rf-text-secondary mt-1">
           Manage subscription plans and action credits for all accounts.
         </p>
       </div>

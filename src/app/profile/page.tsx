@@ -13,22 +13,22 @@ export default async function ProfilePage() {
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+          <h1 className="text-3xl font-semibold tracking-tight text-rf-text-primary">
             My Profile
           </h1>
-          <p className="mt-2 text-stone-500">Manage your account settings</p>
+          <p className="mt-2 text-rf-text-secondary">Manage your account settings</p>
         </div>
 
-        <div className="rounded-lg border border-stone-200 bg-white p-6 space-y-4">
+        <div className="rounded-lg border border-rf-border bg-rf-surface-card p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
+            <label className="block text-sm font-medium text-rf-ink-700 mb-1">
               Email
             </label>
-            <p className="text-stone-900">{user.email}</p>
+            <p className="text-rf-text-primary">{user.email}</p>
           </div>
 
-          <div className="pt-4 border-t border-stone-200">
-            <p className="text-sm text-stone-500">
+          <div className="pt-4 border-t border-rf-border">
+            <p className="text-sm text-rf-text-secondary">
               Profile management features coming soon.
             </p>
           </div>

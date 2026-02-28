@@ -80,7 +80,7 @@ export default function DesignPanel({
   };
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
+    <div className="w-80 bg-rf-surface-card border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <h3 className="text-base font-semibold text-gray-900">Design</h3>
@@ -104,7 +104,7 @@ export default function DesignPanel({
                 onClick={() => handleBgColor(c.value)}
                 className={`h-9 rounded-lg border-2 transition-all ${
                   designSettings.backgroundColor === c.value
-                    ? "border-blue-500 shadow-md scale-105"
+                    ? "border-rf-blue shadow-md scale-105"
                     : "border-gray-200 hover:border-gray-400"
                 }`}
                 style={{ backgroundColor: c.value }}
@@ -137,7 +137,7 @@ export default function DesignPanel({
                     handleBgColor(e.target.value);
                   }
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-rf-blue focus:border-rf-blue"
                 placeholder="#f9fafb"
                 maxLength={7}
               />
@@ -175,7 +175,7 @@ export default function DesignPanel({
                 </button>
                 <button
                   onClick={handleRemoveLogo}
-                  className="px-3 py-2 border border-red-200 text-sm text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                  className="px-3 py-2 border border-red-200 text-sm text-rf-danger rounded-lg hover:bg-rf-danger-bg transition-colors"
                 >
                   Remove
                 </button>
@@ -185,7 +185,7 @@ export default function DesignPanel({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="w-full border-2 border-dashed border-gray-300 rounded-lg p-5 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50"
+              className="w-full border-2 border-dashed border-gray-300 rounded-lg p-5 text-center hover:border-blue-400 hover:bg-rf-blue-tint transition-colors disabled:opacity-50"
             >
               <svg
                 className="mx-auto h-8 w-8 text-gray-400 mb-2"
@@ -208,7 +208,7 @@ export default function DesignPanel({
           )}
 
           {uploadError && (
-            <p className="mt-2 text-xs text-red-600">{uploadError}</p>
+            <p className="mt-2 text-xs text-rf-danger">{uploadError}</p>
           )}
 
           <input

@@ -75,7 +75,7 @@ export function InviteModal({
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* ── Email Invite ────────────────────────────────────── */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-stone-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-rf-ink-700">
               <Mail className="w-4 h-4" />
               <span>Invite with email</span>
             </div>
@@ -83,7 +83,7 @@ export function InviteModal({
               <div>
                 <label
                   htmlFor="emails"
-                  className="block text-xs font-medium text-stone-600 mb-1.5"
+                  className="block text-xs font-medium text-rf-ink-500 mb-1.5"
                 >
                   Email addresses
                 </label>
@@ -93,17 +93,17 @@ export function InviteModal({
                   placeholder="email@example.com, another@example.com"
                   value={emails}
                   onChange={(e) => setEmails(e.target.value)}
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-lg border border-rf-ink-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue focus:border-transparent"
                   disabled={loading}
                 />
-                <p className="text-xs text-stone-500 mt-1">
+                <p className="text-xs text-rf-text-secondary mt-1">
                   Separate multiple emails with commas
                 </p>
               </div>
               <div>
                 <label
                   htmlFor="role"
-                  className="block text-xs font-medium text-stone-600 mb-1.5"
+                  className="block text-xs font-medium text-rf-ink-500 mb-1.5"
                 >
                   Role
                 </label>
@@ -111,7 +111,7 @@ export function InviteModal({
                   id="role"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-lg border border-rf-ink-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue focus:border-transparent"
                   disabled={loading}
                 >
                   <option value="admin">Admin</option>
@@ -123,9 +123,9 @@ export function InviteModal({
           </div>
 
           {/* ── Link Invite ─────────────────────────────────────── */}
-          <div className="space-y-3 border-t border-stone-200 pt-6">
+          <div className="space-y-3 border-t border-rf-border pt-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium text-stone-700">
+              <div className="flex items-center gap-2 text-sm font-medium text-rf-ink-700">
                 <Link2 className="w-4 h-4" />
                 <span>Invite with link</span>
               </div>
@@ -134,7 +134,7 @@ export function InviteModal({
                 value={linkRole}
                 onChange={(e) => handleLinkRoleChange(e.target.value)}
                 disabled={isLoadingLink || regenerating}
-                className="text-xs rounded-lg border border-stone-200 px-2 py-1 text-stone-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-xs rounded-lg border border-rf-border px-2 py-1 text-rf-ink-500 focus:outline-none focus:ring-2 focus:ring-rf-blue"
               >
                 <option value="admin">Admin</option>
                 <option value="member">Member</option>
@@ -143,7 +143,7 @@ export function InviteModal({
             </div>
 
             <div className="pl-6 space-y-2">
-              <div className="flex items-center gap-2 p-3 bg-stone-50 rounded-lg border border-stone-200">
+              <div className="flex items-center gap-2 p-3 bg-rf-surface-page rounded-lg border border-rf-border">
                 <input
                   type="text"
                   value={
@@ -153,7 +153,7 @@ export function InviteModal({
                   }
                   readOnly
                   onChange={() => {}}
-                  className="flex-1 bg-transparent text-sm text-stone-600 focus:outline-none min-w-0 truncate"
+                  className="flex-1 bg-transparent text-sm text-rf-ink-500 focus:outline-none min-w-0 truncate"
                 />
                 <Button
                   type="button"
@@ -163,7 +163,7 @@ export function InviteModal({
                   disabled={!inviteLink || isLoadingLink || regenerating}
                 >
                   {copied ? (
-                    <span className="flex items-center gap-1 text-green-600">
+                    <span className="flex items-center gap-1 text-rf-success">
                       <Check className="w-3 h-3" />
                       Copied
                     </span>
@@ -177,7 +177,7 @@ export function InviteModal({
               </div>
 
               <div className="flex items-center justify-between">
-                <p className="text-xs text-stone-400">
+                <p className="text-xs text-rf-text-muted">
                   Anyone with this link can join as{" "}
                   <span className="font-medium capitalize">{linkRole}</span>.
                   Expires in 30 days.
@@ -186,7 +186,7 @@ export function InviteModal({
                   type="button"
                   onClick={handleRegenerate}
                   disabled={isLoadingLink || regenerating}
-                  className="text-xs text-stone-400 hover:text-stone-600 flex items-center gap-1 disabled:opacity-50 transition-colors"
+                  className="text-xs text-rf-text-muted hover:text-rf-ink-500 flex items-center gap-1 disabled:opacity-50 transition-colors"
                 >
                   <RefreshCw
                     className={`w-3 h-3 ${regenerating ? "animate-spin" : ""}`}
@@ -198,7 +198,7 @@ export function InviteModal({
           </div>
 
           {/* ── Actions ─────────────────────────────────────────── */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-stone-200">
+          <div className="flex justify-end gap-3 pt-4 border-t border-rf-border">
             <Button
               type="button"
               variant="tertiary"

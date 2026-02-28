@@ -32,7 +32,7 @@ export function GmailDisconnectButton({ accountId, companyId }: Props) {
     <button
       onClick={handleDisconnect}
       disabled={loading}
-      className="px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+      className="px-4 py-2 bg-rf-danger-bg text-red-700 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
     >
       <X className="w-4 h-4" />
       {loading ? "Disconnecting…" : "Disconnect"}

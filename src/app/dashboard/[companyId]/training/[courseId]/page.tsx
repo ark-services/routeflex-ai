@@ -50,15 +50,15 @@ export default async function CoursePage({
   const finalExam = (modules ?? []).find((m) => m.is_final_exam);
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
+    <div className="min-h-screen bg-rf-surface-page p-6">
       <div className="max-w-4xl mx-auto">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-stone-500 mb-6">
-          <Link href={`/dashboard/${companyId}/training`} className="hover:text-stone-700 transition-colors">
+        <div className="flex items-center gap-2 text-sm text-rf-text-secondary mb-6">
+          <Link href={`/dashboard/${companyId}/training`} className="hover:text-rf-ink-700 transition-colors">
             Training
           </Link>
           <span>/</span>
-          <span className="text-stone-900 font-medium">{course.name}</span>
+          <span className="text-rf-text-primary font-medium">{course.name}</span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -67,9 +67,9 @@ export default async function CoursePage({
             <CourseSettingsForm companyId={companyId} course={course} />
             <Link
               href={`/dashboard/${companyId}/training/${courseId}/learners`}
-              className="flex items-center gap-2 px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm text-stone-700 hover:border-stone-300 hover:shadow-sm transition-all"
+              className="flex items-center gap-2 px-4 py-3 bg-rf-surface-card border border-rf-border rounded-xl text-sm text-rf-ink-700 hover:border-rf-ink-100 hover:shadow-sm transition-all"
             >
-              <Users className="w-4 h-4 text-stone-500" />
+              <Users className="w-4 h-4 text-rf-text-secondary" />
               View Learners
             </Link>
           </div>
@@ -78,11 +78,11 @@ export default async function CoursePage({
           <div className="lg:col-span-2 space-y-4">
             {/* Regular modules */}
             <div>
-              <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide mb-3">
+              <h2 className="text-sm font-semibold text-rf-ink-700 uppercase tracking-wide mb-3">
                 Modules
               </h2>
               {regularModules.length === 0 ? (
-                <p className="text-sm text-stone-400 py-4 text-center border border-dashed border-stone-200 rounded-lg">
+                <p className="text-sm text-rf-text-muted py-4 text-center border border-dashed border-rf-border rounded-lg">
                   No modules yet
                 </p>
               ) : (
@@ -90,15 +90,15 @@ export default async function CoursePage({
                   {regularModules.map((m, idx) => (
                     <div
                       key={m.id}
-                      className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-lg"
+                      className="flex items-center gap-3 p-3 bg-rf-surface-card border border-rf-border rounded-lg"
                     >
-                      <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-xs font-semibold text-stone-500 flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-rf-ink-100 flex items-center justify-center text-xs font-semibold text-rf-text-secondary flex-shrink-0">
                         {idx + 1}
                       </div>
-                      <BookOpen className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                      <BookOpen className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                       <Link
                         href={`/dashboard/${companyId}/training/${courseId}/modules/${m.id}`}
-                        className="flex-1 text-sm text-stone-900 hover:text-blue-600 transition-colors font-medium"
+                        className="flex-1 text-sm text-rf-text-primary hover:text-rf-blue transition-colors font-medium"
                       >
                         {m.title}
                       </Link>
@@ -118,18 +118,18 @@ export default async function CoursePage({
             {/* Final exam */}
             <div className="mt-4">
               <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
+                <h2 className="text-sm font-semibold text-rf-ink-700 uppercase tracking-wide">
                   Final Exam
                 </h2>
-                <span className="text-xs text-stone-400">(unlocked after all modules pass)</span>
+                <span className="text-xs text-rf-text-muted">(unlocked after all modules pass)</span>
               </div>
 
               {finalExam ? (
-                <div className="flex items-center gap-3 p-3 bg-white border border-stone-200 rounded-lg">
-                  <ClipboardCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="flex items-center gap-3 p-3 bg-rf-surface-card border border-rf-border rounded-lg">
+                  <ClipboardCheck className="w-4 h-4 text-rf-success flex-shrink-0" />
                   <Link
                     href={`/dashboard/${companyId}/training/${courseId}/modules/${finalExam.id}`}
-                    className="flex-1 text-sm text-stone-900 hover:text-blue-600 transition-colors font-medium"
+                    className="flex-1 text-sm text-rf-text-primary hover:text-rf-blue transition-colors font-medium"
                   >
                     {finalExam.title}
                   </Link>

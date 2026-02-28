@@ -38,7 +38,7 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
   return (
     <>
       {/* Mobile: horizontal scrollable tab bar */}
-      <div className="md:hidden w-full overflow-x-auto border-b border-stone-200 bg-white">
+      <div className="md:hidden w-full overflow-x-auto border-b border-white/[0.07] bg-rf-ink-900">
         <nav className="flex min-w-max px-4 gap-1 py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -50,14 +50,14 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
                 key={href}
                 href={href}
                 className={`
-                  flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap min-h-[44px]
+                  flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap min-h-[44px]
                   ${active
-                    ? "bg-blue-50 text-blue-700"
-                    : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                    ? "bg-[rgba(77,143,255,0.10)] text-white"
+                    : "text-white/50 hover:text-white hover:bg-white/5"
                   }
                 `}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
+                <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-rf-blue-light" : "text-white/30"}`} />
                 {item.label}
               </Link>
             );
@@ -66,9 +66,9 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
       </div>
 
       {/* Desktop: vertical sidebar */}
-      <aside className="hidden md:flex flex-col w-56 flex-shrink-0 bg-white border-r border-stone-200 min-h-[calc(100vh-3.5rem)]">
+      <aside className="hidden md:flex flex-col w-56 flex-shrink-0 bg-rf-ink-900 border-r border-white/[0.07] min-h-[calc(100vh-3.5rem)]">
         <div className="sticky top-0 pt-6 px-3 pb-4">
-          <p className="px-3 mb-3 text-[11px] font-semibold text-stone-400 uppercase tracking-widest">
+          <p className="px-3 mb-3 text-[9px] font-bold text-white/25 uppercase tracking-[0.2em]">
             General
           </p>
           <nav className="space-y-0.5">
@@ -82,14 +82,14 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
                   key={href}
                   href={href}
                   className={`
-                    flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                    flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors
                     ${active
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                      ? "bg-[rgba(77,143,255,0.10)] text-white"
+                      : "text-white/50 hover:text-white hover:bg-white/5"
                     }
                   `}
                 >
-                  <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-blue-600" : "text-stone-400"}`} />
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${active ? "text-rf-blue-light" : "text-white/30"}`} />
                   {item.label}
                 </Link>
               );

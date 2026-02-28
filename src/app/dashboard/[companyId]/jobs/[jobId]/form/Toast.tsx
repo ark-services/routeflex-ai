@@ -19,7 +19,7 @@ export default function Toast({ message, onClose, duration = 3000 }: ToastProps)
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] animate-slide-down">
-      <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 min-w-[320px]">
+      <div className="bg-rf-success text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 min-w-[320px]">
         {/* Success Icon */}
         <svg
           className="w-5 h-5 flex-shrink-0"

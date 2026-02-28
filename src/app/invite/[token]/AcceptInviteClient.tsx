@@ -52,25 +52,25 @@ export function AcceptInviteClient({
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-rf-surface-page p-4">
       <Card className="max-w-md w-full p-10">
         {/* Logo / branding */}
         <div className="text-center mb-8">
-          <p className="text-sm font-semibold tracking-tight text-stone-400">
+          <p className="text-sm font-semibold tracking-tight text-rf-text-muted">
             RouteFlex AI
           </p>
         </div>
 
         <div className="text-center space-y-2 mb-8">
           <div className="text-5xl mb-4">🎉</div>
-          <h1 className="text-2xl font-semibold text-stone-900">
+          <h1 className="text-2xl font-semibold text-rf-text-primary">
             You&apos;re invited!
           </h1>
-          <p className="text-stone-600">
+          <p className="text-rf-ink-500">
             Join{" "}
-            <span className="font-semibold text-stone-900">{accountName}</span>{" "}
+            <span className="font-semibold text-rf-text-primary">{accountName}</span>{" "}
             on RouteFlex as a{" "}
-            <span className="font-semibold text-stone-900">
+            <span className="font-semibold text-rf-text-primary">
               {ROLE_LABELS[role] ?? role}
             </span>
             .
@@ -78,7 +78,7 @@ export function AcceptInviteClient({
         </div>
 
         {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200">
+          <div className="mb-6 p-3 rounded-lg bg-rf-danger-bg border border-red-200">
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}

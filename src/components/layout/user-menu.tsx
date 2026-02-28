@@ -59,14 +59,14 @@ export function UserMenu({ userEmail, accountId, isAdmin }: UserMenuProps) {
               onClick={() => setOpen(false)}
             />
             <div
-              className="fixed z-[1001] w-56 rounded-lg border border-stone-200 bg-white shadow-lg"
+              className="fixed z-[1001] w-56 rounded-lg border border-rf-border bg-rf-surface-card shadow-lg"
               style={{
                 top: rect.bottom + 8,
                 right: window.innerWidth - rect.right,
               }}
             >
-              <div className="px-4 py-3 border-b border-stone-100">
-                <p className="text-sm text-stone-500 truncate">{userEmail}</p>
+              <div className="px-4 py-3 border-b border-rf-ink-100">
+                <p className="text-sm text-rf-text-secondary truncate">{userEmail}</p>
               </div>
               <div className="py-1">
                 <button
@@ -74,7 +74,7 @@ export function UserMenu({ userEmail, accountId, isAdmin }: UserMenuProps) {
                     router.push("/profile");
                     setOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                  className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
                 >
                   My Profile
                 </button>
@@ -84,16 +84,16 @@ export function UserMenu({ userEmail, accountId, isAdmin }: UserMenuProps) {
                       router.push(`/admin/${accountId}`);
                       setOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                    className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
                   >
                     Administration
                   </button>
                 )}
-                <div className="my-1 border-t border-stone-200" />
+                <div className="my-1 border-t border-rf-border" />
                 <button
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full text-left px-4 py-2 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loggingOut ? "Logging out…" : "Log out"}
                 </button>
@@ -109,7 +109,7 @@ export function UserMenu({ userEmail, accountId, isAdmin }: UserMenuProps) {
       <button
         ref={triggerRef}
         onClick={() => setOpen(!open)}
-        className="focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 rounded-full"
+        className="focus:outline-none focus:ring-2 focus:ring-rf-blue focus:ring-offset-2 rounded-full"
       >
         <Avatar>
           <AvatarFallback>{initials}</AvatarFallback>

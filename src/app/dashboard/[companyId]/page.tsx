@@ -35,10 +35,10 @@ export default async function DashboardPage({
   return (
     <div className="flex items-center justify-center h-full">
       <div className="text-center space-y-4 max-w-md px-6">
-        <h2 className="text-2xl font-semibold text-stone-900">
+        <h2 className="text-2xl font-semibold text-rf-text-primary">
           Welcome to your dashboard
         </h2>
-        <p className="text-stone-500">
+        <p className="text-rf-text-secondary">
           Get started by creating your first job using the + button in the sidebar.
         </p>
       </div>

@@ -122,9 +122,9 @@ export default function QuestionSettingsPanel({
   const supportsDefaultChecked = field.type === "checkbox";
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 sticky top-0 h-screen flex flex-col">
+    <div className="w-80 bg-rf-surface-card border-l border-gray-200 sticky top-0 h-screen flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <div className="bg-rf-surface-card border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900">Question Settings</h3>
         <button
           onClick={onClose}
@@ -145,11 +145,11 @@ export default function QuestionSettingsPanel({
             <div
               onClick={handleRequiredToggle}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                required ? "bg-blue-600" : "bg-gray-300"
+                required ? "bg-rf-blue" : "bg-gray-300"
               }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-rf-surface-card transition-transform ${
                   required ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -172,11 +172,11 @@ export default function QuestionSettingsPanel({
             <div
               onClick={handleHiddenToggle}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                hidden ? "bg-amber-500" : "bg-gray-300"
+                hidden ? "bg-rf-warning" : "bg-gray-300"
               }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-rf-surface-card transition-transform ${
                   hidden ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -195,11 +195,11 @@ export default function QuestionSettingsPanel({
               <div
                 onClick={handleDefaultCheckedToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  defaultChecked ? "bg-blue-600" : "bg-gray-300"
+                  defaultChecked ? "bg-rf-blue" : "bg-gray-300"
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-rf-surface-card transition-transform ${
                     defaultChecked ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
@@ -223,7 +223,7 @@ export default function QuestionSettingsPanel({
               onChange={(e) => setPlaceholder(e.target.value)}
               onBlur={handlePlaceholderSave}
               placeholder="Enter placeholder text..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rf-blue focus:border-rf-blue text-sm"
             />
             <p className="text-xs text-gray-500 mt-1">
               Hint text shown in the input field
@@ -245,12 +245,12 @@ export default function QuestionSettingsPanel({
                     value={option}
                     onChange={(e) => updateOption(index, e.target.value)}
                     onBlur={() => handleOptionsUpdate(options)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rf-blue focus:border-rf-blue text-sm"
                   />
                   {options.length > 1 && (
                     <button
                       onClick={() => deleteOption(index)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-2 text-rf-danger hover:bg-rf-danger-bg rounded-lg transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -286,7 +286,7 @@ export default function QuestionSettingsPanel({
               </div>
               <button
                 onClick={handleImageRemove}
-                className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-rf-danger hover:text-red-700 transition-colors"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -298,7 +298,7 @@ export default function QuestionSettingsPanel({
             <div>
               <button
                 onClick={() => imageInputRef.current?.click()}
-                className="w-full flex flex-col items-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/40 transition-colors"
+                className="w-full flex flex-col items-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-rf-blue hover:bg-rf-blue-tint/40 transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M13.5 10.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM18 12h.008v.008H18V12z" />
@@ -336,7 +336,7 @@ export default function QuestionSettingsPanel({
       </div>
 
       {/* Footer - Sticky at bottom */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4 flex-shrink-0">
+      <div className="bg-rf-surface-card border-t border-gray-200 px-6 py-4 flex-shrink-0">
         <Button
           variant="secondary"
           onClick={onClose}

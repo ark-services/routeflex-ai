@@ -22,9 +22,9 @@ export default async function TemplateCenterPage({
   return (
     <div className="h-full flex flex-col">
       {/* Page header */}
-      <div className="border-b border-stone-200 bg-white px-6 py-4">
-        <h1 className="text-lg font-semibold text-stone-900">Template Center</h1>
-        <p className="text-sm text-stone-500 mt-0.5">
+      <div className="border-b border-rf-border bg-rf-surface-card px-6 py-4">
+        <h1 className="text-lg font-semibold text-rf-text-primary">Template Center</h1>
+        <p className="text-sm text-rf-text-secondary mt-0.5">
           Choose a template to quickly scaffold your hiring board.
         </p>
       </div>

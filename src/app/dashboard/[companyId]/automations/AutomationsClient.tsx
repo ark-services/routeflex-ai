@@ -74,7 +74,7 @@ export function AutomationsClient({
       <div className="mb-6">
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-rf-blue text-white rounded hover:bg-rf-blue-dark"
         >
           + Create Automation
         </button>
@@ -83,7 +83,7 @@ export function AutomationsClient({
       {/* Automations List */}
       <div className="space-y-4">
         {automations.length === 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+          <div className="bg-rf-surface-card rounded-lg border border-gray-200 p-8 text-center text-gray-500">
             No automations yet. Create one to get started.
           </div>
         )}
@@ -91,7 +91,7 @@ export function AutomationsClient({
         {automations.map((automation) => (
           <div
             key={automation.id}
-            className="bg-white rounded-lg border border-gray-200 p-6"
+            className="bg-rf-surface-card rounded-lg border border-gray-200 p-6"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -102,7 +102,7 @@ export function AutomationsClient({
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
                       automation.is_enabled
-                        ? "bg-green-100 text-green-800"
+                        ? "bg-rf-success-bg text-rf-success"
                         : "bg-gray-100 text-gray-800"
                     }`}
                   >
@@ -150,7 +150,7 @@ export function AutomationsClient({
                 </button>
                 <button
                   onClick={() => handleDelete(automation.id)}
-                  className="px-3 py-1 text-sm border border-red-300 text-red-700 rounded hover:bg-red-50"
+                  className="px-3 py-1 text-sm border border-red-300 text-red-700 rounded hover:bg-rf-danger-bg"
                 >
                   Delete
                 </button>
@@ -218,7 +218,7 @@ function CreateAutomationModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+      <div className="bg-rf-surface-card rounded-lg max-w-2xl w-full p-6">
         <h2 className="text-2xl font-bold mb-4">Create Automation</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -369,7 +369,7 @@ function CreateAutomationModal({
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-rf-blue text-white rounded hover:bg-rf-blue-dark disabled:opacity-50"
             >
               {loading ? "Creating..." : "Create"}
             </button>

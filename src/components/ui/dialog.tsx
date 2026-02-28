@@ -59,7 +59,7 @@ export function Dialog({
 
 export function DialogContent({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`bg-white rounded-t-2xl sm:rounded-xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto ${className}`}>
+    <div className={`bg-rf-surface-card rounded-t-2xl sm:rounded-xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto ${className}`}>
       {children}
     </div>
   );
@@ -71,7 +71,7 @@ export function DialogHeader({ children }: { children: ReactNode }) {
 
 export function DialogTitle({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={`text-xl font-semibold tracking-tight text-stone-900 ${className}`}>
+    <h2 className={`text-xl font-semibold tracking-tight text-rf-text-primary ${className}`}>
       {children}
     </h2>
   );

@@ -161,10 +161,10 @@ export default function FieldTypePicker({ onSelect, onCancel }: FieldTypePickerP
     <div className="relative">
       <div
         ref={pickerRef}
-        className="absolute top-0 left-0 right-0 bg-white rounded-xl shadow-xl border-2 border-gray-200 z-10 max-h-[400px] overflow-y-auto"
+        className="absolute top-0 left-0 right-0 bg-rf-surface-card rounded-xl shadow-xl border-2 border-gray-200 z-10 max-h-[400px] overflow-y-auto"
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 rounded-t-xl">
+        <div className="sticky top-0 bg-rf-surface-card border-b border-gray-200 px-4 py-3 rounded-t-xl">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900">Select Question Type</h3>
             <button
@@ -184,16 +184,16 @@ export default function FieldTypePicker({ onSelect, onCancel }: FieldTypePickerP
             <button
               key={fieldType.value}
               onClick={() => onSelect(fieldType.value)}
-              className="flex items-start gap-3 p-3 text-left rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"
+              className="flex items-start gap-3 p-3 text-left rounded-lg border border-gray-200 hover:border-rf-blue hover:bg-rf-blue-tint transition-all group"
             >
-              <div className="flex-shrink-0 text-gray-600 group-hover:text-blue-600 transition-colors mt-0.5">
+              <div className="flex-shrink-0 text-gray-600 group-hover:text-rf-blue transition-colors mt-0.5">
                 {fieldType.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 group-hover:text-blue-700 transition-colors">
+                <div className="text-sm font-medium text-gray-900 group-hover:text-rf-blue transition-colors">
                   {fieldType.label}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5 group-hover:text-blue-600 transition-colors">
+                <div className="text-xs text-gray-500 mt-0.5 group-hover:text-rf-blue transition-colors">
                   {fieldType.description}
                 </div>
               </div>

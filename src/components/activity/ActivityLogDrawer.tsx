@@ -27,8 +27,8 @@ function timeAgo(iso: string): string {
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
-  "bg-blue-500", "bg-green-500", "bg-amber-500", "bg-purple-500",
-  "bg-red-500", "bg-cyan-500", "bg-pink-500", "bg-indigo-500",
+  "bg-rf-blue", "bg-rf-success", "bg-rf-warning", "bg-purple-500",
+  "bg-rf-danger", "bg-cyan-500", "bg-pink-500", "bg-rf-blue-dark",
 ];
 
 function actorColor(name: string): string {
@@ -44,7 +44,7 @@ function EventRow({ event }: { event: ActivityEvent }) {
   const initials = actorName ? actorName.charAt(0).toUpperCase() : "?";
 
   return (
-    <div className="flex gap-3 px-4 py-3 hover:bg-stone-50 transition-colors border-b border-stone-100 last:border-0">
+    <div className="flex gap-3 px-4 py-3 hover:bg-rf-surface-page transition-colors border-b border-rf-ink-100 last:border-0">
       {/* Avatar / icon */}
       <div className="flex-shrink-0 mt-0.5">
         {event.actor_type === "user" ? (
@@ -54,32 +54,32 @@ function EventRow({ event }: { event: ActivityEvent }) {
             {initials}
           </div>
         ) : event.actor_type === "automation" ? (
-          <div className="w-7 h-7 rounded-full flex items-center justify-center bg-amber-100">
-            <Zap className="w-3.5 h-3.5 text-amber-600" />
+          <div className="w-7 h-7 rounded-full flex items-center justify-center bg-rf-warning-bg">
+            <Zap className="w-3.5 h-3.5 text-rf-warning" />
           </div>
         ) : (
-          <div className="w-7 h-7 rounded-full flex items-center justify-center bg-stone-100">
-            <Settings className="w-3.5 h-3.5 text-stone-500" />
+          <div className="w-7 h-7 rounded-full flex items-center justify-center bg-rf-ink-100">
+            <Settings className="w-3.5 h-3.5 text-rf-text-secondary" />
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-stone-800 leading-snug">{event.summary}</p>
+        <p className="text-sm text-rf-text-primary leading-snug">{event.summary}</p>
         {event.data?.automation_name && (
-          <p className="text-xs text-stone-400 mt-0.5">Automation: {event.data.automation_name}</p>
+          <p className="text-xs text-rf-text-muted mt-0.5">Automation: {event.data.automation_name}</p>
         )}
         {event.data?.group_name && (
-          <p className="text-xs text-stone-400 mt-0.5">Group: {event.data.group_name}</p>
+          <p className="text-xs text-rf-text-muted mt-0.5">Group: {event.data.group_name}</p>
         )}
         {event.data?.error && (
-          <p className="text-xs text-red-500 mt-0.5">{event.data.error}</p>
+          <p className="text-xs text-rf-danger mt-0.5">{event.data.error}</p>
         )}
       </div>
 
       {/* Time */}
-      <div className="flex-shrink-0 text-xs text-stone-400 mt-0.5 whitespace-nowrap">
+      <div className="flex-shrink-0 text-xs text-rf-text-muted mt-0.5 whitespace-nowrap">
         {timeAgo(event.created_at)}
       </div>
     </div>
@@ -203,34 +203,34 @@ export function ActivityLogDrawer({ open, onClose, companyId, jobId }: ActivityL
 
       {/* Drawer */}
       <div
-        className={`fixed right-0 top-0 h-screen w-[480px] z-50 bg-white border-l border-stone-200 shadow-2xl flex flex-col transition-transform duration-300 ${
+        className={`fixed right-0 top-0 h-screen w-[480px] z-50 bg-rf-surface-card border-l border-rf-border shadow-2xl flex flex-col transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-rf-border shrink-0">
           <div className="flex items-center gap-2">
-            <ScrollText className="w-4 h-4 text-stone-600" />
-            <h2 className="text-sm font-semibold text-stone-800">Activity Log</h2>
+            <ScrollText className="w-4 h-4 text-rf-ink-500" />
+            <h2 className="text-sm font-semibold text-rf-text-primary">Activity Log</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-600 transition-colors"
+            className="text-rf-text-muted hover:text-rf-ink-500 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-stone-200 shrink-0">
+        <div className="flex border-b border-rf-border shrink-0">
           {(["activity", "automation"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`flex-1 py-2 text-xs font-medium capitalize transition-colors ${
                 tab === t
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-stone-500 hover:text-stone-700"
+                  ? "text-rf-blue border-b-2 border-rf-blue"
+                  : "text-rf-text-secondary hover:text-rf-ink-700"
               }`}
             >
               {t}
@@ -239,27 +239,27 @@ export function ActivityLogDrawer({ open, onClose, companyId, jobId }: ActivityL
         </div>
 
         {/* Search */}
-        <div className="px-4 py-2 border-b border-stone-100 shrink-0">
+        <div className="px-4 py-2 border-b border-rf-ink-100 shrink-0">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search activity…"
-            className="w-full h-8 px-3 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-700 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+            className="w-full h-8 px-3 rounded-lg border border-rf-border bg-rf-surface-page text-sm text-rf-ink-700 placeholder-rf-text-muted focus:outline-none focus:ring-2 focus:ring-rf-blue focus:bg-rf-surface-card transition-colors"
           />
         </div>
 
         {/* Event list */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           {!initialLoaded && loading ? (
-            <div className="flex items-center justify-center h-24 text-sm text-stone-400">
+            <div className="flex items-center justify-center h-24 text-sm text-rf-text-muted">
               Loading…
             </div>
           ) : events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2 text-stone-400 px-6 text-center">
+            <div className="flex flex-col items-center justify-center py-12 gap-2 text-rf-text-muted px-6 text-center">
               <ScrollText className="w-8 h-8 opacity-30" />
-              <span className="text-sm font-medium text-stone-500">No activity yet</span>
-              <span className="text-xs text-stone-400 leading-relaxed">Activity will appear here when applicants are added, moved, or updated.</span>
+              <span className="text-sm font-medium text-rf-text-secondary">No activity yet</span>
+              <span className="text-xs text-rf-text-muted leading-relaxed">Activity will appear here when applicants are added, moved, or updated.</span>
             </div>
           ) : (
             <>
@@ -271,13 +271,13 @@ export function ActivityLogDrawer({ open, onClose, companyId, jobId }: ActivityL
               <div ref={sentinelRef} className="h-4" />
 
               {loading && (
-                <div className="py-3 text-center text-xs text-stone-400">
+                <div className="py-3 text-center text-xs text-rf-text-muted">
                   Loading more…
                 </div>
               )}
 
               {!nextCursor && events.length > 0 && (
-                <div className="py-3 text-center text-xs text-stone-400">
+                <div className="py-3 text-center text-xs text-rf-text-muted">
                   All caught up
                 </div>
               )}

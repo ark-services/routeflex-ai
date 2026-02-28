@@ -100,9 +100,9 @@ export function EditAutomationClient({
   function getStatusIcon(status: string) {
     switch (status) {
       case 'success':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 text-rf-success" />;
       case 'failed':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-4 h-4 text-rf-danger" />;
       case 'skipped':
         return <MinusCircle className="w-4 h-4 text-gray-400" />;
       default:
@@ -113,9 +113,9 @@ export function EditAutomationClient({
   function getStatusColor(status: string) {
     switch (status) {
       case 'success':
-        return 'bg-green-50 text-green-700 border-green-200';
+        return 'bg-rf-success-bg text-rf-success border-green-200';
       case 'failed':
-        return 'bg-red-50 text-red-700 border-red-200';
+        return 'bg-rf-danger-bg text-red-700 border-red-200';
       case 'skipped':
         return 'bg-gray-50 text-gray-600 border-gray-200';
       default:
@@ -128,7 +128,7 @@ export function EditAutomationClient({
       {/* Main Content: Automation Editor (Left on desktop) */}
       <div className="flex-1 flex flex-col overflow-hidden order-2 lg:order-1">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-rf-surface-card border-b border-gray-200 px-6 py-4">
           <button
             onClick={() => router.push(`/dashboard/${companyId}/jobs/${jobId}/applicants`)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-3"
@@ -145,7 +145,7 @@ export function EditAutomationClient({
         </div>
 
         {/* Editor */}
-        <div className="flex-1 overflow-y-auto bg-white">
+        <div className="flex-1 overflow-y-auto bg-rf-surface-card">
           <CreateTab
             companyId={companyId}
             jobId={jobId}
@@ -166,7 +166,7 @@ export function EditAutomationClient({
       </div>
 
       {/* Right Sidebar: Run History (Hidden on mobile by default) */}
-      <div className="w-full lg:w-96 bg-white border-l border-gray-200 flex flex-col order-1 lg:order-2 max-h-[50vh] lg:max-h-none">
+      <div className="w-full lg:w-96 bg-rf-surface-card border-l border-gray-200 flex flex-col order-1 lg:order-2 max-h-[50vh] lg:max-h-none">
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Run History</h3>
@@ -249,7 +249,7 @@ export function EditAutomationClient({
                         {run.error && (
                           <div className="text-xs">
                             <p className="font-medium text-red-700">Error:</p>
-                            <p className="text-red-600 mt-1 bg-red-50 p-2 rounded">
+                            <p className="text-rf-danger mt-1 bg-rf-danger-bg p-2 rounded">
                               {run.error}
                             </p>
                           </div>
@@ -264,8 +264,8 @@ export function EditAutomationClient({
                                   key={idx}
                                   className={`p-2 rounded text-xs ${
                                     result.status === 'success'
-                                      ? 'bg-green-50 text-green-700'
-                                      : 'bg-red-50 text-red-700'
+                                      ? 'bg-rf-success-bg text-rf-success'
+                                      : 'bg-rf-danger-bg text-red-700'
                                   }`}
                                 >
                                   <div className="flex items-center justify-between">

@@ -95,8 +95,8 @@ export function TemplateForm({ template }: Props) {
         <div
           className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm ${
             toast.type === "success"
-              ? "bg-green-50 border border-green-200 text-green-800"
-              : "bg-red-50 border border-red-200 text-red-800"
+              ? "bg-rf-success-bg border border-green-200 text-rf-success"
+              : "bg-rf-danger-bg border border-red-200 text-rf-danger"
           }`}
         >
           {toast.type === "success" ? (
@@ -110,39 +110,39 @@ export function TemplateForm({ template }: Props) {
 
       {/* Title */}
       <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">
-          Title <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-rf-ink-700 mb-1">
+          Title <span className="text-rf-danger">*</span>
         </label>
         <input
           name="title"
           defaultValue={template?.title ?? ""}
           required
-          className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-rf-border px-3 py-2 text-sm text-rf-text-primary focus:outline-none focus:ring-2 focus:ring-rf-blue"
           placeholder="e.g. FedEx Package Handler Hiring"
         />
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">
+        <label className="block text-sm font-medium text-rf-ink-700 mb-1">
           Description
         </label>
         <textarea
           name="description"
           defaultValue={template?.description ?? ""}
           rows={3}
-          className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full rounded-lg border border-rf-border px-3 py-2 text-sm text-rf-text-primary focus:outline-none focus:ring-2 focus:ring-rf-blue resize-none"
           placeholder="Brief description shown to users in Template Center"
         />
       </div>
 
       {/* Published */}
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-stone-700">Published</label>
+        <label className="text-sm font-medium text-rf-ink-700">Published</label>
         <select
           name="is_published"
           defaultValue={template?.is_published !== false ? "true" : "false"}
-          className="rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="rounded-lg border border-rf-border px-3 py-1.5 text-sm text-rf-text-primary focus:outline-none focus:ring-2 focus:ring-rf-blue"
         >
           <option value="true">Yes — visible in Template Center</option>
           <option value="false">No — draft, hidden from users</option>
@@ -151,16 +151,16 @@ export function TemplateForm({ template }: Props) {
 
       {/* Thumbnail */}
       <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">
+        <label className="block text-sm font-medium text-rf-ink-700 mb-1">
           Thumbnail
         </label>
         {!template ? (
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-rf-text-secondary">
             Save the template first, then upload a thumbnail.
           </p>
         ) : (
           <div className="space-y-2">
-            <div className="w-full h-36 rounded-lg border border-stone-200 overflow-hidden bg-stone-100">
+            <div className="w-full h-36 rounded-lg border border-rf-border overflow-hidden bg-rf-ink-100">
               {thumbnailPreview || existingThumbUrl ? (
                 <img
                   src={thumbnailPreview || existingThumbUrl!}
@@ -169,7 +169,7 @@ export function TemplateForm({ template }: Props) {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-xs text-stone-400">No thumbnail</span>
+                  <span className="text-xs text-rf-text-muted">No thumbnail</span>
                 </div>
               )}
             </div>
@@ -177,7 +177,7 @@ export function TemplateForm({ template }: Props) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingThumb}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-rf-border rounded-lg hover:bg-rf-surface-page transition-colors disabled:opacity-50"
             >
               {uploadingThumb ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -199,7 +199,7 @@ export function TemplateForm({ template }: Props) {
 
       {/* Payload info callout — shown only after template exists */}
       {template && (
-        <div className="flex items-start gap-2.5 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+        <div className="flex items-start gap-2.5 px-4 py-3 bg-rf-blue-tint border border-rf-blue-tint rounded-lg text-sm text-blue-800">
           <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>
             The template layout (groups, columns, automations) is captured from a real job board.
@@ -210,18 +210,18 @@ export function TemplateForm({ template }: Props) {
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+      <div className="flex items-center gap-3 pt-2 border-t border-rf-ink-100">
         <button
           type="submit"
           disabled={isPending}
-          className="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="px-5 py-2 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 transition-colors"
         >
           {isPending ? "Saving…" : template ? "Save changes" : "Create template"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/super-admin/templates")}
-          className="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 transition-colors"
+          className="px-4 py-2 text-sm text-rf-ink-500 hover:text-rf-text-primary transition-colors"
         >
           Cancel
         </button>

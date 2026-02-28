@@ -1102,7 +1102,7 @@ export default function ApplicantsBoard({
   }
 
   if (!mounted) {
-    return <div className="min-h-[60vh] bg-stone-50" />;
+    return <div className="min-h-[60vh] bg-rf-surface-page" />;
   }
 
   return (
@@ -1115,14 +1115,14 @@ export default function ApplicantsBoard({
     >
       {/* Cell validation / server error toast */}
       {cellErrorMsg && (
-        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-red-200 bg-white px-4 py-3 shadow-lg max-w-sm">
-          <svg className="h-5 w-5 flex-shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-red-200 bg-rf-surface-card px-4 py-3 shadow-lg max-w-sm">
+          <svg className="h-5 w-5 flex-shrink-0 text-rf-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span className="text-sm text-stone-700 flex-1">{cellErrorMsg}</span>
+          <span className="text-sm text-rf-ink-700 flex-1">{cellErrorMsg}</span>
           <button
             onClick={() => { if (cellErrorTimeout.current) clearTimeout(cellErrorTimeout.current); setCellErrorMsg(null); }}
-            className="flex-shrink-0 text-stone-400 hover:text-stone-600 transition-colors"
+            className="flex-shrink-0 text-rf-text-muted hover:text-rf-ink-500 transition-colors"
             aria-label="Dismiss"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1132,7 +1132,7 @@ export default function ApplicantsBoard({
         </div>
       )}
 
-      <div className="flex flex-col h-full min-h-0 bg-stone-50">
+      <div className="flex flex-col h-full min-h-0 bg-rf-surface-page">
 
         {/* ====== MOBILE CARD VIEW (hidden on md+) ====== */}
         <div className="md:hidden flex-1 overflow-auto min-h-0">
@@ -1149,12 +1149,12 @@ export default function ApplicantsBoard({
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <button
                       onClick={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
-                      className="text-stone-500 text-xs"
+                      className="text-rf-text-secondary text-xs"
                     >
                       {g.is_collapsed ? "▶" : "▼"}
                     </button>
                     <span className="font-semibold text-sm" style={{ color: g.color }}>{g.name}</span>
-                    <span className="text-xs text-stone-400">({rows.length})</span>
+                    <span className="text-xs text-rf-text-muted">({rows.length})</span>
                   </div>
 
                   {!g.is_collapsed && (
@@ -1181,7 +1181,7 @@ export default function ApplicantsBoard({
                         return (
                           <div
                             key={a.id}
-                            className={`bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden ${selected[a.id] ? "ring-2 ring-blue-500" : ""}`}
+                            className={`bg-rf-surface-card rounded-xl border border-rf-border shadow-sm overflow-hidden ${selected[a.id] ? "ring-2 ring-rf-blue" : ""}`}
                           >
                             {/* Card top: Name + menu */}
                             <div className="flex items-start justify-between px-4 pt-3 pb-1">
@@ -1190,13 +1190,13 @@ export default function ApplicantsBoard({
                                   type="checkbox"
                                   checked={!!selected[a.id]}
                                   onChange={() => toggleRow(a.id)}
-                                  className="h-4 w-4 rounded border-stone-300 flex-shrink-0"
+                                  className="h-4 w-4 rounded border-rf-ink-100 flex-shrink-0"
                                 />
-                                <span className="font-semibold text-stone-900 text-sm truncate">
+                                <span className="font-semibold text-rf-text-primary text-sm truncate">
                                   {nameCol ? (getCellValue(a, nameCol) as string) || a.full_name : a.full_name}
                                 </span>
                                 {fadvReadyApplicantIds.has(a.id) && (
-                                  <span className="ml-1 flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                                  <span className="ml-1 flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rf-blue-tint text-rf-blue border border-rf-blue-tint">
                                     ✓ FADV
                                   </span>
                                 )}
@@ -1205,52 +1205,52 @@ export default function ApplicantsBoard({
                               <div className="relative flex-shrink-0 ml-2">
                                 <button
                                   onClick={() => setRowMenuOpen(menuOpen ? null : a.id)}
-                                  className="p-1.5 hover:bg-stone-100 rounded-lg text-stone-500 min-h-[36px] min-w-[36px] flex items-center justify-center"
+                                  className="p-1.5 hover:bg-rf-surface-page rounded-lg text-rf-text-secondary min-h-[36px] min-w-[36px] flex items-center justify-center"
                                 >
                                   ⋮
                                 </button>
                                 {menuOpen && (
                                   <>
                                     <div className="fixed inset-0 z-[30]" onClick={() => setRowMenuOpen(null)} />
-                                    <div className="absolute right-0 top-full mt-1 z-[31] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden">
+                                    <div className="absolute right-0 top-full mt-1 z-[31] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-hidden">
                                       {/* Applicant name header */}
-                                      <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
-                                        <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">
+                                      <div className="px-4 py-3 border-b border-rf-ink-100 bg-rf-surface-page">
+                                        <p className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wider truncate">
                                           {a.full_name ?? "Applicant"}
                                         </p>
                                       </div>
                                       {/* Open detail */}
-                                      <div className="py-2 border-b border-stone-100">
+                                      <div className="py-2 border-b border-rf-ink-100">
                                         <button
                                           onClick={() => { setRowMenuOpen(null); setDetailApplicantId(a.id); }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                                         >
-                                          <ExternalLink className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                          <ExternalLink className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                                           Open
                                         </button>
                                       </div>
                                       {/* Move to */}
                                       <div className="py-2">
-                                        <p className="px-4 py-1.5 text-xs font-semibold text-stone-400 uppercase tracking-wider">Move to</p>
+                                        <p className="px-4 py-1.5 text-xs font-semibold text-rf-text-muted uppercase tracking-wider">Move to</p>
                                         {localGroups.map((grp) => (
                                           <button
                                             key={grp.id}
                                             onClick={() => { onMoveApplicant(a.id, grp.id); setRowMenuOpen(null); }}
-                                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                                           >
                                             <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: grp.color }} />
                                             {grp.name}
                                           </button>
                                         ))}
                                       </div>
-                                      <div className="border-t border-stone-100" />
+                                      <div className="border-t border-rf-ink-100" />
                                       {/* Actions */}
                                       <div className="py-2">
                                         <button
                                           onClick={() => { setRowMenuOpen(null); onDuplicateApplicant(a.id); }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                                         >
-                                          <Copy className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                          <Copy className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                                           Duplicate
                                         </button>
                                         <button
@@ -1260,7 +1260,7 @@ export default function ApplicantsBoard({
                                             if (!r.success) alert(`FADV: ${r.error}`);
                                             else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
                                           }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition-colors text-left"
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-blue hover:bg-rf-blue-tint transition-colors text-left"
                                         >
                                           <Send className="w-4 h-4 flex-shrink-0" />
                                           Send to FADV
@@ -1270,9 +1270,9 @@ export default function ApplicantsBoard({
                                             setRowMenuOpen(null);
                                             router.push(`/dashboard/${companyId}/applicants/${a.id}/training`);
                                           }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                                         >
-                                          <GraduationCap className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                          <GraduationCap className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                                           Training Progress
                                         </button>
                                         {a.portal_token && (
@@ -1283,19 +1283,19 @@ export default function ApplicantsBoard({
                                               );
                                               setRowMenuOpen(null);
                                             }}
-                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                                           >
-                                            <Link2 className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                                            <Link2 className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                                             Copy status link
                                           </button>
                                         )}
                                       </div>
-                                      <div className="border-t border-stone-100" />
+                                      <div className="border-t border-rf-ink-100" />
                                       {/* Danger */}
                                       <div className="py-2">
                                         <button
                                           onClick={() => { setRowMenuOpen(null); onDeleteApplicant(a.id); }}
-                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors text-left"
                                         >
                                           <Trash2 className="w-4 h-4 flex-shrink-0" />
                                           Delete
@@ -1312,7 +1312,7 @@ export default function ApplicantsBoard({
                               {/* Status badge */}
                               {primaryStatusCol && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-stone-500 w-16 flex-shrink-0">Status</span>
+                                  <span className="text-xs text-rf-text-secondary w-16 flex-shrink-0">Status</span>
                                   <div className="flex-1 min-w-0">
                                     <CellRenderer
                                       applicant={a}
@@ -1328,8 +1328,8 @@ export default function ApplicantsBoard({
                               {/* Email */}
                               {emailCols[0] && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-stone-500 w-16 flex-shrink-0">Email</span>
-                                  <span className="text-sm text-stone-700 truncate">
+                                  <span className="text-xs text-rf-text-secondary w-16 flex-shrink-0">Email</span>
+                                  <span className="text-sm text-rf-ink-700 truncate">
                                     {(getCellValue(a, emailCols[0]) as string) || a.email || "—"}
                                   </span>
                                 </div>
@@ -1337,16 +1337,16 @@ export default function ApplicantsBoard({
                               {/* Phone */}
                               {phoneCols[0] && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs text-stone-500 w-16 flex-shrink-0">Phone</span>
-                                  <span className="text-sm text-stone-700 truncate">
+                                  <span className="text-xs text-rf-text-secondary w-16 flex-shrink-0">Phone</span>
+                                  <span className="text-sm text-rf-ink-700 truncate">
                                     {(getCellValue(a, phoneCols[0]) as string) || a.phone || "—"}
                                   </span>
                                 </div>
                               )}
                               {/* Applied date */}
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-stone-500 w-16 flex-shrink-0">Applied</span>
-                                <span className="text-xs text-stone-400">
+                                <span className="text-xs text-rf-text-secondary w-16 flex-shrink-0">Applied</span>
+                                <span className="text-xs text-rf-text-muted">
                                   {new Date(a.created_at).toLocaleDateString()}
                                 </span>
                               </div>
@@ -1356,7 +1356,7 @@ export default function ApplicantsBoard({
                             {expandedCols.length > 0 && (
                               <button
                                 onClick={() => setMobileExpandedRows(prev => ({ ...prev, [a.id]: !isExpanded }))}
-                                className="w-full px-4 py-2 text-xs text-stone-500 hover:text-stone-700 hover:bg-stone-50 border-t border-stone-100 text-left flex items-center gap-1 transition-colors"
+                                className="w-full px-4 py-2 text-xs text-rf-text-secondary hover:text-rf-ink-700 hover:bg-rf-surface-page border-t border-rf-ink-100 text-left flex items-center gap-1 transition-colors"
                               >
                                 {isExpanded ? "▲ Show less" : `▼ Show ${expandedCols.length} more field${expandedCols.length !== 1 ? "s" : ""}`}
                               </button>
@@ -1364,10 +1364,10 @@ export default function ApplicantsBoard({
 
                             {/* Expanded: all other columns */}
                             {isExpanded && (
-                              <div className="px-4 pb-3 pt-1 border-t border-stone-100 space-y-2 bg-stone-50/50">
+                              <div className="px-4 pb-3 pt-1 border-t border-rf-ink-100 space-y-2 bg-rf-surface-page">
                                 {expandedCols.map((col) => (
                                   <div key={col.id} className="flex items-start gap-2">
-                                    <span className="text-xs text-stone-500 w-24 flex-shrink-0 pt-1.5">{col.name}</span>
+                                    <span className="text-xs text-rf-text-secondary w-24 flex-shrink-0 pt-1.5">{col.name}</span>
                                     <div className="flex-1 min-w-0">
                                       <CellRenderer
                                         applicant={a}
@@ -1390,7 +1390,7 @@ export default function ApplicantsBoard({
                       <button
                         onClick={() => onQuickCreateApplicant(g.id)}
                         disabled={isPending}
-                        className="w-full py-2.5 text-sm text-stone-400 hover:text-blue-600 hover:bg-blue-50/30 rounded-xl border border-dashed border-stone-200 transition-colors"
+                        className="w-full py-2.5 text-sm text-rf-text-muted hover:text-rf-blue hover:bg-rf-blue-tint/30 rounded-xl border border-dashed border-rf-border transition-colors"
                       >
                         + Add item
                       </button>
@@ -1404,7 +1404,7 @@ export default function ApplicantsBoard({
             <button
               onClick={handleAddNewGroup}
               disabled={isPending}
-              className="flex items-center gap-2 h-10 px-3 text-sm text-stone-500 hover:text-stone-700 bg-white hover:bg-stone-50 border border-dashed border-stone-300 hover:border-stone-400 rounded-xl transition-colors w-full justify-center disabled:opacity-50"
+              className="flex items-center gap-2 h-10 px-3 text-sm text-rf-text-secondary hover:text-rf-ink-700 bg-rf-surface-card hover:bg-rf-surface-page border border-dashed border-rf-ink-100 hover:border-rf-ink-300 rounded-xl transition-colors w-full justify-center disabled:opacity-50"
             >
               <span className="font-medium">+</span>
               <span>Add new group</span>
@@ -1483,7 +1483,7 @@ export default function ApplicantsBoard({
                       const groupTableWidth = getGroupTableWidth(collapsedColIds);
                       return (
                       <div
-                        className="overflow-visible rounded-lg border border-stone-200 bg-white border-l-[4px]"
+                        className="overflow-visible rounded-lg border border-rf-border bg-rf-surface-card border-l-[4px]"
                         style={{ borderLeftColor: g.color }}
                       >
                         <table
@@ -1500,9 +1500,9 @@ export default function ApplicantsBoard({
                             ))}
                             <col style={{ width: `${ADD_COL_BTN_WIDTH}px` }} />
                           </colgroup>
-                          <thead className="bg-stone-50 sticky top-[41px] z-20">
-                            <tr className="border-b border-stone-200">
-                              <th className="sticky left-0 z-20 w-10 bg-stone-50 px-4 py-2">
+                          <thead className="bg-rf-surface-page sticky top-[41px] z-20">
+                            <tr className="border-b border-rf-border">
+                              <th className="sticky left-0 z-20 w-10 bg-rf-surface-page px-4 py-2">
                                 <div className="flex items-center gap-2">
                                   {/* invisible spacer matching the hidden ⋮ row-menu button */}
                                   <div className="opacity-0 text-sm select-none">⋮</div>
@@ -1515,7 +1515,7 @@ export default function ApplicantsBoard({
                                         checked={allSelected}
                                         ref={(el) => { if (el) el.indeterminate = someSelected; }}
                                         onChange={() => toggleAllInGroup(g.id, rows)}
-                                        className="h-4 w-4 rounded border-stone-300 cursor-pointer accent-green-600"
+                                        className="h-4 w-4 rounded border-rf-ink-100 cursor-pointer accent-green-600"
                                       />
                                     );
                                   })()}
@@ -1548,7 +1548,7 @@ export default function ApplicantsBoard({
                               <th className="px-4 py-2">
                                 <button
                                   onClick={() => setShowAddColumnModal(true)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-300 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition"
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-rf-ink-100 bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:text-rf-text-primary transition"
                                   title="Add column"
                                 >
                                   +
@@ -1560,7 +1560,7 @@ export default function ApplicantsBoard({
                           <tbody>
                             {rows.length === 0 ? (
                               <tr>
-                                <td colSpan={visibleColumns.length + 2} className="px-4 py-8 text-sm text-stone-400 text-center">
+                                <td colSpan={visibleColumns.length + 2} className="px-4 py-8 text-sm text-rf-text-muted text-center">
                                   No applicants in this group yet.
                                 </td>
                               </tr>
@@ -1604,15 +1604,15 @@ export default function ApplicantsBoard({
                             {/* "+ Add item" row - Monday.com style inline creation */}
                             <tr
                               onClick={() => onQuickCreateApplicant(g.id)}
-                              className="border-t border-stone-200 hover:bg-blue-50/30 cursor-pointer transition-colors group/addrow"
+                              className="border-t border-rf-border hover:bg-rf-blue-tint/30 cursor-pointer transition-colors group/addrow"
                             >
-                              <td className="sticky left-0 z-10 bg-white group-hover/addrow:bg-blue-50/30 px-4 py-3 border-r border-stone-100">
-                                <div className="flex items-center gap-2 text-stone-400 group-hover/addrow:text-blue-600 transition-colors">
+                              <td className="sticky left-0 z-10 bg-rf-surface-card group-hover/addrow:bg-rf-blue-tint/30 px-4 py-3 border-r border-rf-ink-100">
+                                <div className="flex items-center gap-2 text-rf-text-muted group-hover/addrow:text-rf-blue transition-colors">
                                   <span className="text-sm font-semibold">+</span>
                                 </div>
                               </td>
                               <td colSpan={visibleColumns.length + 1} className="px-4 py-3">
-                                <span className="text-sm text-stone-400 group-hover/addrow:text-blue-600 font-medium transition-colors">
+                                <span className="text-sm text-rf-text-muted group-hover/addrow:text-rf-blue font-medium transition-colors">
                                   Add item
                                 </span>
                               </td>
@@ -1632,27 +1632,27 @@ export default function ApplicantsBoard({
                 return (
                   <section key="__orphaned__" className="space-y-2">
                     {/* Orphaned group header with warning styling */}
-                    <div className="flex items-center gap-3 px-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="flex items-center gap-3 px-2 bg-rf-danger-bg border border-red-200 rounded-lg p-3">
                       <div className="h-4 w-4 rounded" style={{ backgroundColor: '#ef4444' }} />
                       <h2 className="text-base font-semibold text-red-900">⚠️ Orphaned Applicants</h2>
-                      <span className="text-sm text-red-600">({orphanedRows.length})</span>
-                      <span className="text-xs text-red-600 ml-auto">
+                      <span className="text-sm text-rf-danger">({orphanedRows.length})</span>
+                      <span className="text-xs text-rf-danger ml-auto">
                         Board mismatch - check console for details
                       </span>
                     </div>
 
                     {/* Orphaned group table */}
-                    <div className="overflow-visible rounded-lg border-2 border-red-300 bg-red-50/30">
-                      <div className="bg-red-100 p-3 text-sm text-red-800 border-b border-red-200">
+                    <div className="overflow-visible rounded-lg border-2 border-red-300 bg-rf-danger-bg/30">
+                      <div className="bg-red-100 p-3 text-sm text-rf-danger border-b border-red-200">
                         <strong>⚠️ Warning:</strong> These applicants have group_ids that don't match any group in the current board.
                         This usually means multiple boards exist for this job. Check the browser console for diagnostic information.
                       </div>
-                      <table className="w-full text-left border-collapse bg-white">
-                        <thead className="bg-stone-50/80">
-                          <tr className="border-b border-stone-200">
-                            <th className="sticky left-0 z-20 w-10 bg-stone-50/80 px-4 py-2"></th>
+                      <table className="w-full text-left border-collapse bg-rf-surface-card">
+                        <thead className="bg-rf-surface-page/80">
+                          <tr className="border-b border-rf-border">
+                            <th className="sticky left-0 z-20 w-10 bg-rf-surface-page/80 px-4 py-2"></th>
                             {visibleColumns.map((col) => (
-                              <th key={col.id} className="px-4 py-2 text-xs font-medium text-stone-700 border-r border-stone-200">
+                              <th key={col.id} className="px-4 py-2 text-xs font-medium text-rf-ink-700 border-r border-rf-border">
                                 {col.name}
                               </th>
                             ))}
@@ -1700,7 +1700,7 @@ export default function ApplicantsBoard({
                 <button
                   onClick={handleAddNewGroup}
                   disabled={isPending}
-                  className="flex items-center gap-2 h-8 px-3 text-sm text-stone-500 hover:text-stone-700 bg-white hover:bg-stone-50 border border-dashed border-stone-300 hover:border-stone-400 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 h-8 px-3 text-sm text-rf-text-secondary hover:text-rf-ink-700 bg-rf-surface-card hover:bg-rf-surface-page border border-dashed border-rf-ink-100 hover:border-rf-ink-300 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <span className="font-medium">+</span>
                   <span>Add new group</span>
@@ -1713,11 +1713,11 @@ export default function ApplicantsBoard({
         {/* Add Column Modal */}
         {showAddColumnModal && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
-            <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-semibold text-stone-900">Add Column</h3>
+            <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-xl border border-rf-border bg-rf-surface-card p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold text-rf-text-primary">Add Column</h3>
               <div className="mt-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700">Column name</label>
+                  <label className="block text-sm font-medium text-rf-ink-700">Column name</label>
                   <input
                     value={newColumnName}
                     onChange={(e) => {
@@ -1725,19 +1725,19 @@ export default function ApplicantsBoard({
                       setAddColumnError(null);
                     }}
                     placeholder="e.g. Interview Score"
-                    className="mt-1 h-11 w-full rounded-lg border border-stone-200 bg-white px-3 text-base outline-none focus:border-stone-400"
+                    className="mt-1 h-11 w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 text-base outline-none focus:border-rf-ink-300"
                     autoFocus
                   />
                   {addColumnError && (
-                    <p className="mt-1.5 text-xs text-red-600">{addColumnError}</p>
+                    <p className="mt-1.5 text-xs text-rf-danger">{addColumnError}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700">Column type</label>
+                  <label className="block text-sm font-medium text-rf-ink-700">Column type</label>
                   <select
                     value={newColumnType}
                     onChange={(e) => setNewColumnType(e.target.value as any)}
-                    className="mt-1 h-11 w-full rounded-lg border border-stone-200 bg-white px-3 text-base outline-none focus:border-stone-400"
+                    className="mt-1 h-11 w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 text-base outline-none focus:border-rf-ink-300"
                   >
                     <option value="text">Text</option>
                     <option value="email">Email</option>
@@ -1766,14 +1766,14 @@ export default function ApplicantsBoard({
                     setAddColumnError(null);
                     setAddAfterColumnId(null);
                   }}
-                  className="h-11 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 hover:bg-stone-50 w-full sm:w-auto"
+                  className="h-11 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page w-full sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={onAddColumn}
                   disabled={isPending || !newColumnName.trim()}
-                  className="h-11 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60 w-full sm:w-auto"
+                  className="h-11 rounded-lg bg-rf-ink-900 px-4 text-sm font-medium text-white hover:bg-rf-ink-700 disabled:opacity-60 w-full sm:w-auto"
                 >
                   Add
                 </button>
@@ -1799,9 +1799,9 @@ export default function ApplicantsBoard({
 
         {/* Bulk action bar */}
         {selectedIds.length > 0 && (
-          <div className="fixed bottom-0 sm:bottom-6 left-0 sm:left-1/2 right-0 sm:right-auto z-50 w-full sm:w-[min(920px,calc(100%-24px))] sm:-translate-x-1/2 rounded-none sm:rounded-xl border-t sm:border border-stone-200 bg-white px-4 py-3 shadow-xl">
+          <div className="fixed bottom-0 sm:bottom-6 left-0 sm:left-1/2 right-0 sm:right-auto z-50 w-full sm:w-[min(920px,calc(100%-24px))] sm:-translate-x-1/2 rounded-none sm:rounded-xl border-t sm:border border-rf-border bg-rf-surface-card px-4 py-3 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm text-stone-700">
+              <div className="text-sm text-rf-ink-700">
                 <span className="font-semibold">{selectedIds.length}</span> selected
               </div>
 
@@ -1812,7 +1812,7 @@ export default function ApplicantsBoard({
                     if (groupId) onMoveToGroup(groupId);
                     e.currentTarget.value = "";
                   }}
-                  className="h-10 rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none"
+                  className="h-10 rounded-lg border border-rf-border bg-rf-surface-card px-3 text-sm outline-none"
                   defaultValue=""
                   disabled={isPending}
                 >
@@ -1829,7 +1829,7 @@ export default function ApplicantsBoard({
                 <button
                   onClick={onBulkDelete}
                   disabled={isPending}
-                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
+                  className="h-10 rounded-lg bg-rf-danger px-4 text-sm font-medium text-white hover:bg-rf-danger disabled:opacity-60"
                 >
                   Delete
                 </button>
@@ -1837,7 +1837,7 @@ export default function ApplicantsBoard({
                 <button
                   onClick={clearSelection}
                   disabled={isPending}
-                  className="h-10 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-60"
+                  className="h-10 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-text-primary hover:bg-rf-surface-page disabled:opacity-60"
                 >
                   Clear
                 </button>
@@ -1911,14 +1911,14 @@ function ApplicantDetailPanel({
       {/* Backdrop */}
       <div className="flex-1 bg-black/20" onClick={onClose} />
       {/* Panel */}
-      <div className="w-96 max-w-full bg-white shadow-2xl border-l border-stone-200 flex flex-col overflow-hidden">
+      <div className="w-96 max-w-full bg-rf-surface-card shadow-2xl border-l border-rf-border flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between shrink-0">
-          <h2 className="text-base font-semibold text-stone-900 truncate">{applicant.full_name || "Applicant"}</h2>
+        <div className="px-5 py-4 border-b border-rf-ink-100 flex items-center justify-between shrink-0">
+          <h2 className="text-base font-semibold text-rf-text-primary truncate">{applicant.full_name || "Applicant"}</h2>
           <button
             onClick={onClose}
             aria-label="Close detail panel"
-            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-rf-surface-page text-rf-text-muted hover:text-rf-ink-700 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -1926,8 +1926,8 @@ function ApplicantDetailPanel({
 
         {/* Stage */}
         {group && (
-          <div className="px-5 py-2.5 border-b border-stone-100 flex items-center gap-2 shrink-0">
-            <span className="text-xs text-stone-400 font-medium">Stage</span>
+          <div className="px-5 py-2.5 border-b border-rf-ink-100 flex items-center gap-2 shrink-0">
+            <span className="text-xs text-rf-text-muted font-medium">Stage</span>
             <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: group.color }}>
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
               {group.name}
@@ -1945,14 +1945,14 @@ function ApplicantDetailPanel({
               const label = labels.find((l) => l.id === cell?.value_status_label_id);
               return (
                 <div key={col.id}>
-                  <p className="text-xs font-medium text-stone-400 mb-1">{col.name}</p>
+                  <p className="text-xs font-medium text-rf-text-muted mb-1">{col.name}</p>
                   {label ? (
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: label.color }} />
-                      <span className="text-sm text-stone-700">{label.label}</span>
+                      <span className="text-sm text-rf-ink-700">{label.label}</span>
                     </div>
                   ) : (
-                    <span className="text-sm text-stone-300">—</span>
+                    <span className="text-sm text-rf-text-muted">—</span>
                   )}
                 </div>
               );
@@ -1969,8 +1969,8 @@ function ApplicantDetailPanel({
 
             return (
               <div key={col.id}>
-                <p className="text-xs font-medium text-stone-400 mb-1">{col.name}</p>
-                <p className="text-sm text-stone-700 break-words">{displayValue ?? <span className="text-stone-300">—</span>}</p>
+                <p className="text-xs font-medium text-rf-text-muted mb-1">{col.name}</p>
+                <p className="text-sm text-rf-ink-700 break-words">{displayValue ?? <span className="text-rf-text-muted">—</span>}</p>
               </div>
             );
           })}
@@ -2094,7 +2094,7 @@ function SortableColumnHeader({
     <th
       ref={setNodeRef}
       style={{ ...style, position: 'relative' }}
-      className={`group py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0 ${
+      className={`group py-2 text-xs font-medium text-rf-ink-700 border-r border-rf-border last:border-r-0 ${
         isCollapsed ? "px-0 w-8" : "px-3"
       }${!isEditing && !isCollapsed && !column.is_system ? " cursor-grab active:cursor-grabbing" : ""}`}
       {...attributes}
@@ -2107,12 +2107,12 @@ function SortableColumnHeader({
               e.stopPropagation();
               onToggleMinimize();
             }}
-            className="text-stone-400 hover:text-stone-700 cursor-pointer text-xs leading-none"
+            className="text-rf-text-muted hover:text-rf-ink-700 cursor-pointer text-xs leading-none"
           >
             ↔
           </button>
           {/* Instant tooltip — drops below header so it's never clipped by thead overflow */}
-          <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 bg-stone-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/collapsed:opacity-100 z-[200]">
+          <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-1 bg-rf-ink-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/collapsed:opacity-100 z-[200]">
             Expand &ldquo;{column.name}&rdquo;
           </div>
         </div>
@@ -2131,7 +2131,7 @@ function SortableColumnHeader({
               onMouseDown={(e) => e.stopPropagation()}
               // Width tracks typed content so the input doesn't occupy more space than needed
               style={{ width: `${Math.max(4, localValue.length + 2)}ch` }}
-              className="h-7 min-w-[3ch] max-w-full rounded border border-stone-300 px-2 text-xs outline-none focus:border-blue-500"
+              className="h-7 min-w-[3ch] max-w-full rounded border border-rf-ink-100 px-2 text-xs outline-none focus:border-rf-blue"
             />
           ) : (
             <>
@@ -2143,7 +2143,7 @@ function SortableColumnHeader({
                   e.stopPropagation();
                   if (!column.is_system) setIsEditing(true);
                 }}
-                className="max-w-full truncate text-left px-1 hover:text-stone-900 cursor-text disabled:cursor-default"
+                className="max-w-full truncate text-left px-1 hover:text-rf-text-primary cursor-text disabled:cursor-default"
                 disabled={column.is_system}
                 title={column.name}
               >
@@ -2159,7 +2159,7 @@ function SortableColumnHeader({
                     e.stopPropagation();
                     setMenuOpen(!menuOpen);
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1 text-stone-500 hover:text-stone-900 cursor-pointer text-sm leading-none"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1 text-rf-text-secondary hover:text-rf-text-primary cursor-pointer text-sm leading-none"
                   aria-label={`${column.name} column options`}
                 >
                   ⋮
@@ -2179,62 +2179,62 @@ function SortableColumnHeader({
             onClick={() => setMenuOpen(false)}
           />
           <div
-            className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden"
+            className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-hidden"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
             }}
           >
             {/* Column name header */}
-            <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">{column.name}</p>
+            <div className="px-4 py-3 border-b border-rf-ink-100 bg-rf-surface-page">
+              <p className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wider truncate">{column.name}</p>
             </div>
 
             {/* Section 1 — layout actions */}
             <div className="py-2">
               <button
                 onClick={() => { onToggleMinimize(); setMenuOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
               >
-                <ChevronsLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <ChevronsLeftRight className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 Minimize column
               </button>
               <button
                 onClick={() => { onAddRight(); setMenuOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
               >
-                <Plus className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <Plus className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 Add column to right
               </button>
             </div>
 
-            <div className="border-t border-stone-100" />
+            <div className="border-t border-rf-ink-100" />
 
             {/* Section 2 — edit actions */}
             <div className="py-2">
               <button
                 onClick={() => { setIsEditing(true); setMenuOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
               >
-                <PencilLine className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <PencilLine className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 Rename column
               </button>
               <button
                 onClick={() => { onWidthReset(); setMenuOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
               >
-                <RotateCcw className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <RotateCcw className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 Reset column width
               </button>
             </div>
 
-            <div className="border-t border-stone-100" />
+            <div className="border-t border-rf-ink-100" />
 
             {/* Section 3 — danger */}
             <div className="py-2">
               <button
                 onClick={() => { onDelete(); setMenuOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors text-left"
               >
                 <Trash2 className="w-4 h-4 flex-shrink-0" />
                 Delete column
@@ -2357,12 +2357,12 @@ function SortableRow({
   cellEls.push(
     <td
       key="__sticky__"
-      className="sticky left-0 z-10 bg-white group-hover:bg-stone-50/60 px-4 py-2 border-r border-stone-100"
+      className="sticky left-0 z-10 bg-rf-surface-card group-hover:bg-rf-surface-page/60 px-4 py-2 border-r border-rf-ink-100"
     >
       <div className="flex items-center gap-2">
         {fadvReady && (
           <span
-            className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap"
+            className="flex-shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rf-blue-tint text-rf-blue border border-rf-blue-tint whitespace-nowrap"
             title="All FADV fields set — ready to submit"
           >
             ✓ FADV
@@ -2372,7 +2372,7 @@ function SortableRow({
           <button
             ref={menuButtonRef}
             onClick={() => setRowMenuOpen(!rowMenuOpen)}
-            className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-stone-700 transition text-sm"
+            className="opacity-0 group-hover:opacity-100 text-rf-text-muted hover:text-rf-ink-700 transition text-sm"
             aria-label="Row options"
           >
             ⋮
@@ -2386,38 +2386,38 @@ function SortableRow({
                 onClick={() => setRowMenuOpen(false)}
               />
               <div
-                className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl overflow-hidden"
+                className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-hidden"
                 style={{
                   top: `${menuPosition.top}px`,
                   left: `${menuPosition.left}px`,
                 }}
               >
                 {/* Applicant name header */}
-                <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">
+                <div className="px-4 py-3 border-b border-rf-ink-100 bg-rf-surface-page">
+                  <p className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wider truncate">
                     {applicant.full_name ?? "Applicant"}
                   </p>
                 </div>
 
                 {/* Open detail panel */}
-                <div className="py-2 border-b border-stone-100">
+                <div className="py-2 border-b border-rf-ink-100">
                   <button
                     onClick={() => { setRowMenuOpen(false); onOpen(); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                   >
-                    <ExternalLink className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                    <ExternalLink className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                     Open
                   </button>
                 </div>
 
                 {/* Section 1 — Move to */}
                 <div className="py-2">
-                  <p className="px-4 py-1.5 text-xs font-semibold text-stone-400 uppercase tracking-wider">Move to</p>
+                  <p className="px-4 py-1.5 text-xs font-semibold text-rf-text-muted uppercase tracking-wider">Move to</p>
                   {groups.map((g) => (
                     <button
                       key={g.id}
                       onClick={() => { onMove(g.id); setRowMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                     >
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
                       {g.name}
@@ -2425,21 +2425,21 @@ function SortableRow({
                   ))}
                 </div>
 
-                <div className="border-t border-stone-100" />
+                <div className="border-t border-rf-ink-100" />
 
                 {/* Section 2 — actions */}
                 <div className="py-2">
                   <button
                     onClick={() => { setRowMenuOpen(false); onDuplicate(); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                   >
-                    <Copy className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                    <Copy className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                     Duplicate
                   </button>
                   {onSendToFadv && (
                     <button
                       onClick={() => { setRowMenuOpen(false); onSendToFadv(); }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-blue hover:bg-rf-blue-tint transition-colors text-left"
                     >
                       <Send className="w-4 h-4 flex-shrink-0" />
                       Send to FADV
@@ -2450,9 +2450,9 @@ function SortableRow({
                       setRowMenuOpen(false);
                       window.location.href = `/dashboard/${companyId}/applicants/${applicant.id}/training`;
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                   >
-                    <GraduationCap className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                    <GraduationCap className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                     Training Progress
                   </button>
                   {applicant.portal_token && (
@@ -2463,21 +2463,21 @@ function SortableRow({
                         );
                         setRowMenuOpen(false);
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
                     >
-                      <Link2 className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                      <Link2 className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                       Copy status link
                     </button>
                   )}
                 </div>
 
-                <div className="border-t border-stone-100" />
+                <div className="border-t border-rf-ink-100" />
 
                 {/* Section 3 — danger */}
                 <div className="py-2">
                   <button
                     onClick={() => { setRowMenuOpen(false); onDelete(); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors text-left"
                   >
                     <Trash2 className="w-4 h-4 flex-shrink-0" />
                     Delete
@@ -2493,12 +2493,12 @@ function SortableRow({
           type="checkbox"
           checked={selected}
           onChange={onToggle}
-          className="h-4 w-4 rounded border-stone-300"
+          className="h-4 w-4 rounded border-rf-ink-100"
         />
 
         <button
           {...listeners}
-          className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 text-xs opacity-0 group-hover:opacity-100"
+          className="cursor-grab active:cursor-grabbing text-rf-text-muted hover:text-rf-ink-500 text-xs opacity-0 group-hover:opacity-100"
           aria-label="Drag to reorder row"
         >
           ⋮⋮
@@ -2515,11 +2515,11 @@ function SortableRow({
     cellEls.push(
       <td
         key={col.id}
-        className={`py-2 border-r border-stone-100 last:border-r-0 relative ${isCollapsed ? "px-1 w-12" : "px-4"}`}
+        className={`py-2 border-r border-rf-ink-100 last:border-r-0 relative ${isCollapsed ? "px-1 w-12" : "px-4"}`}
       >
         {showSampleBadge && (
           <span
-            className="absolute top-1 right-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-stone-100 text-stone-400 border border-dashed border-stone-300 whitespace-nowrap pointer-events-none z-10 italic"
+            className="absolute top-1 right-1.5 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-rf-ink-100 text-rf-text-muted border border-dashed border-rf-ink-100 whitespace-nowrap pointer-events-none z-10 italic"
             title="Sample row — edit any cell to convert this into a real applicant"
           >
             Sample
@@ -2548,8 +2548,8 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`group border-b border-stone-100 hover:bg-stone-50/60 relative ${
-        isSample ? "bg-stone-50/70 opacity-70 hover:opacity-90" : ""
+      className={`group border-b border-rf-ink-100 hover:bg-rf-surface-page/60 relative ${
+        isSample ? "bg-rf-surface-page/70 opacity-70 hover:opacity-90" : ""
       }`}
       {...attributes}
     >
@@ -2691,8 +2691,8 @@ function SortableGroupHeader({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-3 px-3 py-2.5 bg-white
-        border-l-[4px] border-b border-stone-100
+      className={`group flex items-center gap-3 px-3 py-2.5 bg-rf-surface-card
+        border-l-[4px] border-b border-rf-ink-100
         sticky top-0 z-30
         ${isDragging ? "" : "shadow-[0_1px_0_0_rgb(0,0,0,0.04)]"}`}
       {...attributes}
@@ -2700,7 +2700,7 @@ function SortableGroupHeader({
       {/* Drag handle */}
       <button
         {...listeners}
-        className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 text-sm transition-opacity"
+        className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-rf-text-muted hover:text-rf-ink-500 text-sm transition-opacity"
         aria-label="Drag to reorder group"
       >
         ⋮⋮
@@ -2709,7 +2709,7 @@ function SortableGroupHeader({
       {/* Collapse toggle */}
       <button
         onClick={onToggleCollapse}
-        className="text-stone-500 hover:text-stone-800 text-sm"
+        className="text-rf-text-secondary hover:text-rf-text-primary text-sm"
         aria-label={isCollapsed ? `Expand ${group.name} group` : `Collapse ${group.name} group`}
       >
         {isCollapsed ? "▶" : "▼"}
@@ -2727,7 +2727,7 @@ function SortableGroupHeader({
             if (e.key === "Escape") onCancelEdit();
           }}
           style={{ color: group.color, borderColor: group.color }}
-          className="h-7 w-48 rounded border-2 px-2 text-sm font-semibold outline-none bg-white"
+          className="h-7 w-48 rounded border-2 px-2 text-sm font-semibold outline-none bg-rf-surface-card"
           autoFocus
           onFocus={(e) => e.target.select()}
         />
@@ -2742,13 +2742,13 @@ function SortableGroupHeader({
         </button>
       )}
 
-      <span className="text-sm text-stone-400">({rowCount})</span>
+      <span className="text-sm text-rf-text-muted">({rowCount})</span>
 
       {/* Kebab menu button */}
       <button
         ref={menuButtonRef}
         onClick={onMenuToggle}
-        className="opacity-0 group-hover:opacity-100 ml-1 p-1 rounded hover:bg-stone-100 text-stone-500 hover:text-stone-800 transition-opacity"
+        className="opacity-0 group-hover:opacity-100 ml-1 p-1 rounded hover:bg-rf-surface-page text-rf-text-secondary hover:text-rf-text-primary transition-opacity"
         title="Group actions"
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -2760,10 +2760,10 @@ function SortableGroupHeader({
       {isEditing && clientMounted && pickerPos.top > 0 && createPortal(
         <div
           style={{ position: "fixed", top: pickerPos.top, left: pickerPos.left, zIndex: 9999 }}
-          className="rounded-xl border border-stone-200 bg-white p-2.5 shadow-xl"
+          className="rounded-xl border border-rf-border bg-rf-surface-card p-2.5 shadow-xl"
           onMouseDown={(e) => e.preventDefault()} // keep input focused when clicking colors
         >
-          <p className="text-[10px] font-medium text-stone-400 uppercase tracking-wide mb-2 px-0.5">
+          <p className="text-[10px] font-medium text-rf-text-muted uppercase tracking-wide mb-2 px-0.5">
             Group color
           </p>
           <div className="grid grid-cols-8 gap-1.5">
@@ -2773,7 +2773,7 @@ function SortableGroupHeader({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => onColorChange(color)}
                 className={`h-6 w-6 rounded-full border-2 transition-transform hover:scale-110 ${
-                  group.color === color ? "border-stone-700 scale-110" : "border-transparent"
+                  group.color === color ? "border-rf-ink-700 scale-110" : "border-transparent"
                 }`}
                 style={{ backgroundColor: color }}
                 title={color}
@@ -2792,7 +2792,7 @@ function SortableGroupHeader({
             onClick={onMenuToggle}
           />
           <div
-            className="fixed z-[999] w-64 rounded-xl border border-stone-200 bg-white shadow-2xl flex flex-col"
+            className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl flex flex-col"
             style={{
               top: menuPosition.top != null ? `${menuPosition.top}px` : undefined,
               bottom: menuPosition.bottom != null ? `${menuPosition.bottom}px` : undefined,
@@ -2801,8 +2801,8 @@ function SortableGroupHeader({
             }}
           >
             {/* Group name header */}
-            <div className="px-4 py-3 border-b border-stone-100 bg-stone-50 flex-shrink-0 rounded-t-xl">
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider truncate">{group.name}</p>
+            <div className="px-4 py-3 border-b border-rf-ink-100 bg-rf-surface-page flex-shrink-0 rounded-t-xl">
+              <p className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wider truncate">{group.name}</p>
             </div>
 
             {/* Scrollable body */}
@@ -2813,16 +2813,16 @@ function SortableGroupHeader({
               {/* Collapsible "Columns" accordion header */}
               <button
                 onClick={() => setShowColumnsSection((v) => !v)}
-                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
               >
-                <Eye className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <Eye className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 <span className="flex-1 font-medium">Columns</span>
                 {allColumns.filter((c) => !c.is_system && c.is_hidden).length > 0 && (
-                  <span className="text-[10px] font-semibold bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 leading-none">
+                  <span className="text-[10px] font-semibold bg-rf-blue-tint text-rf-blue rounded-full px-1.5 py-0.5 leading-none">
                     {allColumns.filter((c) => !c.is_system && c.is_hidden).length} hidden
                   </span>
                 )}
-                <span className="text-xs text-stone-400 ml-1">{showColumnsSection ? "▲" : "▼"}</span>
+                <span className="text-xs text-rf-text-muted ml-1">{showColumnsSection ? "▲" : "▼"}</span>
               </button>
 
               {/* Expanded: per-column checkboxes */}
@@ -2831,19 +2831,19 @@ function SortableGroupHeader({
                   {allColumns.filter((col) => !col.is_system).map((col) => (
                     <label
                       key={col.id}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 cursor-pointer"
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page cursor-pointer"
                     >
                       {col.is_hidden ? (
-                        <EyeOff className="w-4 h-4 text-stone-300 flex-shrink-0" />
+                        <EyeOff className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                       ) : (
-                        <Eye className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                        <Eye className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                       )}
-                      <span className={col.is_hidden ? "text-stone-400" : ""}>{col.name}</span>
+                      <span className={col.is_hidden ? "text-rf-text-muted" : ""}>{col.name}</span>
                       <input
                         type="checkbox"
                         checked={!col.is_hidden}
                         onChange={() => col.is_hidden ? onShowColumn(col.id) : onHideColumn(col.id)}
-                        className="ml-auto h-4 w-4 rounded border-stone-300 text-blue-600 cursor-pointer"
+                        className="ml-auto h-4 w-4 rounded border-rf-ink-100 text-rf-blue cursor-pointer"
                       />
                     </label>
                   ))}
@@ -2851,41 +2851,41 @@ function SortableGroupHeader({
               )}
 
               {/* Minimize / expand width shortcuts */}
-              <div className="border-t border-stone-100 mt-1 pt-1">
+              <div className="border-t border-rf-ink-100 mt-1 pt-1">
                 <button
                   onClick={onMinimizeAll}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rf-ink-500 hover:bg-rf-surface-page transition-colors text-left"
                 >
-                  <ChevronsLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                  <ChevronsLeftRight className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                   Minimize all
                 </button>
                 <button
                   onClick={onExpandAll}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-600 hover:bg-stone-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rf-ink-500 hover:bg-rf-surface-page transition-colors text-left"
                 >
-                  <ArrowLeftRight className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                  <ArrowLeftRight className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                   Expand all
                 </button>
               </div>
             </div>
 
-            <div className="border-t border-stone-100" />
+            <div className="border-t border-rf-ink-100" />
 
             {/* Section 2 — edit */}
             <div className="py-2">
               <button
                 onClick={onRename}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
               >
-                <PencilLine className="w-4 h-4 text-stone-400 flex-shrink-0" />
+                <PencilLine className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 Rename
               </button>
             </div>
 
             {/* Section 3 — applicant portal settings */}
-            <div className="border-t border-stone-100" />
+            <div className="border-t border-rf-ink-100" />
             <div className="px-4 py-3 space-y-3">
-              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider">Applicant Portal</p>
+              <p className="text-xs font-semibold text-rf-text-muted uppercase tracking-wider">Applicant Portal</p>
 
               {/* Visibility toggle */}
               <label className="flex items-center gap-2.5 cursor-pointer">
@@ -2893,9 +2893,9 @@ function SortableGroupHeader({
                   type="checkbox"
                   checked={group.visible_to_applicants !== false}
                   onChange={(e) => onUpdatePortalVisibility(e.target.checked)}
-                  className="w-4 h-4 rounded border-stone-300 text-blue-600"
+                  className="w-4 h-4 rounded border-rf-ink-100 text-rf-blue"
                 />
-                <span className="text-sm text-stone-700">Show this step to applicants</span>
+                <span className="text-sm text-rf-ink-700">Show this step to applicants</span>
               </label>
 
               {group.visible_to_applicants !== false && (
@@ -2903,7 +2903,7 @@ function SortableGroupHeader({
                   {/* Note */}
                   <textarea
                     rows={2}
-                    className="w-full text-xs border border-stone-200 rounded-lg px-2.5 py-2 resize-none placeholder:text-stone-400 focus:outline-none focus:border-blue-300"
+                    className="w-full text-xs border border-rf-border rounded-lg px-2.5 py-2 resize-none placeholder:text-rf-text-muted focus:outline-none focus:border-rf-blue-tint"
                     placeholder="Note shown to applicants at this step…"
                     defaultValue={group.applicant_note ?? ""}
                     onBlur={(e) => onUpdatePortalNote(e.target.value.trim())}
@@ -2911,7 +2911,7 @@ function SortableGroupHeader({
 
                   {/* Completion requirements */}
                   <div>
-                    <p className="text-xs font-medium text-stone-500 mb-2">Completion requirements</p>
+                    <p className="text-xs font-medium text-rf-text-secondary mb-2">Completion requirements</p>
                     <div className="space-y-2">
                       {(group.settings?.portal_checklist ?? []).map((item, idx) => {
                         const itemLabels = labelsByColumn.get(item.column_id) ?? [];
@@ -2919,7 +2919,7 @@ function SortableGroupHeader({
                         const dateColumns = columns.filter((c) => c.type === "date");
                         const isStatusCol = col?.type === "status";
                         return (
-                          <div key={item.id} className="rounded-lg border border-stone-200 bg-stone-50 p-2 space-y-1.5">
+                          <div key={item.id} className="rounded-lg border border-rf-border bg-rf-surface-page p-2 space-y-1.5">
                             {/* Column picker + remove */}
                             <div className="flex items-center gap-1.5">
                               <select
@@ -2930,7 +2930,7 @@ function SortableGroupHeader({
                                   );
                                   onUpdatePortalChecklist(next);
                                 }}
-                                className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                                className="flex-1 min-w-0 text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:border-rf-blue-tint"
                               >
                                 {columns.map((c) => (
                                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -2941,7 +2941,7 @@ function SortableGroupHeader({
                                   const next = (group.settings?.portal_checklist ?? []).filter((_, i) => i !== idx);
                                   onUpdatePortalChecklist(next);
                                 }}
-                                className="flex-shrink-0 text-stone-400 hover:text-red-500 transition-colors text-base leading-none px-0.5"
+                                className="flex-shrink-0 text-rf-text-muted hover:text-rf-danger transition-colors text-base leading-none px-0.5"
                                 title="Remove"
                               >
                                 ×
@@ -2958,7 +2958,7 @@ function SortableGroupHeader({
                                     );
                                     onUpdatePortalChecklist(next);
                                   }}
-                                  className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                                  className="flex-1 min-w-0 text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:border-rf-blue-tint"
                                 >
                                   <option value="">any value</option>
                                   {itemLabels.map((l) => (
@@ -2973,7 +2973,7 @@ function SortableGroupHeader({
                                     );
                                     onUpdatePortalChecklist(next);
                                   }}
-                                  className="flex-1 min-w-0 text-xs border border-stone-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:border-blue-300"
+                                  className="flex-1 min-w-0 text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:border-rf-blue-tint"
                                 >
                                   <option value="">+ date</option>
                                   {dateColumns.map((c) => (
@@ -2997,7 +2997,7 @@ function SortableGroupHeader({
                         };
                         onUpdatePortalChecklist([...(group.settings?.portal_checklist ?? []), newItem]);
                       }}
-                      className="mt-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      className="mt-1.5 text-xs text-rf-blue hover:text-blue-800 font-medium"
                     >
                       + Add requirement
                     </button>
@@ -3008,11 +3008,11 @@ function SortableGroupHeader({
 
             {canDelete && (
               <>
-                <div className="border-t border-stone-100" />
+                <div className="border-t border-rf-ink-100" />
                 <div className="py-2">
                   <button
                     onClick={onDelete}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors text-left"
                   >
                     <Trash2 className="w-4 h-4 flex-shrink-0" />
                     Delete
@@ -3060,34 +3060,34 @@ function FileSvgIcon({ type }: { type: string }) {
   // PDF
   if (type === "application/pdf")
     return (
-      <svg className="h-4 w-4 flex-shrink-0 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+      <svg className="h-4 w-4 flex-shrink-0 text-rf-danger" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
       </svg>
     );
   // Word / DOC / DOCX
   if (type.includes("word") || type.includes("msword"))
     return (
-      <svg className="h-4 w-4 flex-shrink-0 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+      <svg className="h-4 w-4 flex-shrink-0 text-rf-blue" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
       </svg>
     );
   // Excel / CSV / Sheets
   if (type.includes("sheet") || type.includes("excel") || type === "text/csv")
     return (
-      <svg className="h-4 w-4 flex-shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+      <svg className="h-4 w-4 flex-shrink-0 text-rf-success" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clipRule="evenodd" />
       </svg>
     );
   // Images
   if (type.startsWith("image/"))
     return (
-      <svg className="h-4 w-4 flex-shrink-0 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+      <svg className="h-4 w-4 flex-shrink-0 text-rf-blue" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
       </svg>
     );
   // Generic
   return (
-    <svg className="h-4 w-4 flex-shrink-0 text-stone-400" viewBox="0 0 20 20" fill="currentColor">
+    <svg className="h-4 w-4 flex-shrink-0 text-rf-text-muted" viewBox="0 0 20 20" fill="currentColor">
       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
     </svg>
   );
@@ -3170,7 +3170,7 @@ function FileViewer({
           {current && <FileSvgIcon type={current.type} />}
           <span className="truncate text-sm font-medium text-white">{current?.name ?? "File"}</span>
           {files.length > 1 && (
-            <span className="ml-1 flex-shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-xs text-white/60">
+            <span className="ml-1 flex-shrink-0 rounded bg-rf-surface-card/10 px-1.5 py-0.5 text-xs text-white/60">
               {index + 1} / {files.length}
             </span>
           )}
@@ -3184,7 +3184,7 @@ function FileViewer({
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.max(0.25, z - 0.25))}
-                className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded p-1.5 text-white/70 transition-colors hover:bg-rf-surface-card/10 hover:text-white"
                 title="Zoom out"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3195,7 +3195,7 @@ function FileViewer({
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.min(4, z + 0.25))}
-                className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded p-1.5 text-white/70 transition-colors hover:bg-rf-surface-card/10 hover:text-white"
                 title="Zoom in"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3207,13 +3207,13 @@ function FileViewer({
                 <button
                   type="button"
                   onClick={() => setZoom(1)}
-                  className="rounded px-2 py-1 text-xs text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                  className="rounded px-2 py-1 text-xs text-white/60 transition-colors hover:bg-rf-surface-card/10 hover:text-white"
                   title="Reset zoom"
                 >
                   {Math.round(zoom * 100)}%
                 </button>
               )}
-              <div className="mx-1 h-4 w-px bg-white/20" />
+              <div className="mx-1 h-4 w-px bg-rf-surface-card/20" />
             </>
           )}
           {/* Print */}
@@ -3224,7 +3224,7 @@ function FileViewer({
                 const win = window.open(url, "_blank");
                 win?.print();
               }}
-              className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              className="rounded p-1.5 text-white/70 transition-colors hover:bg-rf-surface-card/10 hover:text-white"
               title="Print"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3238,7 +3238,7 @@ function FileViewer({
             <a
               href={url}
               download={current?.name}
-              className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              className="rounded p-1.5 text-white/70 transition-colors hover:bg-rf-surface-card/10 hover:text-white"
               title="Download"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3260,7 +3260,7 @@ function FileViewer({
                   setIndex((i) => Math.min(i, files.length - 2));
                 }
               }}
-              className="rounded p-1.5 text-white/70 transition-colors hover:bg-red-500/80 hover:text-white"
+              className="rounded p-1.5 text-white/70 transition-colors hover:bg-rf-danger/80 hover:text-white"
               title="Delete file"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3269,12 +3269,12 @@ function FileViewer({
               </svg>
             </button>
           )}
-          <div className="mx-1 h-4 w-px bg-white/20" />
+          <div className="mx-1 h-4 w-px bg-rf-surface-card/20" />
           {/* Close */}
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            className="rounded p-1.5 text-white/70 transition-colors hover:bg-rf-surface-card/10 hover:text-white"
             aria-label="Close"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3331,7 +3331,7 @@ function FileViewer({
               <a
                 href={url}
                 download={current?.name}
-                className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-stone-900 transition-colors hover:bg-stone-100"
+                className="rounded-lg bg-rf-surface-card px-4 py-2 text-sm font-medium text-rf-text-primary transition-colors hover:bg-rf-surface-page"
               >
                 Download {current?.name}
               </a>
@@ -3366,7 +3366,7 @@ function FileViewer({
               type="button"
               onClick={() => setIndex(i)}
               className={`h-2 rounded-full transition-all ${
-                i === index ? "w-5 bg-white" : "w-2 bg-white/30 hover:bg-white/60"
+                i === index ? "w-5 bg-rf-surface-card" : "w-2 bg-rf-surface-card/30 hover:bg-rf-surface-card/60"
               }`}
               aria-label={`Go to file ${i + 1}`}
             />
@@ -3525,8 +3525,8 @@ function FileCell({
     return (
       <div className="flex h-8 w-full items-center gap-2 px-1">
         {hiddenInput}
-        <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-stone-200 border-t-blue-500" />
-        <span className="truncate text-xs text-stone-500">Uploading…</span>
+        <div className="h-4 w-4 flex-shrink-0 animate-spin rounded-full border-2 border-rf-border border-t-blue-500" />
+        <span className="truncate text-xs text-rf-text-secondary">Uploading…</span>
       </div>
     );
   }
@@ -3547,13 +3547,13 @@ function FileCell({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onPaste={handlePaste}
-        className={`group/fcell relative flex h-8 w-full cursor-pointer items-center rounded px-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-          isDragOver ? "bg-blue-50 ring-1 ring-inset ring-blue-300" : "hover:bg-stone-50"
+        className={`group/fcell relative flex h-8 w-full cursor-pointer items-center rounded px-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-blue ${
+          isDragOver ? "bg-rf-blue-tint ring-1 ring-inset ring-blue-300" : "hover:bg-rf-surface-page"
         }`}
       >
         {hiddenInput}
         <svg
-          className={`h-4 w-4 text-stone-400 transition-opacity ${
+          className={`h-4 w-4 text-rf-text-muted transition-opacity ${
             isDragOver ? "opacity-100" : "opacity-0 group-hover/fcell:opacity-100 group-focus/fcell:opacity-100"
           }`}
           fill="none"
@@ -3565,7 +3565,7 @@ function FileCell({
             d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
         </svg>
         {uploadError && (
-          <span className="ml-1 truncate text-xs text-red-500" title={uploadError}>{uploadError}</span>
+          <span className="ml-1 truncate text-xs text-rf-danger" title={uploadError}>{uploadError}</span>
         )}
       </div>
     );
@@ -3576,7 +3576,7 @@ function FileCell({
   return (
     <div
       className={`group/fcell relative flex h-8 w-full items-center gap-1 rounded px-1 transition-colors ${
-        isDragOver ? "bg-blue-50 ring-1 ring-inset ring-blue-300" : "hover:bg-stone-50"
+        isDragOver ? "bg-rf-blue-tint ring-1 ring-inset ring-blue-300" : "hover:bg-rf-surface-page"
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -3593,9 +3593,9 @@ function FileCell({
         title={firstFile.name}
       >
         <FileSvgIcon type={firstFile.type} />
-        <span className="truncate text-xs text-stone-700">{firstFile.name}</span>
+        <span className="truncate text-xs text-rf-ink-700">{firstFile.name}</span>
         {extraCount > 0 && (
-          <span className="ml-0.5 flex-shrink-0 rounded bg-stone-200 px-1 py-0.5 text-[10px] font-medium leading-none text-stone-600">
+          <span className="ml-0.5 flex-shrink-0 rounded bg-rf-ink-100 px-1 py-0.5 text-[10px] font-medium leading-none text-rf-ink-500">
             +{extraCount}
           </span>
         )}
@@ -3607,7 +3607,7 @@ function FileCell({
         <button
           type="button"
           onClick={openPicker}
-          className="rounded p-0.5 text-stone-400 transition-colors hover:bg-stone-200 hover:text-stone-700"
+          className="rounded p-0.5 text-rf-text-muted transition-colors hover:bg-rf-ink-100 hover:text-rf-ink-700"
           title="Add file"
           aria-label="Add file"
         >
@@ -3618,7 +3618,7 @@ function FileCell({
       </div>
 
       {uploadError && (
-        <span className="ml-1 flex-shrink-0 text-xs text-red-500" title={uploadError}>!</span>
+        <span className="ml-1 flex-shrink-0 text-xs text-rf-danger" title={uploadError}>!</span>
       )}
 
       {/* File viewer */}
@@ -3672,7 +3672,7 @@ function CellRenderer({
   // Per-group collapsed state takes priority; fall back to legacy column-level setting
   const isCollapsed = isCollapsedProp ?? column.settings?.ui?.collapsed ?? false;
   if (isCollapsed) {
-    return <span className="text-xs text-stone-400">—</span>;
+    return <span className="text-xs text-rf-text-muted">—</span>;
   }
 
   // Commit the edit to server
@@ -3711,7 +3711,7 @@ function CellRenderer({
 
   if (column.is_system) {
     if (column.type === "text") {
-      return <span className="text-sm text-stone-700 truncate" title={value || undefined}>{value || "—"}</span>;
+      return <span className="text-sm text-rf-ink-700 truncate" title={value || undefined}>{value || "—"}</span>;
     }
     if (column.type === "status") {
       const selectedLabel = labels.find((l) => l.label.toLowerCase() === value?.toLowerCase());
@@ -3720,11 +3720,11 @@ function CellRenderer({
           {selectedLabel && (
             <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: selectedLabel.color }} />
           )}
-          <span className="text-sm text-stone-700 truncate" title={value || undefined}>{value || "—"}</span>
+          <span className="text-sm text-rf-ink-700 truncate" title={value || undefined}>{value || "—"}</span>
         </div>
       );
     }
-    return <span className="text-sm text-stone-700 truncate" title={value || undefined}>{value || "—"}</span>;
+    return <span className="text-sm text-rf-ink-700 truncate" title={value || undefined}>{value || "—"}</span>;
   }
 
   if (column.type === "text") {
@@ -3737,13 +3737,13 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-rf-border focus:border-rf-blue"
           placeholder="—"
           title={localValue || undefined}
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
           </div>
         )}
       </div>
@@ -3760,12 +3760,12 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-rf-border focus:border-rf-blue"
           placeholder="—"
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
           </div>
         )}
       </div>
@@ -3782,11 +3782,11 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-rf-border focus:border-rf-blue"
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
           </div>
         )}
       </div>
@@ -3822,13 +3822,13 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-rf-border focus:border-rf-blue"
           placeholder="City, State"
           title={localValue || undefined}
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
           </div>
         )}
       </div>
@@ -3856,12 +3856,12 @@ function CellRenderer({
           onFocus={() => setIsEditing(true)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-blue-200 focus:border-blue-500 bg-blue-50/30"
+          className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-rf-blue-tint focus:border-rf-blue bg-rf-blue-tint/30"
           placeholder={placeholders[column.type] ?? "—"}
         />
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
           </div>
         )}
       </div>
@@ -3881,8 +3881,8 @@ function CellRenderer({
         <div
           className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${
             checked
-              ? "bg-green-500"
-              : "border-2 border-stone-300 hover:border-stone-400 bg-white"
+              ? "bg-rf-success"
+              : "border-2 border-rf-ink-100 hover:border-rf-ink-300 bg-rf-surface-card"
           }`}
         >
           {checked && (
@@ -3892,7 +3892,7 @@ function CellRenderer({
           )}
         </div>
         {isPending && (
-          <div className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-green-500" />
+          <div className="ml-1 h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-green-500" />
         )}
       </button>
     );
@@ -3911,7 +3911,7 @@ function CellRenderer({
     );
   }
 
-  return <span className="text-stone-300">—</span>;
+  return <span className="text-rf-text-muted">—</span>;
 }
 
 // ===== Email Cell — validates before saving, shows inline error =====
@@ -3980,20 +3980,20 @@ function EmailCell({
         onFocus={() => { setIsEditing(true); setLocalValue(value ?? ""); }}
         onBlur={commitEmailEdit}
         onKeyDown={handleKeyDown}
-        className={`h-8 w-full rounded border px-2 text-[16px] md:text-sm outline-none transition-colors hover:border-stone-200 focus:border-blue-500 ${
-          error ? "border-red-400 bg-red-50 focus:border-red-500" : "border-transparent"
+        className={`h-8 w-full rounded border px-2 text-[16px] md:text-sm outline-none transition-colors hover:border-rf-border focus:border-rf-blue ${
+          error ? "border-red-400 bg-rf-danger-bg focus:border-red-500" : "border-transparent"
         }`}
         placeholder="email@example.com"
         title={!isEditing && value ? value : undefined}
       />
       {error && (
-        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
+        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-rf-danger-bg px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
           {error}
         </div>
       )}
       {isPending && !error && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2">
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
         </div>
       )}
     </div>
@@ -4072,20 +4072,20 @@ function PhoneCell({
         }}
         onBlur={commitPhoneEdit}
         onKeyDown={handleKeyDown}
-        className={`h-8 w-full rounded border px-2 text-[16px] md:text-sm outline-none transition-colors hover:border-stone-200 focus:border-blue-500 ${
-          error ? "border-red-400 bg-red-50 focus:border-red-500" : "border-transparent"
+        className={`h-8 w-full rounded border px-2 text-[16px] md:text-sm outline-none transition-colors hover:border-rf-border focus:border-rf-blue ${
+          error ? "border-red-400 bg-rf-danger-bg focus:border-red-500" : "border-transparent"
         }`}
         placeholder="+15551234567"
         title={!isEditing && value ? value : undefined}
       />
       {error && (
-        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
+        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-rf-danger-bg px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
           {error}
         </div>
       )}
       {isPending && !error && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2">
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
         </div>
       )}
     </div>
@@ -4290,12 +4290,12 @@ function StatusLabelsEditor({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
-      <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-[10px] border border-stone-200 bg-white p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-stone-900">Edit Labels</h3>
+      <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-[10px] border border-rf-border bg-rf-surface-card p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+        <h3 className="text-lg font-semibold text-rf-text-primary">Edit Labels</h3>
 
         {/* Error message */}
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+          <div className="mt-4 p-3 bg-rf-danger-bg border border-red-200 rounded-lg text-sm text-rf-danger">
             {error}
           </div>
         )}
@@ -4315,7 +4315,7 @@ function StatusLabelsEditor({
           {localLabels.map((label) => {
             const isFallback = fallbackLabel?.id === label.id;
             return (
-            <div key={label.id} className="group flex items-center gap-2 py-1 px-1.5 rounded-lg hover:bg-stone-50 transition-colors min-w-0">
+            <div key={label.id} className="group flex items-center gap-2 py-1 px-1.5 rounded-lg hover:bg-rf-surface-page transition-colors min-w-0">
                 <ColorPicker
                   size="sm"
                   value={editValues[label.id]?.color || label.color}
@@ -4361,11 +4361,11 @@ function StatusLabelsEditor({
                       e.currentTarget.blur();
                     }
                   }}
-                  className="min-w-0 flex-1 px-1.5 py-0.5 text-sm text-stone-900 bg-transparent border border-transparent rounded hover:border-stone-200 focus:border-blue-500 focus:bg-white outline-none transition-colors"
+                  className="min-w-0 flex-1 px-1.5 py-0.5 text-sm text-rf-text-primary bg-transparent border border-transparent rounded hover:border-rf-border focus:border-rf-blue focus:bg-rf-surface-card outline-none transition-colors"
                   placeholder="Label name"
                 />
                 {isFallback && (
-                  <span className="shrink-0 px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                  <span className="shrink-0 px-1.5 py-0.5 text-xs font-medium bg-rf-blue-tint text-rf-blue rounded">
                     Default
                   </span>
                 )}
@@ -4373,7 +4373,7 @@ function StatusLabelsEditor({
                   <button
                     type="button"
                     onClick={() => onDeleteLabel(label.id)}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-red-600 transition-all"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-rf-text-muted hover:text-rf-danger transition-all"
                     title="Delete label"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4389,7 +4389,7 @@ function StatusLabelsEditor({
         {/* "Add new label" row — hidden and replaced with a message when all 25 palette
             colors are already in use. This makes the constraint obvious without an error. */}
         {allColorsUsed ? (
-          <div className="mt-4 rounded-[10px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="mt-4 rounded-[10px] border border-amber-200 bg-rf-warning-bg px-4 py-3 text-sm text-rf-warning">
             All colors are in use. Delete a label or change an existing label&apos;s color to add more.
           </div>
         ) : (
@@ -4397,7 +4397,7 @@ function StatusLabelsEditor({
             {/* Color swatch shows the auto-selected next-available color.
                 Clicking the swatch focuses the input, which opens the color picker below.
                 onMouseDown:preventDefault keeps focus when clicking the swatch. */}
-            <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-stone-300 bg-stone-50">
+            <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-rf-ink-100 bg-rf-surface-page">
               {/* Popover ColorPicker — floats over content, no layout shift.
                   Color is pre-selected via getNextAvailableColor(); clicking the swatch
                   is optional. disabledColors prevents choosing a color already in use. */}
@@ -4417,21 +4417,21 @@ function StatusLabelsEditor({
                   }
                 }}
                 placeholder="New label"
-                className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg outline-none focus:border-blue-500 transition-colors"
+                className="flex-1 px-3 py-2 text-sm bg-rf-surface-card border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors"
               />
               {/* Disabled when: pending, no name, or chosen color is somehow already taken. */}
               <button
                 type="button"
                 onClick={onAddLabel}
                 disabled={isPending || !newLabel.trim() || !isNewColorValid}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                className="px-4 py-2 bg-rf-blue text-white text-sm font-medium rounded-[10px] hover:bg-rf-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 Add
               </button>
             </div>
             {/* Race-condition hint — shown below the add row, not inside the picker */}
             {colorHint && (
-              <p className="mt-1 ml-12 text-xs text-amber-700">{colorHint}</p>
+              <p className="mt-1 ml-12 text-xs text-rf-warning">{colorHint}</p>
             )}
           </>
         )}
@@ -4441,7 +4441,7 @@ function StatusLabelsEditor({
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors shadow-sm"
+            className="px-6 py-2 bg-rf-blue text-white text-sm font-medium rounded-[10px] hover:bg-rf-blue-dark transition-colors shadow-sm"
           >
             Done
           </button>

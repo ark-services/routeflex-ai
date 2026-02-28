@@ -32,9 +32,9 @@ interface HistoryTabProps {
 function getStatusIcon(status: string) {
   switch (status) {
     case "success":
-      return <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />;
+      return <CheckCircle className="w-4 h-4 text-rf-success flex-shrink-0" />;
     case "failed":
-      return <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />;
+      return <XCircle className="w-4 h-4 text-rf-danger flex-shrink-0" />;
     case "skipped":
       return <MinusCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />;
     default:
@@ -45,9 +45,9 @@ function getStatusIcon(status: string) {
 function getStatusColor(status: string) {
   switch (status) {
     case "success":
-      return "bg-green-50 text-green-700 border-green-200";
+      return "bg-rf-success-bg text-rf-success border-green-200";
     case "failed":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "bg-rf-danger-bg text-red-700 border-red-200";
     case "skipped":
       return "bg-gray-50 text-gray-600 border-gray-200";
     default:
@@ -132,7 +132,7 @@ export function HistoryTab({ companyId, jobId, automations }: HistoryTabProps) {
         {runs.map((run) => {
           const isExpanded = expandedRuns.has(run.id);
           return (
-            <div key={run.id} className="bg-white hover:bg-gray-50/50 transition-colors">
+            <div key={run.id} className="bg-rf-surface-card hover:bg-gray-50/50 transition-colors">
               <button
                 onClick={() => toggleExpanded(run.id)}
                 className="w-full text-left p-3"
@@ -184,7 +184,7 @@ export function HistoryTab({ companyId, jobId, automations }: HistoryTabProps) {
                   {run.error && (
                     <div className="text-xs">
                       <p className="font-medium text-red-700">Error:</p>
-                      <p className="text-red-600 mt-1 bg-red-50 p-2 rounded">{run.error}</p>
+                      <p className="text-rf-danger mt-1 bg-rf-danger-bg p-2 rounded">{run.error}</p>
                     </div>
                   )}
 
@@ -197,8 +197,8 @@ export function HistoryTab({ companyId, jobId, automations }: HistoryTabProps) {
                             key={idx}
                             className={`p-2 rounded text-xs ${
                               result.status === "success"
-                                ? "bg-green-50 text-green-700"
-                                : "bg-red-50 text-red-700"
+                                ? "bg-rf-success-bg text-rf-success"
+                                : "bg-rf-danger-bg text-red-700"
                             }`}
                           >
                             <div className="flex items-center justify-between">

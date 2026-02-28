@@ -117,15 +117,15 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
       />
 
       {/* Panel */}
-      <div className="relative z-10 w-full max-w-md bg-white rounded-xl shadow-xl border border-stone-200 overflow-hidden">
+      <div className="relative z-10 w-full max-w-md bg-rf-surface-card rounded-xl shadow-xl border border-rf-border overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
-          <h2 className="text-base font-semibold text-stone-900">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-rf-ink-100">
+          <h2 className="text-base font-semibold text-rf-text-primary">
             Save as Template
           </h2>
           <button
             onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-stone-100 transition-colors text-stone-400 hover:text-stone-600"
+            className="p-1.5 rounded-lg hover:bg-rf-surface-page transition-colors text-rf-text-muted hover:text-rf-ink-500"
           >
             <X className="h-4 w-4" />
           </button>
@@ -138,8 +138,8 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
             <div
               className={`flex items-start gap-2 px-3 py-2.5 rounded-lg text-sm ${
                 toast.type === "success"
-                  ? "bg-green-50 border border-green-200 text-green-800"
-                  : "bg-red-50 border border-red-200 text-red-800"
+                  ? "bg-rf-success-bg border border-green-200 text-rf-success"
+                  : "bg-rf-danger-bg border border-red-200 text-rf-danger"
               }`}
             >
               {toast.type === "success" ? (
@@ -154,14 +154,14 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
           {!done && (
             <>
               {/* Mode toggle */}
-              <div className="flex rounded-lg border border-stone-200 overflow-hidden">
+              <div className="flex rounded-lg border border-rf-border overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setMode("existing")}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
                     mode === "existing"
-                      ? "bg-blue-600 text-white"
-                      : "bg-white text-stone-600 hover:bg-stone-50"
+                      ? "bg-rf-blue text-white"
+                      : "bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page"
                   }`}
                 >
                   <BookTemplate className="h-3.5 w-3.5" />
@@ -170,10 +170,10 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
                 <button
                   type="button"
                   onClick={() => setMode("new")}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium transition-colors border-l border-stone-200 ${
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium transition-colors border-l border-rf-border ${
                     mode === "new"
-                      ? "bg-blue-600 text-white"
-                      : "bg-white text-stone-600 hover:bg-stone-50"
+                      ? "bg-rf-blue text-white"
+                      : "bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page"
                   }`}
                 >
                   <PlusCircle className="h-3.5 w-3.5" />
@@ -184,21 +184,21 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
               {/* Existing template selector */}
               {mode === "existing" && (
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                  <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
                     Select template
                   </label>
                   {loadingTemplates ? (
-                    <div className="flex items-center gap-2 text-sm text-stone-500 py-2">
+                    <div className="flex items-center gap-2 text-sm text-rf-text-secondary py-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading templates…
                     </div>
                   ) : templates.length === 0 ? (
-                    <p className="text-sm text-stone-500">
+                    <p className="text-sm text-rf-text-secondary">
                       No templates yet.{" "}
                       <button
                         type="button"
                         onClick={() => setMode("new")}
-                        className="text-blue-600 hover:underline"
+                        className="text-rf-blue hover:underline"
                       >
                         Create one.
                       </button>
@@ -207,7 +207,7 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
                     <select
                       value={selectedTemplateId}
                       onChange={(e) => setSelectedTemplateId(e.target.value)}
-                      className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full rounded-lg border border-rf-border px-3 py-2 text-sm text-rf-text-primary focus:outline-none focus:ring-2 focus:ring-rf-blue bg-rf-surface-card"
                     >
                       <option value="">Choose a template…</option>
                       {templates.map((t) => (
@@ -218,7 +218,7 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
                       ))}
                     </select>
                   )}
-                  <p className="mt-1.5 text-xs text-stone-400">
+                  <p className="mt-1.5 text-xs text-rf-text-muted">
                     This will overwrite the selected template's layout with the current job's groups, columns, and automations.
                   </p>
                 </div>
@@ -228,19 +228,19 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
               {mode === "new" && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">
-                      Template title <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1">
+                      Template title <span className="text-rf-danger">*</span>
                     </label>
                     <input
                       type="text"
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
                       placeholder="e.g. FedEx Package Handler"
-                      className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-lg border border-rf-border px-3 py-2 text-sm text-rf-text-primary focus:outline-none focus:ring-2 focus:ring-rf-blue"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1">
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1">
                       Description
                     </label>
                     <textarea
@@ -248,7 +248,7 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
                       onChange={(e) => setNewDescription(e.target.value)}
                       rows={2}
                       placeholder="Brief description for the Template Center"
-                      className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full rounded-lg border border-rf-border px-3 py-2 text-sm text-rf-text-primary focus:outline-none focus:ring-2 focus:ring-rf-blue resize-none"
                     />
                   </div>
                 </div>
@@ -261,22 +261,22 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
                     type="checkbox"
                     checked={includeSeedRows}
                     onChange={(e) => setIncludeSeedRows(e.target.checked)}
-                    className="h-4 w-4 rounded border-stone-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 rounded border-rf-ink-100 text-rf-blue focus:ring-rf-blue"
                   />
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-stone-700 group-hover:text-stone-900">
+                  <span className="text-sm font-medium text-rf-ink-700 group-hover:text-rf-text-primary">
                     Include seed rows
                   </span>
-                  <p className="text-xs text-stone-400 mt-0.5">
+                  <p className="text-xs text-rf-text-muted mt-0.5">
                     Captures up to 25 applicant rows per group with their cell values. Use this to give users pre-filled example data.
                   </p>
                 </div>
               </label>
 
               {/* What gets captured callout */}
-              <div className="px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-500 space-y-1">
-                <p className="font-medium text-stone-600">What gets captured:</p>
+              <div className="px-3 py-2.5 bg-rf-surface-page border border-rf-border rounded-lg text-xs text-rf-text-secondary space-y-1">
+                <p className="font-medium text-rf-ink-500">What gets captured:</p>
                 <ul className="space-y-0.5 list-disc list-inside">
                   <li>Board groups (name, color, order)</li>
                   <li>Board columns (name, type, order)</li>
@@ -289,11 +289,11 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-stone-100 bg-stone-50/50">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-rf-ink-100 bg-rf-surface-page">
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 transition-colors"
+            className="px-4 py-2 text-sm text-rf-ink-500 hover:text-rf-text-primary transition-colors"
           >
             {done ? "Close" : "Cancel"}
           </button>
@@ -306,7 +306,7 @@ export function SaveAsTemplateModal({ open, onClose, companyId, jobId }: Props) 
                 (mode === "existing" && !selectedTemplateId) ||
                 (mode === "new" && !newTitle.trim())
               }
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {isPending ? "Capturing…" : "Capture Layout"}

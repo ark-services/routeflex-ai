@@ -59,7 +59,7 @@ export function RenameModal({
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-2">
+            <label htmlFor="name" className="block text-sm font-medium text-rf-ink-700 mb-2">
               New name
             </label>
             <input
@@ -75,14 +75,14 @@ export function RenameModal({
                   handleRename();
                 }
               }}
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-rf-blue focus:border-transparent"
               disabled={isPending}
               autoFocus
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-rf-danger-bg border border-red-200 text-rf-danger px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
@@ -91,14 +91,14 @@ export function RenameModal({
             <button
               onClick={handleClose}
               disabled={isPending}
-              className="px-4 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-300 rounded-lg hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-rf-ink-700 bg-rf-surface-card border border-rf-ink-100 rounded-lg hover:bg-rf-surface-page disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               onClick={handleRename}
               disabled={isPending || !newName.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-rf-blue rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPending ? "Renaming..." : "Rename"}
             </button>

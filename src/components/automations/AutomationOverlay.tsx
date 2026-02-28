@@ -122,7 +122,7 @@ export function AutomationOverlay({
         onClick={handleClose}
       >
         <div
-          className="bg-white rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-6xl h-[92vh] sm:h-[85vh] flex flex-col"
+          className="bg-rf-surface-card rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-6xl h-[92vh] sm:h-[85vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -146,13 +146,13 @@ export function AutomationOverlay({
                 onClick={() => handleTabSwitch(tab)}
                 className={`px-4 py-3 font-medium transition-colors relative capitalize ${
                   activeTab === tab
-                    ? "text-blue-600"
+                    ? "text-rf-blue"
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 {tab}
                 {activeTab === tab && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-rf-blue" />
                 )}
               </button>
             ))}
@@ -207,7 +207,7 @@ export function AutomationOverlay({
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setConfirmDiscard(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-rf-surface-card border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               Keep building
             </button>
@@ -217,7 +217,7 @@ export function AutomationOverlay({
                 setConfirmDiscard(null);
                 setIsCreateDirty(false);
               }}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+              className="px-4 py-2 text-sm font-medium text-white bg-rf-danger rounded-lg hover:bg-red-700"
             >
               Discard
             </button>

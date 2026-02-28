@@ -71,31 +71,31 @@ export default async function AdminAutomationsPage({ params }: { params: Promise
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Automations</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-rf-text-primary">Automations</h1>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-6">
-          <div className="text-sm font-medium text-stone-500 mb-1">Actions Used</div>
-          <div className="text-3xl font-semibold text-stone-900">{actionsUsed.toLocaleString()}</div>
-          <div className="text-xs text-stone-400 mt-1">of {quotaUnits.toLocaleString()}</div>
+          <div className="text-sm font-medium text-rf-text-secondary mb-1">Actions Used</div>
+          <div className="text-3xl font-semibold text-rf-text-primary">{actionsUsed.toLocaleString()}</div>
+          <div className="text-xs text-rf-text-muted mt-1">of {quotaUnits.toLocaleString()}</div>
         </Card>
         <Card className="p-6">
-          <div className="text-sm font-medium text-stone-500 mb-1">Actions Remaining</div>
-          <div className={`text-3xl font-semibold ${actionsRemaining < 0 ? "text-red-600" : "text-stone-900"}`}>
+          <div className="text-sm font-medium text-rf-text-secondary mb-1">Actions Remaining</div>
+          <div className={`text-3xl font-semibold ${actionsRemaining < 0 ? "text-rf-danger" : "text-rf-text-primary"}`}>
             {actionsRemaining.toLocaleString()}
           </div>
         </Card>
         <Card className="p-6">
-          <div className="text-sm font-medium text-stone-500 mb-1">Total Quota</div>
-          <div className="text-3xl font-semibold text-stone-900">{quotaUnits.toLocaleString()}</div>
-          <div className="text-xs text-stone-400 mt-1">per billing period</div>
+          <div className="text-sm font-medium text-rf-text-secondary mb-1">Total Quota</div>
+          <div className="text-3xl font-semibold text-rf-text-primary">{quotaUnits.toLocaleString()}</div>
+          <div className="text-xs text-rf-text-muted mt-1">per billing period</div>
         </Card>
       </div>
 
       {/* Daily Action Usage Chart */}
       <Card className="p-6">
-        <h2 className="text-sm font-semibold text-stone-900 mb-6">Daily action use</h2>
+        <h2 className="text-sm font-semibold text-rf-text-primary mb-6">Daily action use</h2>
         <DailyActionChart data={chartData} />
       </Card>
     </div>

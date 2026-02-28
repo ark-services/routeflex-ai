@@ -100,7 +100,7 @@ function ValueInput({
   if (condition === "is_empty" || condition === "is_not_empty") return null;
 
   const cls =
-    "h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500";
+    "h-8 rounded-md border border-rf-border bg-rf-surface-card px-2 text-sm text-rf-ink-700 focus:outline-none focus:ring-1 focus:ring-rf-blue";
 
   if (column.type === "status") {
     const labels = statusLabels.filter((sl) => sl.column_id === column.id);
@@ -153,13 +153,13 @@ function SaveViewInline({
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") onCancel(); }}
         placeholder="View name…"
-        className="h-7 w-36 rounded border border-stone-300 px-2 text-xs text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="h-7 w-36 rounded border border-rf-ink-100 px-2 text-xs text-rf-ink-700 focus:outline-none focus:ring-1 focus:ring-rf-blue"
       />
       <button onClick={submit} disabled={!name.trim()}
-        className="h-7 px-2.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40">
+        className="h-7 px-2.5 text-xs bg-rf-blue text-white rounded hover:bg-rf-blue-dark disabled:opacity-40">
         Save
       </button>
-      <button onClick={onCancel} className="h-7 px-2 text-xs text-stone-500 hover:text-stone-700">
+      <button onClick={onCancel} className="h-7 px-2 text-xs text-rf-text-secondary hover:text-rf-ink-700">
         Cancel
       </button>
     </div>
@@ -341,26 +341,26 @@ export function FilterPanel({
         minWidth: 480,
         maxWidth: Math.min(680, window.innerWidth - 32),
       }}
-      className="bg-white rounded-xl border border-stone-200 shadow-xl"
+      className="bg-rf-surface-card rounded-xl border border-rf-border shadow-xl"
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-stone-100">
-        <span className="text-sm font-semibold text-stone-800">Filters</span>
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-rf-ink-100">
+        <span className="text-sm font-semibold text-rf-text-primary">Filters</span>
         <div className="flex items-center gap-3">
           {draftFilters.length > 0 && (
             <button
               onClick={handleClearAll}
-              className="text-xs text-stone-400 hover:text-red-500 transition-colors"
+              className="text-xs text-rf-text-muted hover:text-rf-danger transition-colors"
             >
               Clear all
             </button>
           )}
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-stone-100 transition-colors"
+            className="p-1 rounded hover:bg-rf-surface-page transition-colors"
             title="Close"
           >
-            <X className="h-3.5 w-3.5 text-stone-500" />
+            <X className="h-3.5 w-3.5 text-rf-text-secondary" />
           </button>
         </div>
       </div>
@@ -375,7 +375,7 @@ export function FilterPanel({
             <div key={f.id} className="flex items-center gap-2 flex-wrap">
               {/* Connector — "Where" for row 0, And/Or dropdown for rows 1+ */}
               {idx === 0 ? (
-                <span className="text-xs font-medium text-stone-400 w-12 text-right shrink-0 select-none">
+                <span className="text-xs font-medium text-rf-text-muted w-12 text-right shrink-0 select-none">
                   Where
                 </span>
               ) : (
@@ -384,7 +384,7 @@ export function FilterPanel({
                   onChange={(e) =>
                     updateFilter(f.id, { joiner: e.target.value as "and" | "or" })
                   }
-                  className="h-8 w-16 rounded-md border border-stone-200 bg-white px-1.5 text-xs text-stone-700 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 shrink-0"
+                  className="h-8 w-16 rounded-md border border-rf-border bg-rf-surface-card px-1.5 text-xs text-rf-ink-700 font-medium focus:outline-none focus:ring-1 focus:ring-rf-blue shrink-0"
                 >
                   <option value="and">And</option>
                   <option value="or">Or</option>
@@ -395,7 +395,7 @@ export function FilterPanel({
               <select
                 value={f.columnId}
                 onChange={(e) => updateFilter(f.id, { columnId: e.target.value })}
-                className="h-8 max-w-[220px] rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="h-8 max-w-[220px] rounded-md border border-rf-border bg-rf-surface-card px-2 text-sm text-rf-ink-700 focus:outline-none focus:ring-1 focus:ring-rf-blue"
               >
                 {columns.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -408,7 +408,7 @@ export function FilterPanel({
                 onChange={(e) =>
                   updateFilter(f.id, { condition: e.target.value as FilterCondition })
                 }
-                className="h-8 rounded-md border border-stone-200 bg-white px-2 text-sm text-stone-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="h-8 rounded-md border border-rf-border bg-rf-surface-card px-2 text-sm text-rf-ink-700 focus:outline-none focus:ring-1 focus:ring-rf-blue"
               >
                 {conditions.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -427,7 +427,7 @@ export function FilterPanel({
               {/* Trash — immediately after the value control, not pushed far right */}
               <button
                 onClick={() => removeFilter(f.id)}
-                className="p-1.5 text-stone-300 hover:text-red-400 rounded transition-colors shrink-0"
+                className="p-1.5 text-rf-text-muted hover:text-red-400 rounded transition-colors shrink-0"
                 title="Remove filter"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -438,12 +438,12 @@ export function FilterPanel({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-t border-stone-100 gap-4">
+      <div className="flex items-center justify-between px-4 py-2.5 border-t border-rf-ink-100 gap-4">
         {/* + New filter */}
         <button
           onClick={addFilter}
           disabled={columns.length === 0}
-          className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800 font-medium disabled:opacity-40 transition-colors shrink-0"
+          className="flex items-center gap-1 text-xs text-rf-text-secondary hover:text-rf-text-primary font-medium disabled:opacity-40 transition-colors shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
           New filter
@@ -461,7 +461,7 @@ export function FilterPanel({
             <button
               onClick={() => setSavingView(true)}
               disabled={!hasValidDraft}
-              className="h-7 px-3 text-xs font-medium rounded border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 hover:border-stone-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="h-7 px-3 text-xs font-medium rounded border border-rf-ink-100 bg-rf-surface-card text-rf-ink-700 hover:bg-rf-surface-page hover:border-rf-ink-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title={hasValidDraft ? "Save current filters as a new view" : "Add a complete filter first"}
             >
               Save as new view
@@ -471,7 +471,7 @@ export function FilterPanel({
           {/* Apply — commits valid draft filters to the board */}
           <button
             onClick={handleApply}
-            className="h-7 px-3 text-xs font-semibold rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="h-7 px-3 text-xs font-semibold rounded bg-rf-blue text-white hover:bg-rf-blue-dark transition-colors"
           >
             Apply
           </button>

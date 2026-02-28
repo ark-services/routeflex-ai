@@ -89,33 +89,33 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-stone-900">Overview</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-rf-text-primary">Overview</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-6">
-          <div className="text-sm font-medium text-stone-500 mb-1">Automations</div>
-          <div className="text-3xl font-semibold text-stone-900">{automationCount ?? 0}</div>
+          <div className="text-sm font-medium text-rf-text-secondary mb-1">Automations</div>
+          <div className="text-3xl font-semibold text-rf-text-primary">{automationCount ?? 0}</div>
         </Card>
         <Card className="p-6">
-          <div className="text-sm font-medium text-stone-500 mb-1">Actions Used</div>
-          <div className="text-3xl font-semibold text-stone-900">{periodData.used_units.toLocaleString()}</div>
-          <div className="text-xs text-stone-400 mt-1">of {periodData.quota_units.toLocaleString()}</div>
+          <div className="text-sm font-medium text-rf-text-secondary mb-1">Actions Used</div>
+          <div className="text-3xl font-semibold text-rf-text-primary">{periodData.used_units.toLocaleString()}</div>
+          <div className="text-xs text-rf-text-muted mt-1">of {periodData.quota_units.toLocaleString()}</div>
         </Card>
         <Card className="p-6">
-          <div className="text-sm font-medium text-stone-500 mb-1">Actions Remaining</div>
-          <div className={`text-3xl font-semibold ${actionsRemaining < 0 ? "text-red-600" : "text-stone-900"}`}>
+          <div className="text-sm font-medium text-rf-text-secondary mb-1">Actions Remaining</div>
+          <div className={`text-3xl font-semibold ${actionsRemaining < 0 ? "text-rf-danger" : "text-rf-text-primary"}`}>
             {actionsRemaining.toLocaleString()}
           </div>
         </Card>
       </div>
 
       <Card className="p-6">
-        <h2 className="text-sm font-semibold text-stone-900 mb-4">Action Quota</h2>
+        <h2 className="text-sm font-semibold text-rf-text-primary mb-4">Action Quota</h2>
         <ActionQuotaMeter
           used={periodData.used_units}
           limit={periodData.quota_units}
           resetDate={periodData.period_end}
         />
-        <div className="mt-4 text-xs text-stone-500">
+        <div className="mt-4 text-xs text-rf-text-secondary">
           <div>Period: {new Date(periodData.period_start).toLocaleDateString()} - {new Date(periodData.period_end).toLocaleDateString()}</div>
           <div>Resets on: {new Date(periodData.period_end).toLocaleDateString()}</div>
         </div>
@@ -125,7 +125,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
       {isDev && (
         <>
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-stone-900 mb-4">
+            <h2 className="text-sm font-semibold text-rf-text-primary mb-4">
               🔧 Debug: Recent Action Ledger (Last 10)
             </h2>
             {recentActions && recentActions.length > 0 ? (
@@ -133,23 +133,23 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
                 {recentActions.map((action) => (
                   <div
                     key={action.id}
-                    className="p-3 bg-stone-50 rounded border border-stone-200 text-xs"
+                    className="p-3 bg-rf-surface-page rounded border border-rf-border text-xs"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-stone-600">
+                      <span className="font-mono text-rf-ink-500">
                         {new Date(action.occurred_at).toLocaleString()}
                       </span>
                       <span
                         className={`px-2 py-0.5 rounded ${
                           action.status === 'completed'
-                            ? 'bg-green-100 text-green-700'
+                            ? 'bg-rf-success-bg text-rf-success'
                             : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         {action.status}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-stone-600">
+                    <div className="flex items-center gap-4 text-rf-ink-500">
                       <span>Units: {action.units}</span>
                       <span>Source: {action.source}</span>
                       {action.metadata?.automation_name && (
@@ -160,12 +160,12 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-stone-500">No action executions recorded yet.</p>
+              <p className="text-sm text-rf-text-secondary">No action executions recorded yet.</p>
             )}
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-stone-900 mb-4">
+            <h2 className="text-sm font-semibold text-rf-text-primary mb-4">
               🔧 Debug: Recent Automation Runs (Last 10)
             </h2>
             {automationRuns && automationRuns.length > 0 ? (
@@ -173,17 +173,17 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
                 {automationRuns.map((run) => (
                   <div
                     key={run.id}
-                    className="p-3 bg-blue-50 rounded border border-blue-200 text-xs"
+                    className="p-3 bg-rf-blue-tint rounded border border-rf-blue-tint text-xs"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-blue-600">
+                      <span className="font-mono text-rf-blue">
                         {new Date(run.created_at).toLocaleString()}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-green-100 text-green-700">
+                      <span className="px-2 py-0.5 rounded bg-rf-success-bg text-rf-success">
                         {run.status}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-blue-600">
+                    <div className="flex items-center gap-4 text-rf-blue">
                       <span>Succeeded: {run.actions_succeeded || 0}</span>
                       <span>Attempted: {run.actions_attempted || 0}</span>
                       <span className="font-mono text-xs">ID: {run.automation_id?.slice(0, 8)}...</span>
@@ -192,7 +192,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-stone-500">No automation runs yet.</p>
+              <p className="text-sm text-rf-text-secondary">No automation runs yet.</p>
             )}
           </Card>
         </>

@@ -314,7 +314,7 @@ export default function FormBuilder({
   return (
     <div className="h-full flex flex-col">
       {/* ── Top header bar ─────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-4 flex-shrink-0">
+      <div className="bg-rf-surface-card border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-4 flex-shrink-0">
         {/* Left: breadcrumb-style label */}
         <div className="flex-shrink-0 min-w-0">
           <h1 className="text-base font-semibold text-gray-900 truncate">
@@ -331,7 +331,7 @@ export default function FormBuilder({
               onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-1.5 text-sm font-medium rounded-md transition-colors ${
                 activeTab === tab.id
-                  ? "bg-white text-gray-900 shadow-sm"
+                  ? "bg-rf-surface-card text-gray-900 shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
@@ -355,7 +355,7 @@ export default function FormBuilder({
           </button>
           <button
             onClick={() => setShowShareModal(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-rf-blue text-white text-sm font-medium rounded-md hover:bg-rf-blue-dark transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -389,10 +389,10 @@ export default function FormBuilder({
             {/* Form header card — two-section layout matching the live apply page:
                  top section: logo + title (border-b divider)
                  bottom section: description (inline-editable) */}
-            <div className="mb-5 bg-white rounded-2xl border border-stone-200 shadow-[0_2px_16px_rgba(0,0,0,0.08)] overflow-hidden">
+            <div className="mb-5 bg-rf-surface-card rounded-2xl border border-rf-border shadow-[0_2px_16px_rgba(0,0,0,0.08)] overflow-hidden">
 
               {/* Header section: logo + title */}
-              <div className="px-8 pt-8 pb-6 border-b border-stone-100">
+              <div className="px-8 pt-8 pb-6 border-b border-rf-ink-100">
                 {designSettings.logoUrl && (
                   <img
                     src={designSettings.logoUrl}
@@ -414,18 +414,18 @@ export default function FormBuilder({
                         setIsEditingTitle(false);
                       }
                     }}
-                    className="w-full text-2xl font-bold text-stone-900 leading-tight border-b-2 border-blue-500 focus:outline-none bg-transparent pb-0.5"
+                    className="w-full text-2xl font-bold text-rf-text-primary leading-tight border-b-2 border-rf-blue focus:outline-none bg-transparent pb-0.5"
                   />
                 ) : (
                   <div
                     className="group/title flex items-center gap-2 cursor-text"
                     onClick={() => setIsEditingTitle(true)}
                   >
-                    <h2 className="text-2xl font-bold text-stone-900 leading-tight">
+                    <h2 className="text-2xl font-bold text-rf-text-primary leading-tight">
                       {formTitle}
                     </h2>
                     <svg
-                      className="w-4 h-4 text-stone-400 opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
+                      className="w-4 h-4 text-rf-text-muted opacity-0 group-hover/title:opacity-100 transition-opacity flex-shrink-0"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -458,22 +458,22 @@ export default function FormBuilder({
                       }}
                       placeholder="Add a form description…"
                       rows={2}
-                      className="w-full text-sm text-stone-500 leading-relaxed border-b border-blue-500 focus:outline-none bg-transparent resize-none"
+                      className="w-full text-sm text-rf-text-secondary leading-relaxed border-b border-rf-blue focus:outline-none bg-transparent resize-none"
                     />
                   ) : (
                     <div
                       className="flex items-start gap-2 cursor-text"
                       onClick={() => setIsEditingDescription(true)}
                     >
-                      <p className="text-sm text-stone-500 leading-relaxed flex-1 min-h-[20px]">
+                      <p className="text-sm text-rf-text-secondary leading-relaxed flex-1 min-h-[20px]">
                         {formDescription || (
-                          <span className="text-stone-300 italic">
+                          <span className="text-rf-text-muted italic">
                             Click to add a form description…
                           </span>
                         )}
                       </p>
                       <svg
-                        className="w-4 h-4 text-stone-400 opacity-0 group-hover/desc:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
+                        className="w-4 h-4 text-rf-text-muted opacity-0 group-hover/desc:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -532,7 +532,7 @@ export default function FormBuilder({
               ) : (
                 <button
                   onClick={() => setAddFieldAt(fields.length)}
-                  className="w-full px-6 py-4 border-2 border-dashed border-stone-200 rounded-2xl text-stone-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 transition-all text-sm font-medium"
+                  className="w-full px-6 py-4 border-2 border-dashed border-rf-border rounded-2xl text-rf-text-secondary hover:border-rf-blue-tint hover:text-rf-blue hover:bg-rf-blue-tint/50 transition-all text-sm font-medium"
                 >
                   + Add Question
                 </button>
@@ -563,7 +563,7 @@ export default function FormBuilder({
                 </p>
                 <button
                   onClick={() => setAddFieldAt(0)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  className="px-6 py-3 bg-rf-blue text-white rounded-lg hover:bg-rf-blue-dark font-medium"
                 >
                   Add Your First Question
                 </button>
@@ -608,7 +608,7 @@ export default function FormBuilder({
           onClick={() => setShowShareModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4"
+            className="bg-rf-surface-card rounded-xl shadow-2xl max-w-lg w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
@@ -642,7 +642,7 @@ export default function FormBuilder({
                     setShowShareModal(false);
                   }}
                   disabled={!publicUrl}
-                  className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium whitespace-nowrap disabled:opacity-50 transition-colors flex items-center gap-2"
+                  className="px-5 py-2.5 bg-rf-blue text-white rounded-lg hover:bg-rf-blue-dark font-medium whitespace-nowrap disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />

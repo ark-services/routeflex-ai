@@ -60,9 +60,9 @@ export function TrainingListClient({
   function SortIcon({ col }: { col: SortKey }) {
     if (sortKey !== col) return <ChevronUp className="w-3 h-3 opacity-30" />;
     return sortDir === "asc" ? (
-      <ChevronUp className="w-3 h-3 text-blue-600" />
+      <ChevronUp className="w-3 h-3 text-rf-blue" />
     ) : (
-      <ChevronDown className="w-3 h-3 text-blue-600" />
+      <ChevronDown className="w-3 h-3 text-rf-blue" />
     );
   }
 
@@ -71,16 +71,16 @@ export function TrainingListClient({
       {/* Toolbar: search + sort controls */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-rf-text-muted pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search courses…"
-            className="w-full pl-8 pr-3 py-2 border border-stone-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-8 pr-3 py-2 border border-rf-border rounded-lg text-sm bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue focus:border-transparent"
           />
         </div>
-        <div className="flex items-center gap-1 text-xs text-stone-500 font-medium shrink-0">
+        <div className="flex items-center gap-1 text-xs text-rf-text-secondary font-medium shrink-0">
           <span className="mr-1">Sort:</span>
           {(
             [
@@ -94,8 +94,8 @@ export function TrainingListClient({
               onClick={() => toggleSort(key)}
               className={`flex items-center gap-0.5 px-2 py-1 rounded transition-colors ${
                 sortKey === key
-                  ? "bg-blue-50 text-blue-700 border border-blue-200"
-                  : "text-stone-500 hover:bg-stone-100 border border-transparent"
+                  ? "bg-rf-blue-tint text-rf-blue border border-rf-blue-tint"
+                  : "text-rf-text-secondary hover:bg-rf-surface-page border border-transparent"
               }`}
             >
               {label}
@@ -107,7 +107,7 @@ export function TrainingListClient({
 
       {/* Course list */}
       {filtered.length === 0 ? (
-        <div className="text-center py-10 text-stone-400">
+        <div className="text-center py-10 text-rf-text-muted">
           <p className="text-sm">No courses match &ldquo;{search}&rdquo;</p>
         </div>
       ) : (
@@ -115,43 +115,43 @@ export function TrainingListClient({
           {filtered.map((c) => (
             <div
               key={c.id}
-              className="relative flex items-center gap-4 p-4 bg-white border border-stone-200 rounded-lg hover:border-stone-300 hover:shadow-sm transition-all"
+              className="relative flex items-center gap-4 p-4 bg-rf-surface-card border border-rf-border rounded-lg hover:border-rf-ink-100 hover:shadow-sm transition-all"
             >
               <Link
                 href={`/dashboard/${companyId}/training/${c.id}`}
                 className="absolute inset-0 rounded-lg"
                 aria-label={c.name}
               />
-              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                <BookOpen className="w-5 h-5 text-blue-600" />
+              <div className="w-9 h-9 rounded-lg bg-rf-blue-tint flex items-center justify-center flex-shrink-0">
+                <BookOpen className="w-5 h-5 text-rf-blue" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-stone-900">{c.name}</span>
+                  <span className="text-sm font-medium text-rf-text-primary">{c.name}</span>
                   {c.is_published ? (
-                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-green-50 text-green-700 rounded-full border border-green-200">
+                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-rf-success-bg text-rf-success rounded-full border border-green-200">
                       <Eye className="w-3 h-3" /> Published
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-stone-100 text-stone-500 rounded-full border border-stone-200">
+                    <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs bg-rf-ink-100 text-rf-text-secondary rounded-full border border-rf-border">
                       <EyeOff className="w-3 h-3" /> Draft
                     </span>
                   )}
                 </div>
                 {c.description && (
-                  <p className="text-xs text-stone-500 truncate mt-0.5">{c.description}</p>
+                  <p className="text-xs text-rf-text-secondary truncate mt-0.5">{c.description}</p>
                 )}
               </div>
               <div className="relative z-10 flex items-center gap-4 flex-shrink-0">
                 <Link
                   href={`/dashboard/${companyId}/training/${c.id}/learners`}
-                  className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-800 transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-rf-text-secondary hover:text-rf-text-primary transition-colors"
                   aria-label={`${c.enrollmentCount} learners enrolled in ${c.name}`}
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>{c.enrollmentCount}</span>
                 </Link>
-                <div className="text-xs text-stone-400">
+                <div className="text-xs text-rf-text-muted">
                   {new Date(c.created_at).toLocaleDateString()}
                 </div>
               </div>

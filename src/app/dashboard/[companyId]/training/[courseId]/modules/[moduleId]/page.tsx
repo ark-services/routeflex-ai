@@ -54,19 +54,19 @@ export default async function ModulePage({
   if (!mod) notFound();
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
+    <div className="min-h-screen bg-rf-surface-page p-6">
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-stone-500 mb-6">
-          <Link href={`/dashboard/${companyId}/training`} className="hover:text-stone-700 transition-colors">
+        <div className="flex items-center gap-2 text-sm text-rf-text-secondary mb-6">
+          <Link href={`/dashboard/${companyId}/training`} className="hover:text-rf-ink-700 transition-colors">
             Training
           </Link>
           <span>/</span>
-          <Link href={`/dashboard/${companyId}/training/${courseId}`} className="hover:text-stone-700 transition-colors">
+          <Link href={`/dashboard/${companyId}/training/${courseId}`} className="hover:text-rf-ink-700 transition-colors">
             {course.name}
           </Link>
           <span>/</span>
-          <span className="text-stone-900 font-medium">{mod.title}</span>
+          <span className="text-rf-text-primary font-medium">{mod.title}</span>
         </div>
 
         <ModuleEditor

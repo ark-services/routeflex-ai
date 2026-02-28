@@ -188,31 +188,31 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
         <button
           type="button"
           onClick={() => setIsExpanded((v) => !v)}
-          className="w-full px-4 sm:px-6 py-4 flex items-center justify-between gap-4 hover:bg-stone-50 transition-colors text-left"
+          className="w-full px-4 sm:px-6 py-4 flex items-center justify-between gap-4 hover:bg-rf-surface-page transition-colors text-left"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-              <Phone className="w-5 h-5 text-red-600" />
+            <div className="w-9 h-9 rounded-lg bg-rf-danger-bg flex items-center justify-center flex-shrink-0">
+              <Phone className="w-5 h-5 text-rf-danger" />
             </div>
-            <span className="text-sm font-semibold text-stone-900">Twilio</span>
+            <span className="text-sm font-semibold text-rf-text-primary">Twilio</span>
             {connection ? (
               connection.isEnabled ? (
-                <span className="shrink-0 px-2 py-0.5 text-xs bg-green-50 text-green-700 rounded-full border border-green-200">
+                <span className="shrink-0 px-2 py-0.5 text-xs bg-rf-success-bg text-rf-success rounded-full border border-green-200">
                   Enabled
                 </span>
               ) : (
-                <span className="shrink-0 px-2 py-0.5 text-xs bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                <span className="shrink-0 px-2 py-0.5 text-xs bg-rf-warning-bg text-rf-warning rounded-full border border-amber-200">
                   Disabled
                 </span>
               )
             ) : (
-              <span className="shrink-0 px-2 py-0.5 text-xs bg-stone-100 text-stone-500 rounded-full border border-stone-200">
+              <span className="shrink-0 px-2 py-0.5 text-xs bg-rf-ink-100 text-rf-text-secondary rounded-full border border-rf-border">
                 Not configured
               </span>
             )}
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-150 ${
+            className={`w-4 h-4 text-rf-text-muted shrink-0 transition-transform duration-150 ${
               isExpanded ? "rotate-180" : ""
             }`}
           />
@@ -220,23 +220,23 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
 
         {/* ── Expanded content ─────────────────────────────────────────── */}
         {isExpanded && (
-          <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-stone-100">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-rf-ink-100">
             {/* Description + action buttons */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
               <div>
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-rf-ink-500">
                   Send automated SMS messages through your Twilio account
                 </p>
                 {connection && mode === "view" && (
                   <div className="mt-3 flex items-center gap-2 text-sm flex-wrap">
-                    <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                    <span className="text-green-700 font-medium">Connected</span>
-                    <span className="text-stone-400">•</span>
-                    <span className="text-stone-500 font-mono text-xs">
+                    <Check className="w-4 h-4 text-rf-success flex-shrink-0" />
+                    <span className="text-rf-success font-medium">Connected</span>
+                    <span className="text-rf-text-muted">•</span>
+                    <span className="text-rf-text-secondary font-mono text-xs">
                       {connection.accountSidMasked}
                     </span>
                     {!connection.isEnabled && (
-                      <span className="ml-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">
+                      <span className="ml-1 px-2 py-0.5 bg-rf-warning-bg text-rf-warning text-xs rounded-full border border-amber-200">
                         Disabled
                       </span>
                     )}
@@ -249,7 +249,7 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                 <div className="flex items-center gap-2 flex-wrap sm:flex-shrink-0">
                   <button
                     onClick={() => setMode("test")}
-                    className="px-3 py-2 text-sm font-medium text-stone-700 bg-stone-50 border border-stone-200 rounded-lg hover:bg-stone-100 transition-colors flex items-center gap-1.5"
+                    className="px-3 py-2 text-sm font-medium text-rf-ink-700 bg-rf-surface-page border border-rf-border rounded-lg hover:bg-rf-surface-page transition-colors flex items-center gap-1.5"
                   >
                     <Send className="w-3.5 h-3.5" />
                     Test SMS
@@ -262,7 +262,7 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                       setIsEnabled(connection.isEnabled);
                       setMode("edit");
                     }}
-                    className="px-3 py-2 text-sm font-medium text-stone-700 bg-stone-50 border border-stone-200 rounded-lg hover:bg-stone-100 transition-colors flex items-center gap-1.5"
+                    className="px-3 py-2 text-sm font-medium text-rf-ink-700 bg-rf-surface-page border border-rf-border rounded-lg hover:bg-rf-surface-page transition-colors flex items-center gap-1.5"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     Edit
@@ -270,7 +270,7 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                   <button
                     onClick={handleDisconnect}
                     disabled={disconnecting}
-                    className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-2 text-sm font-medium text-red-700 bg-rf-danger-bg border border-red-200 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {disconnecting ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -296,28 +296,28 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
 
             {/* ── Connected detail row (view mode) ── */}
             {connection && mode === "view" && (
-              <div className="mt-5 pt-5 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="mt-5 pt-5 border-t border-rf-ink-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Account SID
                   </p>
-                  <p className="text-sm font-mono text-stone-800">
+                  <p className="text-sm font-mono text-rf-text-primary">
                     {connection.accountSidMasked}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Auth Token
                   </p>
-                  <p className="text-sm font-mono text-stone-800 tracking-widest">
+                  <p className="text-sm font-mono text-rf-text-primary tracking-widest">
                     ••••••••••••••••
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     From Number
                   </p>
-                  <p className="text-sm font-mono text-stone-800">
+                  <p className="text-sm font-mono text-rf-text-primary">
                     {connection.fromNumber}
                   </p>
                 </div>
@@ -329,17 +329,17 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                     aria-checked={connection.isEnabled}
                     onClick={handleToggleEnabled}
                     disabled={togglingEnabled}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 ${
-                      connection.isEnabled ? "bg-green-500" : "bg-stone-300"
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-blue focus-visible:ring-offset-2 disabled:opacity-50 ${
+                      connection.isEnabled ? "bg-rf-success" : "bg-rf-ink-300"
                     }`}
                   >
                     <span
-                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-rf-surface-card shadow transition-transform ${
                         connection.isEnabled ? "translate-x-4" : "translate-x-1"
                       }`}
                     />
                   </button>
-                  <span className="text-sm text-stone-700">
+                  <span className="text-sm text-rf-ink-700">
                     {togglingEnabled
                       ? "Updating…"
                       : connection.isEnabled
@@ -354,14 +354,14 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
             {mode === "edit" && (
               <form
                 onSubmit={handleSave}
-                className="mt-5 pt-5 border-t border-stone-100 space-y-4"
+                className="mt-5 pt-5 border-t border-rf-ink-100 space-y-4"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Account SID */}
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
                       Account SID
-                      <span className="text-red-500 ml-0.5">*</span>
+                      <span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="text"
@@ -371,16 +371,16 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                       autoComplete="off"
                       required
                     />
-                    <p className="mt-1 text-xs text-stone-400">
+                    <p className="mt-1 text-xs text-rf-text-muted">
                       Found in your Twilio Console dashboard
                     </p>
                   </div>
 
                   {/* Auth Token */}
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
                       Auth Token
-                      <span className="text-red-500 ml-0.5">*</span>
+                      <span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <Input
@@ -397,7 +397,7 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                       <button
                         type="button"
                         onClick={() => setShowToken((v) => !v)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-rf-text-muted hover:text-rf-ink-500"
                         tabIndex={-1}
                       >
                         {showToken ? (
@@ -407,16 +407,16 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                         )}
                       </button>
                     </div>
-                    <p className="mt-1 text-xs text-stone-400">
+                    <p className="mt-1 text-xs text-rf-text-muted">
                       Stored encrypted — never exposed to the browser after saving
                     </p>
                   </div>
 
                   {/* From Number */}
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
                       Default From Number
-                      <span className="text-red-500 ml-0.5">*</span>
+                      <span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="tel"
@@ -425,7 +425,7 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                       onChange={(e) => setFromNumber(e.target.value)}
                       required
                     />
-                    <p className="mt-1 text-xs text-stone-400">
+                    <p className="mt-1 text-xs text-rf-text-muted">
                       E.164 format — the Twilio number SMS is sent from
                     </p>
                   </div>
@@ -438,17 +438,17 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                         role="switch"
                         aria-checked={isEnabled}
                         onClick={() => setIsEnabled((v) => !v)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                          isEnabled ? "bg-green-500" : "bg-stone-300"
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-blue ${
+                          isEnabled ? "bg-rf-success" : "bg-rf-ink-300"
                         }`}
                       >
                         <span
-                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-rf-surface-card shadow transition-transform ${
                             isEnabled ? "translate-x-4" : "translate-x-1"
                           }`}
                         />
                       </button>
-                      <span className="text-sm text-stone-700">
+                      <span className="text-sm text-rf-ink-700">
                         {isEnabled ? "Enabled" : "Disabled"}
                       </span>
                     </label>
@@ -489,16 +489,16 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
             {mode === "test" && (
               <form
                 onSubmit={handleTestSms}
-                className="mt-5 pt-5 border-t border-stone-100 space-y-4"
+                className="mt-5 pt-5 border-t border-rf-ink-100 space-y-4"
               >
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-rf-ink-500">
                   Send a test SMS to verify your Twilio integration is working.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
                       To Number
-                      <span className="text-red-500 ml-0.5">*</span>
+                      <span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="tel"
@@ -507,12 +507,12 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
                       onChange={(e) => setToNumber(e.target.value)}
                       required
                     />
-                    <p className="mt-1 text-xs text-stone-400">E.164 format</p>
+                    <p className="mt-1 text-xs text-rf-text-muted">E.164 format</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
                       Message{" "}
-                      <span className="text-stone-400 font-normal">(optional)</span>
+                      <span className="text-rf-text-muted font-normal">(optional)</span>
                     </label>
                     <Input
                       type="text"

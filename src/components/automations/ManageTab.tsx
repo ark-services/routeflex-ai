@@ -177,7 +177,7 @@ export function ManageTab({
           placeholder="Search automations by name or trigger..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rf-blue"
         />
         {searchQuery && (
           <p className="text-xs text-gray-500 mt-1">
@@ -220,7 +220,7 @@ export function ManageTab({
               key={automation.id}
               className={`border-2 rounded-lg p-5 transition-all ${
                 automation.is_enabled
-                  ? "border-blue-200 bg-blue-50/30"
+                  ? "border-rf-blue-tint bg-rf-blue-tint/30"
                   : "border-gray-200 bg-gray-50"
               }`}
             >
@@ -234,7 +234,7 @@ export function ManageTab({
                     <span
                       className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${
                         automation.is_enabled
-                          ? "bg-green-100 text-green-700"
+                          ? "bg-rf-success-bg text-rf-success"
                           : "bg-gray-200 text-gray-600"
                       }`}
                     >
@@ -267,13 +267,13 @@ export function ManageTab({
                       handleToggle(automation.id, automation.is_enabled)
                     }
                     disabled={actionLoading === automation.id}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 ${
-                      automation.is_enabled ? "bg-green-500" : "bg-stone-300"
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-blue focus-visible:ring-offset-2 disabled:opacity-50 ${
+                      automation.is_enabled ? "bg-rf-success" : "bg-rf-ink-300"
                     }`}
                     title={automation.is_enabled ? "Disable" : "Enable"}
                   >
                     <span
-                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-rf-surface-card shadow transition-transform ${
                         automation.is_enabled ? "translate-x-4" : "translate-x-1"
                       }`}
                     />
@@ -302,7 +302,7 @@ export function ManageTab({
                         />
 
                         {/* Menu */}
-                        <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+                        <div className="absolute right-0 mt-1 w-48 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg z-20">
                           <button
                             onClick={() => {
                               router.push(`/dashboard/${companyId}/jobs/${jobId}/automations/${automation.id}`);
@@ -322,7 +322,7 @@ export function ManageTab({
                           </button>
                           <button
                             onClick={() => handleDelete(automation.id)}
-                            className="w-full px-4 py-2.5 text-left text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg transition-colors border-t border-gray-100"
+                            className="w-full px-4 py-2.5 text-left text-rf-danger hover:bg-rf-danger-bg flex items-center gap-2 rounded-b-lg transition-colors border-t border-gray-100"
                           >
                             <Trash2 className="w-4 h-4" />
                             Delete
@@ -347,7 +347,7 @@ export function ManageTab({
               <p className="text-sm text-gray-500">Total Recipes</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-rf-success">
                 {automations.filter((a) => a.is_enabled).length}
               </p>
               <p className="text-sm text-gray-500">Active</p>

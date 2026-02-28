@@ -76,12 +76,12 @@ export function ColorPicker({ value, onChange, className = "", inline = false, d
               disabled={isDisabled}
               className={`relative h-9 w-9 rounded-lg border transition-colors focus:outline-none ${
                 isDisabled
-                  ? 'opacity-30 cursor-not-allowed border-stone-300'
-                  : 'border-stone-200 hover:border-stone-400'
+                  ? 'opacity-30 cursor-not-allowed border-rf-ink-300'
+                  : 'border-rf-ink-100 hover:border-rf-ink-300'
               }`}
               style={{
                 backgroundColor: color.value,
-                boxShadow: value === color.value ? `0 0 0 2px #2563EB` : 'none',
+                boxShadow: value === color.value ? `0 0 0 2px var(--rf-blue)` : 'none',
               }}
               title={isDisabled ? `${color.name} (already in use)` : color.name}
             >
@@ -92,7 +92,7 @@ export function ColorPicker({ value, onChange, className = "", inline = false, d
               )}
               {isDisabled && value !== color.value && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-[2px] w-full bg-stone-400 rotate-45" />
+                  <div className="h-[2px] w-full bg-rf-ink-300 rotate-45" />
                 </div>
               )}
             </button>
@@ -114,7 +114,7 @@ export function ColorPicker({ value, onChange, className = "", inline = false, d
         ref={buttonRef}
         type="button"
         onClick={handleButtonClick}
-        className={`${size === 'sm' ? 'h-6 w-6 rounded-md' : 'h-9 w-9 rounded-lg'} border border-stone-200 hover:border-stone-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 flex-shrink-0`}
+        className={`${size === 'sm' ? 'h-6 w-6 rounded-md' : 'h-9 w-9 rounded-lg'} border border-rf-ink-100 hover:border-rf-ink-300 transition-colors focus:outline-none focus:ring-2 focus:ring-rf-blue focus:ring-offset-1 flex-shrink-0`}
         style={{ backgroundColor: value }}
         aria-label="Choose color"
       />
@@ -123,7 +123,7 @@ export function ColorPicker({ value, onChange, className = "", inline = false, d
         <div
           ref={popoverRef}
           style={{ top: popoverPos.top, left: popoverPos.left }}
-          className="fixed z-50 rounded-[10px] border border-stone-200 bg-white p-3 shadow-xl"
+          className="fixed z-50 rounded-rf-md border border-rf-border bg-rf-surface-card p-3 shadow-rf-xl"
         >
           <ColorGrid
             onSelect={(color) => {

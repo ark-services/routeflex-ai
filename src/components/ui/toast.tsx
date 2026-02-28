@@ -24,15 +24,15 @@ export function Toast({
 
   const styles = {
     success: {
-      bg: "bg-green-50",
+      bg: "bg-rf-success-bg",
       border: "border-green-200",
-      text: "text-green-800",
+      text: "text-rf-success",
       icon: CheckCircle2,
     },
     error: {
-      bg: "bg-red-50",
+      bg: "bg-rf-danger-bg",
       border: "border-red-200",
-      text: "text-red-800",
+      text: "text-rf-danger",
       icon: XCircle,
     },
   };

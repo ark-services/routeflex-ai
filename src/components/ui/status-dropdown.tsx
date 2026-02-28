@@ -76,7 +76,7 @@ export function StatusDropdown({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="h-8 w-full rounded-lg border border-transparent px-3 text-sm font-medium transition-all hover:border-stone-200 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+        className="h-8 w-full rounded-lg border border-transparent px-3 text-sm font-medium transition-all hover:border-rf-border focus:border-rf-blue focus:outline-none disabled:opacity-50"
         style={{
           backgroundColor: selectedLabel ? `${selectedLabel.color}15` : 'transparent',
           color: selectedLabel ? selectedLabel.color : '#6B7280',
@@ -98,7 +98,7 @@ export function StatusDropdown({
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute left-0 top-full mt-1 z-50 w-full min-w-[200px] rounded-lg border border-stone-200 bg-white py-1 shadow-xl transition-all duration-150 opacity-100 scale-100"
+          className="absolute left-0 top-full mt-1 z-50 w-full min-w-[200px] rounded-lg border border-rf-border bg-rf-surface-card py-1 shadow-rf-xl transition-all duration-150 opacity-100 scale-100"
         >
           {/* Empty option */}
           <button
@@ -107,17 +107,17 @@ export function StatusDropdown({
               onChange(null);
               setIsOpen(false);
             }}
-            className="w-full px-3 py-2 text-left text-sm text-stone-500 hover:bg-stone-50 transition-colors flex items-center gap-2"
+            className="w-full px-3 py-2 text-left text-sm text-rf-text-secondary hover:bg-rf-surface-page transition-colors flex items-center gap-2"
           >
             <div className="h-2 w-2" /> {/* Spacer for alignment */}
             <span>—</span>
             {value === null && (
-              <Check className="ml-auto h-4 w-4 text-indigo-600" strokeWidth={2.5} />
+              <Check className="ml-auto h-4 w-4 text-rf-blue" strokeWidth={2.5} />
             )}
           </button>
 
           {/* Divider */}
-          <div className="my-1 border-t border-stone-100" />
+          <div className="my-1 border-t border-rf-ink-100" />
 
           {/* Status options */}
           {labels.map((label) => (
@@ -128,7 +128,7 @@ export function StatusDropdown({
                 onChange(label.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-stone-50 flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-rf-surface-page flex items-center gap-2"
               style={{ color: label.color }}
             >
               <div
@@ -143,7 +143,7 @@ export function StatusDropdown({
           ))}
 
           {/* Divider */}
-          <div className="my-1 border-t border-stone-100" />
+          <div className="my-1 border-t border-rf-ink-100" />
 
           {/* Edit labels option */}
           <button
@@ -152,7 +152,7 @@ export function StatusDropdown({
               onEditLabels();
               setIsOpen(false);
             }}
-            className="w-full px-3 py-2 text-left text-sm text-stone-600 hover:bg-stone-50 transition-colors"
+            className="w-full px-3 py-2 text-left text-sm text-rf-ink-500 hover:bg-rf-surface-page transition-colors"
           >
             Edit labels
           </button>

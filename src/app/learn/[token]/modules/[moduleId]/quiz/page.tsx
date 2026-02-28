@@ -77,15 +77,15 @@ export default async function QuizPage({
     <div className="space-y-6">
       <Link
         href={`/learn/${token}/modules/${moduleId}`}
-        className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-rf-text-secondary hover:text-rf-ink-700 transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to module
       </Link>
 
       <div>
-        <h1 className="text-xl font-bold text-stone-900">{mod.title} — Quiz</h1>
-        <p className="text-sm text-stone-500 mt-1">
+        <h1 className="text-xl font-bold text-rf-text-primary">{mod.title} — Quiz</h1>
+        <p className="text-sm text-rf-text-secondary mt-1">
           {questions.length} questions · {course.passing_threshold}% to pass · unlimited attempts
         </p>
       </div>

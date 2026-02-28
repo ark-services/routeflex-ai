@@ -365,8 +365,8 @@ export async function createGroup(
 ): Promise<{ data?: GroupRow; error?: string }> {
   const supabase = await createClient();
 
-  // Default colors cycle (Monday-style)
-  const defaultColors = ['#0073ea', '#00c875', '#fdab3d', '#e2445c', '#9cd326', '#784bd1', '#579bfc', '#ff642e'];
+  // Default colors cycle (RouteFlex brand palette)
+  const defaultColors = ['#1D6FFF', '#16A34A', '#D97706', '#EF4444', '#0A4FCC', '#4D8FFF', '#4A5568', '#9BAABB'];
 
   // Place the new group at the end of the board.
   const { data: existing, error: readErr } = await supabase

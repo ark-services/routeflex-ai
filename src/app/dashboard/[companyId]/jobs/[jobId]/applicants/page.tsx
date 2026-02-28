@@ -20,8 +20,8 @@ function ErrorPanel({
 }) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
-        <h1 className="text-2xl font-bold text-red-600 mb-4">{title}</h1>
+      <div className="bg-rf-surface-card rounded-lg shadow-md p-8 max-w-md w-full">
+        <h1 className="text-2xl font-bold text-rf-danger mb-4">{title}</h1>
         <p className="text-gray-700 mb-4">{message}</p>
         {showDetails && technicalDetails && (
           <details className="mt-4">

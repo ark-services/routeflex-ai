@@ -192,7 +192,7 @@ export function BoardToolbar({
   const searchExpanded = searchFocused || searchQuery.length > 0;
 
   return (
-    <div className="bg-white border-b border-stone-200 shrink-0">
+    <div className="bg-rf-surface-card border-b border-rf-border shrink-0">
 
       {/* ── Row 1: Job title (primary) · Board actions (right) ───────────────
            Title is the visual anchor — large, bold, breathing room above + below.
@@ -200,7 +200,7 @@ export function BoardToolbar({
            they operate on the board as a whole, not on a specific view or search. */}
       <div className="flex items-center gap-3 px-6 pt-5 pb-3 min-w-0">
 
-        <h1 className="text-[26px] font-semibold leading-tight text-stone-900 truncate min-w-0 flex-1">
+        <h1 className="text-[26px] font-semibold leading-tight text-rf-text-primary truncate min-w-0 flex-1">
           {jobTitle}
         </h1>
 
@@ -211,7 +211,7 @@ export function BoardToolbar({
           {isSuperAdmin && (
             <button
               onClick={() => setSaveAsTemplateOpen(true)}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300 text-sm font-medium transition-colors"
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-rf-border bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:border-rf-ink-100 text-sm font-medium transition-colors"
               title="Save this job's layout as a template (Super Admin)"
             >
               <BookTemplate className="h-3.5 w-3.5 shrink-0" />
@@ -222,7 +222,7 @@ export function BoardToolbar({
           {/* Integrate */}
           <a
             href={integrationHref}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300 text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-rf-border bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:border-rf-ink-100 text-sm font-medium transition-colors"
           >
             <Link2 className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">Integrate</span>
@@ -246,8 +246,8 @@ export function BoardToolbar({
               onClick={() => setMoreOpen((o) => !o)}
               className={`flex items-center justify-center h-8 w-8 rounded-lg border text-sm transition-colors ${
                 moreOpen
-                  ? "border-stone-300 bg-stone-100 text-stone-700"
-                  : "border-stone-200 bg-white text-stone-600 hover:bg-stone-50 hover:border-stone-300"
+                  ? "border-rf-ink-100 bg-rf-ink-100 text-rf-ink-700"
+                  : "border-rf-border bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:border-rf-ink-100"
               }`}
               title="More options"
             >
@@ -256,13 +256,13 @@ export function BoardToolbar({
             {moreOpen && (
               <div
                 ref={moreMenuRef}
-                className="absolute right-0 top-full mt-1 w-44 bg-white border border-stone-200 rounded-lg shadow-lg z-50 py-1"
+                className="absolute right-0 top-full mt-1 w-44 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg z-50 py-1"
               >
                 <button
                   onClick={() => { setMoreOpen(false); onOpenActivityLog(); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
                 >
-                  <ScrollText className="h-4 w-4 text-stone-500" />
+                  <ScrollText className="h-4 w-4 text-rf-text-secondary" />
                   Activity Log
                 </button>
               </div>
@@ -299,14 +299,14 @@ export function BoardToolbar({
            injects data-dashlane-* attributes onto form-adjacent elements after SSR,
            causing a React hydration mismatch. This prop tells React to ignore
            attribute differences on these specific nodes only. */}
-      <div className="flex items-center gap-2 px-6 py-2 border-t border-stone-100" suppressHydrationWarning>
+      <div className="flex items-center gap-2 px-6 py-2 border-t border-rf-ink-100" suppressHydrationWarning>
 
         {/* Search — collapses/expands on focus */}
         <div
           className="relative transition-[width] duration-200 ease-in-out shrink-0"
           style={{ width: searchExpanded ? 260 : 140 }}
         >
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400 pointer-events-none" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rf-text-muted pointer-events-none" />
           <input
             suppressHydrationWarning
             ref={searchRef}
@@ -316,7 +316,7 @@ export function BoardToolbar({
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             placeholder="Search"
-            className="w-full h-8 pl-8 pr-7 rounded-lg border border-stone-200 bg-stone-50 text-sm text-stone-700 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+            className="w-full h-8 pl-8 pr-7 rounded-lg border border-rf-border bg-rf-surface-page text-sm text-rf-ink-700 placeholder-rf-text-muted focus:outline-none focus:ring-2 focus:ring-rf-blue focus:bg-rf-surface-card transition-colors"
           />
           {searchQuery && (
             <button
@@ -324,7 +324,7 @@ export function BoardToolbar({
                 e.preventDefault(); // keep input focused
                 onSearchChange("");
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-rf-text-muted hover:text-rf-ink-500"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -338,14 +338,14 @@ export function BoardToolbar({
           onClick={() => setFilterOpen((o) => !o)}
           className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0 ${
             filterOpen || activeFilters.length > 0
-              ? "border-blue-400 bg-blue-50 text-blue-700"
-              : "border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100"
+              ? "border-blue-400 bg-rf-blue-tint text-rf-blue"
+              : "border-rf-border bg-rf-surface-page text-rf-ink-500 hover:bg-rf-surface-page"
           }`}
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />
           <span>Filter</span>
           {activeFilters.length > 0 && (
-            <span className="bg-blue-600 text-white text-[10px] font-semibold rounded-full px-1.5 py-0.5 leading-none min-w-[18px] text-center">
+            <span className="bg-rf-blue text-white text-[10px] font-semibold rounded-full px-1.5 py-0.5 leading-none min-w-[18px] text-center">
               {activeFilters.length}
             </span>
           )}

@@ -32,11 +32,11 @@ export default async function SettingsPage({
   const actionsQuota: number = (period?.quota_units ?? 0) + (period?.extra_credits ?? 0);
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
+    <div className="min-h-screen bg-rf-surface-page p-6">
       <div className="max-w-2xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-lg font-semibold text-stone-900">Company Settings</h1>
-          <p className="text-sm text-stone-500 mt-1">Manage your company profile and branding.</p>
+          <h1 className="text-lg font-semibold text-rf-text-primary">Company Settings</h1>
+          <p className="text-sm text-rf-text-secondary mt-1">Manage your company profile and branding.</p>
         </div>
         <SettingsClient
           company={company}

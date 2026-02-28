@@ -83,9 +83,9 @@ export default async function ApplicationFormPage({
     console.error("[ApplicationFormPage] Error loading form:", error);
     return (
       <div className="p-8">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <h3 className="text-red-800 font-medium">Error Loading Form</h3>
-          <p className="text-red-600 text-sm mt-1">
+        <div className="bg-rf-danger-bg border border-red-200 rounded-md p-4">
+          <h3 className="text-rf-danger font-medium">Error Loading Form</h3>
+          <p className="text-rf-danger text-sm mt-1">
             Could not load the application form. Please try recreating the job.
           </p>
         </div>

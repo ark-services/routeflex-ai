@@ -238,21 +238,21 @@ export default async function StatusPortalPage({
   return (
     <div className="space-y-6">
       {/* ── Applicant header ── */}
-      <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <p className="text-lg font-bold text-stone-900">{displayName}</p>
-        <p className="text-sm text-stone-500 mt-0.5">
-          Applied for <span className="font-medium text-stone-700">{job?.title}</span>
+      <div className="bg-rf-surface-card border border-rf-border rounded-xl p-5">
+        <p className="text-lg font-bold text-rf-text-primary">{displayName}</p>
+        <p className="text-sm text-rf-text-secondary mt-0.5">
+          Applied for <span className="font-medium text-rf-ink-700">{job?.title}</span>
           {" · "}Applied {appliedDate}
         </p>
       </div>
 
       {/* ── Hired banner ── */}
       {isHired && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-5 flex items-start gap-3">
-          <PartyPopper className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-rf-success-bg border border-green-200 rounded-xl p-5 flex items-start gap-3">
+          <PartyPopper className="w-6 h-6 text-rf-success flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-green-900">You&apos;re hired!</p>
-            <p className="text-sm text-green-700 mt-0.5">
+            <p className="text-sm text-rf-success mt-0.5">
               Welcome to the team. You&apos;ll be hearing from us shortly with next steps.
             </p>
           </div>
@@ -261,9 +261,9 @@ export default async function StatusPortalPage({
 
       {/* ── Rejected state ── */}
       {isRejected && (
-        <div className="bg-stone-100 border border-stone-200 rounded-xl p-5">
-          <p className="font-semibold text-stone-700">Thank you for applying</p>
-          <p className="text-sm text-stone-500 mt-0.5">
+        <div className="bg-rf-ink-100 border border-rf-border rounded-xl p-5">
+          <p className="font-semibold text-rf-ink-700">Thank you for applying</p>
+          <p className="text-sm text-rf-text-secondary mt-0.5">
             We appreciate your interest. We&apos;ll keep your application on file for future opportunities.
           </p>
         </div>
@@ -272,10 +272,10 @@ export default async function StatusPortalPage({
       {/* ── Pipeline steps ── */}
       {!isRejected && visibleGroups.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-wide px-1">
+          <h2 className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wide px-1">
             Your Progress
           </h2>
-          <div className="bg-white border border-stone-200 rounded-xl overflow-hidden divide-y divide-stone-100">
+          <div className="bg-rf-surface-card border border-rf-border rounded-xl overflow-hidden divide-y divide-rf-ink-100">
             {visibleGroups.map((group: any, idx: number) => {
               const isCompleted = isHired || idx < currentGroupIndex;
               const isActive = !isHired && idx === currentGroupIndex;
@@ -287,19 +287,19 @@ export default async function StatusPortalPage({
                     {/* State icon */}
                     <div className="flex-shrink-0 mt-0.5">
                       {isCompleted ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <CheckCircle2 className="w-5 h-5 text-rf-success" />
                       ) : isActive ? (
                         <div
                           className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-                          style={{ borderColor: group.color ?? "#3b82f6" }}
+                          style={{ borderColor: group.color ?? "#1D6FFF" }}
                         >
                           <div
                             className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: group.color ?? "#3b82f6" }}
+                            style={{ backgroundColor: group.color ?? "#1D6FFF" }}
                           />
                         </div>
                       ) : (
-                        <Circle className="w-5 h-5 text-stone-300" />
+                        <Circle className="w-5 h-5 text-rf-text-muted" />
                       )}
                     </div>
 
@@ -308,10 +308,10 @@ export default async function StatusPortalPage({
                       <p
                         className={`text-sm font-medium ${
                           isCompleted
-                            ? "text-stone-400 line-through"
+                            ? "text-rf-text-muted line-through"
                             : isActive
-                            ? "text-stone-900"
-                            : "text-stone-400"
+                            ? "text-rf-text-primary"
+                            : "text-rf-text-muted"
                         }`}
                       >
                         {group.name}
@@ -319,7 +319,7 @@ export default async function StatusPortalPage({
 
                       {/* Note — only on active stage */}
                       {isActive && group.applicant_note && (
-                        <p className="text-sm text-stone-500 mt-1">{group.applicant_note}</p>
+                        <p className="text-sm text-rf-text-secondary mt-1">{group.applicant_note}</p>
                       )}
 
                       {/* Checklist — shown for active & upcoming stages, hidden for completed */}
@@ -351,13 +351,13 @@ export default async function StatusPortalPage({
                             return (
                               <div key={item.id} className="flex items-center gap-2">
                                 {done ? (
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-rf-success flex-shrink-0" />
                                 ) : (
-                                  <Circle className="w-3.5 h-3.5 text-stone-300 flex-shrink-0" />
+                                  <Circle className="w-3.5 h-3.5 text-rf-text-muted flex-shrink-0" />
                                 )}
                                 <span
                                   className={`text-xs leading-snug ${
-                                    done ? "text-stone-400 line-through" : "text-stone-500"
+                                    done ? "text-rf-text-muted line-through" : "text-rf-text-secondary"
                                   }`}
                                 >
                                   {colName}
@@ -383,9 +383,9 @@ export default async function StatusPortalPage({
                                       className={`ml-1.5 ${
                                         linkedDateValue
                                           ? done
-                                            ? "text-stone-400"
-                                            : "text-stone-600 font-medium"
-                                          : "text-stone-400 italic"
+                                            ? "text-rf-text-muted"
+                                            : "text-rf-ink-500 font-medium"
+                                          : "text-rf-text-muted italic"
                                       }`}
                                     >
                                       {linkedDateValue ?? "No date scheduled"}
@@ -398,9 +398,9 @@ export default async function StatusPortalPage({
                                       className={`ml-1.5 ${
                                         currentDisplayValue
                                           ? done
-                                            ? "text-stone-400"
-                                            : "text-stone-600 font-medium"
-                                          : "text-stone-400 italic"
+                                            ? "text-rf-text-muted"
+                                            : "text-rf-ink-500 font-medium"
+                                          : "text-rf-text-muted italic"
                                       }`}
                                     >
                                       {currentDisplayValue ?? "No date scheduled"}
@@ -411,7 +411,7 @@ export default async function StatusPortalPage({
                                   {colType !== "status" &&
                                     colType !== "date" &&
                                     currentDisplayValue && (
-                                      <span className="ml-1.5 text-stone-600">
+                                      <span className="ml-1.5 text-rf-ink-500">
                                         {currentDisplayValue}
                                       </span>
                                     )}
@@ -428,8 +428,8 @@ export default async function StatusPortalPage({
                       <span
                         className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full"
                         style={{
-                          backgroundColor: `${group.color ?? "#3b82f6"}18`,
-                          color: group.color ?? "#3b82f6",
+                          backgroundColor: `${group.color ?? "#1D6FFF"}18`,
+                          color: group.color ?? "#1D6FFF",
                         }}
                       >
                         Current
@@ -446,7 +446,7 @@ export default async function StatusPortalPage({
       {/* ── Training progress ── */}
       {(enrollments ?? []).length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-xs font-semibold text-stone-500 uppercase tracking-wide px-1">
+          <h2 className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wide px-1">
             Required Training
           </h2>
           <div className="space-y-3">
@@ -464,24 +464,24 @@ export default async function StatusPortalPage({
               return (
                 <div
                   key={enrollment.id}
-                  className="bg-white border border-stone-200 rounded-xl overflow-hidden"
+                  className="bg-rf-surface-card border border-rf-border rounded-xl overflow-hidden"
                 >
                   {/* Course header */}
-                  <div className="flex items-center gap-3 px-5 py-4 border-b border-stone-100">
+                  <div className="flex items-center gap-3 px-5 py-4 border-b border-rf-ink-100">
                     <div
                       className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        courseCompleted ? "bg-green-100" : "bg-blue-50"
+                        courseCompleted ? "bg-rf-success-bg" : "bg-rf-blue-tint"
                       }`}
                     >
                       {courseCompleted ? (
-                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                        <CheckCircle2 className="w-5 h-5 text-rf-success" />
                       ) : (
-                        <BookOpen className="w-5 h-5 text-blue-600" />
+                        <BookOpen className="w-5 h-5 text-rf-blue" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-stone-900">{course?.name}</p>
-                      <p className="text-xs text-stone-500 mt-0.5">
+                      <p className="text-sm font-semibold text-rf-text-primary">{course?.name}</p>
+                      <p className="text-xs text-rf-text-secondary mt-0.5">
                         {courseCompleted
                           ? "Completed"
                           : `${passedCount} of ${regularModules.length} modules complete`}
@@ -490,7 +490,7 @@ export default async function StatusPortalPage({
                     {!courseCompleted && (
                       <Link
                         href={`/learn/${enrollment.token}`}
-                        className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 flex-shrink-0"
+                        className="flex items-center gap-1 text-xs font-medium text-rf-blue hover:text-blue-800 flex-shrink-0"
                       >
                         {passedCount > 0 ? "Resume" : "Start"}
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -499,7 +499,7 @@ export default async function StatusPortalPage({
                   </div>
 
                   {/* Module list */}
-                  <div className="divide-y divide-stone-50">
+                  <div className="divide-y divide-rf-ink-100">
                     {regularModules.map((module: any, idx: number) => {
                       const passed = passedModuleIds.has(module.id);
                       const prevPassed =
@@ -513,20 +513,20 @@ export default async function StatusPortalPage({
                         >
                           <div className="flex-shrink-0">
                             {passed ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                              <CheckCircle2 className="w-4 h-4 text-rf-success" />
                             ) : locked ? (
-                              <Circle className="w-4 h-4 text-stone-200" />
+                              <Circle className="w-4 h-4 text-rf-text-muted" />
                             ) : (
-                              <Clock className="w-4 h-4 text-blue-400" />
+                              <Clock className="w-4 h-4 text-rf-blue-light" />
                             )}
                           </div>
                           <p
                             className={`text-sm flex-1 ${
                               passed
-                                ? "text-stone-400 line-through"
+                                ? "text-rf-text-muted line-through"
                                 : locked
-                                ? "text-stone-300"
-                                : "text-stone-700"
+                                ? "text-rf-text-muted"
+                                : "text-rf-ink-700"
                             }`}
                           >
                             {module.title}
@@ -544,8 +544,8 @@ export default async function StatusPortalPage({
 
       {/* ── Empty state — no groups configured ── */}
       {!isRejected && visibleGroups.length === 0 && (enrollments ?? []).length === 0 && (
-        <div className="bg-white border border-stone-200 rounded-xl p-8 text-center">
-          <p className="text-sm text-stone-500">
+        <div className="bg-rf-surface-card border border-rf-border rounded-xl p-8 text-center">
+          <p className="text-sm text-rf-text-secondary">
             Your application is under review. We&apos;ll be in touch soon.
           </p>
         </div>

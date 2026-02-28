@@ -78,26 +78,26 @@ export default async function ApplicantTrainingPage({
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
+    <div className="min-h-screen bg-rf-surface-page p-6">
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-stone-500 mb-6">
-          <Link href={`/dashboard/${companyId}/training`} className="hover:text-stone-700 transition-colors">
+        <div className="flex items-center gap-2 text-sm text-rf-text-secondary mb-6">
+          <Link href={`/dashboard/${companyId}/training`} className="hover:text-rf-ink-700 transition-colors">
             Training
           </Link>
           <span>/</span>
-          <span className="text-stone-900 font-medium">{applicant.full_name}</span>
+          <span className="text-rf-text-primary font-medium">{applicant.full_name}</span>
         </div>
 
         <div className="mb-6">
-          <h1 className="text-lg font-semibold text-stone-900">{applicant.full_name}</h1>
-          <p className="text-sm text-stone-500">{applicant.email}</p>
+          <h1 className="text-lg font-semibold text-rf-text-primary">{applicant.full_name}</h1>
+          <p className="text-sm text-rf-text-secondary">{applicant.email}</p>
         </div>
 
         {(enrollments ?? []).length === 0 ? (
-          <div className="bg-white border border-stone-200 rounded-xl p-8 text-center">
-            <p className="text-stone-500 font-medium">No training enrollments</p>
-            <p className="text-stone-400 text-sm mt-1">
+          <div className="bg-rf-surface-card border border-rf-border rounded-xl p-8 text-center">
+            <p className="text-rf-text-secondary font-medium">No training enrollments</p>
+            <p className="text-rf-text-muted text-sm mt-1">
               This applicant has not been enrolled in any courses yet.
             </p>
           </div>
@@ -113,17 +113,17 @@ export default async function ApplicantTrainingPage({
               const moduleAttempts = bestByEnrollment[enrollment.id] ?? {};
 
               return (
-                <div key={enrollment.id} className="bg-white border border-stone-200 rounded-xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between">
+                <div key={enrollment.id} className="bg-rf-surface-card border border-rf-border rounded-xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-rf-ink-100 flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-stone-900">{course?.name}</p>
+                      <p className="font-medium text-rf-text-primary">{course?.name}</p>
                       <div className="flex items-center gap-3 mt-1">
                         <StatusBadge status={enrollment.status} />
-                        <span className="text-xs text-stone-400">
+                        <span className="text-xs text-rf-text-muted">
                           Enrolled {new Date(enrollment.enrolled_at).toLocaleDateString()}
                         </span>
                         {enrollment.completed_at && (
-                          <span className="text-xs text-stone-400">
+                          <span className="text-xs text-rf-text-muted">
                             · Completed {new Date(enrollment.completed_at).toLocaleDateString()}
                           </span>
                         )}
@@ -133,7 +133,7 @@ export default async function ApplicantTrainingPage({
                       href={`${appUrl}/learn/${enrollment.token}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                      className="text-xs text-rf-blue hover:text-blue-800 transition-colors"
                     >
                       Training link ↗
                     </a>
@@ -169,11 +169,11 @@ export default async function ApplicantTrainingPage({
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    enrolled: { label: "Enrolled", cls: "bg-blue-100 text-blue-700" },
+    enrolled: { label: "Enrolled", cls: "bg-rf-blue-tint text-rf-blue" },
     in_progress: { label: "In Progress", cls: "bg-yellow-100 text-yellow-700" },
-    completed: { label: "Completed", cls: "bg-green-100 text-green-700" },
+    completed: { label: "Completed", cls: "bg-rf-success-bg text-rf-success" },
   };
-  const cfg = map[status] ?? { label: status, cls: "bg-stone-100 text-stone-600" };
+  const cfg = map[status] ?? { label: status, cls: "bg-rf-ink-100 text-rf-ink-500" };
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>
       {cfg.label}
@@ -193,33 +193,33 @@ function ModuleRow({
   attempt?: { score: number; passed: boolean };
 }) {
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-stone-50 last:border-0">
+    <div className="flex items-center gap-3 py-2 border-b border-rf-ink-100 last:border-0">
       <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
         {!attempt ? (
-          <Lock className="w-3.5 h-3.5 text-stone-300" />
+          <Lock className="w-3.5 h-3.5 text-rf-text-muted" />
         ) : attempt.passed ? (
-          <CheckCircle2 className="w-4 h-4 text-green-600" />
+          <CheckCircle2 className="w-4 h-4 text-rf-success" />
         ) : (
           <XCircle className="w-4 h-4 text-red-400" />
         )}
       </div>
-      <span className="flex-1 text-sm text-stone-700">
+      <span className="flex-1 text-sm text-rf-ink-700">
         {isFinalExam ? (
           <span className="font-medium">{title} (Final Exam)</span>
         ) : (
           <span>
-            <span className="text-stone-400 text-xs mr-1.5">{(index ?? 0) + 1}.</span>
+            <span className="text-rf-text-muted text-xs mr-1.5">{(index ?? 0) + 1}.</span>
             {title}
           </span>
         )}
       </span>
       {attempt && (
-        <span className={`text-xs font-medium ${attempt.passed ? "text-green-600" : "text-red-500"}`}>
+        <span className={`text-xs font-medium ${attempt.passed ? "text-rf-success" : "text-rf-danger"}`}>
           {attempt.score}%
         </span>
       )}
       {!attempt && (
-        <span className="text-xs text-stone-400">Not started</span>
+        <span className="text-xs text-rf-text-muted">Not started</span>
       )}
     </div>
   );

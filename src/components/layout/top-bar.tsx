@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Menu } from "lucide-react";
+import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
 import { CompanySelect } from "./company-select";
 import { UserMenu } from "./user-menu";
 import type { Company } from "@/lib/types";
@@ -28,23 +29,20 @@ export function TopBar({
   onMenuOpen,
 }: TopBarProps) {
   return (
-    <header className="h-14 md:h-16 border-b border-stone-200 bg-white flex items-center justify-between px-4 md:px-6 flex-shrink-0">
+    <header className="h-14 md:h-16 border-b border-rf-border bg-rf-surface-card flex items-center justify-between px-4 md:px-6 flex-shrink-0">
       <div className="flex items-center gap-3">
         {/* Hamburger – mobile only */}
         {onMenuOpen && (
           <button
             onClick={onMenuOpen}
-            className="md:hidden p-1.5 hover:bg-stone-100 rounded-lg transition-colors"
+            className="md:hidden p-1.5 hover:bg-rf-surface-page rounded-lg transition-colors"
             aria-label="Open navigation"
           >
-            <Menu className="h-5 w-5 text-stone-600" />
+            <Menu className="h-5 w-5 text-rf-ink-500" />
           </button>
         )}
-        <Link
-          href="/"
-          className="text-base md:text-lg font-semibold tracking-tight text-stone-900 hover:text-stone-700 transition-colors"
-        >
-          RouteFlex AI
+        <Link href="/">
+          <RouteFlexLogo size="nav" />
         </Link>
       </div>
 

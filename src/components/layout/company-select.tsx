@@ -97,10 +97,10 @@ export function CompanySelect({
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2"
+        className="inline-flex items-center gap-2 rounded-lg border border-rf-border bg-rf-surface-card px-3 py-2 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page transition-colors focus:outline-none focus:ring-2 focus:ring-rf-blue focus:ring-offset-2"
       >
         <span>{currentCompany?.name || "Select company"}</span>
-        <ChevronDown className="h-4 w-4 text-stone-400" />
+        <ChevronDown className="h-4 w-4 text-rf-text-muted" />
       </button>
 
       {open && (
@@ -109,7 +109,7 @@ export function CompanySelect({
             className="fixed inset-0 z-10"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border border-stone-200 bg-white shadow-lg z-20">
+          <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border border-rf-border bg-rf-surface-card shadow-lg z-20">
             <div className="py-1 max-h-64 overflow-y-auto">
               {companies.map((company) => (
                 <div key={company.id} className="relative group">
@@ -119,9 +119,9 @@ export function CompanySelect({
                       e.stopPropagation();
                       setCompanyMenuOpen(company.id);
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-stone-200 rounded transition-opacity z-10"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 hover:bg-rf-ink-100 rounded transition-opacity z-10"
                   >
-                    <MoreVertical className="h-3 w-3 text-stone-600" />
+                    <MoreVertical className="h-3 w-3 text-rf-ink-500" />
                   </button>
 
                   {/* Company button */}
@@ -129,8 +129,8 @@ export function CompanySelect({
                     onClick={() => handleCompanyChange(company.id)}
                     className={`w-full text-left px-4 py-2 pl-10 text-sm transition-colors ${
                       company.id === currentCompanyId
-                        ? "bg-stone-100 text-stone-900 font-medium"
-                        : "text-stone-700 hover:bg-stone-50"
+                        ? "bg-rf-ink-100 text-rf-text-primary font-medium"
+                        : "text-rf-ink-700 hover:bg-rf-surface-page"
                     }`}
                   >
                     {company.name}
@@ -143,27 +143,27 @@ export function CompanySelect({
                         className="fixed inset-0 z-30"
                         onClick={() => setCompanyMenuOpen(null)}
                       />
-                      <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-stone-200 bg-white shadow-lg z-40">
+                      <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-rf-border bg-rf-surface-card shadow-lg z-40">
                         <div className="py-1">
                           <button
                             onClick={() => openRenameModal(company)}
                             disabled={isPending || userRole === "viewer"}
-                            className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Rename
                           </button>
                           <button
                             onClick={() => openDuplicateModal(company)}
                             disabled={isPending || userRole === "viewer"}
-                            className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Duplicate
                           </button>
-                          <div className="my-1 border-t border-stone-100" />
+                          <div className="my-1 border-t border-rf-ink-100" />
                           <button
                             onClick={() => openDeleteModal(company)}
                             disabled={isPending || userRole !== "admin"}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full text-left px-4 py-2 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Delete {userRole !== "admin" && "(Admin only)"}
                           </button>
@@ -176,13 +176,13 @@ export function CompanySelect({
             </div>
             {canCreateCompany && (
               <>
-                <div className="border-t border-stone-200" />
+                <div className="border-t border-rf-border" />
                 <button
                   onClick={() => {
                     setOpen(false);
                     onCreateCompany();
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors flex items-center gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Create company

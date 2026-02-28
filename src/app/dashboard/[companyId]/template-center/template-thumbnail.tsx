@@ -35,9 +35,9 @@ export function TemplateThumbnail({ thumbnailPath, title, className = "" }: Prop
   // Gradient placeholder
   return (
     <div
-      className={`bg-gradient-to-br from-blue-100 via-indigo-50 to-purple-100 flex items-center justify-center ${className}`}
+      className={`bg-gradient-to-br from-rf-blue-tint via-rf-blue-tint to-rf-blue-tint flex items-center justify-center ${className}`}
     >
-      <span className="text-xl font-bold text-blue-300 select-none">
+      <span className="text-xl font-bold text-rf-blue-light select-none">
         {title.slice(0, 2).toUpperCase()}
       </span>
     </div>

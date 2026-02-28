@@ -1,0 +1,7 @@
+<svg width="220" height="48" viewBox="0 0 220 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="220" height="48" fill="#0F1623"/>
+  <path d="M4 8 L20 24 L4 40" stroke="#4D8FFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 8 L40 24 L24 40" stroke="#4D8FFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.28"/>
+  <text x="54" y="36" font-family="'Darker Grotesque', sans-serif" font-weight="900" font-size="34" letter-spacing="-0.025em" fill="#FFFFFF">Route</text>
+  <text x="138" y="36" font-family="'Darker Grotesque', sans-serif" font-weight="900" font-size="34" letter-spacing="-0.025em" fill="#4D8FFF">Flex</text>
+</svg>

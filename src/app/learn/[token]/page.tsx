@@ -87,11 +87,11 @@ export default async function LearnIndexPage({
   if (enrollment.status === "completed") {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-8 h-8 text-green-600" />
+        <div className="w-16 h-16 bg-rf-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="w-8 h-8 text-rf-success" />
         </div>
-        <h1 className="text-2xl font-bold text-stone-900 mb-2">Course Complete!</h1>
-        <p className="text-stone-500">
+        <h1 className="text-2xl font-bold text-rf-text-primary mb-2">Course Complete!</h1>
+        <p className="text-rf-text-secondary">
           You have successfully completed {course.name}.
         </p>
       </div>
@@ -102,18 +102,18 @@ export default async function LearnIndexPage({
     <div className="space-y-6">
       {/* Course header */}
       <div>
-        <h1 className="text-2xl font-bold text-stone-900">{course.name}</h1>
+        <h1 className="text-2xl font-bold text-rf-text-primary">{course.name}</h1>
         {course.description && (
-          <p className="text-stone-500 mt-1">{course.description}</p>
+          <p className="text-rf-text-secondary mt-1">{course.description}</p>
         )}
-        <p className="text-xs text-stone-400 mt-2">
+        <p className="text-xs text-rf-text-muted mt-2">
           Passing threshold: {course.passing_threshold}% per module
         </p>
       </div>
 
       {/* Module list */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
+        <h2 className="text-sm font-semibold text-rf-ink-700 uppercase tracking-wide">
           Modules
         </h2>
         {regularModules.map((module: any, idx: number) => {
@@ -138,32 +138,32 @@ export default async function LearnIndexPage({
       {/* Final exam */}
       {finalExam && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide">
+          <h2 className="text-sm font-semibold text-rf-ink-700 uppercase tracking-wide">
             Final Exam
           </h2>
           <div
-            className={`flex items-center gap-4 p-4 bg-white border rounded-xl transition-colors ${
+            className={`flex items-center gap-4 p-4 bg-rf-surface-card border rounded-xl transition-colors ${
               allRegularPassed
-                ? "border-stone-200 hover:border-blue-300"
-                : "border-stone-200 opacity-50 cursor-not-allowed"
+                ? "border-rf-border hover:border-rf-blue-tint"
+                : "border-rf-border opacity-50 cursor-not-allowed"
             }`}
           >
             <div className="flex-shrink-0">
               {passedModuleIds.has(finalExam.id) ? (
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                <CheckCircle2 className="w-5 h-5 text-rf-success" />
               ) : allRegularPassed ? (
-                <ClipboardCheck className="w-5 h-5 text-blue-600" />
+                <ClipboardCheck className="w-5 h-5 text-rf-blue" />
               ) : (
-                <Lock className="w-5 h-5 text-stone-300" />
+                <Lock className="w-5 h-5 text-rf-text-muted" />
               )}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-stone-900">{finalExam.title}</p>
+              <p className="text-sm font-medium text-rf-text-primary">{finalExam.title}</p>
               {!allRegularPassed && (
-                <p className="text-xs text-stone-400 mt-0.5">Complete all modules to unlock</p>
+                <p className="text-xs text-rf-text-muted mt-0.5">Complete all modules to unlock</p>
               )}
               {bestScore[finalExam.id] && (
-                <p className={`text-xs mt-0.5 font-medium ${bestScore[finalExam.id].passed ? "text-green-600" : "text-red-500"}`}>
+                <p className={`text-xs mt-0.5 font-medium ${bestScore[finalExam.id].passed ? "text-rf-success" : "text-rf-danger"}`}>
                   Best score: {bestScore[finalExam.id].score}%
                 </p>
               )}
@@ -171,7 +171,7 @@ export default async function LearnIndexPage({
             {allRegularPassed && (
               <Link
                 href={`/learn/${token}/modules/${finalExam.id}`}
-                className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:text-blue-800"
+                className="flex items-center gap-1 text-xs text-rf-blue font-medium hover:text-blue-800"
               >
                 {passedModuleIds.has(finalExam.id) ? "Review" : "Start"}
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -201,27 +201,27 @@ function ModuleRow({
 }) {
   return (
     <div
-      className={`flex items-center gap-4 p-4 bg-white border rounded-xl transition-colors ${
+      className={`flex items-center gap-4 p-4 bg-rf-surface-card border rounded-xl transition-colors ${
         unlocked
-          ? "border-stone-200 hover:border-blue-300"
-          : "border-stone-200 opacity-50"
+          ? "border-rf-border hover:border-rf-blue-tint"
+          : "border-rf-border opacity-50"
       }`}
     >
       <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold">
         {passed ? (
-          <CheckCircle2 className="w-5 h-5 text-green-600" />
+          <CheckCircle2 className="w-5 h-5 text-rf-success" />
         ) : unlocked ? (
-          <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+          <span className="w-7 h-7 rounded-full bg-rf-blue-tint text-rf-blue flex items-center justify-center text-xs font-bold">
             {index + 1}
           </span>
         ) : (
-          <Lock className="w-4 h-4 text-stone-300" />
+          <Lock className="w-4 h-4 text-rf-text-muted" />
         )}
       </div>
       <div className="flex-1">
-        <p className="text-sm font-medium text-stone-900">{module.title}</p>
+        <p className="text-sm font-medium text-rf-text-primary">{module.title}</p>
         {bestScore && (
-          <p className={`text-xs mt-0.5 font-medium ${bestScore.passed ? "text-green-600" : "text-red-500"}`}>
+          <p className={`text-xs mt-0.5 font-medium ${bestScore.passed ? "text-rf-success" : "text-rf-danger"}`}>
             Best score: {bestScore.score}%
           </p>
         )}
@@ -229,7 +229,7 @@ function ModuleRow({
       {unlocked && (
         <Link
           href={`/learn/${token}/modules/${module.id}`}
-          className="flex items-center gap-1 text-xs text-blue-600 font-medium hover:text-blue-800"
+          className="flex items-center gap-1 text-xs text-rf-blue font-medium hover:text-blue-800"
         >
           {passed ? "Review" : "Start"}
           <ChevronRight className="w-3.5 h-3.5" />

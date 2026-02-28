@@ -72,7 +72,7 @@ export function CreateCompanyModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="company-name" className="block text-sm font-medium text-stone-700 mb-2">
+            <label htmlFor="company-name" className="block text-sm font-medium text-rf-ink-700 mb-2">
               Company name
             </label>
             <Input
@@ -86,7 +86,7 @@ export function CreateCompanyModal({
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-rf-danger">{error}</p>
           )}
 
           <div className="flex gap-3 justify-end">

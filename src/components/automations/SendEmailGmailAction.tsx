@@ -95,15 +95,15 @@ export function SendEmailGmailAction({
             onClick={() => setShowAccountDropdown(!showAccountDropdown)}
             className={`w-full px-4 py-3 border rounded-lg text-left flex items-center justify-between transition-colors ${
               selectedConnection
-                ? 'border-blue-300 bg-blue-50 hover:bg-blue-100'
-                : 'border-gray-300 bg-white hover:border-gray-400'
+                ? 'border-rf-blue-tint bg-rf-blue-tint hover:bg-rf-blue-tint'
+                : 'border-gray-300 bg-rf-surface-card hover:border-gray-400'
             }`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                selectedConnection ? 'bg-blue-100' : 'bg-gray-100'
+                selectedConnection ? 'bg-rf-blue-tint' : 'bg-gray-100'
               }`}>
-                <Mail className={`w-4 h-4 ${selectedConnection ? 'text-blue-600' : 'text-gray-400'}`} />
+                <Mail className={`w-4 h-4 ${selectedConnection ? 'text-rf-blue' : 'text-gray-400'}`} />
               </div>
               <span className={`text-sm font-medium ${selectedConnection ? 'text-blue-900' : 'text-gray-500'}`}>
                 {selectedConnection ? selectedConnection.email_address : 'Select Gmail account'}
@@ -113,7 +113,7 @@ export function SendEmailGmailAction({
           </button>
 
           {showAccountDropdown && (
-            <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-30 w-full mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
               {connections.length > 0 ? (
                 connections.map((conn) => (
                   <button
@@ -122,7 +122,7 @@ export function SendEmailGmailAction({
                       onChange({ config: { ...action.config, connection_id: conn.id } });
                       setShowAccountDropdown(false);
                     }}
-                    className="w-full px-4 py-3 text-left hover:bg-blue-50 flex items-center gap-3 transition-colors border-b border-gray-100 last:border-0"
+                    className="w-full px-4 py-3 text-left hover:bg-rf-blue-tint flex items-center gap-3 transition-colors border-b border-gray-100 last:border-0"
                   >
                     <Mail className="w-4 h-4 text-gray-600" />
                     <span className="text-sm text-gray-900">{conn.email_address}</span>
@@ -133,7 +133,7 @@ export function SendEmailGmailAction({
                   <p className="text-sm text-gray-600 mb-2">No Gmail accounts connected</p>
                   <a
                     href={integrationsHref}
-                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-xs text-rf-blue hover:text-rf-blue font-medium"
                   >
                     Connect Gmail →
                   </a>
@@ -144,9 +144,9 @@ export function SendEmailGmailAction({
         </div>
 
         {!selectedConnection && connections.length === 0 && (
-          <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
+          <div className="mt-2 px-3 py-2 bg-rf-warning-bg border border-amber-200 rounded flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rf-warning flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-rf-warning">
               No Gmail accounts connected.{' '}
               <a href={integrationsHref} className="underline font-medium">
                 Connect one now
@@ -172,7 +172,7 @@ export function SendEmailGmailAction({
                   setVariableTarget('subject');
                   setShowVariableMenu(!showVariableMenu);
                 }}
-                className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors flex items-center gap-1"
+                className="px-2 py-1 text-xs bg-rf-blue-tint text-rf-blue rounded hover:bg-rf-blue-tint transition-colors flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" />
                 Add variable
@@ -183,7 +183,7 @@ export function SendEmailGmailAction({
               value={action.config.subject || ''}
               onChange={(e) => onChange({ config: { ...action.config, subject: e.target.value } })}
               placeholder="e.g., Welcome to {{company_name}}, {{applicant_name}}!"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[16px] md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[16px] md:text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
             />
           </div>
 
@@ -196,7 +196,7 @@ export function SendEmailGmailAction({
                   setVariableTarget('body');
                   setShowVariableMenu(!showVariableMenu);
                 }}
-                className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors flex items-center gap-1"
+                className="px-2 py-1 text-xs bg-rf-blue-tint text-rf-blue rounded hover:bg-rf-blue-tint transition-colors flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" />
                 Add variable
@@ -206,7 +206,7 @@ export function SendEmailGmailAction({
               value={action.config.body || ''}
               onChange={(e) => onChange({ config: { ...action.config, body: e.target.value } })}
               placeholder="Hi {{applicant_name}},&#10;&#10;Thank you for applying to {{job_title}}..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue resize-y"
               rows={6}
             />
             <p className="text-xs text-gray-500 mt-1">HTML is supported</p>
@@ -215,7 +215,7 @@ export function SendEmailGmailAction({
           {/* Variable Menu */}
           {showVariableMenu && (
             <div className="relative">
-              <div className="absolute z-30 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg w-64 max-h-60 overflow-y-auto">
+              <div className="absolute z-30 right-0 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg w-64 max-h-60 overflow-y-auto">
                 <div className="p-2 border-b border-gray-100">
                   <p className="text-xs font-medium text-gray-700">Insert variable</p>
                 </div>
@@ -223,7 +223,7 @@ export function SendEmailGmailAction({
                   <button
                     key={v.key}
                     onClick={() => insertVariable(v.key)}
-                    className="w-full px-3 py-2 text-left hover:bg-blue-50 text-sm"
+                    className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint text-sm"
                   >
                     <span className="text-gray-900">{v.label}</span>
                     <span className="block text-xs text-gray-500 mt-0.5">{`{{${v.key}}}`}</span>
@@ -246,17 +246,17 @@ export function SendEmailGmailAction({
             onClick={() => setShowRecipientDropdown(!showRecipientDropdown)}
             className={`w-full px-4 py-3 border rounded-lg text-left flex items-center justify-between transition-colors ${
               selectedRecipientColumn
-                ? 'border-purple-300 bg-purple-50 hover:bg-purple-100'
-                : 'border-gray-300 bg-white hover:border-gray-400'
+                ? 'border-rf-blue bg-rf-blue-tint hover:bg-rf-blue-tint'
+                : 'border-gray-300 bg-rf-surface-card hover:border-gray-400'
             }`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                selectedRecipientColumn ? 'bg-purple-100' : 'bg-gray-100'
+                selectedRecipientColumn ? 'bg-rf-blue-tint' : 'bg-rf-ink-100'
               }`}>
-                <AtSign className={`w-4 h-4 ${selectedRecipientColumn ? 'text-purple-600' : 'text-gray-400'}`} />
+                <AtSign className={`w-4 h-4 ${selectedRecipientColumn ? 'text-rf-blue' : 'text-gray-400'}`} />
               </div>
-              <span className={`text-sm font-medium ${selectedRecipientColumn ? 'text-purple-900' : 'text-gray-500'}`}>
+              <span className={`text-sm font-medium ${selectedRecipientColumn ? 'text-rf-blue' : 'text-rf-text-secondary'}`}>
                 {selectedRecipientColumn ? `Send to: ${selectedRecipientColumn.name}` : 'Select recipient column'}
               </span>
             </div>
@@ -264,7 +264,7 @@ export function SendEmailGmailAction({
           </button>
 
           {showRecipientDropdown && (
-            <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute z-30 w-full mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
               {emailColumns.length > 0 ? (
                 emailColumns.map((col) => (
                   <button
@@ -273,7 +273,7 @@ export function SendEmailGmailAction({
                       onChange({ config: { ...action.config, recipient_column_id: col.id } });
                       setShowRecipientDropdown(false);
                     }}
-                    className="w-full px-4 py-3 text-left hover:bg-purple-50 flex items-center gap-3 transition-colors border-b border-gray-100 last:border-0"
+                    className="w-full px-4 py-3 text-left hover:bg-rf-surface-page flex items-center gap-3 transition-colors border-b border-rf-ink-100 last:border-0"
                   >
                     <AtSign className="w-4 h-4 text-gray-600" />
                     <span className="text-sm text-gray-900">{col.name}</span>
@@ -291,9 +291,9 @@ export function SendEmailGmailAction({
         </div>
 
         {emailColumns.length === 0 && (
-          <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
+          <div className="mt-2 px-3 py-2 bg-rf-warning-bg border border-amber-200 rounded flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rf-warning flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-rf-warning">
               Add an email-type column to your board to select recipients
             </p>
           </div>

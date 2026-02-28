@@ -212,21 +212,21 @@ export default function FieldCard({
     <div
       onClick={onSelect}
       className={`
-        relative rounded-xl border-2 bg-white p-6 transition-all cursor-pointer
+        relative rounded-xl border-2 bg-rf-surface-card p-6 transition-all cursor-pointer
         ${isSelected
-          ? "border-blue-500 shadow-lg shadow-blue-100"
+          ? "border-rf-blue shadow-lg shadow-blue-100"
           : "border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md"
         }
       `}
     >
       {/* Hidden overlay banner */}
       {field.settings?.hidden && (
-        <div className="absolute inset-0 rounded-xl bg-white/70 flex items-center justify-center pointer-events-none z-10">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-full shadow-sm">
-            <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="absolute inset-0 rounded-xl bg-rf-surface-card/70 flex items-center justify-center pointer-events-none z-10">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rf-warning-bg border border-amber-300 rounded-full shadow-sm">
+            <svg className="w-3.5 h-3.5 text-rf-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
             </svg>
-            <span className="text-xs font-semibold text-amber-700">Hidden from form</span>
+            <span className="text-xs font-semibold text-rf-warning">Hidden from form</span>
           </div>
         </div>
       )}
@@ -237,7 +237,7 @@ export default function FieldCard({
           {field.type}
         </span>
         {field.required && (
-          <Badge className="bg-red-50 text-red-700 border border-red-200">
+          <Badge className="bg-rf-danger-bg text-red-700 border border-red-200">
             Required
           </Badge>
         )}
@@ -260,7 +260,7 @@ export default function FieldCard({
                 setIsEditingLabel(false);
               }
             }}
-            className="w-full text-lg font-semibold text-gray-900 border-b-2 border-blue-500 focus:outline-none px-1 -mx-1"
+            className="w-full text-lg font-semibold text-gray-900 border-b-2 border-rf-blue focus:outline-none px-1 -mx-1"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
@@ -269,7 +269,7 @@ export default function FieldCard({
               e.stopPropagation();
               setIsEditingLabel(true);
             }}
-            className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-text px-1 -mx-1 rounded hover:bg-gray-50"
+            className="text-lg font-semibold text-gray-900 hover:text-rf-blue cursor-text px-1 -mx-1 rounded hover:bg-gray-50"
           >
             {field.label}
           </h3>
@@ -294,7 +294,7 @@ export default function FieldCard({
               }
             }}
             placeholder="Add a description (optional)"
-            className="w-full text-sm text-gray-600 border-b border-blue-500 focus:outline-none px-1 -mx-1"
+            className="w-full text-sm text-gray-600 border-b border-rf-blue focus:outline-none px-1 -mx-1"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
@@ -364,7 +364,7 @@ export default function FieldCard({
               e.stopPropagation();
               onDelete();
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-auto"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-rf-danger hover:bg-rf-danger-bg rounded-lg transition-colors ml-auto"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

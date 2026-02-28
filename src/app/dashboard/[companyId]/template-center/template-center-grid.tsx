@@ -27,18 +27,18 @@ export function TemplateCenterGrid({ templates, companyId }: Props) {
     <div>
       {/* Search */}
       <div className="relative mb-6 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-rf-text-muted" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search templates…"
-          className="w-full pl-9 pr-4 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="w-full pl-9 pr-4 py-2 text-sm border border-rf-border rounded-lg focus:outline-none focus:ring-2 focus:ring-rf-blue bg-rf-surface-card"
         />
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-stone-400">
+        <div className="text-center py-16 text-rf-text-muted">
           <p className="text-sm">
             {query ? `No templates match "${query}"` : "No templates available yet."}
           </p>
@@ -51,10 +51,10 @@ export function TemplateCenterGrid({ templates, companyId }: Props) {
               onClick={() =>
                 router.push(`/dashboard/${companyId}/template-center/${t.id}`)
               }
-              className="group text-left bg-white border border-stone-200 rounded-xl overflow-hidden hover:border-blue-300 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="group text-left bg-rf-surface-card border border-rf-border rounded-xl overflow-hidden hover:border-rf-blue-tint hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-rf-blue"
             >
               {/* Thumbnail */}
-              <div className="h-36 bg-stone-100 overflow-hidden">
+              <div className="h-36 bg-rf-ink-100 overflow-hidden">
                 <TemplateThumbnail
                   thumbnailPath={t.thumbnail_path}
                   title={t.title}
@@ -64,16 +64,16 @@ export function TemplateCenterGrid({ templates, companyId }: Props) {
 
               {/* Card body */}
               <div className="p-4">
-                <h3 className="text-sm font-semibold text-stone-900 leading-tight line-clamp-1">
+                <h3 className="text-sm font-semibold text-rf-text-primary leading-tight line-clamp-1">
                   {t.title}
                 </h3>
                 {t.description && (
-                  <p className="mt-1 text-xs text-stone-500 line-clamp-2 leading-relaxed">
+                  <p className="mt-1 text-xs text-rf-text-secondary line-clamp-2 leading-relaxed">
                     {t.description}
                   </p>
                 )}
                 <div className="mt-3">
-                  <span className="inline-block text-xs font-medium text-blue-600 group-hover:underline">
+                  <span className="inline-block text-xs font-medium text-rf-blue group-hover:underline">
                     View template →
                   </span>
                 </div>

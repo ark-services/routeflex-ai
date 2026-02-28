@@ -66,7 +66,7 @@ function SortableFieldItem({
         onClick={() => onSelectField(field.id)}
         className={`w-full flex items-start gap-2 px-2 py-2 rounded-lg text-left transition-colors ${
           selectedFieldId === field.id
-            ? "bg-blue-50 text-blue-700"
+            ? "bg-rf-blue-tint text-rf-blue"
             : "text-gray-700 hover:bg-gray-50"
         }`}
       >
@@ -97,13 +97,13 @@ function SortableFieldItem({
           </div>
           <div className="text-xs text-gray-500 capitalize mt-0.5 flex items-center gap-1">
             {field.settings?.hidden && (
-              <svg className="w-3 h-3 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-3 h-3 text-rf-warning flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
               </svg>
             )}
             {field.type}
             {field.required && !field.settings?.hidden && (
-              <span className="ml-1 text-red-600">*</span>
+              <span className="ml-1 text-rf-danger">*</span>
             )}
           </div>
         </div>
@@ -132,7 +132,7 @@ export default function FormBuilderSidebar({
   };
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-full overflow-y-auto flex flex-col">
+    <div className="w-64 bg-rf-surface-card border-r border-gray-200 h-full overflow-y-auto flex flex-col">
       {/* Sidebar Header */}
       <div className="px-4 py-4 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">

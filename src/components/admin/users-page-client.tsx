@@ -101,10 +101,10 @@ export function UsersPageClient({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-rf-text-primary">
             User management
           </h1>
-          <p className="text-sm text-stone-500 mt-1">
+          <p className="text-sm text-rf-text-secondary mt-1">
             {memberCount} / {maxSeats} seats used
           </p>
         </div>
@@ -121,11 +121,11 @@ export function UsersPageClient({
 
       {/* Seat limit warning */}
       {!canInviteMore && (
-        <Card className="p-4 bg-amber-50 border-amber-200">
-          <p className="text-sm text-amber-800 font-medium">
+        <Card className="p-4 bg-rf-warning-bg border-amber-200">
+          <p className="text-sm text-rf-warning font-medium">
             Seat limit reached ({memberCount} / {maxSeats})
           </p>
-          <p className="text-xs text-amber-700 mt-1">
+          <p className="text-xs text-rf-warning mt-1">
             Upgrade your plan to invite more team members
           </p>
         </Card>
@@ -133,15 +133,15 @@ export function UsersPageClient({
 
       {/* Search and Table */}
       <Card className="overflow-hidden">
-        <div className="p-4 border-b border-stone-200">
+        <div className="p-4 border-b border-rf-border">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-rf-text-muted" />
             <input
               type="text"
               placeholder="Search user name / email"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-rf-border rounded-lg focus:outline-none focus:ring-2 focus:ring-rf-blue focus:border-transparent"
             />
           </div>
         </div>
@@ -155,7 +155,7 @@ export function UsersPageClient({
             />
           ) : (
             <div className="text-center py-12">
-              <p className="text-sm text-stone-500">
+              <p className="text-sm text-rf-text-secondary">
                 {searchQuery
                   ? "No users found matching your search"
                   : "No team members yet"}

@@ -31,10 +31,10 @@ export default async function IntegrationsIndexPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-rf-text-primary">
           Integrations
         </h1>
-        <p className="text-sm text-stone-600 mt-1">
+        <p className="text-sm text-rf-ink-500 mt-1">
           {list.length === 0
             ? "No companies found for this account."
             : "Select a company to manage its integrations."}
@@ -49,16 +49,16 @@ export default async function IntegrationsIndexPage({
               href={`/admin/${accountId}/companies/${company.id}/integrations`}
               className="block"
             >
-              <Card className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors cursor-pointer">
+              <Card className="p-4 flex items-center justify-between hover:bg-rf-surface-page transition-colors cursor-pointer">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-stone-100 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-5 h-5 text-stone-500" />
+                  <div className="w-9 h-9 rounded-lg bg-rf-ink-100 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 text-rf-text-secondary" />
                   </div>
-                  <span className="text-sm font-medium text-stone-900">
+                  <span className="text-sm font-medium text-rf-text-primary">
                     {company.name}
                   </span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-stone-400" />
+                <ChevronRight className="w-4 h-4 text-rf-text-muted" />
               </Card>
             </Link>
           ))}

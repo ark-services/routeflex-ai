@@ -60,7 +60,7 @@ export default async function EditAutomationPage({
   ]);
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-rf-surface-page">
       <EditAutomationClient
         companyId={companyId}
         jobId={jobId}

@@ -156,7 +156,7 @@ function SignaturePad({
 
   return (
     <div className="space-y-2">
-      <div className="relative border-2 border-dashed border-stone-300 rounded-lg overflow-hidden bg-white cursor-crosshair">
+      <div className="relative border-2 border-dashed border-rf-ink-100 rounded-lg overflow-hidden bg-rf-surface-card cursor-crosshair">
         <canvas
           ref={canvasRef}
           width={480}
@@ -171,7 +171,7 @@ function SignaturePad({
           onTouchEnd={endDraw}
         />
         {!hasDrawn && (
-          <p className="absolute inset-0 flex items-center justify-center text-sm text-stone-400 pointer-events-none select-none">
+          <p className="absolute inset-0 flex items-center justify-center text-sm text-rf-text-muted pointer-events-none select-none">
             Draw signature here
           </p>
         )}
@@ -180,7 +180,7 @@ function SignaturePad({
         <button
           type="button"
           onClick={clearCanvas}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-stone-600 bg-stone-50 border border-stone-200 rounded-lg hover:bg-stone-100 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-rf-ink-500 bg-rf-surface-page border border-rf-border rounded-lg hover:bg-rf-surface-page transition-colors"
         >
           <Trash2 className="w-3 h-3" />
           Clear
@@ -188,7 +188,7 @@ function SignaturePad({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-stone-600 bg-stone-50 border border-stone-200 rounded-lg hover:bg-stone-100 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-rf-ink-500 bg-rf-surface-page border border-rf-border rounded-lg hover:bg-rf-surface-page transition-colors"
         >
           <Upload className="w-3 h-3" />
           Upload image
@@ -201,7 +201,7 @@ function SignaturePad({
           onChange={handleFileUpload}
         />
         {hasExisting && !hasDrawn && (
-          <span className="text-xs text-stone-400 italic">
+          <span className="text-xs text-rf-text-muted italic">
             Leave blank to keep existing signature
           </span>
         )}
@@ -350,20 +350,20 @@ export function SafetyTrainerCard({
   // Collapse header badge
   const collapseBadge = connection ? (
     !connection.isConfigComplete ? (
-      <span className="shrink-0 px-2 py-0.5 text-xs bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+      <span className="shrink-0 px-2 py-0.5 text-xs bg-rf-warning-bg text-rf-warning rounded-full border border-amber-200">
         Incomplete
       </span>
     ) : connection.isEnabled ? (
-      <span className="shrink-0 px-2 py-0.5 text-xs bg-green-50 text-green-700 rounded-full border border-green-200">
+      <span className="shrink-0 px-2 py-0.5 text-xs bg-rf-success-bg text-rf-success rounded-full border border-green-200">
         Enabled
       </span>
     ) : (
-      <span className="shrink-0 px-2 py-0.5 text-xs bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+      <span className="shrink-0 px-2 py-0.5 text-xs bg-rf-warning-bg text-rf-warning rounded-full border border-amber-200">
         Disabled
       </span>
     )
   ) : (
-    <span className="shrink-0 px-2 py-0.5 text-xs bg-stone-100 text-stone-500 rounded-full border border-stone-200">
+    <span className="shrink-0 px-2 py-0.5 text-xs bg-rf-ink-100 text-rf-text-secondary rounded-full border border-rf-border">
       Not configured
     </span>
   );
@@ -375,19 +375,19 @@ export function SafetyTrainerCard({
         <button
           type="button"
           onClick={() => setIsExpanded((v) => !v)}
-          className="w-full px-4 sm:px-6 py-4 flex items-center justify-between gap-4 hover:bg-stone-50 transition-colors text-left"
+          className="w-full px-4 sm:px-6 py-4 flex items-center justify-between gap-4 hover:bg-rf-surface-page transition-colors text-left"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
-              <ClipboardCheck className="w-5 h-5 text-green-600" />
+            <div className="w-9 h-9 rounded-lg bg-rf-success-bg flex items-center justify-center flex-shrink-0">
+              <ClipboardCheck className="w-5 h-5 text-rf-success" />
             </div>
-            <span className="text-sm font-semibold text-stone-900">
+            <span className="text-sm font-semibold text-rf-text-primary">
               Impact Solutions Safety Trainer Hub
             </span>
             {collapseBadge}
           </div>
           <ChevronDown
-            className={`w-4 h-4 text-stone-400 shrink-0 transition-transform duration-150 ${
+            className={`w-4 h-4 text-rf-text-muted shrink-0 transition-transform duration-150 ${
               isExpanded ? "rotate-180" : ""
             }`}
           />
@@ -395,11 +395,11 @@ export function SafetyTrainerCard({
 
         {/* ── Expanded content ─────────────────────────────────────────── */}
         {isExpanded && (
-          <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-stone-100">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-rf-ink-100">
             {/* Description + action buttons */}
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mt-4">
               <div>
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-rf-ink-500">
                   Driver certification — automatically submit training forms with trainer signature
                 </p>
 
@@ -408,21 +408,21 @@ export function SafetyTrainerCard({
                   <div className="mt-3 flex items-center gap-2 text-sm flex-wrap">
                     {connection.isConfigComplete ? (
                       <>
-                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        <span className="text-green-700 font-medium">Configured</span>
+                        <Check className="w-4 h-4 text-rf-success flex-shrink-0" />
+                        <span className="text-rf-success font-medium">Configured</span>
                       </>
                     ) : (
                       <>
-                        <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        <span className="text-amber-700 font-medium">Incomplete</span>
+                        <AlertCircle className="w-4 h-4 text-rf-warning flex-shrink-0" />
+                        <span className="text-rf-warning font-medium">Incomplete</span>
                       </>
                     )}
-                    <span className="text-stone-400">•</span>
-                    <span className="text-stone-500 text-xs">
-                      {connection.trainerName || <em className="text-stone-400 not-italic">Trainer name not set</em>}
+                    <span className="text-rf-text-muted">•</span>
+                    <span className="text-rf-text-secondary text-xs">
+                      {connection.trainerName || <em className="text-rf-text-muted not-italic">Trainer name not set</em>}
                     </span>
                     {!connection.isEnabled && (
-                      <span className="ml-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">
+                      <span className="ml-1 px-2 py-0.5 bg-rf-warning-bg text-rf-warning text-xs rounded-full border border-amber-200">
                         Disabled
                       </span>
                     )}
@@ -430,7 +430,7 @@ export function SafetyTrainerCard({
                 )}
 
                 {configIncomplete && mode === "view" && (
-                  <p className="mt-1 text-xs text-amber-600">
+                  <p className="mt-1 text-xs text-rf-warning">
                     All fields, a signature, and a login password are required before submissions can be sent.
                   </p>
                 )}
@@ -441,7 +441,7 @@ export function SafetyTrainerCard({
                 <div className="flex items-center gap-2 flex-wrap sm:flex-shrink-0">
                   <button
                     onClick={enterEdit}
-                    className="px-3 py-2 text-sm font-medium text-stone-700 bg-stone-50 border border-stone-200 rounded-lg hover:bg-stone-100 transition-colors flex items-center gap-1.5"
+                    className="px-3 py-2 text-sm font-medium text-rf-ink-700 bg-rf-surface-page border border-rf-border rounded-lg hover:bg-rf-surface-page transition-colors flex items-center gap-1.5"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                     Edit
@@ -449,7 +449,7 @@ export function SafetyTrainerCard({
                   <button
                     onClick={handleDisconnect}
                     disabled={disconnecting}
-                    className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-2 text-sm font-medium text-red-700 bg-rf-danger-bg border border-red-200 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {disconnecting ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -475,96 +475,96 @@ export function SafetyTrainerCard({
 
             {/* Detail view */}
             {connection && mode === "view" && (
-              <div className="mt-5 pt-5 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="mt-5 pt-5 border-t border-rf-ink-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Trainer Name
                   </p>
-                  <p className="text-sm text-stone-800">
-                    {connection.trainerName || <span className="text-stone-400 italic">Not set</span>}
+                  <p className="text-sm text-rf-text-primary">
+                    {connection.trainerName || <span className="text-rf-text-muted italic">Not set</span>}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Trainer Email
                   </p>
-                  <p className="text-sm text-stone-800">
-                    {connection.trainerEmail || <span className="text-stone-400 italic">Not set</span>}
+                  <p className="text-sm text-rf-text-primary">
+                    {connection.trainerEmail || <span className="text-rf-text-muted italic">Not set</span>}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Trainer FedEx ID
                   </p>
-                  <p className="text-sm font-mono text-stone-800">
-                    {connection.trainerFedexId || <span className="text-stone-400 italic not-italic font-sans">Not set</span>}
+                  <p className="text-sm font-mono text-rf-text-primary">
+                    {connection.trainerFedexId || <span className="text-rf-text-muted italic not-italic font-sans">Not set</span>}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Login Password
                   </p>
-                  <p className="text-sm text-stone-800">
+                  <p className="text-sm text-rf-text-primary">
                     {connection.hasPassword ? (
-                      <span className="flex items-center gap-1.5 text-stone-600">
-                        <Lock className="w-3.5 h-3.5 text-stone-400" />
+                      <span className="flex items-center gap-1.5 text-rf-ink-500">
+                        <Lock className="w-3.5 h-3.5 text-rf-text-muted" />
                         ••••••••••••
                       </span>
                     ) : (
-                      <span className="text-stone-400 italic">Not set</span>
+                      <span className="text-rf-text-muted italic">Not set</span>
                     )}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Company Entity ID
                   </p>
-                  <p className="text-sm font-mono text-stone-800">
-                    {connection.companyEntityId || <span className="text-stone-400 italic not-italic font-sans">Not set</span>}
+                  <p className="text-sm font-mono text-rf-text-primary">
+                    {connection.companyEntityId || <span className="text-rf-text-muted italic not-italic font-sans">Not set</span>}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Company Name
                   </p>
-                  <p className="text-sm text-stone-800">
-                    {connection.companyName || <span className="text-stone-400 italic">Not set</span>}
+                  <p className="text-sm text-rf-text-primary">
+                    {connection.companyName || <span className="text-rf-text-muted italic">Not set</span>}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">
+                  <p className="text-xs font-medium text-rf-text-secondary uppercase tracking-wide mb-1">
                     Signature
                   </p>
-                  <p className="text-sm text-stone-800">
+                  <p className="text-sm text-rf-text-primary">
                     {connection.hasSignature ? (
-                      <span className="flex items-center gap-1.5 text-green-700">
+                      <span className="flex items-center gap-1.5 text-rf-success">
                         <Check className="w-3.5 h-3.5" />
                         Saved
                       </span>
                     ) : (
-                      <span className="text-stone-400 italic">Not set</span>
+                      <span className="text-rf-text-muted italic">Not set</span>
                     )}
                   </p>
                 </div>
 
                 {/* Enabled toggle */}
-                <div className="sm:col-span-2 flex items-center gap-3 pt-2 border-t border-stone-100">
+                <div className="sm:col-span-2 flex items-center gap-3 pt-2 border-t border-rf-ink-100">
                   <button
                     role="switch"
                     aria-checked={connection.isEnabled}
                     onClick={handleToggleEnabled}
                     disabled={togglingEnabled}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 ${
-                      connection.isEnabled ? "bg-green-500" : "bg-stone-300"
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-blue focus-visible:ring-offset-2 disabled:opacity-50 ${
+                      connection.isEnabled ? "bg-rf-success" : "bg-rf-ink-300"
                     }`}
                   >
                     <span
-                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-rf-surface-card shadow transition-transform ${
                         connection.isEnabled ? "translate-x-4" : "translate-x-1"
                       }`}
                     />
                   </button>
-                  <span className="text-sm text-stone-700">
+                  <span className="text-sm text-rf-ink-700">
                     {togglingEnabled
                       ? "Updating…"
                       : connection.isEnabled
@@ -579,16 +579,16 @@ export function SafetyTrainerCard({
             {mode === "edit" && (
               <form
                 onSubmit={handleSave}
-                className="mt-5 pt-5 border-t border-stone-100 space-y-4"
+                className="mt-5 pt-5 border-t border-rf-ink-100 space-y-4"
               >
                 {/* ── Trainer Info ── */}
-                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
+                <p className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wide">
                   Trainer Info
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
-                      Trainer Full Name<span className="text-red-500 ml-0.5">*</span>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
+                      Trainer Full Name<span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="text"
@@ -600,8 +600,8 @@ export function SafetyTrainerCard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
-                      Trainer Email<span className="text-red-500 ml-0.5">*</span>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
+                      Trainer Email<span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="email"
@@ -613,8 +613,8 @@ export function SafetyTrainerCard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
-                      Trainer FedEx ID<span className="text-red-500 ml-0.5">*</span>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
+                      Trainer FedEx ID<span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="text"
@@ -626,8 +626,8 @@ export function SafetyTrainerCard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
-                      Site Password<span className="text-red-500 ml-0.5">*</span>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
+                      Site Password<span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <Input
@@ -641,7 +641,7 @@ export function SafetyTrainerCard({
                       <button
                         type="button"
                         onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-rf-text-muted hover:text-rf-ink-500 transition-colors"
                         tabIndex={-1}
                       >
                         {showPassword ? (
@@ -652,12 +652,12 @@ export function SafetyTrainerCard({
                       </button>
                     </div>
                     {connection?.hasPassword && (
-                      <p className="mt-1 text-xs text-stone-400">
+                      <p className="mt-1 text-xs text-rf-text-muted">
                         Leave blank to keep the saved password.
                       </p>
                     )}
                     {!connection?.hasPassword && (
-                      <p className="mt-1 text-xs text-stone-400">
+                      <p className="mt-1 text-xs text-rf-text-muted">
                         Used to log in to safetytrainer.kellyandersongroup.com
                       </p>
                     )}
@@ -665,13 +665,13 @@ export function SafetyTrainerCard({
                 </div>
 
                 {/* ── Company/Contract Info ── */}
-                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide pt-2">
+                <p className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wide pt-2">
                   Company / Contract Info
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
-                      Company Entity ID<span className="text-red-500 ml-0.5">*</span>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
+                      Company Entity ID<span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="text"
@@ -683,8 +683,8 @@ export function SafetyTrainerCard({
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-1.5">
-                      Company Name<span className="text-red-500 ml-0.5">*</span>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
+                      Company Name<span className="text-rf-danger ml-0.5">*</span>
                     </label>
                     <Input
                       type="text"
@@ -698,13 +698,13 @@ export function SafetyTrainerCard({
                 </div>
 
                 {/* ── Signature ── */}
-                <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide pt-2">
+                <p className="text-xs font-semibold text-rf-text-secondary uppercase tracking-wide pt-2">
                   Trainer Signature
                   <span className="ml-1 text-red-400 normal-case font-normal">
                     (required)
                   </span>
                 </p>
-                <p className="text-xs text-stone-400 -mt-2">
+                <p className="text-xs text-rf-text-muted -mt-2">
                   Draw your signature in the box below, or upload a PNG/JPEG image of your signature.
                 </p>
                 <SignaturePad
@@ -714,24 +714,24 @@ export function SafetyTrainerCard({
                 />
 
                 {/* Enabled toggle */}
-                <div className="flex items-center gap-3 pt-2 border-t border-stone-100">
+                <div className="flex items-center gap-3 pt-2 border-t border-rf-ink-100">
                   <label className="flex items-center gap-3 cursor-pointer select-none">
                     <button
                       type="button"
                       role="switch"
                       aria-checked={isEnabled}
                       onClick={() => setIsEnabled((v) => !v)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                        isEnabled ? "bg-green-500" : "bg-stone-300"
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-blue ${
+                        isEnabled ? "bg-rf-success" : "bg-rf-ink-300"
                       }`}
                     >
                       <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-rf-surface-card shadow transition-transform ${
                           isEnabled ? "translate-x-4" : "translate-x-1"
                         }`}
                       />
                     </button>
-                    <span className="text-sm text-stone-700">
+                    <span className="text-sm text-rf-ink-700">
                       {isEnabled ? "Enabled" : "Disabled"}
                     </span>
                   </label>

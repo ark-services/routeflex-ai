@@ -90,30 +90,30 @@ export function AutomationToastStack() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="flex items-start gap-3 bg-white border border-stone-200 rounded-lg px-4 py-3 shadow-lg min-w-[300px] max-w-[420px] pointer-events-auto animate-in slide-in-from-bottom-2 duration-300"
+          className="flex items-start gap-3 bg-rf-surface-card border border-rf-border rounded-lg px-4 py-3 shadow-rf-lg min-w-[300px] max-w-[420px] pointer-events-auto animate-in slide-in-from-bottom-2 duration-300"
         >
           {toast.variant === "running" && (
-            <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <Zap className="w-4 h-4 text-rf-warning flex-shrink-0 mt-0.5" />
           )}
           {toast.variant === "completed" && (
-            <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+            <CheckCircle2 className="w-4 h-4 text-rf-success flex-shrink-0 mt-0.5" />
           )}
           {toast.variant === "failed" && (
-            <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <XCircle className="w-4 h-4 text-rf-danger flex-shrink-0 mt-0.5" />
           )}
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium text-stone-800 block truncate">
+            <span className="text-sm font-medium text-rf-text-primary block truncate">
               {toast.message}
             </span>
             {toast.variant === "failed" && toast.error && (
-              <span className="text-xs text-red-500 block truncate mt-0.5">
+              <span className="text-xs text-rf-danger block truncate mt-0.5">
                 {toast.error}
               </span>
             )}
           </div>
           <button
             onClick={() => dismiss(toast.id)}
-            className="text-stone-400 hover:text-stone-600 transition-colors flex-shrink-0"
+            className="text-rf-text-muted hover:text-rf-ink-500 transition-colors flex-shrink-0"
           >
             <X className="w-4 h-4" />
           </button>

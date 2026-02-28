@@ -30,11 +30,11 @@ export default async function TrainingPage({
   if (!company) redirect("/dashboard");
   if (!company.lms_enabled) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center p-8">
+      <div className="min-h-screen bg-rf-surface-page flex items-center justify-center p-8">
         <div className="max-w-md text-center">
-          <BookOpen className="w-12 h-12 mx-auto mb-4 text-stone-300" />
-          <h1 className="text-lg font-semibold text-stone-800 mb-2">Training not enabled</h1>
-          <p className="text-sm text-stone-500">
+          <BookOpen className="w-12 h-12 mx-auto mb-4 text-rf-text-muted" />
+          <h1 className="text-lg font-semibold text-rf-text-primary mb-2">Training not enabled</h1>
+          <p className="text-sm text-rf-text-secondary">
             The LMS feature is not enabled for your account. Contact support to upgrade your plan.
           </p>
         </div>
@@ -75,12 +75,12 @@ export default async function TrainingPage({
   }));
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
+    <div className="min-h-screen bg-rf-surface-page p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-semibold text-stone-900">Training</h1>
-            <p className="text-sm text-stone-500 mt-1">
+            <h1 className="text-xl font-semibold text-rf-text-primary">Training</h1>
+            <p className="text-sm text-rf-text-secondary mt-1">
               Manage training courses for your new hires.
             </p>
           </div>
@@ -88,10 +88,10 @@ export default async function TrainingPage({
         </div>
 
         {courses.length === 0 ? (
-          <div className="text-center py-16 text-stone-400">
+          <div className="text-center py-16 text-rf-text-muted">
             <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-medium text-stone-600 mb-1">No courses yet</p>
-            <p className="text-xs text-stone-400">
+            <p className="text-sm font-medium text-rf-ink-500 mb-1">No courses yet</p>
+            <p className="text-xs text-rf-text-muted">
               Create a course from a template or start from scratch.
             </p>
           </div>

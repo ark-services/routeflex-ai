@@ -28,7 +28,7 @@ export function DeleteModuleButton({
     <button
       onClick={handleDelete}
       disabled={deleting}
-      className="p-1.5 text-stone-400 hover:text-red-600 transition-colors disabled:opacity-50 flex-shrink-0"
+      className="p-1.5 text-rf-text-muted hover:text-rf-danger transition-colors disabled:opacity-50 flex-shrink-0"
       title="Delete module"
     >
       {deleting ? (

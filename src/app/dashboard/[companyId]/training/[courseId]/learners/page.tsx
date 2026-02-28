@@ -168,26 +168,26 @@ export default async function LearnersPage({
   const allModules = [...regularModules, ...(finalExam ? [finalExam] : [])];
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
+    <div className="min-h-screen bg-rf-surface-page p-6">
       <div className="max-w-5xl mx-auto">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-stone-500 mb-6">
-          <Link href={`/dashboard/${companyId}/training`} className="hover:text-stone-700 transition-colors">
+        <div className="flex items-center gap-2 text-sm text-rf-text-secondary mb-6">
+          <Link href={`/dashboard/${companyId}/training`} className="hover:text-rf-ink-700 transition-colors">
             Training
           </Link>
           <span>/</span>
-          <Link href={`/dashboard/${companyId}/training/${courseId}`} className="hover:text-stone-700 transition-colors">
+          <Link href={`/dashboard/${companyId}/training/${courseId}`} className="hover:text-rf-ink-700 transition-colors">
             {course.name}
           </Link>
           <span>/</span>
-          <span className="text-stone-900 font-medium">Learners</span>
+          <span className="text-rf-text-primary font-medium">Learners</span>
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-lg font-semibold text-stone-900">{course.name} — Learners</h1>
-            <p className="text-sm text-stone-500 mt-1">
+            <h1 className="text-lg font-semibold text-rf-text-primary">{course.name} — Learners</h1>
+            <p className="text-sm text-rf-text-secondary mt-1">
               {(enrollments ?? []).length} enrolled · passing threshold {course.passing_threshold}%
             </p>
           </div>
@@ -200,46 +200,46 @@ export default async function LearnersPage({
         </div>
 
         {(enrollments ?? []).length === 0 ? (
-          <div className="text-center py-16 bg-white border border-stone-200 rounded-xl">
-            <p className="text-stone-500 font-medium">No learners enrolled yet</p>
-            <p className="text-stone-400 text-sm mt-1">
+          <div className="text-center py-16 bg-rf-surface-card border border-rf-border rounded-xl">
+            <p className="text-rf-text-secondary font-medium">No learners enrolled yet</p>
+            <p className="text-rf-text-muted text-sm mt-1">
               Click &ldquo;Enroll Applicant&rdquo; above, or use the &ldquo;Send Training Link&rdquo; automation action.
             </p>
           </div>
         ) : (
-          <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+          <div className="bg-rf-surface-card border border-rf-border rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-stone-200 bg-stone-50">
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                  <tr className="border-b border-rf-border bg-rf-surface-page">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-rf-ink-500 uppercase tracking-wide">
                       Learner
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-rf-ink-500 uppercase tracking-wide">
                       Status
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-rf-ink-500 uppercase tracking-wide">
                       Enrolled
                     </th>
                     {regularModules.map((m, i) => (
                       <th
                         key={m.id}
-                        className="text-center px-3 py-3 text-xs font-semibold text-stone-600 uppercase tracking-wide"
+                        className="text-center px-3 py-3 text-xs font-semibold text-rf-ink-500 uppercase tracking-wide"
                       >
                         M{i + 1}
                       </th>
                     ))}
                     {finalExam && (
-                      <th className="text-center px-3 py-3 text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                      <th className="text-center px-3 py-3 text-xs font-semibold text-rf-ink-500 uppercase tracking-wide">
                         Exam
                       </th>
                     )}
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-stone-600 uppercase tracking-wide">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-rf-ink-500 uppercase tracking-wide">
                       Link
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100">
+                <tbody className="divide-y divide-rf-ink-100">
                   {(enrollments ?? []).map((enrollment) => {
                     const applicant = (enrollment as any).applicants;
                     const display = applicantDisplayMap[applicant?.id] ?? {
@@ -249,17 +249,17 @@ export default async function LearnersPage({
                     const moduleAttempts = bestAttempts[enrollment.id] ?? {};
 
                     return (
-                      <tr key={enrollment.id} className="hover:bg-stone-50 transition-colors">
+                      <tr key={enrollment.id} className="hover:bg-rf-surface-page transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-medium text-stone-900">
+                          <div className="font-medium text-rf-text-primary">
                             {display.name}
                           </div>
-                          <div className="text-xs text-stone-400">{display.email}</div>
+                          <div className="text-xs text-rf-text-muted">{display.email}</div>
                         </td>
                         <td className="px-4 py-3">
                           <StatusBadge status={enrollment.status} />
                         </td>
-                        <td className="px-4 py-3 text-stone-500 text-xs whitespace-nowrap">
+                        <td className="px-4 py-3 text-rf-text-secondary text-xs whitespace-nowrap">
                           {new Date(enrollment.enrolled_at).toLocaleDateString()}
                         </td>
                         {regularModules.map((m) => {
@@ -280,7 +280,7 @@ export default async function LearnersPage({
                             href={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/learn/${enrollment.token}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+                            className="text-xs text-rf-blue hover:text-blue-800 transition-colors"
                           >
                             Open ↗
                           </a>
@@ -300,11 +300,11 @@ export default async function LearnersPage({
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; class: string }> = {
-    enrolled: { label: "Enrolled", class: "bg-blue-100 text-blue-700" },
+    enrolled: { label: "Enrolled", class: "bg-rf-blue-tint text-rf-blue" },
     in_progress: { label: "In Progress", class: "bg-yellow-100 text-yellow-700" },
-    completed: { label: "Completed", class: "bg-green-100 text-green-700" },
+    completed: { label: "Completed", class: "bg-rf-success-bg text-rf-success" },
   };
-  const cfg = map[status] ?? { label: status, class: "bg-stone-100 text-stone-600" };
+  const cfg = map[status] ?? { label: status, class: "bg-rf-ink-100 text-rf-ink-500" };
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cfg.class}`}>
       {cfg.label}
@@ -314,18 +314,18 @@ function StatusBadge({ status }: { status: string }) {
 
 function ModuleCell({ attempt }: { attempt?: { score: number; passed: boolean } }) {
   if (!attempt) {
-    return <Lock className="w-3.5 h-3.5 text-stone-300 mx-auto" />;
+    return <Lock className="w-3.5 h-3.5 text-rf-text-muted mx-auto" />;
   }
   if (attempt.passed) {
     return (
-      <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium">
+      <span className="inline-flex items-center gap-1 text-rf-success text-xs font-medium">
         <CheckCircle2 className="w-3.5 h-3.5" />
         {attempt.score}%
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-red-500 text-xs font-medium">
+    <span className="inline-flex items-center gap-1 text-rf-danger text-xs font-medium">
       <XCircle className="w-3.5 h-3.5" />
       {attempt.score}%
     </span>

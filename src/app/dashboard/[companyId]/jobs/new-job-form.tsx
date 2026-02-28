@@ -21,7 +21,7 @@ export function NewJobForm({
 
   return (
     <Card className="p-6 space-y-4">
-      <h2 className="text-sm font-semibold text-stone-900">New job</h2>
+      <h2 className="text-sm font-semibold text-rf-text-primary">New job</h2>
       <form
         action={async (formData) => {
           await action(formData);
@@ -36,7 +36,7 @@ export function NewJobForm({
           <select
             name="status"
             defaultValue="open"
-            className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-900 transition-colors focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-1"
+            className="w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 py-2 text-sm text-rf-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-rf-blue focus:ring-offset-1"
           >
             {JOB_STATUSES.map((s) => (
               <option key={s} value={s}>

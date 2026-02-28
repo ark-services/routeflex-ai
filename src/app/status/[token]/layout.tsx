@@ -1,6 +1,7 @@
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
 
 function getSvc() {
   return createServiceClient(
@@ -41,9 +42,9 @@ export default async function StatusPortalLayout({
   const company = job?.companies;
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col">
+    <div className="min-h-screen bg-rf-surface-page flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-stone-200 px-6 py-4">
+      <header className="bg-rf-surface-card border-b border-rf-border px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           {company?.logo_url ? (
             <img
@@ -52,12 +53,12 @@ export default async function StatusPortalLayout({
               className="h-8 w-auto object-contain"
             />
           ) : (
-            <div className="h-8 px-3 bg-blue-600 text-white text-sm font-semibold rounded flex items-center">
+            <div className="h-8 px-3 bg-rf-blue text-white text-sm font-semibold rounded flex items-center">
               {company?.name ?? "Application Status"}
             </div>
           )}
           {job?.title && (
-            <div className="text-sm text-stone-500">{job.title}</div>
+            <div className="text-sm text-rf-text-secondary">{job.title}</div>
           )}
         </div>
       </header>
@@ -69,8 +70,9 @@ export default async function StatusPortalLayout({
         </div>
       </main>
 
-      <footer className="border-t border-stone-200 py-4 text-center text-xs text-stone-400">
-        Powered by RouteFlex
+      <footer className="border-t border-rf-border py-4 flex flex-col items-center gap-1.5">
+        <RouteFlexLogo size="nav" />
+        <span className="text-xs text-rf-text-muted">Powered by RouteFlex</span>
       </footer>
     </div>
   );

@@ -138,7 +138,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rf-blue bg-rf-blue-tint border border-rf-blue rounded-lg hover:bg-rf-blue-tint transition-colors"
       >
         <Sparkles className="w-3.5 h-3.5" />
         Generate with AI
@@ -146,24 +146,24 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
 
       {/* Inline panel */}
       {open && (
-        <div className="mt-3 border border-purple-200 bg-purple-50/40 rounded-xl p-4 space-y-4">
+        <div className="mt-3 border border-rf-border bg-rf-blue-tint/40 rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-              <span className="text-sm font-medium text-stone-800">
+              <Sparkles className="w-4 h-4 text-rf-blue" />
+              <span className="text-sm font-medium text-rf-text-primary">
                 Generate from slides
               </span>
             </div>
             <button
               type="button"
               onClick={close}
-              className="p-1 text-stone-400 hover:text-stone-600 transition-colors"
+              className="p-1 text-rf-text-muted hover:text-rf-ink-500 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-rf-text-secondary">
             Upload screenshots of your PowerPoint slides or PDF pages. Claude will
             read them and write a structured learning module.
           </p>
@@ -176,16 +176,16 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-colors ${
               dragging
-                ? "border-purple-400 bg-purple-50"
-                : "border-stone-300 hover:border-purple-300 hover:bg-purple-50/50"
+                ? "border-rf-blue bg-rf-blue-tint"
+                : "border-rf-ink-100 hover:border-rf-blue hover:bg-rf-blue-tint"
             }`}
           >
-            <Upload className="w-5 h-5 mx-auto mb-2 text-stone-400" />
-            <p className="text-xs text-stone-500">
+            <Upload className="w-5 h-5 mx-auto mb-2 text-rf-text-muted" />
+            <p className="text-xs text-rf-text-secondary">
               Drag &amp; drop slide images here, or{" "}
-              <span className="text-purple-600 font-medium">click to browse</span>
+              <span className="text-rf-blue font-medium">click to browse</span>
             </p>
-            <p className="text-xs text-stone-400 mt-1">PNG, JPG, WebP · max 20 slides · 5 MB each</p>
+            <p className="text-xs text-rf-text-muted mt-1">PNG, JPG, WebP · max 20 slides · 5 MB each</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -200,7 +200,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
           {images.length > 0 && (
             <div className="grid grid-cols-5 gap-2">
               {images.map((img, i) => (
-                <div key={i} className="relative group aspect-video rounded-lg overflow-hidden border border-stone-200 bg-stone-100">
+                <div key={i} className="relative group aspect-video rounded-lg overflow-hidden border border-rf-border bg-rf-ink-100">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={img.dataUrl}
@@ -223,7 +223,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-video rounded-lg border-2 border-dashed border-stone-300 hover:border-purple-300 flex items-center justify-center text-stone-400 hover:text-purple-500 transition-colors"
+                  className="aspect-video rounded-lg border-2 border-dashed border-rf-ink-100 hover:border-rf-blue flex items-center justify-center text-rf-text-muted hover:text-rf-blue transition-colors"
                 >
                   <ImageIcon className="w-4 h-4" />
                 </button>
@@ -233,14 +233,14 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
 
           {/* Error */}
           {error && (
-            <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+            <div className="p-2 bg-rf-danger-bg border border-red-200 rounded text-xs text-red-700">
               {error}
             </div>
           )}
 
           {/* Success */}
           {success && (
-            <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700 flex items-center gap-1.5">
+            <div className="p-2 bg-rf-success-bg border border-green-200 rounded text-xs text-rf-success flex items-center gap-1.5">
               <CheckCircle className="w-3.5 h-3.5" />
               Content generated — review it below and click Save Content.
             </div>
@@ -252,7 +252,7 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
               type="button"
               onClick={handleGenerate}
               disabled={generating || images.length === 0 || success}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-rf-blue text-white text-xs font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 transition-colors"
             >
               {generating ? (
                 <>
@@ -269,12 +269,12 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
             <button
               type="button"
               onClick={close}
-              className="text-xs text-stone-500 hover:text-stone-700 transition-colors"
+              className="text-xs text-rf-text-secondary hover:text-rf-ink-700 transition-colors"
             >
               Cancel
             </button>
             {images.length > 0 && (
-              <span className="ml-auto text-xs text-stone-400">
+              <span className="ml-auto text-xs text-rf-text-muted">
                 {images.length} / 20 slides
               </span>
             )}

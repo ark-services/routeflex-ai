@@ -24,7 +24,7 @@ type Form = {
 
 // Shared input className — softer borders, refined focus ring, consistent sizing
 const inputCls =
-  "w-full px-3.5 py-2.5 border border-stone-200 rounded-lg text-sm text-stone-800 placeholder-stone-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors";
+  "w-full px-3.5 py-2.5 border border-rf-border rounded-lg text-sm text-rf-text-primary placeholder-rf-text-muted bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue/30 focus:border-blue-400 transition-colors";
 
 export default function PublicApplicationForm({
   jobId,
@@ -88,9 +88,9 @@ export default function PublicApplicationForm({
   if (submitted) {
     return (
       <div className="text-center py-10">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-green-50 rounded-full mb-4">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-rf-success-bg rounded-full mb-4">
           <svg
-            className="w-7 h-7 text-green-500"
+            className="w-7 h-7 text-rf-success"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -103,8 +103,8 @@ export default function PublicApplicationForm({
             />
           </svg>
         </div>
-        <h2 className="text-xl font-semibold text-stone-900 mb-2">Application submitted</h2>
-        <p className="text-sm text-stone-500 max-w-sm mx-auto">
+        <h2 className="text-xl font-semibold text-rf-text-primary mb-2">Application submitted</h2>
+        <p className="text-sm text-rf-text-secondary max-w-sm mx-auto">
           Thank you for applying to {form.job_title} at {form.company_name}.
           We&apos;ll review your application and get back to you soon.
         </p>
@@ -117,13 +117,13 @@ export default function PublicApplicationForm({
 
       {/* Form description — muted, sits naturally above fields */}
       {form.description && (
-        <p className="text-sm text-stone-500 leading-relaxed -mt-1 mb-2">
+        <p className="text-sm text-rf-text-secondary leading-relaxed -mt-1 mb-2">
           {form.description}
         </p>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <div className="bg-rf-danger-bg border border-red-200 rounded-lg px-4 py-3">
           <p className="text-red-700 text-sm">{error}</p>
         </div>
       )}
@@ -132,7 +132,7 @@ export default function PublicApplicationForm({
         <div key={field.field_id} className="space-y-1.5">
           <label
             htmlFor={field.key}
-            className="block text-sm font-medium text-stone-700"
+            className="block text-sm font-medium text-rf-ink-700"
           >
             {field.label}
             {field.required && (
@@ -142,7 +142,7 @@ export default function PublicApplicationForm({
 
           {/* Optional description */}
           {field.settings?.description && (
-            <p className="text-xs text-stone-500">{field.settings.description}</p>
+            <p className="text-xs text-rf-text-secondary">{field.settings.description}</p>
           )}
 
           {/* Optional question image */}
@@ -151,7 +151,7 @@ export default function PublicApplicationForm({
             <img
               src={field.settings.imageUrl}
               alt=""
-              className="w-full rounded-lg object-contain max-h-60 border border-stone-200 bg-stone-50"
+              className="w-full rounded-lg object-contain max-h-60 border border-rf-border bg-rf-surface-page"
             />
           )}
 
@@ -229,9 +229,9 @@ export default function PublicApplicationForm({
                 name={field.key}
                 required={field.required}
                 accept={field.settings?.accept || ".pdf,.doc,.docx"}
-                className="w-full text-sm text-stone-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-stone-100 file:text-stone-700 hover:file:bg-stone-200 file:transition-colors cursor-pointer"
+                className="w-full text-sm text-rf-ink-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-rf-ink-100 file:text-rf-ink-700 hover:file:bg-rf-ink-100 file:transition-colors cursor-pointer"
               />
-              <p className="text-xs text-stone-400">
+              <p className="text-xs text-rf-text-muted">
                 {field.settings?.accept
                   ? `Accepted: ${field.settings.accept} · `
                   : ""}
@@ -248,9 +248,9 @@ export default function PublicApplicationForm({
                 name={field.key}
                 required={field.required}
                 defaultChecked={field.settings?.defaultChecked ?? false}
-                className="h-4 w-4 rounded border-stone-300 text-blue-600 focus:ring-blue-500/30"
+                className="h-4 w-4 rounded border-rf-ink-100 text-rf-blue focus:ring-rf-blue/30"
               />
-              <span className="text-sm text-stone-600">{field.label}</span>
+              <span className="text-sm text-rf-ink-500">{field.label}</span>
             </div>
           )}
 
@@ -264,11 +264,11 @@ export default function PublicApplicationForm({
                     name={field.key}
                     value={option}
                     required={field.required}
-                    className="h-4 w-4 border-stone-300 text-blue-600 focus:ring-blue-500/30"
+                    className="h-4 w-4 border-rf-ink-100 text-rf-blue focus:ring-rf-blue/30"
                   />
                   <label
                     htmlFor={`${field.key}-${idx}`}
-                    className="text-sm text-stone-700"
+                    className="text-sm text-rf-ink-700"
                   >
                     {option}
                   </label>
@@ -280,7 +280,7 @@ export default function PublicApplicationForm({
           {field.type === "location" && (
             <div className="relative">
               <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-                <svg className="h-4 w-4 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-4 w-4 text-rf-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -318,12 +318,12 @@ export default function PublicApplicationForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full py-2.5 px-6 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-2.5 px-6 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isSubmitting ? "Submitting…" : "Submit Application"}
         </button>
 
-        <p className="text-xs text-stone-400 text-center mt-3">
+        <p className="text-xs text-rf-text-muted text-center mt-3">
           By submitting this form, you agree to the processing of your personal
           data in accordance with our privacy policy.
         </p>

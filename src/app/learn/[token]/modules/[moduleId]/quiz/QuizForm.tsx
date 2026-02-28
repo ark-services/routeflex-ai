@@ -87,32 +87,32 @@ export function QuizForm({
     return (
       <div className="space-y-5">
         {/* ── Score card ── */}
-        <div className="bg-white border border-stone-200 rounded-xl p-6 text-center space-y-4">
+        <div className="bg-rf-surface-card border border-rf-border rounded-xl p-6 text-center space-y-4">
           <div
             className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto ${
-              result.passed ? "bg-green-100" : "bg-red-100"
+              result.passed ? "bg-rf-success-bg" : "bg-red-100"
             }`}
           >
             {result.passed ? (
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
+              <CheckCircle2 className="w-8 h-8 text-rf-success" />
             ) : (
-              <XCircle className="w-8 h-8 text-red-500" />
+              <XCircle className="w-8 h-8 text-rf-danger" />
             )}
           </div>
 
           <div>
-            <p className="text-3xl font-bold text-stone-900">{result.score}%</p>
-            <p className={`text-sm font-medium mt-1 ${result.passed ? "text-green-600" : "text-red-500"}`}>
+            <p className="text-3xl font-bold text-rf-text-primary">{result.score}%</p>
+            <p className={`text-sm font-medium mt-1 ${result.passed ? "text-rf-success" : "text-rf-danger"}`}>
               {result.passed ? "Passed!" : "Not quite — try again"}
             </p>
-            <p className="text-sm text-stone-500 mt-1">
+            <p className="text-sm text-rf-text-secondary mt-1">
               {result.correct} of {result.total} correct
             </p>
           </div>
 
           {result.passed && result.courseCompleted && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-sm font-medium text-green-800">
+            <div className="bg-rf-success-bg border border-green-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-rf-success">
                 🎉 You&apos;ve completed the entire course!
               </p>
             </div>
@@ -125,14 +125,14 @@ export function QuizForm({
                   setResult(null);
                   setAnswers({});
                 }}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark transition-colors"
               >
                 Try Again
               </button>
             )}
             <button
               onClick={() => router.push(`/learn/${token}`)}
-              className="px-4 py-2 bg-stone-100 text-stone-700 text-sm font-medium rounded-lg hover:bg-stone-200 transition-colors"
+              className="px-4 py-2 bg-rf-ink-100 text-rf-ink-700 text-sm font-medium rounded-lg hover:bg-rf-ink-100 transition-colors"
             >
               {result.passed && result.courseCompleted ? "View Completion" : "Back to Course"}
             </button>
@@ -142,7 +142,7 @@ export function QuizForm({
         {/* ── Answer review ── */}
         {result.review && result.review.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-stone-700 px-1">Answer Review</h2>
+            <h2 className="text-sm font-semibold text-rf-ink-700 px-1">Answer Review</h2>
 
             {result.review.map((item, idx) => {
               const question = questionMap.get(item.questionId);
@@ -151,7 +151,7 @@ export function QuizForm({
               return (
                 <div
                   key={item.questionId}
-                  className={`bg-white border rounded-xl p-5 ${
+                  className={`bg-rf-surface-card border rounded-xl p-5 ${
                     item.isCorrect ? "border-green-200" : "border-red-200"
                   }`}
                 >
@@ -159,17 +159,17 @@ export function QuizForm({
                   <div className="flex items-start gap-2.5 mb-4">
                     <div
                       className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${
-                        item.isCorrect ? "bg-green-100" : "bg-red-100"
+                        item.isCorrect ? "bg-rf-success-bg" : "bg-red-100"
                       }`}
                     >
                       {item.isCorrect ? (
-                        <Check className="w-3 h-3 text-green-600" />
+                        <Check className="w-3 h-3 text-rf-success" />
                       ) : (
-                        <X className="w-3 h-3 text-red-500" />
+                        <X className="w-3 h-3 text-rf-danger" />
                       )}
                     </div>
-                    <p className="text-sm font-medium text-stone-900 leading-snug">
-                      <span className="text-stone-400 mr-1.5">Q{idx + 1}.</span>
+                    <p className="text-sm font-medium text-rf-text-primary leading-snug">
+                      <span className="text-rf-text-muted mr-1.5">Q{idx + 1}.</span>
                       {question.question_text}
                     </p>
                   </div>
@@ -181,21 +181,21 @@ export function QuizForm({
                       const isCorrectAnswer = option.id === item.correctOptionId;
 
                       // Determine styling
-                      let optionClass = "border-stone-100 bg-stone-50 text-stone-500";
+                      let optionClass = "border-rf-ink-100 bg-rf-surface-page text-rf-text-secondary";
                       let badge: React.ReactNode = null;
 
                       if (isCorrectAnswer) {
-                        optionClass = "border-green-200 bg-green-50 text-stone-800";
+                        optionClass = "border-green-200 bg-rf-success-bg text-rf-text-primary";
                         badge = (
-                          <span className="ml-auto flex-shrink-0 text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                          <span className="ml-auto flex-shrink-0 text-xs font-medium text-rf-success bg-rf-success-bg px-2 py-0.5 rounded-full">
                             Correct answer
                           </span>
                         );
                       } else if (isChosen && !item.isCorrect) {
                         // They chose wrong
-                        optionClass = "border-red-200 bg-red-50 text-stone-800";
+                        optionClass = "border-red-200 bg-rf-danger-bg text-rf-text-primary";
                         badge = (
-                          <span className="ml-auto flex-shrink-0 text-xs font-medium text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                          <span className="ml-auto flex-shrink-0 text-xs font-medium text-rf-danger bg-red-100 px-2 py-0.5 rounded-full">
                             Your answer
                           </span>
                         );
@@ -225,15 +225,15 @@ export function QuizForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="p-3 bg-rf-danger-bg border border-red-200 rounded-lg text-sm text-red-700">
           {error}
         </div>
       )}
 
       {questions.map((question, idx) => (
-        <div key={question.id} className="bg-white border border-stone-200 rounded-xl p-5">
-          <p className="text-sm font-medium text-stone-900 mb-4">
-            <span className="text-stone-400 mr-2">Q{idx + 1}.</span>
+        <div key={question.id} className="bg-rf-surface-card border border-rf-border rounded-xl p-5">
+          <p className="text-sm font-medium text-rf-text-primary mb-4">
+            <span className="text-rf-text-muted mr-2">Q{idx + 1}.</span>
             {question.question_text}
           </p>
           <div className="space-y-2.5">
@@ -244,8 +244,8 @@ export function QuizForm({
                   key={option.id}
                   className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                     selected
-                      ? "border-blue-400 bg-blue-50"
-                      : "border-stone-200 hover:border-stone-300 hover:bg-stone-50"
+                      ? "border-blue-400 bg-rf-blue-tint"
+                      : "border-rf-border hover:border-rf-ink-100 hover:bg-rf-surface-page"
                   }`}
                 >
                   <input
@@ -256,10 +256,10 @@ export function QuizForm({
                     onChange={() =>
                       setAnswers((prev) => ({ ...prev, [question.id]: option.id }))
                     }
-                    className="mt-0.5 w-4 h-4 text-blue-600 flex-shrink-0"
+                    className="mt-0.5 w-4 h-4 text-rf-blue flex-shrink-0"
                   />
-                  <span className="text-sm text-stone-700">
-                    <span className="font-medium text-stone-500 mr-2 uppercase">{option.id}.</span>
+                  <span className="text-sm text-rf-ink-700">
+                    <span className="font-medium text-rf-text-secondary mr-2 uppercase">{option.id}.</span>
                     {option.text}
                   </span>
                 </label>
@@ -273,12 +273,12 @@ export function QuizForm({
         <button
           type="submit"
           disabled={!allAnswered || submitting}
-          className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-6 py-2.5 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {submitting ? "Submitting…" : "Submit Quiz"}
         </button>
         {!allAnswered && (
-          <p className="text-xs text-stone-400">
+          <p className="text-xs text-rf-text-muted">
             Answer all {questions.length} questions to submit.
           </p>
         )}

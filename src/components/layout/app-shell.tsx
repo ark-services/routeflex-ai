@@ -93,7 +93,7 @@ export function AppShell({
   }, [currentCompanyId]);
 
   return (
-    <div className="h-screen flex flex-col bg-stone-50">
+    <div className="h-screen flex flex-col bg-rf-surface-page">
       <TopBar
         companies={companies}
         currentCompanyId={currentCompanyId}

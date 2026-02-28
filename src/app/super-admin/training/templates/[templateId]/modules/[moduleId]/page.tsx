@@ -37,19 +37,19 @@ export default async function TemplateModulePage({
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-stone-500 mb-6">
-        <Link href="/super-admin/training/templates" className="hover:text-stone-700 transition-colors">
+      <div className="flex items-center gap-2 text-sm text-rf-text-secondary mb-6">
+        <Link href="/super-admin/training/templates" className="hover:text-rf-ink-700 transition-colors">
           Training Templates
         </Link>
         <span>/</span>
         <Link
           href={`/super-admin/training/templates/${templateId}`}
-          className="hover:text-stone-700 transition-colors"
+          className="hover:text-rf-ink-700 transition-colors"
         >
           {template.name}
         </Link>
         <span>/</span>
-        <span className="text-stone-900 font-medium">{mod.title}</span>
+        <span className="text-rf-text-primary font-medium">{mod.title}</span>
       </div>
 
       <ModuleEditor

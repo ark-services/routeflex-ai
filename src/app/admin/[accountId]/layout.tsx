@@ -26,7 +26,7 @@ export default async function AdminLayout({
   const firstCompanyId = companies?.[0]?.id ?? null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50">
+    <div className="min-h-screen flex flex-col bg-rf-surface-page">
       {/* Full-width sticky top bar */}
       <AdminHeader
         accountName={membership.account.name}

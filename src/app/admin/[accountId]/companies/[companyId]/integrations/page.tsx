@@ -38,10 +38,10 @@ export default async function CompanyIntegrationsPage({
     <IntegrationsClient>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-rf-text-primary">
             Integrations
           </h1>
-          <p className="text-sm text-stone-500 mt-0.5">{company.name}</p>
+          <p className="text-sm text-rf-text-secondary mt-0.5">{company.name}</p>
         </div>
 
         {/* ── Gmail ─────────────────────────────────────────────────────── */}

@@ -24,13 +24,13 @@ export default async function InvitePage({
 
   if (!info || info.error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stone-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-rf-surface-page p-4">
         <Card className="max-w-md w-full p-10 text-center">
           <div className="text-4xl mb-4">🔗</div>
-          <h1 className="text-xl font-semibold text-stone-900">
+          <h1 className="text-xl font-semibold text-rf-text-primary">
             Invalid invite link
           </h1>
-          <p className="text-sm text-stone-500 mt-2">
+          <p className="text-sm text-rf-text-secondary mt-2">
             This invite link has expired or is no longer valid. Ask your admin
             to send you a new one.
           </p>

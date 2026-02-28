@@ -81,7 +81,7 @@ export default async function ModuleContentPage({
       {/* Back link */}
       <Link
         href={`/learn/${token}`}
-        className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 transition-colors"
+        className="inline-flex items-center gap-1 text-sm text-rf-text-secondary hover:text-rf-ink-700 transition-colors"
       >
         <ChevronLeft className="w-4 h-4" />
         Back to course
@@ -89,9 +89,9 @@ export default async function ModuleContentPage({
 
       {/* Module title */}
       <div>
-        <h1 className="text-2xl font-bold text-stone-900">{mod.title}</h1>
+        <h1 className="text-2xl font-bold text-rf-text-primary">{mod.title}</h1>
         {mod.is_final_exam && (
-          <p className="text-sm text-stone-500 mt-1">
+          <p className="text-sm text-rf-text-secondary mt-1">
             This is the final exam. You must pass all modules before taking it.
           </p>
         )}
@@ -99,7 +99,7 @@ export default async function ModuleContentPage({
 
       {/* Content (only for regular modules) */}
       {!mod.is_final_exam && mod.content && (
-        <div className="bg-white border border-stone-200 rounded-xl p-6">
+        <div className="bg-rf-surface-card border border-rf-border rounded-xl p-6">
           <div className="prose prose-stone prose-sm max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {mod.content}
@@ -109,33 +109,33 @@ export default async function ModuleContentPage({
       )}
 
       {!mod.is_final_exam && !mod.content && (
-        <div className="bg-white border border-stone-200 rounded-xl p-6 text-stone-400 text-sm text-center">
+        <div className="bg-rf-surface-card border border-rf-border rounded-xl p-6 text-rf-text-muted text-sm text-center">
           No content for this module.
         </div>
       )}
 
       {/* Take quiz CTA */}
       {(questionCount ?? 0) > 0 ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 flex items-center gap-4">
-          <ClipboardList className="w-6 h-6 text-blue-600 flex-shrink-0" />
+        <div className="bg-rf-blue-tint border border-rf-blue-tint rounded-xl p-5 flex items-center gap-4">
+          <ClipboardList className="w-6 h-6 text-rf-blue flex-shrink-0" />
           <div className="flex-1">
             <p className="font-medium text-blue-900">
               {mod.is_final_exam ? "Ready for the Final Exam?" : "Ready to test your knowledge?"}
             </p>
-            <p className="text-sm text-blue-700 mt-0.5">
+            <p className="text-sm text-rf-blue mt-0.5">
               {questionCount} question{questionCount !== 1 ? "s" : ""} · multiple choice
             </p>
           </div>
           <Link
             href={`/learn/${token}/modules/${moduleId}/quiz`}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark transition-colors flex items-center gap-1.5"
           >
             Take Quiz
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
       ) : (
-        <div className="text-sm text-stone-400 text-center py-4">
+        <div className="text-sm text-rf-text-muted text-center py-4">
           No quiz questions have been added to this module yet.
         </div>
       )}

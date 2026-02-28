@@ -50,7 +50,7 @@ export default function SettingsPanel({
   };
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
+    <div className="w-80 bg-rf-surface-card border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <h3 className="text-base font-semibold text-gray-900">Settings</h3>
@@ -76,12 +76,12 @@ export default function SettingsPanel({
               {formSettings.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200"
+                  className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-rf-blue-tint text-rf-blue text-xs font-medium rounded-full border border-rf-blue-tint"
                 >
                   {tag}
                   <button
                     onClick={() => handleRemoveTag(tag)}
-                    className="text-blue-400 hover:text-blue-700 transition-colors"
+                    className="text-rf-blue-light hover:text-rf-blue transition-colors"
                     aria-label={`Remove ${tag}`}
                   >
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -106,12 +106,12 @@ export default function SettingsPanel({
                 }
               }}
               placeholder="utm_source=google"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rf-blue focus:border-rf-blue"
             />
             <button
               onClick={handleAddTag}
               disabled={!tagInput.trim()}
-              className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-2 bg-rf-blue text-white text-sm rounded-lg hover:bg-rf-blue-dark font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Add
             </button>
@@ -150,11 +150,11 @@ export default function SettingsPanel({
             <div className="flex-shrink-0 mt-0.5">
               <div
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  formSettings.syncQuestions ? "bg-blue-600" : "bg-gray-300"
+                  formSettings.syncQuestions ? "bg-rf-blue" : "bg-gray-300"
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-rf-surface-card transition-transform shadow-sm ${
                     formSettings.syncQuestions ? "translate-x-6" : "translate-x-1"
                   }`}
                 />

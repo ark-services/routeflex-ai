@@ -59,7 +59,7 @@ export function DropdownMenuContent({
 }) {
   return (
     <div
-      className={`absolute top-full mt-2 w-48 rounded-lg border border-stone-200 bg-white shadow-lg z-50 ${
+      className={`absolute top-full mt-2 w-48 rounded-rf-md border border-rf-border bg-rf-surface-card shadow-rf-md z-50 ${
         align === "end" ? "right-0" : "left-0"
       }`}
     >
@@ -81,7 +81,7 @@ export function DropdownMenuItem({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       {children}
     </button>
@@ -89,5 +89,5 @@ export function DropdownMenuItem({
 }
 
 export function DropdownMenuSeparator() {
-  return <div className="my-1 border-t border-stone-200" />;
+  return <div className="my-1 border-t border-rf-ink-100" />;
 }

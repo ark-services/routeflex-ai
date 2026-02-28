@@ -144,20 +144,20 @@ export function EnrollModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Enroll Applicant</DialogTitle>
-          <p className="text-sm text-stone-500 mt-0.5">{courseName}</p>
+          <p className="text-sm text-rf-text-secondary mt-0.5">{courseName}</p>
         </DialogHeader>
 
         {view === "select" && (
           <div className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+              <div className="bg-rf-danger-bg border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
             {/* Search input */}
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1.5">
+              <label className="block text-xs font-medium text-rf-ink-500 mb-1.5">
                 Search applicants
               </label>
               <input
@@ -168,22 +168,22 @@ export function EnrollModal({
                   setSearch(e.target.value);
                   setSelected(null);
                 }}
-                className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm
-                           focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm
+                           focus:outline-none focus:ring-2 focus:ring-rf-blue"
                 autoFocus
                 disabled={loading || isPending}
               />
             </div>
 
             {/* Applicant list */}
-            <div className="max-h-52 overflow-y-auto border border-stone-200 rounded-lg divide-y divide-stone-100">
+            <div className="max-h-52 overflow-y-auto border border-rf-border rounded-lg divide-y divide-rf-ink-100">
               {loading ? (
-                <div className="px-4 py-6 text-center text-sm text-stone-400 flex items-center justify-center gap-2">
+                <div className="px-4 py-6 text-center text-sm text-rf-text-muted flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Loading…
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="px-4 py-6 text-center text-sm text-stone-400">
+                <div className="px-4 py-6 text-center text-sm text-rf-text-muted">
                   {applicants.length === 0
                     ? "All applicants are already enrolled"
                     : "No applicants match your search"}
@@ -195,23 +195,23 @@ export function EnrollModal({
                     type="button"
                     onClick={() => handleSelect(a)}
                     className={`w-full px-4 py-2.5 text-left flex flex-col transition-colors
-                                hover:bg-stone-50
-                                ${selected?.id === a.id ? "bg-blue-50 hover:bg-blue-50" : ""}`}
+                                hover:bg-rf-surface-page
+                                ${selected?.id === a.id ? "bg-rf-blue-tint hover:bg-rf-blue-tint" : ""}`}
                   >
-                    <span className="text-sm font-medium text-stone-900">
+                    <span className="text-sm font-medium text-rf-text-primary">
                       {a.full_name}
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {a.jobs?.title && (
-                        <span className="text-xs text-stone-500 font-medium">
+                        <span className="text-xs text-rf-text-secondary font-medium">
                           {a.jobs.title}
                         </span>
                       )}
                       {a.jobs?.title && a.email && (
-                        <span className="text-xs text-stone-300">·</span>
+                        <span className="text-xs text-rf-text-muted">·</span>
                       )}
                       {a.email && (
-                        <span className="text-xs text-stone-400">{a.email}</span>
+                        <span className="text-xs text-rf-text-muted">{a.email}</span>
                       )}
                     </div>
                   </button>
@@ -270,7 +270,7 @@ export function EnrollModal({
                       </>
                     )}
                   </Button>
-                  <p className="text-xs text-stone-400 text-center">
+                  <p className="text-xs text-rf-text-muted text-center">
                     Gmail not connected — copy and share the link manually.
                   </p>
                 </>
@@ -290,25 +290,25 @@ export function EnrollModal({
         {view === "success" && (
           <div className="space-y-4">
             {/* Success banner */}
-            <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-4 bg-rf-success-bg border border-green-200 rounded-xl">
+              <CheckCircle2 className="w-5 h-5 text-rf-success flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-green-900">
                   {selected?.full_name} enrolled
                 </p>
                 {isPending && !emailSent && !emailError && (
-                  <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
+                  <p className="text-xs text-rf-success mt-0.5 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Sending email…
                   </p>
                 )}
                 {emailSent && (
-                  <p className="text-xs text-green-700 mt-0.5 flex items-center gap-1.5">
+                  <p className="text-xs text-rf-success mt-0.5 flex items-center gap-1.5">
                     <Mail className="w-3 h-3" />
                     Training email sent to {selected?.email}
                   </p>
                 )}
                 {emailError && (
-                  <p className="text-xs text-red-600 mt-0.5">
+                  <p className="text-xs text-rf-danger mt-0.5">
                     Email failed: {emailError}
                   </p>
                 )}
@@ -317,16 +317,16 @@ export function EnrollModal({
 
             {/* Magic link copy */}
             <div>
-              <p className="text-xs font-medium text-stone-600 mb-1.5">Training link</p>
-              <div className="flex items-center gap-2 p-3 bg-stone-50 rounded-lg border border-stone-200">
-                <span className="flex-1 text-xs text-stone-500 font-mono truncate">
+              <p className="text-xs font-medium text-rf-ink-500 mb-1.5">Training link</p>
+              <div className="flex items-center gap-2 p-3 bg-rf-surface-page rounded-lg border border-rf-border">
+                <span className="flex-1 text-xs text-rf-text-secondary font-mono truncate">
                   {appUrl}/learn/{enrolledToken}
                 </span>
                 <button
                   type="button"
                   onClick={copyLink}
                   className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md
-                             bg-stone-900 text-white hover:bg-stone-700 transition-colors flex-shrink-0"
+                             bg-rf-ink-900 text-white hover:bg-rf-ink-700 transition-colors flex-shrink-0"
                 >
                   {copied ? (
                     <>

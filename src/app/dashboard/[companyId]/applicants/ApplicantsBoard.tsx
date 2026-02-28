@@ -470,12 +470,12 @@ export default function ApplicantsBoard({
   }
 
   if (!mounted) {
-    return <div className="min-h-[60vh] bg-stone-50" />;
+    return <div className="min-h-[60vh] bg-rf-surface-page" />;
   }
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <div className="flex flex-col h-full min-h-0 bg-stone-50">
+      <div className="flex flex-col h-full min-h-0 bg-rf-surface-page">
         {/* Board content - single horizontal scroll */}
         <div className="flex-1 overflow-auto min-h-0">
           <div className="min-w-max p-6">
@@ -489,25 +489,25 @@ export default function ApplicantsBoard({
                     <div className="flex items-center gap-3 px-2">
                       <button
                         onClick={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
-                        className="text-stone-600 hover:text-stone-900 text-sm"
+                        className="text-rf-ink-500 hover:text-rf-text-primary text-sm"
                       >
                         {g.is_collapsed ? "▶" : "▼"}
                       </button>
                       <div className="relative">
                         <button
                           onClick={() => setColorPickerGroupId(colorPickerGroupId === g.id ? null : g.id)}
-                          className="h-4 w-4 rounded cursor-pointer hover:ring-2 hover:ring-stone-300 transition"
+                          className="h-4 w-4 rounded cursor-pointer hover:ring-2 hover:ring-rf-blue transition"
                           style={{ backgroundColor: g.color }}
                         />
                         {/* Color picker dropdown */}
                         {colorPickerGroupId === g.id && (
-                          <div className="absolute left-0 top-6 z-50 rounded-lg border border-stone-200 bg-white p-3 shadow-xl">
+                          <div className="absolute left-0 top-6 z-50 rounded-lg border border-rf-border bg-rf-surface-card p-3 shadow-xl">
                             <div className="grid grid-cols-8 gap-2">
                               {PRESET_COLORS.map((color) => (
                                 <button
                                   key={color}
                                   onClick={() => onUpdateGroupColor(g.id, color)}
-                                  className="h-6 w-6 rounded border border-stone-200 hover:scale-110 transition-transform"
+                                  className="h-6 w-6 rounded border border-rf-border hover:scale-110 transition-transform"
                                   style={{ backgroundColor: color }}
                                 />
                               ))}
@@ -515,13 +515,13 @@ export default function ApplicantsBoard({
                           </div>
                         )}
                       </div>
-                      <h2 className="text-base font-semibold text-stone-900">{g.name}</h2>
-                      <span className="text-sm text-stone-400">({rows.length})</span>
+                      <h2 className="text-base font-semibold text-rf-text-primary">{g.name}</h2>
+                      <span className="text-sm text-rf-text-muted">({rows.length})</span>
                     </div>
 
                     {/* Group table */}
                     {!g.is_collapsed && (
-                      <div className="overflow-visible rounded-lg border border-stone-200 bg-white">
+                      <div className="overflow-visible rounded-lg border border-rf-border bg-rf-surface-card">
                         <table
                           className="text-left border-collapse"
                           style={{ tableLayout: 'fixed', width: `${totalTableWidth}px` }}
@@ -539,9 +539,9 @@ export default function ApplicantsBoard({
                             <col style={{ width: `${APPLIED_COL_WIDTH}px` }} />
                             <col style={{ width: `${RESUME_COL_WIDTH}px` }} />
                           </colgroup>
-                          <thead className="bg-stone-50/80">
-                            <tr className="border-b border-stone-200">
-                              <th className="sticky left-0 z-10 w-10 bg-stone-50/80 px-4 py-2"></th>
+                          <thead className="bg-rf-surface-page/80">
+                            <tr className="border-b border-rf-border">
+                              <th className="sticky left-0 z-10 w-10 bg-rf-surface-page/80 px-4 py-2"></th>
 
                               {/* Sortable columns */}
                               <SortableContext
@@ -566,7 +566,7 @@ export default function ApplicantsBoard({
                               <th className="px-4 py-2">
                                 <button
                                   onClick={() => setShowAddColumnModal(true)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-300 bg-white text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition"
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-rf-ink-100 bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:text-rf-text-primary transition"
                                   title="Add column"
                                 >
                                   +
@@ -574,16 +574,16 @@ export default function ApplicantsBoard({
                               </th>
 
                               {/* Fixed columns */}
-                              <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Job</th>
-                              <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Applied</th>
-                              <th className="px-4 py-2 text-xs font-medium text-stone-500 uppercase">Resume</th>
+                              <th className="px-4 py-2 text-xs font-medium text-rf-text-secondary uppercase">Job</th>
+                              <th className="px-4 py-2 text-xs font-medium text-rf-text-secondary uppercase">Applied</th>
+                              <th className="px-4 py-2 text-xs font-medium text-rf-text-secondary uppercase">Resume</th>
                             </tr>
                           </thead>
 
                           <tbody>
                             {rows.length === 0 ? (
                               <tr>
-                                <td colSpan={localColumns.length + 5} className="px-4 py-8 text-sm text-stone-400 text-center">
+                                <td colSpan={localColumns.length + 5} className="px-4 py-8 text-sm text-rf-text-muted text-center">
                                   No applicants in this group yet.
                                 </td>
                               </tr>
@@ -627,12 +627,12 @@ export default function ApplicantsBoard({
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   placeholder="New group name"
-                  className="h-9 w-64 rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
+                  className="h-9 w-64 rounded-lg border border-rf-border bg-rf-surface-card px-3 text-sm outline-none focus:border-rf-ink-300"
                 />
                 <button
                   onClick={onCreateGroup}
                   disabled={isPending || !newGroupName.trim()}
-                  className="flex h-9 items-center gap-2 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60"
+                  className="flex h-9 items-center gap-2 rounded-lg bg-rf-ink-900 px-4 text-sm font-medium text-white hover:bg-rf-ink-700 disabled:opacity-60"
                 >
                   <span>+ Add new group</span>
                 </button>
@@ -644,11 +644,11 @@ export default function ApplicantsBoard({
         {/* Add Column Modal */}
         {showAddColumnModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-xl border border-stone-200 bg-white p-6 shadow-xl">
-              <h3 className="text-lg font-semibold text-stone-900">Add Column</h3>
+            <div className="w-full max-w-md rounded-xl border border-rf-border bg-rf-surface-card p-6 shadow-xl">
+              <h3 className="text-lg font-semibold text-rf-text-primary">Add Column</h3>
               <div className="mt-4 space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700">Column name</label>
+                  <label className="block text-sm font-medium text-rf-ink-700">Column name</label>
                   <input
                     value={newColumnName}
                     onChange={(e) => {
@@ -656,19 +656,19 @@ export default function ApplicantsBoard({
                       setAddColumnError(null);
                     }}
                     placeholder="e.g. Interview Score"
-                    className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
+                    className="mt-1 h-9 w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 text-sm outline-none focus:border-rf-ink-300"
                     autoFocus
                   />
                   {addColumnError && (
-                    <p className="mt-1.5 text-xs text-red-600">{addColumnError}</p>
+                    <p className="mt-1.5 text-xs text-rf-danger">{addColumnError}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700">Column type</label>
+                  <label className="block text-sm font-medium text-rf-ink-700">Column type</label>
                   <select
                     value={newColumnType}
                     onChange={(e) => setNewColumnType(e.target.value as any)}
-                    className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-stone-400"
+                    className="mt-1 h-9 w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 text-sm outline-none focus:border-rf-ink-300"
                   >
                     <option value="text">Text</option>
                     <option value="email">Email</option>
@@ -689,14 +689,14 @@ export default function ApplicantsBoard({
                     setNewColumnType("text");
                     setAddColumnError(null);
                   }}
-                  className="h-9 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                  className="h-9 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={onAddColumn}
                   disabled={isPending || !newColumnName.trim()}
-                  className="h-9 rounded-lg bg-stone-900 px-4 text-sm font-medium text-white hover:bg-stone-800 disabled:opacity-60"
+                  className="h-9 rounded-lg bg-rf-ink-900 px-4 text-sm font-medium text-white hover:bg-rf-ink-700 disabled:opacity-60"
                 >
                   Add
                 </button>
@@ -717,9 +717,9 @@ export default function ApplicantsBoard({
 
         {/* Bulk action bar */}
         {selectedIds.length > 0 && (
-          <div className="fixed bottom-6 left-1/2 z-50 w-[min(920px,calc(100%-24px))] -translate-x-1/2 rounded-xl border border-stone-200 bg-white px-4 py-3 shadow-xl">
+          <div className="fixed bottom-6 left-1/2 z-50 w-[min(920px,calc(100%-24px))] -translate-x-1/2 rounded-xl border border-rf-border bg-rf-surface-card px-4 py-3 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm text-stone-700">
+              <div className="text-sm text-rf-ink-700">
                 <span className="font-semibold">{selectedIds.length}</span> selected
               </div>
 
@@ -730,7 +730,7 @@ export default function ApplicantsBoard({
                     if (groupId) onMoveToGroup(groupId);
                     e.currentTarget.value = "";
                   }}
-                  className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none"
+                  className="h-9 rounded-lg border border-rf-border bg-rf-surface-card px-3 text-sm outline-none"
                   defaultValue=""
                   disabled={isPending}
                 >
@@ -747,7 +747,7 @@ export default function ApplicantsBoard({
                 <button
                   onClick={onBulkDelete}
                   disabled={isPending}
-                  className="h-9 rounded-lg bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
+                  className="h-9 rounded-lg bg-rf-danger px-4 text-sm font-medium text-white hover:bg-rf-danger disabled:opacity-60"
                 >
                   Delete
                 </button>
@@ -755,7 +755,7 @@ export default function ApplicantsBoard({
                 <button
                   onClick={clearSelection}
                   disabled={isPending}
-                  className="h-9 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-800 hover:bg-stone-50 disabled:opacity-60"
+                  className="h-9 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-text-primary hover:bg-rf-surface-page disabled:opacity-60"
                 >
                   Clear
                 </button>
@@ -873,7 +873,7 @@ function SortableColumnHeader({
     <th
       ref={setNodeRef}
       style={{ ...style, position: 'relative' }}
-      className={`group px-3 py-2 text-xs font-medium text-stone-700 border-r border-stone-200 last:border-r-0${
+      className={`group px-3 py-2 text-xs font-medium text-rf-ink-700 border-r border-rf-border last:border-r-0${
         !isEditing && !column.is_system ? " cursor-grab active:cursor-grabbing" : ""
       }`}
       {...attributes}
@@ -893,7 +893,7 @@ function SortableColumnHeader({
             onMouseDown={(e) => e.stopPropagation()}
             // Width tracks typed content so the input doesn't occupy more space than needed
             style={{ width: `${Math.max(4, localValue.length + 2)}ch` }}
-            className="h-7 min-w-[3ch] max-w-full rounded border border-stone-300 px-2 text-xs outline-none focus:border-blue-500"
+            className="h-7 min-w-[3ch] max-w-full rounded border border-rf-ink-100 px-2 text-xs outline-none focus:border-rf-blue"
           />
         ) : (
           <>
@@ -905,7 +905,7 @@ function SortableColumnHeader({
                 e.stopPropagation();
                 if (!column.is_system) setIsEditing(true);
               }}
-              className="max-w-full truncate text-left px-1 hover:text-stone-900 cursor-text disabled:cursor-default"
+              className="max-w-full truncate text-left px-1 hover:text-rf-text-primary cursor-text disabled:cursor-default"
               disabled={column.is_system}
               title={column.name}
             >
@@ -921,7 +921,7 @@ function SortableColumnHeader({
                   e.stopPropagation();
                   setMenuOpen(!menuOpen);
                 }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1 text-stone-500 hover:text-stone-900 cursor-pointer text-sm leading-none"
+                className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1 text-rf-text-secondary hover:text-rf-text-primary cursor-pointer text-sm leading-none"
                 aria-label={`${column.name} column options`}
               >
                 ⋮
@@ -936,25 +936,25 @@ function SortableColumnHeader({
         <>
           <div className="fixed inset-0 z-[998]" onClick={() => setMenuOpen(false)} />
           <div
-            className="fixed z-[999] w-44 rounded-lg border border-stone-200 bg-white py-1 shadow-xl"
+            className="fixed z-[999] w-44 rounded-lg border border-rf-border bg-rf-surface-card py-1 shadow-xl"
             style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
           >
             <button
               onClick={() => { setIsEditing(true); setMenuOpen(false); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+              className="w-full px-3 py-1.5 text-left text-sm text-rf-ink-700 hover:bg-rf-surface-page"
             >
               Rename column
             </button>
             <button
               onClick={() => { onWidthReset(); setMenuOpen(false); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+              className="w-full px-3 py-1.5 text-left text-sm text-rf-ink-700 hover:bg-rf-surface-page"
             >
               Reset column width
             </button>
-            <div className="my-1 border-t border-stone-100" />
+            <div className="my-1 border-t border-rf-ink-100" />
             <button
               onClick={() => { onDelete(); setMenuOpen(false); }}
-              className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+              className="w-full px-3 py-1.5 text-left text-sm text-rf-danger hover:bg-rf-danger-bg"
             >
               Delete column
             </button>
@@ -1042,38 +1042,38 @@ function SortableRow({
   cellEls.push(
     <td
       key="__sticky__"
-      className="sticky left-0 z-10 bg-white group-hover:bg-stone-50/60 px-4 py-2 border-r border-stone-100"
+      className="sticky left-0 z-10 bg-rf-surface-card group-hover:bg-rf-surface-page/60 px-4 py-2 border-r border-rf-ink-100"
     >
       <div className="flex items-center gap-2">
         <div className="relative">
           <button
             onClick={() => setRowMenuOpen(!rowMenuOpen)}
-            className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-stone-700 transition text-sm"
+            className="opacity-0 group-hover:opacity-100 text-rf-text-muted hover:text-rf-ink-700 transition text-sm"
           >
             ⋮
           </button>
           {rowMenuOpen ? (
-            <div className="absolute left-0 top-6 z-50 w-40 rounded-lg border border-stone-200 bg-white py-1 shadow-xl">
-              <div className="px-3 py-1 text-xs font-medium text-stone-400">Move to</div>
+            <div className="absolute left-0 top-6 z-50 w-40 rounded-lg border border-rf-border bg-rf-surface-card py-1 shadow-xl">
+              <div className="px-3 py-1 text-xs font-medium text-rf-text-muted">Move to</div>
               {groups.map((g) => (
                 <button
                   key={g.id}
                   onClick={() => onMove(g.id)}
-                  className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+                  className="w-full px-3 py-1.5 text-left text-sm text-rf-ink-700 hover:bg-rf-surface-page"
                 >
                   {g.name}
                 </button>
               ))}
-              <div className="my-1 border-t border-stone-100" />
+              <div className="my-1 border-t border-rf-ink-100" />
               <button
                 onClick={onDuplicate}
-                className="w-full px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
+                className="w-full px-3 py-1.5 text-left text-sm text-rf-ink-700 hover:bg-rf-surface-page"
               >
                 Duplicate
               </button>
               <button
                 onClick={onDelete}
-                className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                className="w-full px-3 py-1.5 text-left text-sm text-rf-danger hover:bg-rf-danger-bg"
               >
                 Delete
               </button>
@@ -1085,12 +1085,12 @@ function SortableRow({
           type="checkbox"
           checked={selected}
           onChange={onToggle}
-          className="h-4 w-4 rounded border-stone-300"
+          className="h-4 w-4 rounded border-rf-ink-100"
         />
 
         <button
           {...listeners}
-          className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 text-xs opacity-0 group-hover:opacity-100"
+          className="cursor-grab active:cursor-grabbing text-rf-text-muted hover:text-rf-ink-500 text-xs opacity-0 group-hover:opacity-100"
         >
           ⋮⋮
         </button>
@@ -1101,7 +1101,7 @@ function SortableRow({
   // Dynamic board columns
   for (const col of columns) {
     cellEls.push(
-      <td key={col.id} className="px-4 py-2 border-r border-stone-100 last:border-r-0">
+      <td key={col.id} className="px-4 py-2 border-r border-rf-ink-100 last:border-r-0">
         <CellRenderer
           applicant={applicant}
           column={col}
@@ -1119,12 +1119,12 @@ function SortableRow({
 
   // Fixed columns
   cellEls.push(
-    <td key="__job__" className="px-4 py-2 text-sm text-stone-600 border-r border-stone-100">
+    <td key="__job__" className="px-4 py-2 text-sm text-rf-ink-500 border-r border-rf-ink-100">
       {applicant.jobs?.title ?? "—"}
     </td>
   );
   cellEls.push(
-    <td key="__applied__" className="px-4 py-2 text-sm text-stone-600 border-r border-stone-100">
+    <td key="__applied__" className="px-4 py-2 text-sm text-rf-ink-500 border-r border-rf-ink-100">
       {new Date(applicant.created_at).toLocaleDateString()}
     </td>
   );
@@ -1135,12 +1135,12 @@ function SortableRow({
           href={`/api/resumes/view?applicantId=${applicant.id}`}
           target="_blank"
           rel="noreferrer"
-          className="text-blue-600 hover:underline"
+          className="text-rf-blue hover:underline"
         >
           View
         </a>
       ) : (
-        <span className="text-stone-300">—</span>
+        <span className="text-rf-text-muted">—</span>
       )}
     </td>
   );
@@ -1149,7 +1149,7 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className="group border-b border-stone-100 hover:bg-stone-50/60 relative"
+      className="group border-b border-rf-ink-100 hover:bg-rf-surface-page/60 relative"
       {...attributes}
     >
       {cellEls}
@@ -1241,8 +1241,8 @@ function FileCell({
   if (uploading || isPending) {
     return (
       <div className="flex items-center gap-2 px-2 py-1">
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600" />
-        <span className="text-sm text-stone-500">Uploading...</span>
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-rf-ink-100 border-t-rf-ink-500" />
+        <span className="text-sm text-rf-text-secondary">Uploading...</span>
       </div>
     );
   }
@@ -1254,14 +1254,14 @@ function FileCell({
           href={fileUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-sm text-blue-600 hover:underline truncate max-w-[150px]"
+          className="text-sm text-rf-blue hover:underline truncate max-w-[150px]"
           title={fileName}
         >
           {fileName}
         </a>
         <button
           onClick={handleDelete}
-          className="text-stone-400 hover:text-red-600 text-xs"
+          className="text-rf-text-muted hover:text-rf-danger text-xs"
           title="Delete file"
         >
           ✕
@@ -1281,12 +1281,12 @@ function FileCell({
       />
       <button
         onClick={() => fileInputRef.current?.click()}
-        className="text-sm text-stone-600 hover:text-stone-900 hover:underline"
+        className="text-sm text-rf-ink-500 hover:text-rf-text-primary hover:underline"
       >
         Choose file
       </button>
       {error && (
-        <div className="text-xs text-red-600 mt-1">{error}</div>
+        <div className="text-xs text-rf-danger mt-1">{error}</div>
       )}
     </div>
   );
@@ -1313,7 +1313,7 @@ function CellRenderer({
 
   if (column.is_system) {
     if (column.type === "text") {
-      return <span className="text-sm text-stone-700">{value || "—"}</span>;
+      return <span className="text-sm text-rf-ink-700">{value || "—"}</span>;
     }
     if (column.type === "status") {
       const selectedLabel = labels.find((l) => l.label.toLowerCase() === value?.toLowerCase());
@@ -1322,11 +1322,11 @@ function CellRenderer({
           {selectedLabel && (
             <div className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedLabel.color }} />
           )}
-          <span className="text-sm text-stone-700">{value || "—"}</span>
+          <span className="text-sm text-rf-ink-700">{value || "—"}</span>
         </div>
       );
     }
-    return <span className="text-sm text-stone-700">{value || "—"}</span>;
+    return <span className="text-sm text-rf-ink-700">{value || "—"}</span>;
   }
 
   if (column.type === "text") {
@@ -1335,7 +1335,7 @@ function CellRenderer({
         type="text"
         value={value ?? ""}
         onChange={(e) => startTransition(() => onUpdate(e.target.value))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-rf-border focus:border-rf-blue"
         placeholder="—"
       />
     );
@@ -1347,7 +1347,7 @@ function CellRenderer({
         type="number"
         value={value ?? ""}
         onChange={(e) => startTransition(() => onUpdate(e.target.value ? parseFloat(e.target.value) : null))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-rf-border focus:border-rf-blue"
         placeholder="—"
       />
     );
@@ -1359,7 +1359,7 @@ function CellRenderer({
         type="date"
         value={value ?? ""}
         onChange={(e) => startTransition(() => onUpdate(e.target.value))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-rf-border focus:border-rf-blue"
       />
     );
   }
@@ -1381,7 +1381,7 @@ function CellRenderer({
         type="email"
         value={value ?? ""}
         onChange={(e) => startTransition(() => onUpdate(e.target.value))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-rf-border focus:border-rf-blue"
         placeholder="email@example.com"
       />
     );
@@ -1397,7 +1397,7 @@ function CellRenderer({
         type="text"
         value={value ?? ""}
         onChange={(e) => startTransition(() => onUpdate(e.target.value))}
-        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-stone-200 focus:border-blue-500"
+        className="h-8 w-full rounded border border-transparent px-2 text-sm outline-none hover:border-rf-border focus:border-rf-blue"
         placeholder="City, State"
       />
     );
@@ -1416,7 +1416,7 @@ function CellRenderer({
     );
   }
 
-  return <span className="text-stone-300">—</span>;
+  return <span className="text-rf-text-muted">—</span>;
 }
 
 // ===== Phone Cell — E.164-aware input with inline validation =====
@@ -1479,19 +1479,19 @@ function PhoneCell({
         onFocus={() => { setIsEditing(true); setLocalValue(value ?? ""); }}
         onBlur={commitPhoneEdit}
         onKeyDown={handleKeyDown}
-        className={`h-8 w-full rounded border px-2 text-sm outline-none transition-colors hover:border-stone-200 focus:border-blue-500 ${
-          error ? "border-red-400 bg-red-50 focus:border-red-500" : "border-transparent"
+        className={`h-8 w-full rounded border px-2 text-sm outline-none transition-colors hover:border-rf-border focus:border-rf-blue ${
+          error ? "border-red-400 bg-rf-danger-bg focus:border-red-500" : "border-transparent"
         }`}
         placeholder="+15551234567"
       />
       {error && (
-        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
+        <div className="absolute left-0 top-full z-10 mt-0.5 rounded border border-red-200 bg-rf-danger-bg px-2 py-1 text-xs text-red-700 shadow-sm whitespace-nowrap pointer-events-none">
           {error}
         </div>
       )}
       {isPending && !error && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2">
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-blue-500" />
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
         </div>
       )}
     </div>
@@ -1617,12 +1617,12 @@ function StatusLabelsEditor({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-[10px] border border-stone-200 bg-white p-6 shadow-2xl">
-        <h3 className="text-lg font-semibold text-stone-900">Edit Status Labels</h3>
+      <div className="w-full max-w-lg rounded-[10px] border border-rf-border bg-rf-surface-card p-6 shadow-2xl">
+        <h3 className="text-lg font-semibold text-rf-text-primary">Edit Status Labels</h3>
 
         {/* Error message */}
         {error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+          <div className="mt-4 p-3 bg-rf-danger-bg border border-red-200 rounded-lg text-sm text-rf-danger">
             {error}
           </div>
         )}
@@ -1633,12 +1633,12 @@ function StatusLabelsEditor({
             const isFallback = fallbackLabel?.id === label.id;
             return (
             <div key={label.id} className="group">
-              <div className="flex items-center gap-3 p-2 rounded-[10px] hover:bg-stone-50 transition-colors">
+              <div className="flex items-center gap-3 p-2 rounded-[10px] hover:bg-rf-surface-page transition-colors">
                 {/* Color swatch - clickable */}
                 <button
                   type="button"
                   onClick={() => setShowColorPickerForId(showColorPickerForId === label.id ? null : label.id)}
-                  className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
+                  className="h-9 w-9 rounded-lg border border-rf-border hover:border-rf-ink-300 transition-colors flex-shrink-0"
                   style={{ backgroundColor: editValues[label.id]?.color || label.color }}
                   title="Change color"
                 />
@@ -1677,11 +1677,11 @@ function StatusLabelsEditor({
                         e.currentTarget.blur();
                       }
                     }}
-                    className="flex-1 px-2 py-1 text-sm font-medium text-stone-900 bg-transparent border border-transparent rounded-lg hover:border-stone-200 focus:border-blue-500 focus:bg-white outline-none transition-colors"
+                    className="flex-1 px-2 py-1 text-sm font-medium text-rf-text-primary bg-transparent border border-transparent rounded-lg hover:border-rf-border focus:border-rf-blue focus:bg-rf-surface-card outline-none transition-colors"
                     placeholder="Label name"
                   />
                   {isFallback && (
-                    <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                    <span className="px-2 py-0.5 text-xs font-medium bg-rf-blue-tint text-rf-blue rounded">
                       Default
                     </span>
                   )}
@@ -1692,7 +1692,7 @@ function StatusLabelsEditor({
                   <button
                     type="button"
                     onClick={() => onDeleteLabel(label.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-stone-400 hover:text-red-600 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 text-rf-text-muted hover:text-rf-danger transition-all"
                     title="Delete label"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1704,7 +1704,7 @@ function StatusLabelsEditor({
 
               {/* Inline color picker */}
               {showColorPickerForId === label.id && (
-                <div className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]">
+                <div className="ml-12 mt-2 p-3 bg-rf-surface-page rounded-[10px]">
                   <ColorPicker
                     value={editValues[label.id]?.color || label.color}
                     onChange={(color) => {
@@ -1728,11 +1728,11 @@ function StatusLabelsEditor({
         </div>
 
         {/* Add new label */}
-        <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-stone-300 bg-stone-50">
+        <div className="mt-4 flex items-center gap-3 p-3 rounded-[10px] border-2 border-dashed border-rf-ink-100 bg-rf-surface-page">
           <button
             type="button"
             onClick={() => setShowColorPickerForId('new')}
-            className="h-9 w-9 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors flex-shrink-0"
+            className="h-9 w-9 rounded-lg border border-rf-border hover:border-rf-ink-300 transition-colors flex-shrink-0"
             style={{ backgroundColor: newColor }}
             title="Choose color"
           />
@@ -1746,13 +1746,13 @@ function StatusLabelsEditor({
               }
             }}
             placeholder="Add new label"
-            className="flex-1 px-3 py-2 text-sm bg-white border border-stone-200 rounded-lg outline-none focus:border-blue-500 transition-colors"
+            className="flex-1 px-3 py-2 text-sm bg-rf-surface-card border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors"
           />
           <button
             type="button"
             onClick={onAddLabel}
             disabled={isPending || !newLabel.trim()}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="px-4 py-2 bg-rf-blue text-white text-sm font-medium rounded-[10px] hover:bg-rf-blue-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             Add
           </button>
@@ -1760,7 +1760,7 @@ function StatusLabelsEditor({
 
         {/* Inline color picker for new label */}
         {showColorPickerForId === 'new' && (
-          <div className="ml-12 mt-2 p-3 bg-stone-50 rounded-[10px]">
+          <div className="ml-12 mt-2 p-3 bg-rf-surface-page rounded-[10px]">
             <ColorPicker
               value={newColor}
               onChange={(color) => {
@@ -1777,7 +1777,7 @@ function StatusLabelsEditor({
           <button
             type="button"
             onClick={onClose}
-            className="px-6 py-2 bg-blue-600 text-white text-sm font-medium rounded-[10px] hover:bg-blue-700 transition-colors shadow-sm"
+            className="px-6 py-2 bg-rf-blue text-white text-sm font-medium rounded-[10px] hover:bg-rf-blue-dark transition-colors shadow-sm"
           >
             Done
           </button>

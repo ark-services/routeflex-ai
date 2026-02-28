@@ -1,19 +1,184 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* ─────────────────────────────────────
+   RouteFlex Brand Tokens
+   Source: routeflex-brand-system/tokens/tokens.json v1.0.0
+───────────────────────────────────── */
+
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
+  /* ── Brand Blue ── */
+  --rf-blue:          #1D6FFF;
+  --rf-blue-light:    #4D8FFF;
+  --rf-blue-tint:     #EBF2FF;
+  --rf-blue-dark:     #0A4FCC;
+
+  /* ── Ink Scale ── */
+  --rf-ink-900:       #0F1623;
+  --rf-ink-700:       #2A3347;
+  --rf-ink-500:       #4A5568;
+  --rf-ink-300:       #9BAABB;
+  --rf-ink-100:       #E4E8F0;
+
+  /* ── Surfaces ── */
+  --rf-surface-page:  #F3F3F0;
+  --rf-surface-card:  #FFFFFF;
+  --rf-surface-input: #F3F3F0;
+  --rf-border:        rgba(15, 22, 35, 0.08);
+
+  /* ── Text ── */
+  --rf-text-primary:  #0F1623;
+  --rf-text-secondary:#4A5568;
+  --rf-text-muted:    #9BAABB;
+  --rf-text-inverse:  #FFFFFF;
+
+  /* ── Semantic ── */
+  --rf-success:       #16A34A;
+  --rf-success-bg:    #F0FDF4;
+  --rf-warning:       #D97706;
+  --rf-warning-bg:    #FFFBEB;
+  --rf-danger:        #EF4444;
+  --rf-danger-bg:     #FFF1F2;
+  --rf-info:          #1D6FFF;
+  --rf-info-bg:       #EBF2FF;
+
+  /* ── Logo ── */
+  --rf-icon-stroke:        #1D6FFF;
+  --rf-icon-stroke-trail:  rgba(29, 111, 255, 0.28);
+  --rf-wm-route:           #0F1623;
+  --rf-wm-flex:            #1D6FFF;
+
+  /* ── Shadows ── */
+  --rf-shadow-sm:     0 1px 3px rgba(0,0,0,0.06);
+  --rf-shadow-md:     0 2px 12px rgba(0,0,0,0.08);
+  --rf-shadow-lg:     0 4px 24px rgba(0,0,0,0.10);
+  --rf-shadow-xl:     0 8px 40px rgba(0,0,0,0.12);
+
+  /* ── Motion ── */
+  --rf-duration-fast:   100ms;
+  --rf-duration-normal: 150ms;
+  --rf-duration-slow:   300ms;
+  --rf-easing:          ease;
+
+  /* ── Legacy aliases ── */
+  --background: var(--rf-surface-page);
+  --foreground: var(--rf-text-primary);
 }
 
+/* ─────────────────────────────────────
+   Dark Mode
+───────────────────────────────────── */
+[data-theme="dark"] {
+  --rf-surface-page:       #0A0E18;
+  --rf-surface-card:       #0F1623;
+  --rf-surface-input:      #1A2035;
+  --rf-border:             rgba(255, 255, 255, 0.07);
+  --rf-text-primary:       #F0F4FF;
+  --rf-text-secondary:     rgba(255, 255, 255, 0.55);
+  --rf-text-muted:         rgba(255, 255, 255, 0.28);
+  --rf-text-inverse:       #0F1623;
+  --rf-blue-tint:          rgba(29, 111, 255, 0.15);
+  --rf-icon-stroke:        #4D8FFF;
+  --rf-icon-stroke-trail:  rgba(77, 143, 255, 0.28);
+  --rf-wm-route:           #FFFFFF;
+  --rf-wm-flex:            #4D8FFF;
+  --rf-shadow-sm:          0 1px 3px rgba(0,0,0,0.3);
+  --rf-shadow-md:          0 2px 12px rgba(0,0,0,0.4);
+  --rf-shadow-lg:          0 4px 24px rgba(0,0,0,0.5);
+  --rf-shadow-xl:          0 8px 40px rgba(0,0,0,0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --rf-surface-page:       #0A0E18;
+    --rf-surface-card:       #0F1623;
+    --rf-surface-input:      #1A2035;
+    --rf-border:             rgba(255, 255, 255, 0.07);
+    --rf-text-primary:       #F0F4FF;
+    --rf-text-secondary:     rgba(255, 255, 255, 0.55);
+    --rf-text-muted:         rgba(255, 255, 255, 0.28);
+    --rf-text-inverse:       #0F1623;
+    --rf-blue-tint:          rgba(29, 111, 255, 0.15);
+    --rf-icon-stroke:        #4D8FFF;
+    --rf-icon-stroke-trail:  rgba(77, 143, 255, 0.28);
+    --rf-wm-route:           #FFFFFF;
+    --rf-wm-flex:            #4D8FFF;
+    --rf-shadow-sm:          0 1px 3px rgba(0,0,0,0.3);
+    --rf-shadow-md:          0 2px 12px rgba(0,0,0,0.4);
+    --rf-shadow-lg:          0 4px 24px rgba(0,0,0,0.5);
+    --rf-shadow-xl:          0 8px 40px rgba(0,0,0,0.6);
+  }
+}
+
+/* ─────────────────────────────────────
+   Tailwind Theme Mappings
+───────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Colors — generates bg-rf-blue, text-rf-blue, border-rf-blue, etc. */
+  --color-rf-blue:          var(--rf-blue);
+  --color-rf-blue-light:    var(--rf-blue-light);
+  --color-rf-blue-tint:     var(--rf-blue-tint);
+  --color-rf-blue-dark:     var(--rf-blue-dark);
+
+  --color-rf-ink-900:       var(--rf-ink-900);
+  --color-rf-ink-700:       var(--rf-ink-700);
+  --color-rf-ink-500:       var(--rf-ink-500);
+  --color-rf-ink-300:       var(--rf-ink-300);
+  --color-rf-ink-100:       var(--rf-ink-100);
+
+  --color-rf-surface-page:  var(--rf-surface-page);
+  --color-rf-surface-card:  var(--rf-surface-card);
+  --color-rf-surface-input: var(--rf-surface-input);
+  --color-rf-border:        var(--rf-border);
+
+  --color-rf-text-primary:  var(--rf-text-primary);
+  --color-rf-text-secondary:var(--rf-text-secondary);
+  --color-rf-text-muted:    var(--rf-text-muted);
+  --color-rf-text-inverse:  var(--rf-text-inverse);
+
+  --color-rf-success:       var(--rf-success);
+  --color-rf-success-bg:    var(--rf-success-bg);
+  --color-rf-warning:       var(--rf-warning);
+  --color-rf-warning-bg:    var(--rf-warning-bg);
+  --color-rf-danger:        var(--rf-danger);
+  --color-rf-danger-bg:     var(--rf-danger-bg);
+  --color-rf-info:          var(--rf-info);
+  --color-rf-info-bg:       var(--rf-info-bg);
+
+  /* Legacy mappings */
+  --color-background:       var(--rf-surface-page);
+  --color-foreground:       var(--rf-text-primary);
+
+  /* Fonts */
+  --font-sans: var(--font-darker-grotesque);
+  --font-mono: var(--font-dm-mono);
+
+  /* Shadows */
+  --shadow-rf-sm: var(--rf-shadow-sm);
+  --shadow-rf-md: var(--rf-shadow-md);
+  --shadow-rf-lg: var(--rf-shadow-lg);
+  --shadow-rf-xl: var(--rf-shadow-xl);
+
+  /* Border Radius */
+  --radius-rf-sm:   4px;
+  --radius-rf-md:   8px;
+  --radius-rf-lg:   12px;
+  --radius-rf-xl:   16px;
+  --radius-rf-2xl:  20px;
+  --radius-rf-pill: 9999px;
+}
+
+/* ─────────────────────────────────────
+   Focus Ring Utility
+───────────────────────────────────── */
+.rf-focus:focus-visible {
+  outline: none;
+  border-color: var(--rf-blue) !important;
+  box-shadow: 0 0 0 3px rgba(29, 111, 255, 0.15);
 }
 
 body {
-  color: var(--foreground);
+  color: var(--rf-text-primary);
+  background: var(--rf-surface-page);
   font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
 }

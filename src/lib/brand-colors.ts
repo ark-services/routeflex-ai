@@ -1,64 +1,33 @@
 /**
- * RouteFlex AI Brand Color System
+ * RouteFlex Brand Color System
+ * Source of truth: routeflex-brand-system/tokens/tokens.json v1.0.0
  *
- * Centralized color palette for consistent theming across the application.
- * Designed for enterprise SaaS with clean, professional aesthetics.
+ * CSS custom properties are defined in globals.css.
+ * This file provides TypeScript references and Tailwind class mappings.
  */
 
 // ===== PRIMARY BRAND PALETTE =====
 
 export const brandColors = {
-  // Primary Accent - Deep Indigo/Blue
   primary: {
-    50: '#EEF2FF',
-    100: '#E0E7FF',
-    200: '#C7D2FE',
-    300: '#A5B4FC',
-    400: '#818CF8',
-    500: '#6366F1', // Main primary
-    600: '#4F46E5',
-    700: '#4338CA',
-    800: '#3730A3',
-    900: '#312E81',
+    DEFAULT: '#1D6FFF', // Electric Blue — CTAs, active states, links
+    light: '#4D8FFF',   // Blue on dark backgrounds
+    tint: '#EBF2FF',    // Subtle blue backgrounds, hover states
+    dark: '#0A4FCC',    // Primary button hover
   },
-
-  // Secondary Accent - Emerald Green
-  secondary: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    200: '#A7F3D0',
-    300: '#6EE7B7',
-    400: '#34D399',
-    500: '#10B981', // Main secondary
-    600: '#059669',
-    700: '#047857',
-    800: '#065F46',
-    900: '#064E3B',
+  ink: {
+    900: '#0F1623', // Primary text, dark backgrounds
+    700: '#2A3347', // Secondary dark surfaces, nav
+    500: '#4A5568', // Body text, descriptions
+    300: '#9BAABB', // Placeholder, muted labels
+    100: '#E4E8F0', // Borders, dividers
   },
-
-  // Highlight Accent - Purple (Automate button tone)
-  accent: {
-    50: '#FAF5FF',
-    100: '#F3E8FF',
-    200: '#E9D5FF',
-    300: '#D8B4FE',
-    400: '#C084FC',
-    500: '#A855F7', // Main accent
-    600: '#9333EA',
-    700: '#7E22CE',
-    800: '#6B21A8',
-    900: '#581C87',
+  surface: {
+    page: '#F3F3F0',  // Page background
+    card: '#FFFFFF',  // Card background
+    input: '#F3F3F0', // Input background
   },
-
-  // Neutrals
-  neutral: {
-    bg: '#F8FAFC',        // Soft slate white background
-    card: '#FFFFFF',      // Card background
-    border: '#E5E7EB',    // Border color
-    mutedText: '#6B7280', // Muted text
-    text: '#111827',      // Primary text
-    hover: '#F3F4F6',     // Hover background
-  },
+  border: 'rgba(15, 22, 35, 0.08)',
 } as const;
 
 // ===== STATUS COLUMN COLOR PALETTE =====
@@ -113,29 +82,29 @@ export const statusColorArray = STATUS_COLOR_PALETTE;
 // ===== SEMANTIC COLORS =====
 
 export const semanticColors = {
-  success: brandColors.secondary[600],
-  warning: '#F59E0B', // Amber
-  error: '#DC2626',   // Red
-  info: brandColors.primary[500],
+  success: '#16A34A',
+  warning: '#D97706',
+  error: '#EF4444',
+  info: '#1D6FFF',
 } as const;
 
 // ===== BUTTON VARIANTS =====
 
 export const buttonStyles = {
   primary: {
-    gradient: 'bg-gradient-to-r from-purple-600 to-purple-700',
-    hover: 'hover:from-purple-700 hover:to-purple-800',
+    bg: 'bg-rf-blue',
+    hover: 'hover:bg-rf-blue-dark',
     text: 'text-white',
-    glow: 'hover:shadow-lg hover:shadow-purple-500/30',
+    shadow: 'shadow-rf-sm hover:shadow-rf-md',
   },
   secondary: {
-    bg: 'bg-transparent',
-    border: 'border-2 border-indigo-600',
-    text: 'text-indigo-600',
-    hover: 'hover:bg-indigo-50',
+    bg: 'bg-rf-blue',
+    hover: 'hover:bg-rf-blue-dark',
+    text: 'text-white',
+    shadow: 'shadow-rf-sm',
   },
   danger: {
-    bg: 'bg-red-600',
+    bg: 'bg-rf-danger',
     hover: 'hover:bg-red-700',
     text: 'text-white',
   },
@@ -144,12 +113,12 @@ export const buttonStyles = {
 // ===== SHADOW STYLES =====
 
 export const shadows = {
-  sm: 'shadow-sm',
-  md: 'shadow-md',
-  lg: 'shadow-lg',
-  xl: 'shadow-xl',
-  dropdown: 'shadow-[0_4px_12px_rgba(0,0,0,0.1)]',
-  modal: 'shadow-[0_20px_60px_rgba(0,0,0,0.15)]',
+  sm: 'shadow-rf-sm',
+  md: 'shadow-rf-md',
+  lg: 'shadow-rf-lg',
+  xl: 'shadow-rf-xl',
+  dropdown: 'shadow-rf-md',
+  modal: 'shadow-rf-xl',
 } as const;
 
 // ===== ANIMATION PRESETS =====

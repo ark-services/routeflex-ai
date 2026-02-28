@@ -10,25 +10,25 @@ export function Header({
   companyId?: string;
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-stone-200/60 py-4 mb-12">
+    <header className="flex items-center justify-between border-b border-rf-border py-4 mb-12">
       <div className="flex items-center gap-8">
         <Link
           href="/"
-          className="text-base font-semibold tracking-tight text-stone-900"
+          className="text-base font-semibold tracking-tight text-rf-text-primary"
         >
           RouteFlex AI
         </Link>
         <nav className="hidden sm:flex items-center gap-5 text-sm">
           <Link
             href="/"
-            className="text-stone-500 hover:text-stone-900 transition-colors"
+            className="text-rf-text-secondary hover:text-rf-text-primary transition-colors"
           >
             Companies
           </Link>
           {companyId && (
             <Link
               href={`/dashboard/${companyId}`}
-              className="text-stone-500 hover:text-stone-900 transition-colors"
+              className="text-rf-text-secondary hover:text-rf-text-primary transition-colors"
             >
               Dashboard
             </Link>
@@ -36,7 +36,7 @@ export function Header({
           {companyId && (
             <Link
               href={`/dashboard/${companyId}/jobs`}
-              className="text-stone-500 hover:text-stone-900 transition-colors"
+              className="text-rf-text-secondary hover:text-rf-text-primary transition-colors"
             >
               Jobs
             </Link>
@@ -44,7 +44,7 @@ export function Header({
           {companyId && (
             <Link
               href={`/dashboard/${companyId}/applicants`}
-              className="text-stone-500 hover:text-stone-900 transition-colors"
+              className="text-rf-text-secondary hover:text-rf-text-primary transition-colors"
             >
               Applicants
             </Link>
@@ -56,7 +56,7 @@ export function Header({
         <form action={logout}>
           <button
             type="submit"
-            className="text-sm text-stone-500 hover:text-stone-900 transition-colors"
+            className="text-sm text-rf-text-secondary hover:text-rf-text-primary transition-colors"
           >
             Log out
           </button>

@@ -576,7 +576,7 @@ export function CreateTab({
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
+              className="px-5 py-2 text-sm bg-rf-blue text-white rounded-lg hover:bg-rf-blue-dark transition-colors disabled:opacity-50 font-medium"
             >
               {loading
                 ? isEditing
@@ -642,14 +642,14 @@ function TriggerSelector({
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-left flex items-center justify-between hover:border-blue-400 transition-colors bg-white text-sm"
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-left flex items-center justify-between hover:border-blue-400 transition-colors bg-rf-surface-card text-sm"
         >
           <span className="text-gray-500">When this happens...</span>
           <ChevronDown className="w-4 h-4 text-gray-400" />
         </button>
 
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
             {sortedTriggers.map((trigger) => (
               <button
                 key={trigger.id}
@@ -657,7 +657,7 @@ function TriggerSelector({
                   onSelect(trigger);
                   setIsOpen(false);
                 }}
-                className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
               >
                 <p className="text-sm font-medium text-gray-900">{trigger.name}</p>
                 {trigger.description && (
@@ -673,7 +673,7 @@ function TriggerSelector({
 
   // Render interactive sentence for selected trigger
   return (
-    <div className="border border-blue-200 bg-blue-50/60 rounded-lg px-4 py-3">
+    <div className="border border-rf-blue-tint bg-rf-blue-tint/60 rounded-lg px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-1.5 text-sm flex-1 min-w-0">
           {/* Interactive Sentence */}
@@ -727,7 +727,7 @@ function TriggerSelector({
 
         <button
           onClick={() => onSelect(null)}
-          className="p-1 hover:bg-blue-100 rounded ml-2 flex-shrink-0"
+          className="p-1 hover:bg-rf-blue-tint rounded ml-2 flex-shrink-0"
         >
           <X className="w-3.5 h-3.5 text-gray-500" />
         </button>
@@ -738,18 +738,18 @@ function TriggerSelector({
         filterConditions.length === 0 ? (
           <button
             onClick={() => onFilterConditionsChange([{ type: "text_equals", column_id: undefined, value: "" }])}
-            className="text-xs text-blue-400 hover:text-blue-600 transition-colors flex items-center gap-1 mt-2"
+            className="text-xs text-rf-blue-light hover:text-rf-blue transition-colors flex items-center gap-1 mt-2"
           >
             <Plus className="w-3 h-3" />
             and only if...
           </button>
         ) : (
-          <div className="mt-2 pt-2 border-t border-blue-200">
+          <div className="mt-2 pt-2 border-t border-rf-blue-tint">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-medium text-blue-600">and only if...</span>
+              <span className="text-xs font-medium text-rf-blue">and only if...</span>
               <button
                 onClick={() => onFilterConditionsChange([...filterConditions, { type: "text_equals", column_id: undefined, value: "" }])}
-                className="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-0.5 transition-colors"
+                className="text-xs text-rf-blue hover:text-rf-blue flex items-center gap-0.5 transition-colors"
               >
                 <Plus className="w-3 h-3" /> Add
               </button>
@@ -811,7 +811,7 @@ function FilterConditionsEditor({
       <div className="flex justify-center">
         <button
           onClick={addCondition}
-          className="text-sm text-gray-400 hover:text-amber-600 transition-colors flex items-center gap-1.5 px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:border-amber-300 hover:bg-amber-50/30"
+          className="text-sm text-gray-400 hover:text-rf-warning transition-colors flex items-center gap-1.5 px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:border-amber-300 hover:bg-rf-warning-bg/30"
         >
           <Plus className="w-3.5 h-3.5" />
           and only if… (optional filter)
@@ -821,12 +821,12 @@ function FilterConditionsEditor({
   }
 
   return (
-    <div className="border-2 border-amber-200 bg-amber-50/40 rounded-lg p-4">
+    <div className="border-2 border-amber-200 bg-rf-warning-bg/40 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-amber-700">and only if…</span>
+        <span className="text-sm font-semibold text-rf-warning">and only if…</span>
         <button
           onClick={addCondition}
-          className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 transition-colors"
+          className="text-xs text-rf-warning hover:text-rf-warning flex items-center gap-1 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Add condition
@@ -880,12 +880,12 @@ function FilterConditionRow({
   const isDateCondition   = condition.type.startsWith("date_");
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 bg-white border border-blue-200 rounded px-2 py-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 bg-rf-surface-card border border-rf-blue-tint rounded px-2 py-1.5">
       {/* Condition type selector */}
       <select
         value={condition.type}
         onChange={(e) => onChange({ type: e.target.value, column_id: undefined, value: "" })}
-        className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+        className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
       >
         {CONDITION_TYPES.map((t) => (
           <option key={t.value} value={t.value}>{t.label}</option>
@@ -927,7 +927,7 @@ function FilterConditionRow({
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
           placeholder="value…"
-          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white min-w-[100px] focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card min-w-[100px] focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
@@ -939,7 +939,7 @@ function FilterConditionRow({
             onChange({ value: e.target.value === "" ? "" : parseFloat(e.target.value) })
           }
           placeholder="0"
-          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white w-20 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card w-20 focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
@@ -948,14 +948,14 @@ function FilterConditionRow({
           type="date"
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
-          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
       {/* Remove button */}
       <button
         onClick={onRemove}
-        className="ml-auto p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500 transition-colors"
+        className="ml-auto p-1 hover:bg-rf-danger-bg rounded text-gray-400 hover:text-rf-danger transition-colors"
       >
         <X className="w-3.5 h-3.5" />
       </button>
@@ -1015,7 +1015,7 @@ function ActionEditor({
   ];
 
   return (
-    <div className="border border-green-200 bg-green-50/60 rounded-lg px-4 py-3">
+    <div className="border border-green-200 bg-rf-success-bg/60 rounded-lg px-4 py-3">
       <div className="flex items-center justify-between mb-1">
         <ActionTypeLabel
           type={action.type}
@@ -1024,7 +1024,7 @@ function ActionEditor({
         />
         <button
           onClick={onRemove}
-          className="p-1 hover:bg-green-100 rounded flex-shrink-0"
+          className="p-1 hover:bg-rf-success-bg rounded flex-shrink-0"
         >
           <X className="w-3.5 h-3.5 text-gray-500" />
         </button>
@@ -1066,7 +1066,7 @@ function ActionEditor({
         )}
 
         {action.type === "delete_item" && (
-          <span className="text-red-600 font-medium">delete this item</span>
+          <span className="text-rf-danger font-medium">delete this item</span>
         )}
 
         {action.type === "set_date" && (
@@ -1082,7 +1082,7 @@ function ActionEditor({
             <select
               value={action.config.value || ""}
               onChange={(e) => onChange({ config: { ...action.config, value: e.target.value } })}
-              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium"
             >
               <option value="">Choose...</option>
               <option value="today">Today</option>
@@ -1106,7 +1106,7 @@ function ActionEditor({
               value={action.config.value || ""}
               onChange={(e) => onChange({ config: { ...action.config, value: parseFloat(e.target.value) } })}
               placeholder="0"
-              className="w-20 px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="w-20 px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium"
             />
           </>
         )}
@@ -1116,7 +1116,7 @@ function ActionEditor({
             <select
               value={action.config.operation || ""}
               onChange={(e) => onChange({ config: { ...action.config, operation: e.target.value } })}
-              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium"
             >
               <option value="">Choose...</option>
               <option value="increment">Increase</option>
@@ -1134,7 +1134,7 @@ function ActionEditor({
               value={action.config.amount || 1}
               onChange={(e) => onChange({ config: { ...action.config, amount: parseInt(e.target.value) } })}
               placeholder="1"
-              className="w-16 px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="w-16 px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium"
             />
           </>
         )}
@@ -1213,7 +1213,7 @@ function ActionEditor({
                   },
                 })
               }
-              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium"
+              className="px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium"
             >
               <option value="">choose field…</option>
               {FADV_FIELD_OPTIONS.map((opt) => (
@@ -1230,7 +1230,7 @@ function ActionEditor({
                 onChange({ config: { ...action.config, value: e.target.value } })
               }
               placeholder="value…"
-              className="px-2 py-0.5 text-sm border border-blue-300 rounded bg-white text-blue-700 font-medium min-w-[120px]"
+              className="px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium min-w-[120px]"
             />
           </>
         )}
@@ -1568,7 +1568,7 @@ function ActionTypePicker({ onSelect }: { onSelect: (type: string) => void }) {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-green-400 hover:text-green-600 transition-colors flex items-center justify-center gap-1.5 text-sm"
+        className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-green-400 hover:text-rf-success transition-colors flex items-center justify-center gap-1.5 text-sm"
       >
         <Plus className="w-4 h-4" />
         Add action
@@ -1577,7 +1577,7 @@ function ActionTypePicker({ onSelect }: { onSelect: (type: string) => void }) {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => { setIsOpen(false); setSearch(""); }} />
-          <div className="absolute z-20 left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl max-h-80 overflow-hidden flex flex-col">
+          <div className="absolute z-20 left-0 right-0 mt-2 bg-rf-surface-card border border-gray-200 rounded-lg shadow-xl max-h-80 overflow-hidden flex flex-col">
             {/* Search */}
             <div className="p-2 border-b border-gray-100">
               <div className="relative">
@@ -1610,7 +1610,7 @@ function ActionTypePicker({ onSelect }: { onSelect: (type: string) => void }) {
                           setIsOpen(false);
                           setSearch("");
                         }}
-                        className="w-full px-3 py-2 text-left hover:bg-green-50 transition-colors flex items-center gap-2.5 text-sm"
+                        className="w-full px-3 py-2 text-left hover:bg-rf-success-bg transition-colors flex items-center gap-2.5 text-sm"
                       >
                         <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         <span className="text-gray-800">{action.label}</span>
@@ -1654,7 +1654,7 @@ function ActionTypeLabel({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="text-xs font-medium text-green-700 hover:text-green-900 hover:bg-green-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+        className="text-xs font-medium text-rf-success hover:text-green-900 hover:bg-rf-success-bg px-2 py-0.5 rounded transition-colors flex items-center gap-1"
       >
         {current?.label || type}
         <ChevronDown className="w-3 h-3" />
@@ -1663,7 +1663,7 @@ function ActionTypeLabel({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => { setIsOpen(false); setSearch(""); }} />
-          <div className="absolute z-20 left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-72 w-64 overflow-hidden flex flex-col">
+          <div className="absolute z-20 left-0 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-xl max-h-72 w-64 overflow-hidden flex flex-col">
             <div className="p-2 border-b border-gray-100">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -1693,8 +1693,8 @@ function ActionTypeLabel({
                           setIsOpen(false);
                           setSearch("");
                         }}
-                        className={`w-full px-3 py-2 text-left hover:bg-green-50 transition-colors flex items-center gap-2.5 text-sm ${
-                          action.value === type ? "bg-green-50 text-green-700" : ""
+                        className={`w-full px-3 py-2 text-left hover:bg-rf-success-bg transition-colors flex items-center gap-2.5 text-sm ${
+                          action.value === type ? "bg-rf-success-bg text-rf-success" : ""
                         }`}
                       >
                         <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
@@ -1737,14 +1737,14 @@ function ColumnPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
+        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.name : placeholder}
         <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-52 overflow-y-auto">
           {columns.map((col) => (
             <button
               key={col.id}
@@ -1752,7 +1752,7 @@ function ColumnPicker({
                 onSelect(col.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
             >
               {col.name}
             </button>
@@ -1784,7 +1784,7 @@ function LabelPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-1"
+        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-1"
       >
         {selected ? (
           <>
@@ -1799,12 +1799,12 @@ function LabelPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[160px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[160px] max-h-52 overflow-y-auto">
           {labels.map((lbl) => (
             <button
               key={lbl.id}
               onClick={() => { onSelect(lbl.id); setIsOpen(false); }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
             >
               <span
                 className="inline-block w-2 h-2 rounded-full flex-shrink-0"
@@ -1838,14 +1838,14 @@ function CoursePicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
+        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.name : "choose course"}
         <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[220px] max-h-52 overflow-y-auto">
           {courses.map((course) => (
             <button
               key={course.id}
@@ -1853,7 +1853,7 @@ function CoursePicker({
                 onSelect(course.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
             >
               {course.name}
             </button>
@@ -1888,14 +1888,14 @@ function StatusLabelPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
+        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.label : placeholder}
         <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
           {labels.map((label) => (
             <button
               key={label.id}
@@ -1903,7 +1903,7 @@ function StatusLabelPicker({
                 onSelect(label.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
             >
               <div
                 className="w-2.5 h-2.5 rounded-full"
@@ -1941,21 +1941,21 @@ function GroupPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-blue-300 bg-blue-100/70 rounded text-blue-700 font-medium text-sm hover:bg-blue-200 transition-colors inline-flex items-center gap-0.5"
+        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
       >
         {selected ? selected.name : selectedId === undefined && allowAny ? "any group" : placeholder}
         <ChevronDown className="w-3 h-3" />
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
           {allowAny && (
             <button
               onClick={() => {
                 onSelect(undefined);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100"
             >
               <span className="text-gray-500 italic">Any group</span>
             </button>
@@ -1967,7 +1967,7 @@ function GroupPicker({
                 onSelect(group.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
             >
               <div
                 className="w-2.5 h-2.5 rounded-full"

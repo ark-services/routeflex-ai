@@ -35,14 +35,14 @@ export default async function Home() {
         <Header />
         <section className="py-16 sm:py-24">
           <div className="mx-auto max-w-md text-center space-y-4">
-            <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+            <h1 className="text-3xl font-semibold tracking-tight text-rf-text-primary">
               No access
             </h1>
-            <p className="text-stone-500 leading-relaxed">
+            <p className="text-rf-text-secondary leading-relaxed">
               You do not have access to any company yet. Please ask an account
               administrator to add you.
             </p>
-            <p className="text-sm text-stone-400">Signed in as {user.email}</p>
+            <p className="text-sm text-rf-text-muted">Signed in as {user.email}</p>
             <form action={logout} className="pt-2">
               <Button variant="secondary">Log out</Button>
             </form>
@@ -84,14 +84,14 @@ export default async function Home() {
         <Header />
         <section className="py-16 sm:py-24">
           <div className="mx-auto max-w-md text-center space-y-4">
-            <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+            <h1 className="text-3xl font-semibold tracking-tight text-rf-text-primary">
               No access
             </h1>
-            <p className="text-stone-500 leading-relaxed">
+            <p className="text-rf-text-secondary leading-relaxed">
               You do not have access to any company yet. Please ask an account
               administrator to add you.
             </p>
-            <p className="text-sm text-stone-400">Signed in as {user.email}</p>
+            <p className="text-sm text-rf-text-muted">Signed in as {user.email}</p>
             <form action={logout} className="pt-2">
               <Button variant="secondary">Log out</Button>
             </form>
@@ -108,17 +108,17 @@ export default async function Home() {
       <section className="py-16 sm:py-24">
         <div className="mx-auto max-w-md space-y-8">
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
+            <h1 className="text-3xl font-semibold tracking-tight text-rf-text-primary">
               Select a company
             </h1>
-            <p className="text-stone-500">Signed in as {user.email}</p>
+            <p className="text-rf-text-secondary">Signed in as {user.email}</p>
           </div>
           <ul className="space-y-3">
             {companies.map((company) => (
               <li key={company.id}>
                 <Link href={`/dashboard/${company.id}`}>
                   <Card className="flex items-center justify-between px-5 py-4 hover:shadow-md transition-shadow cursor-pointer">
-                    <span className="text-sm font-medium text-stone-900">
+                    <span className="text-sm font-medium text-rf-text-primary">
                       {company.name}
                     </span>
                     <Badge>{company.role}</Badge>

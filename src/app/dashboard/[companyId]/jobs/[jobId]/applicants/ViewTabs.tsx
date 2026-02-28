@@ -122,26 +122,26 @@ function KebabMenu({
     <div
       ref={menuRef}
       style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
-      className="w-44 bg-white border border-stone-200 rounded-lg shadow-xl py-1"
+      className="w-44 bg-rf-surface-card border border-rf-border rounded-lg shadow-xl py-1"
     >
       <button
         onClick={() => { onClose(); onRename(); }}
-        className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2"
+        className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page flex items-center gap-2"
       >
         <Pencil className="h-3.5 w-3.5" /> Rename
       </button>
       <button
         onClick={() => { onClose(); onDuplicate(); }}
-        className="w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2"
+        className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page flex items-center gap-2"
       >
         <Copy className="h-3.5 w-3.5" /> Duplicate
       </button>
       {!isDefault && (
         <>
-          <div className="my-1 border-t border-stone-100" />
+          <div className="my-1 border-t border-rf-ink-100" />
           <button
             onClick={() => { onClose(); onDelete(); }}
-            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+            className="w-full text-left px-4 py-2 text-sm text-rf-danger hover:bg-rf-danger-bg flex items-center gap-2"
           >
             <Trash2 className="h-3.5 w-3.5" /> Delete
           </button>
@@ -184,7 +184,7 @@ function TabChrome({
       ref={containerRef}
       style={containerStyle}
       className={`relative flex items-center gap-0.5 group shrink-0 ${
-        isActive ? "border-b-2 border-blue-600" : "border-b-2 border-transparent"
+        isActive ? "border-b-2 border-rf-blue" : "border-b-2 border-transparent"
       }`}
     >
       {/* Tab label — receives drag attrs only in sortable mode */}
@@ -193,7 +193,7 @@ function TabChrome({
         {...(dragProps?.buttonListeners ?? {})}
         onClick={() => onClick()}
         className={`px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer select-none ${
-          isActive ? "text-blue-600" : "text-stone-600 hover:text-stone-900"
+          isActive ? "text-rf-blue" : "text-rf-ink-500 hover:text-rf-text-primary"
         }`}
         title={isDefault ? "Main table (cannot be deleted)" : view.name}
       >
@@ -205,10 +205,10 @@ function TabChrome({
         ref={btnRef}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
-        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-stone-100 rounded transition-opacity mr-1 shrink-0"
+        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-rf-surface-page rounded transition-opacity mr-1 shrink-0"
         title="View actions"
       >
-        <MoreHorizontal className="h-3.5 w-3.5 text-stone-500" />
+        <MoreHorizontal className="h-3.5 w-3.5 text-rf-text-secondary" />
       </button>
 
       {/* Portal menu — only rendered client-side (KebabMenu uses createPortal) */}
@@ -284,19 +284,19 @@ function RenameViewModal({
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-2xl border border-stone-200 w-full max-w-sm p-6">
-        <h3 className="text-sm font-semibold text-stone-900 mb-4">Rename view</h3>
+      <div className="relative bg-rf-surface-card rounded-xl shadow-2xl border border-rf-border w-full max-w-sm p-6">
+        <h3 className="text-sm font-semibold text-rf-text-primary mb-4">Rename view</h3>
         <input
           ref={inputRef}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") onClose(); }}
-          className="w-full rounded border border-stone-200 px-3 py-2 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+          className="w-full rounded border border-rf-border px-3 py-2 text-sm text-rf-ink-700 focus:outline-none focus:ring-2 focus:ring-rf-blue mb-4"
           placeholder="View name"
         />
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100 rounded">Cancel</button>
-          <button onClick={submit} disabled={!name.trim()} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40">Save</button>
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-rf-ink-500 hover:bg-rf-surface-page rounded">Cancel</button>
+          <button onClick={submit} disabled={!name.trim()} className="px-3 py-1.5 text-sm bg-rf-blue text-white rounded hover:bg-rf-blue-dark disabled:opacity-40">Save</button>
         </div>
       </div>
     </div>,
@@ -318,12 +318,12 @@ function DeleteViewModal({
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-2xl border border-stone-200 w-full max-w-sm p-6">
-        <h3 className="text-sm font-semibold text-stone-900 mb-2">Delete view?</h3>
-        <p className="text-sm text-stone-500 mb-5">&ldquo;{view.name}&rdquo; will be permanently deleted.</p>
+      <div className="relative bg-rf-surface-card rounded-xl shadow-2xl border border-rf-border w-full max-w-sm p-6">
+        <h3 className="text-sm font-semibold text-rf-text-primary mb-2">Delete view?</h3>
+        <p className="text-sm text-rf-text-secondary mb-5">&ldquo;{view.name}&rdquo; will be permanently deleted.</p>
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100 rounded">Cancel</button>
-          <button onClick={onConfirm} className="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-rf-ink-500 hover:bg-rf-surface-page rounded">Cancel</button>
+          <button onClick={onConfirm} className="px-3 py-1.5 text-sm bg-rf-danger text-white rounded hover:bg-red-700">Delete</button>
         </div>
       </div>
     </div>,

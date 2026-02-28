@@ -90,20 +90,20 @@ export function UseTemplatePanel({
 
   return (
     <div className="sticky top-6">
-      <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-stone-900">Use this template</h2>
+      <div className="bg-rf-surface-card border border-rf-border rounded-xl p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-rf-text-primary">Use this template</h2>
 
         {/* Job picker */}
         <div>
-          <label className="block text-xs font-medium text-stone-500 mb-1.5">
+          <label className="block text-xs font-medium text-rf-text-secondary mb-1.5">
             Apply to job
           </label>
           {jobs.length === 0 ? (
-            <p className="text-xs text-stone-400">
+            <p className="text-xs text-rf-text-muted">
               No jobs found.{" "}
               <button
                 onClick={() => router.push(`/dashboard/${companyId}`)}
-                className="text-blue-600 hover:underline"
+                className="text-rf-blue hover:underline"
               >
                 Create a job first.
               </button>
@@ -115,7 +115,7 @@ export function UseTemplatePanel({
                 setSelectedJobId(e.target.value);
                 setAlreadyApplied({ show: false });
               }}
-              className="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full rounded-lg border border-rf-border px-3 py-2 text-sm text-rf-text-primary focus:outline-none focus:ring-2 focus:ring-rf-blue bg-rf-surface-card"
             >
               <option value="">Select a job…</option>
               <optgroup label="Open jobs">
@@ -142,7 +142,7 @@ export function UseTemplatePanel({
 
         {/* Already-applied warning */}
         {alreadyApplied.show && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-2">
+          <div className="p-3 bg-rf-warning-bg border border-amber-200 rounded-lg text-xs text-rf-warning space-y-2">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <span>
@@ -163,7 +163,7 @@ export function UseTemplatePanel({
               </button>
               <button
                 onClick={() => setAlreadyApplied({ show: false })}
-                className="flex-1 py-1.5 text-xs text-stone-600 border border-stone-200 rounded-md hover:bg-stone-50 transition-colors"
+                className="flex-1 py-1.5 text-xs text-rf-ink-500 border border-rf-border rounded-md hover:bg-rf-surface-page transition-colors"
               >
                 Cancel
               </button>
@@ -176,10 +176,10 @@ export function UseTemplatePanel({
           <div
             className={`flex items-start gap-2 p-3 rounded-lg text-xs ${
               toast.type === "success"
-                ? "bg-green-50 border border-green-200 text-green-800"
+                ? "bg-rf-success-bg border border-green-200 text-rf-success"
                 : toast.type === "warning"
-                ? "bg-amber-50 border border-amber-200 text-amber-800"
-                : "bg-red-50 border border-red-200 text-red-800"
+                ? "bg-rf-warning-bg border border-amber-200 text-rf-warning"
+                : "bg-rf-danger-bg border border-red-200 text-rf-danger"
             }`}
           >
             {toast.type === "success" ? (
@@ -198,7 +198,7 @@ export function UseTemplatePanel({
           <button
             onClick={handleApply}
             disabled={isPending || !selectedJobId}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isPending ? (
               <>
@@ -214,7 +214,7 @@ export function UseTemplatePanel({
           </button>
         )}
 
-        <p className="text-xs text-stone-400 leading-relaxed">
+        <p className="text-xs text-rf-text-muted leading-relaxed">
           Groups and rows from this template will be added to your selected job's board.
           Your existing board data will not be changed.
         </p>

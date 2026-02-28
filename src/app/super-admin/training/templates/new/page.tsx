@@ -41,22 +41,22 @@ export default function NewTrainingTemplatePage() {
   return (
     <div className="max-w-xl">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-stone-900">New Training Template</h1>
-        <p className="text-sm text-stone-500 mt-1">
+        <h1 className="text-xl font-semibold text-rf-text-primary">New Training Template</h1>
+        <p className="text-sm text-rf-text-secondary mt-1">
           Create a course template companies can clone and customize.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white border border-stone-200 rounded-xl p-6">
+      <form onSubmit={handleSubmit} className="space-y-4 bg-rf-surface-card border border-rf-border rounded-xl p-6">
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="p-3 bg-rf-danger-bg border border-red-200 rounded-lg text-sm text-red-700">
             {error}
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1.5">
-            Template Name <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
+            Template Name <span className="text-rf-danger">*</span>
           </label>
           <input
             type="text"
@@ -64,12 +64,12 @@ export default function NewTrainingTemplatePage() {
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. FedEx P&D Safety Training"
             required
-            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1.5">
+          <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
             Description
           </label>
           <textarea
@@ -77,18 +77,18 @@ export default function NewTrainingTemplatePage() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Brief description of this training curriculum"
             rows={3}
-            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue resize-none"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-stone-700 mb-1.5">
+          <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">
             Carrier Type
           </label>
           <select
             value={carrierType}
             onChange={(e) => setCarrierType(e.target.value)}
-            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue bg-rf-surface-card"
           >
             {CARRIER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -102,14 +102,14 @@ export default function NewTrainingTemplatePage() {
           <button
             type="submit"
             disabled={saving || !name.trim()}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 transition-colors"
           >
             {saving ? "Creating…" : "Create Template"}
           </button>
           <button
             type="button"
             onClick={() => router.back()}
-            className="px-4 py-2 text-sm text-stone-600 hover:text-stone-900 transition-colors"
+            className="px-4 py-2 text-sm text-rf-ink-500 hover:text-rf-text-primary transition-colors"
           >
             Cancel
           </button>

@@ -18,10 +18,10 @@ export default async function PublicApplicationPage({
 
   if (formError || !formData || formData.length === 0) {
     return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-md p-8 max-w-md w-full">
-          <h1 className="text-xl font-bold text-red-600 mb-3">Invalid Link</h1>
-          <p className="text-stone-500 text-sm">
+      <div className="min-h-screen bg-rf-ink-100 flex items-center justify-center p-4">
+        <div className="bg-rf-surface-card rounded-2xl shadow-md p-8 max-w-md w-full">
+          <h1 className="text-xl font-bold text-rf-danger mb-3">Invalid Link</h1>
+          <p className="text-rf-text-secondary text-sm">
             This application form link is invalid or the job is no longer accepting applications.
           </p>
         </div>
@@ -60,10 +60,10 @@ export default async function PublicApplicationPage({
 
   if (fieldsError || !fieldsData) {
     return (
-      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-md p-8 max-w-md w-full">
-          <h1 className="text-xl font-bold text-red-600 mb-3">Error</h1>
-          <p className="text-stone-500 text-sm">Failed to load form fields.</p>
+      <div className="min-h-screen bg-rf-ink-100 flex items-center justify-center p-4">
+        <div className="bg-rf-surface-card rounded-2xl shadow-md p-8 max-w-md w-full">
+          <h1 className="text-xl font-bold text-rf-danger mb-3">Error</h1>
+          <p className="text-rf-text-secondary text-sm">Failed to load form fields.</p>
         </div>
       </div>
     );
@@ -76,10 +76,10 @@ export default async function PublicApplicationPage({
       style={{ backgroundColor }}
     >
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.08)]">
+        <div className="bg-rf-surface-card rounded-2xl overflow-hidden shadow-[0_2px_16px_rgba(0,0,0,0.08)]">
 
           {/* ── Card header: logo · job title ────────────────────────────── */}
-          <div className="px-8 pt-8 pb-6 border-b border-stone-100">
+          <div className="px-8 pt-8 pb-6 border-b border-rf-ink-100">
             {logoSignedUrl && (
               <img
                 src={logoSignedUrl}
@@ -87,7 +87,7 @@ export default async function PublicApplicationPage({
                 className="max-h-10 object-contain mb-5"
               />
             )}
-            <h1 className="text-2xl font-bold text-stone-900 leading-tight">
+            <h1 className="text-2xl font-bold text-rf-text-primary leading-tight">
               {form.job_title}
             </h1>
           </div>

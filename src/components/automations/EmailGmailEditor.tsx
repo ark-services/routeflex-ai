@@ -37,8 +37,8 @@ export function EmailGmailEditor({ companyId, action, columns, onChange }: Email
 
   if (!gmailConnection) {
     return (
-      <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-sm text-amber-800">
+      <div className="px-4 py-3 bg-rf-warning-bg border border-amber-200 rounded-lg">
+        <p className="text-sm text-rf-warning">
           No Gmail account connected for this company. Connect one in Admin → Integrations.
         </p>
       </div>
@@ -63,7 +63,7 @@ export function EmailGmailEditor({ companyId, action, columns, onChange }: Email
           placeholder="Select email column"
         />
         {emailColumns.length === 0 && (
-          <p className="text-xs text-amber-600 mt-1">
+          <p className="text-xs text-rf-warning mt-1">
             No email columns found. Add an email column to your board first.
           </p>
         )}
@@ -110,7 +110,7 @@ function ColumnPicker({ columns, selectedId, onSelect, placeholder }: any) {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left flex items-center justify-between hover:border-blue-400 bg-white"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-left flex items-center justify-between hover:border-blue-400 bg-rf-surface-card"
       >
         <span className={selected ? "text-gray-900" : "text-gray-500"}>
           {selected?.name || placeholder}
@@ -118,12 +118,12 @@ function ColumnPicker({ columns, selectedId, onSelect, placeholder }: any) {
         <ChevronDown className="w-4 h-4" />
       </button>
       {isOpen && (
-        <div className="absolute z-20 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-20 w-full mt-1 bg-rf-surface-card border rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {columns.map((col: any) => (
             <button
               key={col.id}
               onClick={() => { onSelect(col.id); setIsOpen(false); }}
-              className="w-full px-3 py-2 text-left hover:bg-blue-50"
+              className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint"
             >
               {col.name}
             </button>
@@ -147,18 +147,18 @@ function VariableMenu({ onInsert }: { onInsert: (v: string) => void }) {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-2 border border-blue-300 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm font-medium flex items-center gap-1"
+        className="px-3 py-2 border border-rf-blue-tint rounded-lg bg-rf-blue-tint text-rf-blue hover:bg-rf-blue-tint text-sm font-medium flex items-center gap-1"
       >
         <Plus className="w-3 h-3" />
         Variable
       </button>
       {isOpen && (
-        <div className="absolute z-30 right-0 mt-1 bg-white border rounded-lg shadow-lg min-w-[180px]">
+        <div className="absolute z-30 right-0 mt-1 bg-rf-surface-card border rounded-lg shadow-lg min-w-[180px]">
           {variables.map((v) => (
             <button
               key={v.key}
               onClick={() => { onInsert(v.key); setIsOpen(false); }}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-rf-blue-tint"
             >
               {v.label}
               <span className="block text-xs text-gray-500 mt-0.5">

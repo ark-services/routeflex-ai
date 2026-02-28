@@ -127,24 +127,24 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
   return (
     <div className="space-y-6">
       {/* Module content */}
-      <div className="bg-white border border-stone-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-stone-700 mb-4">
+      <div className="bg-rf-surface-card border border-rf-border rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-rf-ink-700 mb-4">
           {mod.is_final_exam ? "Final Exam" : "Module Content"}
         </h2>
 
         <form onSubmit={handleSave} className="space-y-4">
           {saveError && (
-            <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">{saveError}</div>
+            <div className="p-2 bg-rf-danger-bg border border-red-200 rounded text-xs text-red-700">{saveError}</div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-stone-600 mb-1">Title *</label>
+            <label className="block text-xs font-medium text-rf-ink-500 mb-1">Title *</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
             />
           </div>
 
@@ -152,16 +152,16 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
             <div className="space-y-2">
               {/* Toolbar: label + Write/Preview toggle */}
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-stone-600">Content</label>
+                <label className="text-xs font-medium text-rf-ink-500">Content</label>
                 {/* Write / Preview toggle */}
-                <div className="flex items-center rounded-lg border border-stone-200 overflow-hidden text-xs">
+                <div className="flex items-center rounded-lg border border-rf-border overflow-hidden text-xs">
                   <button
                     type="button"
                     onClick={() => setContentTab("write")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
                       contentTab === "write"
-                        ? "bg-stone-900 text-white"
-                        : "text-stone-500 hover:text-stone-700 hover:bg-stone-50"
+                        ? "bg-rf-ink-900 text-white"
+                        : "text-rf-text-secondary hover:text-rf-ink-700 hover:bg-rf-surface-page"
                     }`}
                   >
                     <Pencil className="w-3 h-3" />
@@ -172,8 +172,8 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
                     onClick={() => setContentTab("preview")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
                       contentTab === "preview"
-                        ? "bg-stone-900 text-white"
-                        : "text-stone-500 hover:text-stone-700 hover:bg-stone-50"
+                        ? "bg-rf-ink-900 text-white"
+                        : "text-rf-text-secondary hover:text-rf-ink-700 hover:bg-rf-surface-page"
                     }`}
                   >
                     <Eye className="w-3 h-3" />
@@ -198,14 +198,14 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
                     onChange={(e) => setContent(e.target.value)}
                     rows={16}
                     placeholder="Write the module content in Markdown, or use Generate with AI to create it from slides."
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                    className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rf-blue resize-y"
                   />
-                  <p className="text-xs text-stone-400 mt-1">
+                  <p className="text-xs text-rf-text-muted mt-1">
                     Markdown supported — **bold**, ## headings, - lists, etc.
                   </p>
                 </div>
               ) : (
-                <div className="min-h-[200px] px-4 py-3 border border-stone-200 rounded-lg bg-stone-50">
+                <div className="min-h-[200px] px-4 py-3 border border-rf-border rounded-lg bg-rf-surface-page">
                   {content.trim() ? (
                     <div className="prose prose-stone prose-sm max-w-none">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -213,7 +213,7 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <p className="text-sm text-stone-400 italic">
+                    <p className="text-sm text-rf-text-muted italic">
                       Nothing to preview yet. Switch to Write to add content.
                     </p>
                   )}
@@ -226,7 +226,7 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 bg-rf-blue text-white text-xs font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 transition-colors"
             >
               {saving ? "Saving…" : saved ? "Saved ✓" : "Save Content"}
             </button>
@@ -238,9 +238,9 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-sm font-semibold text-stone-700">
+            <h2 className="text-sm font-semibold text-rf-ink-700">
               Quiz Questions
-              <span className="ml-2 text-xs font-normal text-stone-400">
+              <span className="ml-2 text-xs font-normal text-rf-text-muted">
                 ({questions.length} / 12 recommended)
               </span>
             </h2>
@@ -249,7 +249,7 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
             <button
               onClick={handleGenerateQuestions}
               disabled={generatingQuestions}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rf-blue bg-rf-blue-tint border border-rf-blue rounded-lg hover:bg-rf-blue-tint disabled:opacity-50 transition-colors"
             >
               {generatingQuestions ? (
                 <>
@@ -266,7 +266,7 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
             <button
               onClick={handleAddQuestion}
               disabled={questions.length >= 15}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rf-blue bg-rf-blue-tint border border-rf-blue-tint rounded-lg hover:bg-rf-blue-tint disabled:opacity-50 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Question
@@ -275,7 +275,7 @@ export function ModuleEditor({ companyId, courseId, module: mod, questions: init
         </div>
 
         {questions.length === 0 ? (
-          <div className="text-center py-8 text-stone-400 border border-dashed border-stone-200 rounded-lg">
+          <div className="text-center py-8 text-rf-text-muted border border-dashed border-rf-border rounded-lg">
             <p className="text-sm">No questions yet. Add 10–12 questions.</p>
           </div>
         ) : (
@@ -364,24 +364,24 @@ function QuestionEditor({
   }
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl overflow-hidden">
+    <div className="bg-rf-surface-card border border-rf-border rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-stone-100">
-        <span className="text-xs font-semibold text-stone-500 w-6">Q{index + 1}</span>
-        <span className="flex-1 text-sm text-stone-700 truncate">
-          {localQ.question_text || <em className="text-stone-400 not-italic">Untitled question</em>}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-rf-ink-100">
+        <span className="text-xs font-semibold text-rf-text-secondary w-6">Q{index + 1}</span>
+        <span className="flex-1 text-sm text-rf-ink-700 truncate">
+          {localQ.question_text || <em className="text-rf-text-muted not-italic">Untitled question</em>}
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setCollapsed((v) => !v)}
-            className="p-1 text-stone-400 hover:text-stone-700 transition-colors"
+            className="p-1 text-rf-text-muted hover:text-rf-ink-700 transition-colors"
           >
             {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
           </button>
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="p-1 text-stone-400 hover:text-red-600 transition-colors disabled:opacity-50"
+            className="p-1 text-rf-text-muted hover:text-rf-danger transition-colors disabled:opacity-50"
           >
             {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
           </button>
@@ -392,20 +392,20 @@ function QuestionEditor({
         <div className="p-4 space-y-4">
           {/* Question text */}
           <div>
-            <label className="block text-xs font-medium text-stone-600 mb-1">Question</label>
+            <label className="block text-xs font-medium text-rf-ink-500 mb-1">Question</label>
             <textarea
               value={localQ.question_text}
               onChange={(e) => setLocalQ((prev) => ({ ...prev, question_text: e.target.value }))}
               rows={2}
               placeholder="Enter the question..."
-              className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue resize-none"
             />
           </div>
 
           {/* Answer options */}
           <div>
-            <label className="block text-xs font-medium text-stone-600 mb-2">
-              Answer Options <span className="text-stone-400">(select the correct answer)</span>
+            <label className="block text-xs font-medium text-rf-ink-500 mb-2">
+              Answer Options <span className="text-rf-text-muted">(select the correct answer)</span>
             </label>
             <div className="space-y-2">
               {localQ.options.map((option) => (
@@ -417,18 +417,18 @@ function QuestionEditor({
                     onChange={() =>
                       setLocalQ((prev) => ({ ...prev, correct_option_id: option.id }))
                     }
-                    className="w-4 h-4 text-green-600 flex-shrink-0"
+                    className="w-4 h-4 text-rf-success flex-shrink-0"
                   />
-                  <span className="text-xs font-semibold text-stone-500 w-4 uppercase">{option.id}</span>
+                  <span className="text-xs font-semibold text-rf-text-secondary w-4 uppercase">{option.id}</span>
                   <input
                     type="text"
                     value={option.text}
                     onChange={(e) => updateOption(option.id, e.target.value)}
                     placeholder={`Option ${option.id.toUpperCase()}`}
-                    className="flex-1 px-3 py-1.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-1.5 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
                   />
                   {localQ.correct_option_id === option.id && (
-                    <span className="text-xs text-green-600 font-medium flex-shrink-0">✓ correct</span>
+                    <span className="text-xs text-rf-success font-medium flex-shrink-0">✓ correct</span>
                   )}
                 </div>
               ))}
@@ -439,7 +439,7 @@ function QuestionEditor({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-3 py-1.5 bg-rf-blue text-white text-xs font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 transition-colors"
             >
               {saving ? "Saving…" : saved ? "Saved ✓" : "Save Question"}
             </button>

@@ -67,41 +67,41 @@ export function TemplateSettingsForm({ template }: Props) {
   }
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-5 space-y-4">
-      <h2 className="text-sm font-semibold text-stone-700">Template Settings</h2>
+    <div className="bg-rf-surface-card border border-rf-border rounded-xl p-5 space-y-4">
+      <h2 className="text-sm font-semibold text-rf-ink-700">Template Settings</h2>
 
       {error && (
-        <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">{error}</div>
+        <div className="p-2 bg-rf-danger-bg border border-red-200 rounded text-xs text-red-700">{error}</div>
       )}
 
       <form onSubmit={handleSave} className="space-y-3">
         <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">Name *</label>
+          <label className="block text-xs font-medium text-rf-ink-500 mb-1">Name *</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">Description</label>
+          <label className="block text-xs font-medium text-rf-ink-500 mb-1">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue resize-none"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-stone-600 mb-1">Carrier Type</label>
+          <label className="block text-xs font-medium text-rf-ink-500 mb-1">Carrier Type</label>
           <select
             value={carrierType}
             onChange={(e) => setCarrierType(e.target.value)}
-            className="w-full px-3 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="w-full px-3 py-2 border border-rf-ink-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue bg-rf-surface-card"
           >
             {CARRIER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -109,23 +109,23 @@ export function TemplateSettingsForm({ template }: Props) {
           </select>
         </div>
 
-        <div className="flex items-center gap-3 pt-1 border-t border-stone-100">
+        <div className="flex items-center gap-3 pt-1 border-t border-rf-ink-100">
           <button
             type="button"
             role="switch"
             aria-checked={isPublished}
             onClick={() => setIsPublished((v) => !v)}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-              isPublished ? "bg-green-500" : "bg-stone-300"
+              isPublished ? "bg-rf-success" : "bg-rf-ink-300"
             }`}
           >
             <span
-              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-rf-surface-card shadow transition-transform ${
                 isPublished ? "translate-x-4" : "translate-x-1"
               }`}
             />
           </button>
-          <span className="text-sm text-stone-700">
+          <span className="text-sm text-rf-ink-700">
             {isPublished ? "Published" : "Draft"}
           </span>
         </div>
@@ -134,18 +134,18 @@ export function TemplateSettingsForm({ template }: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-rf-blue text-white text-xs font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 transition-colors"
           >
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save"}
           </button>
         </div>
       </form>
 
-      <div className="pt-3 border-t border-stone-100">
+      <div className="pt-3 border-t border-rf-ink-100">
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="text-xs text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
+          className="text-xs text-rf-danger hover:text-rf-danger transition-colors disabled:opacity-50"
         >
           {deleting ? "Deleting…" : "Delete template"}
         </button>
