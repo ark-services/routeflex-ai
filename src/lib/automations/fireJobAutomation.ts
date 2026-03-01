@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
+import mammoth from 'mammoth';
 import { logActivityEvent } from '@/lib/activity/logActivityEvent';
 
 export interface FireJobTriggerInput {
@@ -3013,28 +3014,49 @@ async function executeAiScoreResume(
 
   // ── Download the file ───────────────────────────────────────────────────────
   let pdfBase64: string | null = null;
+  let docxText: string | null = null;
   let fileSkipReason: string | null = null;
 
   if (filePath) {
-    // Only support PDF for the document content block
-    const isPdf = filePath.toLowerCase().endsWith('.pdf');
+    const lowerPath = filePath.toLowerCase();
+    const isPdf  = lowerPath.endsWith('.pdf');
+    const isDocx = lowerPath.endsWith('.docx') || lowerPath.endsWith('.doc');
 
-    if (!isPdf) {
-      fileSkipReason = `File "${filePath}" is not a PDF. Only PDF resumes can be read by AI. Scoring based on application form data only.`;
-      console.log('[executeAiScoreResume] Non-PDF file, skipping document block:', filePath);
-    } else {
+    if (isPdf) {
       const { data: blob, error: dlError } = await supabase.storage
         .from(fileBucket)
         .download(filePath);
 
       if (dlError || !blob) {
         fileSkipReason = `Could not download resume file: ${dlError?.message ?? 'unknown error'}. Scoring based on application form data only.`;
-        console.error('[executeAiScoreResume] File download failed:', dlError);
+        console.error('[executeAiScoreResume] PDF download failed:', dlError);
       } else {
         const arrayBuffer = await blob.arrayBuffer();
         pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
-        console.log('[executeAiScoreResume] Resume downloaded, base64 length:', pdfBase64.length);
+        console.log('[executeAiScoreResume] PDF downloaded, base64 length:', pdfBase64.length);
       }
+    } else if (isDocx) {
+      const { data: blob, error: dlError } = await supabase.storage
+        .from(fileBucket)
+        .download(filePath);
+
+      if (dlError || !blob) {
+        fileSkipReason = `Could not download resume file: ${dlError?.message ?? 'unknown error'}. Scoring based on application form data only.`;
+        console.error('[executeAiScoreResume] DOCX download failed:', dlError);
+      } else {
+        try {
+          const arrayBuffer = await blob.arrayBuffer();
+          const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) });
+          docxText = result.value.trim() || null;
+          console.log('[executeAiScoreResume] DOCX text extracted, length:', docxText?.length ?? 0);
+        } catch (mammothErr: any) {
+          fileSkipReason = `Could not read Word document: ${mammothErr?.message ?? 'extraction error'}. Scoring based on application form data only.`;
+          console.error('[executeAiScoreResume] Mammoth extraction failed:', mammothErr);
+        }
+      }
+    } else {
+      fileSkipReason = `File format not supported (only PDF and DOCX are readable). Scoring based on application form data only.`;
+      console.log('[executeAiScoreResume] Unsupported file type, skipping:', filePath);
     }
   }
 
@@ -3077,7 +3099,7 @@ async function executeAiScoreResume(
     .maybeSingle();
 
   // ── Guard: nothing to score ─────────────────────────────────────────────────
-  if (!pdfBase64 && !formDataText.trim()) {
+  if (!pdfBase64 && !docxText && !formDataText.trim()) {
     const msg = 'AI scoring skipped: no resume or application form data available for this applicant.';
     console.log('[executeAiScoreResume]', msg);
     await writeFeedbackCell(msg);
@@ -3095,6 +3117,13 @@ async function executeAiScoreResume(
         media_type: 'application/pdf',
         data: pdfBase64,
       },
+    });
+  }
+
+  if (docxText) {
+    contentBlocks.push({
+      type: 'text',
+      text: `## Resume (extracted from Word document)\n\n${docxText}`,
     });
   }
 
@@ -3116,9 +3145,9 @@ async function executeAiScoreResume(
   instruction += `- "feedback": a string with detailed feedback explaining the score, noting strengths and weaknesses (2-4 sentences).\n\n`;
   instruction += `## Scoring Criteria\n\n${criteria}\n`;
 
-  if (!pdfBase64 && fileSkipReason) {
+  if (!pdfBase64 && !docxText && fileSkipReason) {
     instruction += `\nNote: ${fileSkipReason}\n`;
-  } else if (!pdfBase64) {
+  } else if (!pdfBase64 && !docxText) {
     instruction += `\nNote: No resume was provided. Score based only on the application form responses above.\n`;
   }
 
