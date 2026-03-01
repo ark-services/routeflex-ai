@@ -181,7 +181,7 @@ export function Sidebar({
 
         {/* Job Selector */}
         {hasJobs ? (
-          <div className="relative group/job px-4 mb-1">
+          <div className="relative group/job px-4 mb-0">
             {/* Main job selector button */}
             <button
               onClick={() => setJobSelectOpen(!jobSelectOpen)}
@@ -282,9 +282,9 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Nested Navigation - Applicants Board + Application Form */}
+        {/* Nested Navigation - Board + Form */}
         {hasJobs && currentJobId && (
-          <div className="mt-1 space-y-0.5">
+          <div className="mt-2 space-y-0.5">
               {/* Applicants Board */}
               <div className="relative group/board">
                 <div
@@ -310,7 +310,7 @@ export function Sidebar({
                   }`}
                 >
                   <LayoutDashboard className={`h-4 w-4 flex-shrink-0 ${isOnApplicants ? "text-rf-blue" : "text-rf-text-muted"}`} />
-                  <span className="flex-1">Applicants Board</span>
+                  <span className="flex-1">Board</span>
                   <button
                     type="button"
                     onClick={(e) => {
@@ -387,7 +387,7 @@ export function Sidebar({
                 }`}
               >
                 <FileText className={`h-4 w-4 flex-shrink-0 ${isOnForm ? "text-rf-blue" : "text-rf-text-muted"}`} />
-                <span className="flex-1">Application Form</span>
+                <span className="flex-1">Form</span>
               </div>
             </div>
           )}
