@@ -1546,16 +1546,16 @@ function ActionEditor({
               Optional. Falls back to the applicant&apos;s uploaded resume if left empty.
             </p>
 
-            {/* Score output column (required) */}
+            {/* Score output column (required) — number type only */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-gray-700 w-32 shrink-0">Write score to</span>
               <ColumnPicker
-                columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
+                columns={columns.filter((c) => c.type === "number")}
                 selectedId={action.config.score_column_id}
                 onSelect={(id) =>
                   onChange({ config: { ...action.config, score_column_id: id } })
                 }
-                placeholder="score column"
+                placeholder="number column"
               />
             </div>
 

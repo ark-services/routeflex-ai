@@ -2935,15 +2935,36 @@ async function executeAiScoreResume(
     return { success: false, error: 'ai.score_resume: ANTHROPIC_API_KEY not configured' };
   }
 
-  // ── Helper: write text to a board cell ──────────────────────────────────────
-  async function writeCell(columnId: string, text: string) {
+  // ── Helpers: write score (number) and feedback (text) to board cells ─────────
+  async function writeScoreCell(score: number | null) {
     try {
       await supabase
         .from('board_cells')
         .upsert(
           {
             applicant_id:          applicantId,
-            column_id:             columnId,
+            column_id:             score_column_id,
+            value_text:            null,
+            value_number:          score,
+            value_date:            null,
+            value_status_label_id: null,
+            value_file_path:       null,
+          },
+          { onConflict: 'applicant_id,column_id' }
+        );
+    } catch (err) {
+      console.error('[executeAiScoreResume] writeScoreCell error (non-fatal):', err);
+    }
+  }
+
+  async function writeFeedbackCell(text: string) {
+    try {
+      await supabase
+        .from('board_cells')
+        .upsert(
+          {
+            applicant_id:          applicantId,
+            column_id:             feedback_column_id,
             value_text:            text,
             value_number:          null,
             value_date:            null,
@@ -2953,7 +2974,7 @@ async function executeAiScoreResume(
           { onConflict: 'applicant_id,column_id' }
         );
     } catch (err) {
-      console.error('[executeAiScoreResume] writeCell error (non-fatal):', err);
+      console.error('[executeAiScoreResume] writeFeedbackCell error (non-fatal):', err);
     }
   }
 
@@ -3059,8 +3080,7 @@ async function executeAiScoreResume(
   if (!pdfBase64 && !formDataText.trim()) {
     const msg = 'AI scoring skipped: no resume or application form data available for this applicant.';
     console.log('[executeAiScoreResume]', msg);
-    await writeCell(score_column_id, 'N/A');
-    await writeCell(feedback_column_id, msg);
+    await writeFeedbackCell(msg);
     return { success: true };
   }
 
@@ -3090,10 +3110,10 @@ async function executeAiScoreResume(
     contentBlocks.push({ type: 'text', text: contextText });
   }
 
-  // Scoring instruction
+  // Scoring instruction — score must be a plain JSON number
   let instruction = `Score this applicant based on the following criteria. Return ONLY valid JSON with exactly two keys:\n`;
-  instruction += `- "score": a concise score value (format depends on the criteria — could be numeric like "85/100", a letter grade, pass/fail, etc.)\n`;
-  instruction += `- "feedback": detailed feedback explaining the score, noting strengths and weaknesses (2-4 sentences)\n\n`;
+  instruction += `- "score": a NUMBER (not a string). Your scoring criteria will specify the scale (e.g. 1-10). Return only the number.\n`;
+  instruction += `- "feedback": a string with detailed feedback explaining the score, noting strengths and weaknesses (2-4 sentences).\n\n`;
   instruction += `## Scoring Criteria\n\n${criteria}\n`;
 
   if (!pdfBase64 && fileSkipReason) {
@@ -3108,8 +3128,8 @@ async function executeAiScoreResume(
   // ── Call Claude API ─────────────────────────────────────────────────────────
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  // Write a "scoring in progress" message
-  await writeCell(score_column_id, 'Scoring...');
+  // Write "Scoring..." to feedback column while waiting (score column is number — can't write text)
+  await writeFeedbackCell('Scoring...');
 
   let message;
   try {
@@ -3127,37 +3147,37 @@ async function executeAiScoreResume(
   } catch (apiError: any) {
     const errorMsg = `AI scoring failed: ${apiError.message ?? 'Anthropic API error'}`;
     console.error('[executeAiScoreResume] API error:', apiError);
-    await writeCell(score_column_id, 'Error');
-    await writeCell(feedback_column_id, errorMsg);
+    await writeFeedbackCell(errorMsg);
     return { success: false, error: errorMsg };
   }
 
   // ── Parse response ──────────────────────────────────────────────────────────
   const responseText = (message.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined)?.text ?? '';
 
-  let score = '';
+  let scoreNum: number | null = null;
   let feedback = '';
 
   try {
     // Strip markdown code fences if Claude adds them despite instructions
     const cleaned = responseText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
     const parsed = JSON.parse(cleaned);
-    score = String(parsed.score ?? '');
+    const rawScore = parsed.score;
+    scoreNum = typeof rawScore === 'number' ? rawScore : parseFloat(String(rawScore));
+    if (isNaN(scoreNum)) scoreNum = null;
     feedback = String(parsed.feedback ?? '');
   } catch {
     // If JSON parse fails, use the raw response as feedback
     console.warn('[executeAiScoreResume] JSON parse failed, using raw response');
-    score = 'See feedback';
     feedback = responseText;
   }
 
   // ── Write results to board cells ────────────────────────────────────────────
-  await writeCell(score_column_id, score);
-  await writeCell(feedback_column_id, feedback);
+  await writeScoreCell(scoreNum);
+  await writeFeedbackCell(feedback);
 
   console.log('[executeAiScoreResume] Scored applicant:', {
     applicantId,
-    score,
+    score: scoreNum,
     feedbackLength: feedback.length,
     model: message.model,
     inputTokens: message.usage?.input_tokens,

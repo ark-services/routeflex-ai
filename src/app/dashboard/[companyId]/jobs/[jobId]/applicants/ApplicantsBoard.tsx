@@ -213,10 +213,16 @@ export default function ApplicantsBoard({
     });
   }, []);
 
-  // Subscribe to board_cells realtime changes for this board's applicants
+  // Keep a ref of the current applicant IDs so the realtime handler always has
+  // the latest set without needing to tear down and re-create the channel.
+  const applicantIdSetRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    applicantIdSetRef.current = new Set(applicants.map(a => a.id));
+  }, [applicants]);
+
+  // One stable Realtime channel per boardId — does not re-subscribe on re-renders.
   useEffect(() => {
     const supabase = createClient();
-    const applicantIdSet = new Set(applicants.map(a => a.id));
     const channel = supabase
       .channel(`board-cells-${boardId}`)
       .on(
@@ -224,14 +230,14 @@ export default function ApplicantsBoard({
         { event: '*', schema: 'public', table: 'board_cells' },
         (payload: any) => {
           const cell = payload.new as BoardCell;
-          if (cell && applicantIdSet.has(cell.applicant_id)) {
+          if (cell && applicantIdSetRef.current.has(cell.applicant_id)) {
             applyRealtimeCell(cell);
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [boardId, applicants, applyRealtimeCell]);
+  }, [boardId, applyRealtimeCell]);
 
   // Applicant detail side panel
   const [detailApplicantId, setDetailApplicantId] = useState<string | null>(null);
