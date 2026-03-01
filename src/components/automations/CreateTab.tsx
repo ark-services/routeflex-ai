@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, X, ChevronDown, Search, ArrowRight, RefreshCw, Trash2, Calendar, Hash, TrendingUp, Mail, MessageSquare, Phone, PhoneCall, ExternalLink, GraduationCap, Settings, Shield, Award, Brain } from "lucide-react";
 import { createJobAutomation, updateJobAutomation, getJobBoardColumns, getLmsCoursesForCompany } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { EmailGmailEditor } from "./EmailGmailEditor";
@@ -1873,12 +1873,37 @@ function ColumnPicker({
   extraOptions?: Array<{ id: string; name: string }>;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
   const selected =
     columns.find((c) => c.id === selectedId) ??
     extraOptions?.find((o) => o.id === selectedId);
 
+  const q = search.toLowerCase();
+  const filteredColumns = q
+    ? columns.filter((c) => c.name.toLowerCase().includes(q))
+    : columns;
+  const filteredExtra = q
+    ? (extraOptions ?? []).filter((o) => o.name.toLowerCase().includes(q))
+    : (extraOptions ?? []);
+
+  function close() {
+    setIsOpen(false);
+    setSearch("");
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      // Tiny delay so the input is mounted before focusing
+      setTimeout(() => searchRef.current?.focus(), 10);
+    }
+  }, [isOpen]);
+
   return (
     <div className="relative inline-block">
+      {/* Backdrop */}
+      {isOpen && <div className="fixed inset-0 z-10" onClick={close} />}
+
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
@@ -1888,34 +1913,51 @@ function ColumnPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-52 overflow-y-auto">
-          {columns.map((col) => (
-            <button
-              key={col.id}
-              onClick={() => {
-                onSelect(col.id);
-                setIsOpen(false);
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
+          {/* Search input */}
+          <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-gray-100">
+            <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") close();
+                if (e.key === "Enter" && filteredColumns.length === 1) {
+                  onSelect(filteredColumns[0].id);
+                  close();
+                }
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
-            >
-              {col.name}
-            </button>
-          ))}
-          {extraOptions?.map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => {
-                onSelect(opt.id);
-                setIsOpen(false);
-              }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 text-gray-500 italic"
-            >
-              {opt.name}
-            </button>
-          ))}
-          {columns.length === 0 && !extraOptions?.length && (
-            <div className="px-3 py-1.5 text-gray-500 text-xs">No columns available</div>
-          )}
+              placeholder="Search columns…"
+              className="w-full text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
+            />
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-52 overflow-y-auto">
+            {filteredColumns.map((col) => (
+              <button
+                key={col.id}
+                onClick={() => { onSelect(col.id); close(); }}
+                className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
+              >
+                {col.name}
+              </button>
+            ))}
+            {filteredExtra.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => { onSelect(opt.id); close(); }}
+                className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 text-gray-500 italic"
+              >
+                {opt.name}
+              </button>
+            ))}
+            {filteredColumns.length === 0 && filteredExtra.length === 0 && (
+              <div className="px-3 py-2 text-gray-400 text-xs">No matches</div>
+            )}
+          </div>
         </div>
       )}
     </div>

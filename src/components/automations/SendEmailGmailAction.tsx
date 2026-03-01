@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Mail, Plus, ChevronDown, AtSign, AlertCircle, Sparkles, X, Loader2 } from "lucide-react";
 
 interface Column {
@@ -46,8 +46,10 @@ export function SendEmailGmailAction({
   const [loading, setLoading] = useState(true);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
-  const [showVariableMenu, setShowVariableMenu] = useState(false);
-  const [variableTarget, setVariableTarget] = useState<'subject' | 'body'>('subject');
+  const [showVariableMenu, setShowVariableMenu] = useState<'subject' | 'body' | null>(null);
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const cursorPos = useRef<number>(0);
 
   const [showAiPanel, setShowAiPanel] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
@@ -117,11 +119,23 @@ export function SendEmailGmailAction({
     })),
   ];
 
-  const insertVariable = (variable: string) => {
-    const field = variableTarget;
+  const insertVariable = (field: 'subject' | 'body', variable: string) => {
+    const token = `{{${variable}}}`;
     const currentValue = action.config[field] || '';
-    onChange({ config: { ...action.config, [field]: currentValue + `{{${variable}}}` } });
-    setShowVariableMenu(false);
+    const pos = cursorPos.current;
+    const newValue = currentValue.slice(0, pos) + token + currentValue.slice(pos);
+    onChange({ config: { ...action.config, [field]: newValue } });
+    // Restore focus and move cursor to after the inserted token
+    const newPos = pos + token.length;
+    setTimeout(() => {
+      const el = field === 'subject' ? subjectRef.current : bodyRef.current;
+      if (el) {
+        el.focus();
+        el.selectionStart = newPos;
+        el.selectionEnd = newPos;
+      }
+    }, 0);
+    setShowVariableMenu(null);
   };
 
   if (loading) {
@@ -311,18 +325,33 @@ export function SendEmailGmailAction({
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-sm font-medium text-gray-700">Subject</label>
-          <button
-            onClick={() => { setVariableTarget('subject'); setShowVariableMenu(v => !v); }}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-rf-blue bg-rf-blue-tint rounded hover:bg-rf-blue-tint/80 transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            Add variable
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => {
+                cursorPos.current = subjectRef.current?.selectionStart ?? (action.config.subject?.length || 0);
+                setShowVariableMenu(v => v === 'subject' ? null : 'subject');
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-rf-blue bg-rf-blue-tint rounded hover:bg-rf-blue-tint/80 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              Add variable
+            </button>
+            {showVariableMenu === 'subject' && (
+              <VariableDropdown
+                label="subject"
+                variables={variables}
+                onInsert={(v) => insertVariable('subject', v)}
+                onClose={() => setShowVariableMenu(null)}
+              />
+            )}
+          </div>
         </div>
         <input
+          ref={subjectRef}
           type="text"
           value={action.config.subject || ''}
           onChange={(e) => onChange({ config: { ...action.config, subject: e.target.value } })}
+          onSelect={() => { cursorPos.current = subjectRef.current?.selectionStart ?? 0; }}
           placeholder="e.g., An update on your application for {{job_title}}"
           className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-[16px] md:text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
         />
@@ -332,46 +361,72 @@ export function SendEmailGmailAction({
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-sm font-medium text-gray-700">Message</label>
-          <button
-            onClick={() => { setVariableTarget('body'); setShowVariableMenu(v => !v); }}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-rf-blue bg-rf-blue-tint rounded hover:bg-rf-blue-tint/80 transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            Add variable
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => {
+                cursorPos.current = bodyRef.current?.selectionStart ?? (action.config.body?.length || 0);
+                setShowVariableMenu(v => v === 'body' ? null : 'body');
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-rf-blue bg-rf-blue-tint rounded hover:bg-rf-blue-tint/80 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              Add variable
+            </button>
+            {showVariableMenu === 'body' && (
+              <VariableDropdown
+                label="message"
+                variables={variables}
+                onInsert={(v) => insertVariable('body', v)}
+                onClose={() => setShowVariableMenu(null)}
+              />
+            )}
+          </div>
         </div>
         <textarea
+          ref={bodyRef}
           value={action.config.body || ''}
           onChange={(e) => onChange({ config: { ...action.config, body: e.target.value } })}
+          onSelect={() => { cursorPos.current = bodyRef.current?.selectionStart ?? 0; }}
           placeholder={"Hi {{applicant_name}},\n\nThank you for applying to {{job_title}}..."}
-          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue resize-y font-mono leading-relaxed"
+          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue resize-y font-mono leading-relaxed bg-white"
           rows={12}
         />
         <p className="text-xs text-gray-400 mt-1">HTML is supported</p>
       </div>
-
-      {/* Variable dropdown */}
-      {showVariableMenu && (
-        <div className="relative">
-          <div className="absolute z-30 right-0 -top-2 bg-white border border-gray-200 rounded-lg shadow-lg w-64 max-h-64 overflow-y-auto">
-            <div className="px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
-              <p className="text-xs font-medium text-gray-600">
-                Insert into {variableTarget === 'subject' ? 'subject' : 'message'}
-              </p>
-            </div>
-            {variables.map((v) => (
-              <button
-                key={v.key}
-                onClick={() => insertVariable(v.key)}
-                className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint transition-colors border-b border-gray-50 last:border-0"
-              >
-                <span className="text-sm text-gray-900">{v.label}</span>
-                <span className="block text-xs text-gray-400 font-mono mt-0.5">{`{{${v.key}}}`}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
+  );
+}
+
+function VariableDropdown({
+  label,
+  variables,
+  onInsert,
+  onClose,
+}: {
+  label: string;
+  variables: { key: string; label: string }[];
+  onInsert: (key: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      {/* Backdrop to close on outside click */}
+      <div className="fixed inset-0 z-20" onClick={onClose} />
+      <div className="absolute z-30 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg w-64 max-h-64 overflow-y-auto">
+        <div className="px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg sticky top-0">
+          <p className="text-xs font-medium text-gray-600">Insert into {label}</p>
+        </div>
+        {variables.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => onInsert(v.key)}
+            className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint transition-colors border-b border-gray-50 last:border-0"
+          >
+            <span className="text-sm text-gray-900">{v.label}</span>
+            <span className="block text-xs text-gray-400 font-mono mt-0.5">{`{{${v.key}}}`}</span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
