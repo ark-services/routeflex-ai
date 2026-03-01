@@ -85,14 +85,15 @@ export async function getOrCreateApplicantsBoard(
 
     // ========================================================================
     // STEP 1: Try to get existing board via service role (bypasses RLS)
-    // CRITICAL: order by created_at to always get the FIRST one
+    // CRITICAL: filter by job_id only — the unique constraint is
+    // boards_job_id_unique_idx (job_id alone), NOT (job_id, name).
+    // Filtering by name would miss boards created with a different name.
     // ========================================================================
     const { data: existingBoards, error: fetchError } = await svc
       .from("boards")
       .select("id, created_at")
       .eq("company_id", companyId)
       .eq("job_id", jobId)
-      .eq("name", "Applicants")
       .order("created_at", { ascending: true })
       .limit(1);
 
@@ -141,14 +142,14 @@ export async function getOrCreateApplicantsBoard(
             "[getOrCreateApplicantsBoard] Duplicate key (23505), re-fetching with service role..."
           );
 
-          // Recovery fetch — MUST use service-role client and match the exact
-          // unique constraint filters so RLS can never block it.
+          // Recovery fetch — MUST match the unique constraint exactly.
+          // The constraint is boards_job_id_unique_idx (job_id only), so
+          // we filter by job_id alone — NOT by name — to guarantee we find
+          // the conflicting row regardless of what name it was created with.
           const { data: retryBoard, error: retryError } = await svc
             .from("boards")
             .select("id")
-            .eq("company_id", companyId)
             .eq("job_id", jobId)
-            .eq("name", "Applicants")
             .order("created_at", { ascending: true })
             .limit(1)
             .maybeSingle();
