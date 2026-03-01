@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, X, ChevronDown, Search, ArrowRight, RefreshCw, Trash2, Calendar, Hash, TrendingUp, Mail, MessageSquare, Phone, PhoneCall, ExternalLink, GraduationCap, Settings, Shield, Award } from "lucide-react";
+import { Plus, X, ChevronDown, Search, ArrowRight, RefreshCw, Trash2, Calendar, Hash, TrendingUp, Mail, MessageSquare, Phone, PhoneCall, ExternalLink, GraduationCap, Settings, Shield, Award, Brain } from "lucide-react";
 import { createJobAutomation, updateJobAutomation, getJobBoardColumns, getLmsCoursesForCompany } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { EmailGmailEditor } from "./EmailGmailEditor";
 import { SendEmailGmailAction } from "./SendEmailGmailAction";
@@ -336,6 +336,20 @@ export function CreateTab({
           return;
         }
       }
+      if (action.type === "ai.score_resume") {
+        if (!action.config.score_column_id) {
+          alert("Please select a score output column for the AI scoring action");
+          return;
+        }
+        if (!action.config.feedback_column_id) {
+          alert("Please select a feedback output column for the AI scoring action");
+          return;
+        }
+        if (!action.config.criteria?.trim()) {
+          alert("Please enter scoring criteria for the AI scoring action");
+          return;
+        }
+      }
     }
 
     setLoading(true);
@@ -479,6 +493,8 @@ export function CreateTab({
           return "send training link to applicant";
         case "portal.send_link":
           return "send status portal link to applicant";
+        case "ai.score_resume":
+          return "score applicant with AI";
         default:
           return action.type;
       }
@@ -1511,6 +1527,66 @@ function ActionEditor({
             </div>
           </div>
         )}
+
+        {action.type === "ai.score_resume" && (
+          <div className="w-full space-y-3 pt-1">
+            {/* Resume file column (optional) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-32 shrink-0">Resume from</span>
+              <ColumnPicker
+                columns={columns.filter((c) => c.type === "file")}
+                selectedId={action.config.file_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, file_column_id: id } })
+                }
+                placeholder="file column (optional)"
+              />
+            </div>
+            <p className="text-xs text-gray-400 ml-32">
+              Optional. Falls back to the applicant&apos;s uploaded resume if left empty.
+            </p>
+
+            {/* Score output column (required) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-32 shrink-0">Write score to</span>
+              <ColumnPicker
+                columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
+                selectedId={action.config.score_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, score_column_id: id } })
+                }
+                placeholder="score column"
+              />
+            </div>
+
+            {/* Feedback output column (required) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-32 shrink-0">Write feedback to</span>
+              <ColumnPicker
+                columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
+                selectedId={action.config.feedback_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, feedback_column_id: id } })
+                }
+                placeholder="feedback column"
+              />
+            </div>
+
+            {/* Criteria prompt (required) */}
+            <div className="flex flex-col gap-1.5 pt-2 border-t border-gray-100">
+              <span className="text-sm text-gray-700">Scoring criteria</span>
+              <textarea
+                value={action.config.criteria || ""}
+                onChange={(e) =>
+                  onChange({ config: { ...action.config, criteria: e.target.value } })
+                }
+                placeholder={"Describe what to evaluate, e.g.:\n- CDL Class A license required\n- 2+ years delivery experience preferred\n- Clean driving record\n- Score 1-10, where 8+ is a strong candidate"}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-rf-blue min-h-[100px] resize-y"
+                rows={5}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1549,6 +1625,12 @@ const ACTION_CATEGORIES = [
       { value: "integration.set_field", label: "Set FADV field", icon: Settings },
       { value: "fadv.add_subject", label: "Submit to First Advantage", icon: Shield },
       { value: "safety_trainer.submit", label: "Submit Safety Cert", icon: Award },
+    ],
+  },
+  {
+    label: "AI",
+    actions: [
+      { value: "ai.score_resume", label: "Score resume with AI", icon: Brain },
     ],
   },
 ];

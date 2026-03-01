@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, useRef } from "react";
+import { useEffect, useMemo, useState, useTransition, useRef, useCallback } from "react";
 import {
   ArrowLeftRight,
   PencilLine,
@@ -13,6 +13,8 @@ import {
   GraduationCap,
   MoveRight,
   Link2,
+  Maximize2,
+  X as XIcon,
   ExternalLink,
   X,
   Eye,
@@ -77,6 +79,7 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { formatPhone, validatePhone, validateEmail } from "@/lib/validation/columnValidation";
 import type { BoardColumn as BaseBoardColumn, BoardCell, BoardStatusLabel } from "@/lib/types";
 import type { ActiveFilter } from "./view-actions";
+import { createClient } from "@/lib/supabase/client";
 
 type Group = {
   id: string;
@@ -190,6 +193,45 @@ export default function ApplicantsBoard({
   // Optimistic cell overrides: key="${applicantId}::${columnId}", value=raw cell value
   // Set immediately on change; rolls back on server error; cleared when cells prop refreshes
   const [cellOverrides, setCellOverrides] = useState<Map<string, any>>(new Map());
+
+  // Local cells mirror — starts from the server-fetched prop, updated live via Realtime
+  const [localCells, setLocalCells] = useState<BoardCell[]>(() => cells);
+  useEffect(() => { setLocalCells(cells); }, [cells]);
+
+  // Realtime: apply a board_cell INSERT or UPDATE to localCells
+  const applyRealtimeCell = useCallback((cell: BoardCell) => {
+    setLocalCells(prev => {
+      const idx = prev.findIndex(
+        c => c.applicant_id === cell.applicant_id && c.column_id === cell.column_id
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = cell;
+        return next;
+      }
+      return [...prev, cell];
+    });
+  }, []);
+
+  // Subscribe to board_cells realtime changes for this board's applicants
+  useEffect(() => {
+    const supabase = createClient();
+    const applicantIdSet = new Set(applicants.map(a => a.id));
+    const channel = supabase
+      .channel(`board-cells-${boardId}`)
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'board_cells' },
+        (payload: any) => {
+          const cell = payload.new as BoardCell;
+          if (cell && applicantIdSet.has(cell.applicant_id)) {
+            applyRealtimeCell(cell);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [boardId, applicants, applyRealtimeCell]);
 
   // Applicant detail side panel
   const [detailApplicantId, setDetailApplicantId] = useState<string | null>(null);
@@ -507,11 +549,11 @@ export default function ApplicantsBoard({
 
   const cellsByApplicantAndColumn = useMemo(() => {
     const map = new Map<string, BoardCell>();
-    for (const c of cells) {
+    for (const c of localCells) {
       map.set(`${c.applicant_id}::${c.column_id}`, c);
     }
     return map;
-  }, [cells]);
+  }, [localCells]);
 
   const labelsByColumn = useMemo(() => {
     const map = new Map<string, StatusLabel[]>();
@@ -3663,6 +3705,7 @@ function CellRenderer({
   const [isPending, startTransition] = useTransition();
   const [localValue, setLocalValue] = useState(value);
   const [isEditing, setIsEditing] = useState(false);
+  const [showExpanded, setShowExpanded] = useState(false);
 
   // Update local value when prop changes (from server)
   useEffect(() => {
@@ -3730,8 +3773,9 @@ function CellRenderer({
   }
 
   if (column.type === "text") {
+    const isLong = (localValue?.length ?? 0) > 100;
     return (
-      <div className="relative">
+      <div className="relative group/textcell">
         <input
           type="text"
           value={localValue ?? ""}
@@ -3741,12 +3785,44 @@ function CellRenderer({
           onKeyDown={handleKeyDown}
           className="h-8 w-full rounded border border-transparent px-2 text-[16px] md:text-sm outline-none hover:border-rf-border focus:border-rf-blue"
           placeholder="—"
-          title={localValue || undefined}
+          title={!isLong ? (localValue || undefined) : undefined}
         />
+        {/* Expand button — shown on hover for long text values */}
+        {isLong && !isPending && (
+          <button
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setShowExpanded(true); }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover/textcell:opacity-100 transition-opacity p-0.5 rounded text-rf-text-muted hover:text-rf-blue hover:bg-rf-blue-tint"
+            title="View full text"
+            tabIndex={-1}
+          >
+            <Maximize2 className="w-3 h-3" />
+          </button>
+        )}
         {isPending && (
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
             <div className="h-3 w-3 animate-spin rounded-full border-2 border-rf-ink-100 border-t-blue-500" />
           </div>
+        )}
+        {/* Full-text modal for long values */}
+        {showExpanded && isLong && typeof window !== 'undefined' && createPortal(
+          <>
+            <div className="fixed inset-0 z-[998] bg-black/30" onClick={() => setShowExpanded(false)} />
+            <div className="fixed z-[999] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] max-h-[70vh] rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-rf-ink-100 shrink-0">
+                <p className="text-sm font-semibold text-rf-text-primary">{column.name}</p>
+                <button
+                  onClick={() => setShowExpanded(false)}
+                  className="text-rf-text-muted hover:text-rf-text-primary transition-colors"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto">
+                <p className="text-sm text-rf-ink-700 whitespace-pre-wrap leading-relaxed">{localValue}</p>
+              </div>
+            </div>
+          </>,
+          document.body
         )}
       </div>
     );

@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import Anthropic from '@anthropic-ai/sdk';
 import { logActivityEvent } from '@/lib/activity/logActivityEvent';
 
 export interface FireJobTriggerInput {
@@ -625,6 +626,9 @@ async function executeAction(
       return executeLmsSendTrainingLink(supabase, companyId, jobId, config, payload);
     case 'portal.send_link':
       return executePortalSendLink(supabase, companyId, jobId, config, payload);
+
+    case 'ai.score_resume':
+      return executeAiScoreResume(supabase, companyId, jobId, config, payload);
 
     default:
       return { success: false, error: `Unknown action type: ${type}` };
@@ -2880,4 +2884,285 @@ export async function debugAutomationRun(
   }
 
   console.log('[debugAutomationRun] ========================================');
+}
+
+// ============================================================================
+// Action: ai.score_resume
+// Config: {
+//   file_column_id?: string,     — board file column with resume (optional)
+//   score_column_id: string,     — text column for score output
+//   feedback_column_id: string,  — text column for feedback output
+//   criteria: string,            — user-provided scoring criteria
+// }
+// ============================================================================
+async function executeAiScoreResume(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const {
+    file_column_id,
+    score_column_id,
+    feedback_column_id,
+    criteria,
+  } = config;
+
+  const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
+
+  console.log('[executeAiScoreResume] Starting:', {
+    file_column_id,
+    score_column_id,
+    feedback_column_id,
+    criteriaLength: criteria?.length,
+    applicantId,
+    companyId,
+    jobId,
+  });
+
+  // ── Validate config ─────────────────────────────────────────────────────────
+  if (!score_column_id || !feedback_column_id) {
+    return { success: false, error: 'ai.score_resume: score_column_id and feedback_column_id are required' };
+  }
+  if (!criteria?.trim()) {
+    return { success: false, error: 'ai.score_resume: criteria is required' };
+  }
+  if (!applicantId) {
+    return { success: false, error: 'ai.score_resume: missing applicant_id in payload' };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { success: false, error: 'ai.score_resume: ANTHROPIC_API_KEY not configured' };
+  }
+
+  // ── Helper: write text to a board cell ──────────────────────────────────────
+  async function writeCell(columnId: string, text: string) {
+    try {
+      await supabase
+        .from('board_cells')
+        .upsert(
+          {
+            applicant_id:          applicantId,
+            column_id:             columnId,
+            value_text:            text,
+            value_number:          null,
+            value_date:            null,
+            value_status_label_id: null,
+            value_file_path:       null,
+          },
+          { onConflict: 'applicant_id,column_id' }
+        );
+    } catch (err) {
+      console.error('[executeAiScoreResume] writeCell error (non-fatal):', err);
+    }
+  }
+
+  // ── Resolve resume file ─────────────────────────────────────────────────────
+  let filePath: string | null = null;
+  let fileBucket: string = 'files';
+
+  // Path A: read from the configured file column
+  if (file_column_id) {
+    const { data: cell } = await supabase
+      .from('board_cells')
+      .select('value_file_path')
+      .eq('applicant_id', applicantId)
+      .eq('column_id', file_column_id)
+      .maybeSingle();
+
+    if (cell?.value_file_path) {
+      filePath = cell.value_file_path;
+      fileBucket = 'files';
+    }
+  }
+
+  // Path B: fall back to applicants.resume_path
+  if (!filePath) {
+    const { data: applicantRow } = await supabase
+      .from('applicants')
+      .select('resume_path')
+      .eq('id', applicantId)
+      .maybeSingle();
+
+    if (applicantRow?.resume_path) {
+      filePath = applicantRow.resume_path;
+      fileBucket = 'resumes';
+    }
+  }
+
+  // ── Download the file ───────────────────────────────────────────────────────
+  let pdfBase64: string | null = null;
+  let fileSkipReason: string | null = null;
+
+  if (filePath) {
+    // Only support PDF for the document content block
+    const isPdf = filePath.toLowerCase().endsWith('.pdf');
+
+    if (!isPdf) {
+      fileSkipReason = `File "${filePath}" is not a PDF. Only PDF resumes can be read by AI. Scoring based on application form data only.`;
+      console.log('[executeAiScoreResume] Non-PDF file, skipping document block:', filePath);
+    } else {
+      const { data: blob, error: dlError } = await supabase.storage
+        .from(fileBucket)
+        .download(filePath);
+
+      if (dlError || !blob) {
+        fileSkipReason = `Could not download resume file: ${dlError?.message ?? 'unknown error'}. Scoring based on application form data only.`;
+        console.error('[executeAiScoreResume] File download failed:', dlError);
+      } else {
+        const arrayBuffer = await blob.arrayBuffer();
+        pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
+        console.log('[executeAiScoreResume] Resume downloaded, base64 length:', pdfBase64.length);
+      }
+    }
+  }
+
+  // ── Gather form field responses ─────────────────────────────────────────────
+  const { data: fieldValues } = await supabase
+    .from('applicant_field_values')
+    .select(`
+      value_text,
+      value_number,
+      value_bool,
+      value_date,
+      job_application_fields!inner (
+        key,
+        label,
+        type
+      )
+    `)
+    .eq('applicant_id', applicantId);
+
+  const formDataLines = (fieldValues ?? [])
+    .filter((fv: any) => fv.value_text || fv.value_number != null || fv.value_bool != null || fv.value_date)
+    .map((fv: any) => {
+      const field = fv.job_application_fields;
+      const value =
+        fv.value_text ??
+        fv.value_number?.toString() ??
+        (fv.value_bool != null ? (fv.value_bool ? 'Yes' : 'No') : null) ??
+        fv.value_date ??
+        '';
+      return `${field.label}: ${value}`;
+    });
+
+  const formDataText = formDataLines.join('\n');
+
+  // ── Fetch applicant basic info ──────────────────────────────────────────────
+  const { data: applicant } = await supabase
+    .from('applicants')
+    .select('full_name, email, phone')
+    .eq('id', applicantId)
+    .maybeSingle();
+
+  // ── Guard: nothing to score ─────────────────────────────────────────────────
+  if (!pdfBase64 && !formDataText.trim()) {
+    const msg = 'AI scoring skipped: no resume or application form data available for this applicant.';
+    console.log('[executeAiScoreResume]', msg);
+    await writeCell(score_column_id, 'N/A');
+    await writeCell(feedback_column_id, msg);
+    return { success: true };
+  }
+
+  // ── Build Claude API content blocks ─────────────────────────────────────────
+  const contentBlocks: any[] = [];
+
+  if (pdfBase64) {
+    contentBlocks.push({
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: pdfBase64,
+      },
+    });
+  }
+
+  // Applicant info + form responses
+  let contextText = '';
+  if (applicant) {
+    contextText += `## Applicant\nName: ${applicant.full_name ?? 'Unknown'}\nEmail: ${applicant.email ?? 'N/A'}\nPhone: ${applicant.phone ?? 'N/A'}\n\n`;
+  }
+  if (formDataText.trim()) {
+    contextText += `## Application Form Responses\n\n${formDataText}\n\n`;
+  }
+  if (contextText) {
+    contentBlocks.push({ type: 'text', text: contextText });
+  }
+
+  // Scoring instruction
+  let instruction = `Score this applicant based on the following criteria. Return ONLY valid JSON with exactly two keys:\n`;
+  instruction += `- "score": a concise score value (format depends on the criteria — could be numeric like "85/100", a letter grade, pass/fail, etc.)\n`;
+  instruction += `- "feedback": detailed feedback explaining the score, noting strengths and weaknesses (2-4 sentences)\n\n`;
+  instruction += `## Scoring Criteria\n\n${criteria}\n`;
+
+  if (!pdfBase64 && fileSkipReason) {
+    instruction += `\nNote: ${fileSkipReason}\n`;
+  } else if (!pdfBase64) {
+    instruction += `\nNote: No resume was provided. Score based only on the application form responses above.\n`;
+  }
+
+  instruction += `\nReturn ONLY the JSON object. No markdown fences, no explanation outside the JSON.`;
+  contentBlocks.push({ type: 'text', text: instruction });
+
+  // ── Call Claude API ─────────────────────────────────────────────────────────
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  // Write a "scoring in progress" message
+  await writeCell(score_column_id, 'Scoring...');
+
+  let message;
+  try {
+    message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: 'You are an expert recruiting evaluator. You assess job applicants objectively based on the provided criteria. Always respond with valid JSON only.',
+      messages: [
+        {
+          role: 'user',
+          content: contentBlocks,
+        },
+      ],
+    });
+  } catch (apiError: any) {
+    const errorMsg = `AI scoring failed: ${apiError.message ?? 'Anthropic API error'}`;
+    console.error('[executeAiScoreResume] API error:', apiError);
+    await writeCell(score_column_id, 'Error');
+    await writeCell(feedback_column_id, errorMsg);
+    return { success: false, error: errorMsg };
+  }
+
+  // ── Parse response ──────────────────────────────────────────────────────────
+  const responseText = (message.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined)?.text ?? '';
+
+  let score = '';
+  let feedback = '';
+
+  try {
+    // Strip markdown code fences if Claude adds them despite instructions
+    const cleaned = responseText.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
+    score = String(parsed.score ?? '');
+    feedback = String(parsed.feedback ?? '');
+  } catch {
+    // If JSON parse fails, use the raw response as feedback
+    console.warn('[executeAiScoreResume] JSON parse failed, using raw response');
+    score = 'See feedback';
+    feedback = responseText;
+  }
+
+  // ── Write results to board cells ────────────────────────────────────────────
+  await writeCell(score_column_id, score);
+  await writeCell(feedback_column_id, feedback);
+
+  console.log('[executeAiScoreResume] Scored applicant:', {
+    applicantId,
+    score,
+    feedbackLength: feedback.length,
+    model: message.model,
+    inputTokens: message.usage?.input_tokens,
+    outputTokens: message.usage?.output_tokens,
+  });
+
+  return { success: true };
 }

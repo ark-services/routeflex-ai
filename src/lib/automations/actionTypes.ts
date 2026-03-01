@@ -41,6 +41,8 @@ export const AUTOMATION_ACTION_TYPES = [
   "lms.send_training_link",
   // ── Applicant Portal ────────────────────────────────────────────────────────
   "portal.send_link",
+  // ── AI Actions ────────────────────────────────────────────────────────────
+  "ai.score_resume",
 ] as const;
 
 /** TypeScript union of every allowed action type string. */

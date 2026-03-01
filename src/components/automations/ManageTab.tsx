@@ -161,6 +161,7 @@ export function ManageTab({
         'safety_trainer.submit':    'impact solutions safety cert',
         'lms.send_training_link':   'send training link',
         'portal.send_link':         'send status portal link',
+        'ai.score_resume':          'ai score resume',
       };
       return (labelMap[action.type] || action.type).includes(query);
     });
