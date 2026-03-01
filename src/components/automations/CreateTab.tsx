@@ -43,24 +43,53 @@ interface FilterCondition {
   value: string | number | "";
 }
 
-const CONDITION_TYPES = [
-  { value: "status_is",     label: "Status is",        colType: "status" as const },
-  { value: "status_is_not", label: "Status is not",    colType: "status" as const },
-  { value: "text_contains", label: "Text contains",    colType: "text"   as const },
-  { value: "text_equals",   label: "Text equals",      colType: "text"   as const },
-  { value: "number_eq",     label: "Number =",         colType: "number" as const },
-  { value: "number_gt",     label: "Number >",         colType: "number" as const },
-  { value: "number_gte",    label: "Number ≥",         colType: "number" as const },
-  { value: "number_lt",     label: "Number <",         colType: "number" as const },
-  { value: "number_lte",    label: "Number ≤",         colType: "number" as const },
-  { value: "date_is",       label: "Date is",          colType: "date"   as const },
-  { value: "date_before",   label: "Date before",      colType: "date"   as const },
-  { value: "date_after",    label: "Date after",       colType: "date"   as const },
-  { value: "item_in_group", label: "Item is in group", colType: null },
-] as const;
+// Conditions available per column category — drives the new Column → Condition → Value UX
+const COLUMN_CONDITIONS: Record<string, Array<{ value: string; label: string }>> = {
+  status: [
+    { value: "status_is",     label: "is" },
+    { value: "status_is_not", label: "is not" },
+  ],
+  text: [
+    { value: "text_equals",   label: "equals" },
+    { value: "text_contains", label: "contains" },
+    { value: "is_not_empty",  label: "is not empty" },
+    { value: "is_empty",      label: "is empty" },
+  ],
+  number: [
+    { value: "number_eq",     label: "=" },
+    { value: "number_gt",     label: ">" },
+    { value: "number_gte",    label: "≥" },
+    { value: "number_lt",     label: "<" },
+    { value: "number_lte",    label: "≤" },
+    { value: "is_not_empty",  label: "is not empty" },
+    { value: "is_empty",      label: "is empty" },
+  ],
+  date: [
+    { value: "date_is",       label: "is" },
+    { value: "date_before",   label: "before" },
+    { value: "date_after",    label: "after" },
+    { value: "is_not_empty",  label: "is not empty" },
+    { value: "is_empty",      label: "is empty" },
+  ],
+  file: [
+    { value: "is_not_empty",  label: "is not empty" },
+    { value: "is_empty",      label: "is empty" },
+  ],
+};
 
 // Text-like column types that store their value in value_text
 const TEXT_COL_TYPES = ["text", "email", "phone", "location"];
+
+// Map a board column to its condition category
+function getColCategory(col?: Column): string | null {
+  if (!col) return null;
+  if (col.type === "status") return "status";
+  if (TEXT_COL_TYPES.includes(col.type)) return "text";
+  if (col.type === "number") return "number";
+  if (col.type === "date") return "date";
+  if (col.type === "file") return "file";
+  return "text"; // fallback for unknown types
+}
 
 // Human-readable operator label for each condition type
 function conditionOpLabel(type: string): string {
@@ -70,6 +99,7 @@ function conditionOpLabel(type: string): string {
     number_eq: "=", number_gt: ">", number_gte: "≥", number_lt: "<", number_lte: "≤",
     date_is: "is", date_before: "before", date_after: "after",
     item_in_group: "in group",
+    is_empty: "is empty", is_not_empty: "is not empty",
   };
   return map[type] ?? type;
 }
@@ -501,9 +531,11 @@ export function CreateTab({
     });
 
     // Build condition summary for valid conditions
-    const validConditions = filterConditions.filter((c) =>
-      c.type === "item_in_group" ? c.value !== "" : c.column_id && c.value !== ""
-    );
+    const validConditions = filterConditions.filter((c) => {
+      if (c.type === "item_in_group") return c.value !== "";
+      if (c.type === "is_empty" || c.type === "is_not_empty") return !!c.column_id;
+      return !!(c.column_id && c.value !== "");
+    });
     const conditionTexts = validConditions.map((cond) => {
       if (cond.type === "item_in_group") {
         const group = groups.find((g) => g.id === cond.value);
@@ -515,6 +547,9 @@ export function CreateTab({
       if ((cond.type === "status_is" || cond.type === "status_is_not") && col.labels) {
         const lbl = col.labels.find((l) => l.id === cond.value);
         if (lbl) valueDisplay = lbl.label;
+      }
+      if (cond.type === "is_empty" || cond.type === "is_not_empty") {
+        return `${col.name} ${conditionOpLabel(cond.type)}`;
       }
       return `${col.name} ${conditionOpLabel(cond.type)} ${valueDisplay}`;
     }).filter(Boolean);
@@ -753,7 +788,7 @@ function TriggerSelector({
       {onFilterConditionsChange && (
         filterConditions.length === 0 ? (
           <button
-            onClick={() => onFilterConditionsChange([{ type: "text_equals", column_id: undefined, value: "" }])}
+            onClick={() => onFilterConditionsChange([{ type: "is_not_empty", column_id: undefined, value: "" }])}
             className="text-xs text-rf-blue-light hover:text-rf-blue transition-colors flex items-center gap-1 mt-2"
           >
             <Plus className="w-3 h-3" />
@@ -764,7 +799,7 @@ function TriggerSelector({
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-medium text-rf-blue">and only if...</span>
               <button
-                onClick={() => onFilterConditionsChange([...filterConditions, { type: "text_equals", column_id: undefined, value: "" }])}
+                onClick={() => onFilterConditionsChange([...filterConditions, { type: "is_not_empty", column_id: undefined, value: "" }])}
                 className="text-xs text-rf-blue hover:text-rf-blue flex items-center gap-0.5 transition-colors"
               >
                 <Plus className="w-3 h-3" /> Add
@@ -877,48 +912,59 @@ function FilterConditionRow({
   onChange: (updates: Partial<FilterCondition>) => void;
   onRemove: () => void;
 }) {
-  const condInfo = CONDITION_TYPES.find((t) => t.value === condition.type);
-  const isGroupCondition = condition.type === "item_in_group";
+  // Sentinel used when the user picks "Group membership" in the column picker
+  const SENTINEL_GROUP = "__group__";
 
-  // Filter columns to only those relevant to the condition type
-  const relevantColumns = isGroupCondition
-    ? []
-    : columns.filter((c) => {
-        if (!condInfo?.colType) return false;
-        if (condInfo.colType === "text") return TEXT_COL_TYPES.includes(c.type);
-        return c.type === condInfo.colType;
-      });
+  const isGroupCondition = condition.type === "item_in_group";
+  const effectiveColumnId = isGroupCondition ? SENTINEL_GROUP : condition.column_id;
 
   const selectedColumn = columns.find((c) => c.id === condition.column_id);
-  const isStatusCondition = condition.type === "status_is" || condition.type === "status_is_not";
-  const isTextCondition   = condition.type === "text_equals" || condition.type === "text_contains";
-  const isNumberCondition = condition.type.startsWith("number_");
-  const isDateCondition   = condition.type.startsWith("date_");
+  const colCategory = getColCategory(selectedColumn);
+  const availableConditions = colCategory ? (COLUMN_CONDITIONS[colCategory] ?? []) : [];
+
+  const isNoValueCondition = condition.type === "is_empty" || condition.type === "is_not_empty";
+  const isStatusCondition  = condition.type === "status_is" || condition.type === "status_is_not";
+  const isTextCondition    = condition.type === "text_equals" || condition.type === "text_contains";
+  const isNumberCondition  = condition.type.startsWith("number_");
+  const isDateCondition    = condition.type.startsWith("date_");
+
+  function handleColumnSelect(id: string) {
+    if (id === SENTINEL_GROUP) {
+      onChange({ type: "item_in_group", column_id: undefined, value: "" });
+      return;
+    }
+    const col = columns.find((c) => c.id === id);
+    const cat = getColCategory(col);
+    const firstCond = cat ? (COLUMN_CONDITIONS[cat]?.[0]?.value ?? "is_not_empty") : "is_not_empty";
+    onChange({ column_id: id, type: firstCond, value: "" });
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 bg-rf-surface-card border border-rf-blue-tint rounded px-2 py-1.5">
-      {/* Condition type selector */}
-      <select
-        value={condition.type}
-        onChange={(e) => onChange({ type: e.target.value, column_id: undefined, value: "" })}
-        className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
-      >
-        {CONDITION_TYPES.map((t) => (
-          <option key={t.value} value={t.value}>{t.label}</option>
-        ))}
-      </select>
 
-      {/* Column picker (not shown for item_in_group) */}
-      {!isGroupCondition && (
-        <ColumnPicker
-          columns={relevantColumns}
-          selectedId={condition.column_id}
-          onSelect={(id) => onChange({ column_id: id, value: "" })}
-          placeholder="column"
-        />
+      {/* 1. Column picker — all columns + "Group membership" sentinel */}
+      <ColumnPicker
+        columns={columns}
+        selectedId={effectiveColumnId}
+        onSelect={handleColumnSelect}
+        placeholder="column"
+        extraOptions={[{ id: SENTINEL_GROUP, name: "Group membership" }]}
+      />
+
+      {/* 2. Condition dropdown — only shown after a column is selected */}
+      {!isGroupCondition && condition.column_id && availableConditions.length > 0 && (
+        <select
+          value={condition.type}
+          onChange={(e) => onChange({ type: e.target.value, value: "" })}
+          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
+        >
+          {availableConditions.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
       )}
 
-      {/* Value input — varies by condition type */}
+      {/* 3. Value input — varies by condition type; hidden for is_empty / is_not_empty */}
       {isGroupCondition && (
         <GroupPicker
           groups={groups}
@@ -928,7 +974,7 @@ function FilterConditionRow({
         />
       )}
 
-      {isStatusCondition && condition.column_id && (
+      {!isNoValueCondition && isStatusCondition && condition.column_id && (
         <StatusLabelPicker
           column={selectedColumn}
           selectedId={typeof condition.value === "string" ? condition.value : undefined}
@@ -937,7 +983,7 @@ function FilterConditionRow({
         />
       )}
 
-      {isTextCondition && (
+      {!isNoValueCondition && isTextCondition && (
         <input
           type="text"
           value={typeof condition.value === "string" ? condition.value : ""}
@@ -947,7 +993,7 @@ function FilterConditionRow({
         />
       )}
 
-      {isNumberCondition && (
+      {!isNoValueCondition && isNumberCondition && (
         <input
           type="number"
           value={condition.value === "" ? "" : condition.value}
@@ -959,7 +1005,7 @@ function FilterConditionRow({
         />
       )}
 
-      {isDateCondition && (
+      {!isNoValueCondition && isDateCondition && (
         <input
           type="date"
           value={typeof condition.value === "string" ? condition.value : ""}
@@ -1806,14 +1852,18 @@ function ColumnPicker({
   selectedId,
   onSelect,
   placeholder,
+  extraOptions,
 }: {
   columns: Column[];
   selectedId?: string;
   onSelect: (id: string) => void;
   placeholder: string;
+  extraOptions?: Array<{ id: string; name: string }>;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const selected = columns.find((c) => c.id === selectedId);
+  const selected =
+    columns.find((c) => c.id === selectedId) ??
+    extraOptions?.find((o) => o.id === selectedId);
 
   return (
     <div className="relative inline-block">
@@ -1839,7 +1889,19 @@ function ColumnPicker({
               {col.name}
             </button>
           ))}
-          {columns.length === 0 && (
+          {extraOptions?.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => {
+                onSelect(opt.id);
+                setIsOpen(false);
+              }}
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 text-gray-500 italic"
+            >
+              {opt.name}
+            </button>
+          ))}
+          {columns.length === 0 && !extraOptions?.length && (
             <div className="px-3 py-1.5 text-gray-500 text-xs">No columns available</div>
           )}
         </div>

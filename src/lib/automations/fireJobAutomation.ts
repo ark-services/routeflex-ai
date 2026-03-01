@@ -498,6 +498,35 @@ async function evaluateCondition(
     return false;
   }
 
+  // ── is_empty / is_not_empty: check whether any cell value is present ──────
+  // Works for all column types including file (stored as value_text).
+  // A missing board_cell row counts as empty.
+  if (type === 'is_empty' || type === 'is_not_empty') {
+    // Use payload data when the condition references the triggering column
+    if (column_id === payload.column_id) {
+      const txt = payload.new_value_text ?? payload.value_text ?? null;
+      const num = payload.new_value_number ?? payload.value_number ?? null;
+      const dt  = payload.new_value_date   ?? payload.value_date   ?? null;
+      const st  = payload.new_value        ?? null;
+      const hasValue = (txt != null && txt !== '') || num != null ||
+                       (dt  != null && dt  !== '') || (st != null && st !== '');
+      return type === 'is_not_empty' ? hasValue : !hasValue;
+    }
+    const { data: cell } = await supabase
+      .from('board_cells')
+      .select('value_text, value_number, value_date, value_status_label_id')
+      .eq('applicant_id', applicantId)
+      .eq('column_id', column_id)
+      .maybeSingle();
+    if (!cell) return type === 'is_empty'; // missing row = empty
+    const hasValue =
+      (cell.value_text != null && cell.value_text !== '') ||
+      cell.value_number != null ||
+      (cell.value_date != null && cell.value_date !== '') ||
+      (cell.value_status_label_id != null && cell.value_status_label_id !== '');
+    return type === 'is_not_empty' ? hasValue : !hasValue;
+  }
+
   // ── Resolve cell value ────────────────────────────────────────────────────
   let cellValue: string | number | null = null;
 
