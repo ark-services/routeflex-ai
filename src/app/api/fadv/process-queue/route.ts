@@ -152,8 +152,10 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
   });
 
   // ── 3. Load company FADV config ───────────────────────────────────────────
+  console.log("[fadv/process-queue] Loading FADV config for company:", company_id);
   const configResult = await loadFadvConfig(supabase, company_id);
   if (!configResult.ok) {
+    console.error("[fadv/process-queue] Config failed:", configResult.reason);
     await markFailed(
       supabase,
       id,
@@ -167,8 +169,17 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
     );
     return;
   }
+  console.log("[fadv/process-queue] Config OK:", {
+    cspId: configResult.cspId,
+    companyIdValue: configResult.companyIdValue,
+    hasClientId: !!configResult.clientId,
+    hasUsername: !!configResult.username,
+    hasPassword: !!configResult.encryptedPassword,
+    hasSecurityAnswer: !!configResult.encryptedSecurityAnswer,
+  });
 
   // ── 4. Load applicant basic info ──────────────────────────────────────────
+  console.log("[fadv/process-queue] Loading applicant:", applicant_id);
   const { data: applicant, error: appError } = await supabase
     .from("applicants")
     .select("full_name, email, phone")
@@ -176,6 +187,7 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
     .maybeSingle();
 
   if (appError || !applicant) {
+    console.error("[fadv/process-queue] Applicant not found:", applicant_id, appError);
     await markFailed(
       supabase,
       id,
@@ -189,13 +201,21 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
     );
     return;
   }
+  console.log("[fadv/process-queue] Applicant loaded:", {
+    full_name: applicant.full_name,
+    hasEmail: !!applicant.email,
+    hasPhone: !!applicant.phone,
+  });
 
   // ── 5. Decrypt credentials (server-side only) ─────────────────────────────
+  console.log("[fadv/process-queue] Decrypting credentials...");
   let password: string | null = null;
   if (configResult.encryptedPassword) {
     try {
       password = decrypt(configResult.encryptedPassword);
-    } catch {
+      console.log("[fadv/process-queue] Password decrypted OK");
+    } catch (err) {
+      console.error("[fadv/process-queue] Failed to decrypt password:", err);
       await markFailed(
         supabase,
         id,
@@ -209,13 +229,17 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
       );
       return;
     }
+  } else {
+    console.warn("[fadv/process-queue] No encrypted password in config");
   }
 
   let securityAnswer: string | null = null;
   if (configResult.encryptedSecurityAnswer) {
     try {
       securityAnswer = decrypt(configResult.encryptedSecurityAnswer);
-    } catch {
+      console.log("[fadv/process-queue] Security answer decrypted OK");
+    } catch (err) {
+      console.error("[fadv/process-queue] Failed to decrypt security answer:", err);
       await markFailed(
         supabase,
         id,
@@ -229,6 +253,8 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
       );
       return;
     }
+  } else {
+    console.warn("[fadv/process-queue] No encrypted security answer in config");
   }
 
   // ── 6. Build applicant name / email — prefer column-mapped snapshot values ──
@@ -239,7 +265,14 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
   const phone     = applicant.phone ?? "";
 
   // ── 7. Call FADV API ──────────────────────────────────────────────────────
-  console.log("[fadv/process-queue] Calling FADV API for applicant:", applicant_id);
+  console.log("[fadv/process-queue] Launching browser for applicant:", applicant_id, {
+    firstName,
+    lastName,
+    hasEmail: !!email,
+    package: input_snapshot.package,
+    facilityId: input_snapshot.facility_id,
+    positionType: input_snapshot.position_type,
+  });
   const fadvResult = await runFadvApiCall({
     cspId:          configResult.cspId,
     companyIdValue: configResult.companyIdValue,
@@ -267,6 +300,11 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
   });
 
   // ── 8. Record outcome ─────────────────────────────────────────────────────
+  console.log("[fadv/process-queue] FADV API result:", {
+    success: fadvResult.success,
+    subjectId: fadvResult.success ? fadvResult.subjectId : undefined,
+    error: !fadvResult.success ? fadvResult.error : undefined,
+  });
   if (fadvResult.success) {
     await supabase
       .from("integration_submissions")

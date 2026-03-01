@@ -488,7 +488,7 @@ export function FadvCard({ companyId, accountId, initialConnection }: Props) {
                     </label>
                     <Input
                       type="text"
-                      placeholder="e.g. 12345"
+                      placeholder="e.g. V0021753"
                       value={cspId}
                       onChange={(e) => setCspId(e.target.value)}
                       autoComplete="off"
@@ -506,7 +506,7 @@ export function FadvCard({ companyId, accountId, initialConnection }: Props) {
                     </label>
                     <Input
                       type="text"
-                      placeholder="e.g. ACME001"
+                      placeholder="e.g. 300 - ISP Pickup &amp; Delivery"
                       value={companyIdValue}
                       onChange={(e) => setCompanyIdValue(e.target.value)}
                       autoComplete="off"
@@ -532,7 +532,7 @@ export function FadvCard({ companyId, accountId, initialConnection }: Props) {
                     </label>
                     <Input
                       type="text"
-                      placeholder="FADV Client ID"
+                      placeholder="e.g. 042443LHW"
                       value={clientId}
                       onChange={(e) => setClientId(e.target.value)}
                       autoComplete="off"
@@ -550,7 +550,7 @@ export function FadvCard({ companyId, accountId, initialConnection }: Props) {
                     </label>
                     <Input
                       type="text"
-                      placeholder="FADV User ID"
+                      placeholder="e.g. JSmith"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       autoComplete="off"

@@ -458,66 +458,88 @@ export async function doLoginSteps(
 
     // ── Step 2: Security question (conditional) ─────────────────────────────
     if (page.url().includes("secretQuestion")) {
-      // The security question form lives in the same new-login-iframe as the login
-      // form, but the iframe needs time to navigate from /angular/login to
-      // /angular/login/security-question after the main page lands on secretQuestion.do.
-      // If we scan frames before this navigation completes, we find the login form's
-      // textboxes (Client ID / Password) instead of the answer field, and the click
-      // then times out on a form that's mid-transition.
+      // The security answer field is input[name="answer"] rendered as type="password".
+      // getByRole("textbox") does NOT match type="password" inputs — it would find
+      // a different (wrong) field and submit the wrong value.
       //
-      // Fix: wait for the iframe to reach the security-question URL first.
-      const loginIframe = page.frame({ name: LOGIN_FRAME_NAME });
-      if (loginIframe) {
-        try {
-          await loginIframe.waitForURL(
-            (url) => url.toString().includes("security-question"),
-            { timeout: NAV_TIMEOUT_MS }
-          );
-          console.log("[doLoginSteps] Step 2: security-question iframe loaded @", loginIframe.url().split("?")[0]);
-        } catch {
-          console.warn("[doLoginSteps] Step 2: iframe URL wait timed out — proceeding with frame scan");
-        }
-      }
+      // Strategy:
+      //   1. Scan main page + all frames for SEL_SECURITY_ANSWER (legacy GWT path).
+      //      Also wait briefly for frames to settle before scanning.
+      //   2. If not found via CSS selector, fall back to the Angular iframe path
+      //      using frameLocator("#new-login-iframe") (bypasses the page.frame({ name })
+      //      issue — that API always returns null for this iframe).
 
       type FrameOrPage = import("playwright-core").Frame | import("playwright-core").Page;
+
       console.log(
         "[doLoginSteps] Step 2: frames on secretQuestion page:",
         page.frames().map((f) => `"${f.name() || "(main)"}@${f.url().split("?")[0]}"`)
       );
 
-      // Use loginIframe directly — we already confirmed it navigated to the
-      // security-question URL above. Avoid the instant count() frame scan which
-      // returns 0 while Angular is still rendering the security-question component.
-      const secCtx: FrameOrPage = loginIframe ?? page;
-      console.log(
-        `[doLoginSteps] Step 2: using frame "${loginIframe ? loginIframe.name() || "(main)" : "(page)"}" @ ${(loginIframe ?? page).url().split("?")[0]}`
-      );
+      // Brief settle pause — Angular may still be rendering the security-question
+      // component when the main page lands on secretQuestion.do.
+      await new Promise<void>((r) => setTimeout(r, 1_000));
 
-      // Wait for the answer textbox to become visible before interacting —
-      // Angular may still be rendering the component when waitForURL resolves.
-      console.log("[doLoginSteps] Step 2: waiting for answer textbox to be visible...");
-      await secCtx.getByRole("textbox").first().waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS });
-      console.log("[doLoginSteps] Step 2: answer textbox visible — typing security answer");
-
-      // pressSequentially() simulates real keystrokes — required to trigger
-      // Angular's (input) binding so the form becomes valid before submit.
-      await secCtx.getByRole("textbox").first().click();
-      await secCtx.getByRole("textbox").first().pressSequentially(params.securityAnswer, { delay: 50 });
-
-      // Use getByRole to find the Submit button — SEL_SECURITY_SUBMIT ("button#submitBtn")
-      // is a GWT selector that doesn't exist in the Angular /security-question frame.
-      const submitBtn = secCtx.getByRole("button", { name: /submit/i });
-
-      // Wait for the button to be enabled. isEnabled() checks the JS .disabled property,
-      // which is what Angular's [disabled] binding sets (not the HTML attribute).
-      try {
-        await submitBtn.waitFor({ state: "visible", timeout: 5_000 });
-        const enabled = await submitBtn.isEnabled().catch(() => false);
-        console.log(`[doLoginSteps] Step 2: Submit button ${enabled ? "enabled" : "still disabled"} — clicking`);
-      } catch {
-        console.warn("[doLoginSteps] Step 2: Submit button not visible after 5s — clicking anyway");
+      // ── Path A: Scan for legacy GWT selector input[name="answer"] ───────────
+      let secCtx: FrameOrPage = page;
+      let foundViaCss = false;
+      const allContexts: FrameOrPage[] = [page, ...page.frames()];
+      for (const ctx of allContexts) {
+        const el = await ctx.$(SEL_SECURITY_ANSWER).catch(() => null);
+        if (el) {
+          secCtx = ctx;
+          foundViaCss = true;
+          const label = ctx === page
+            ? "(main page)"
+            : `frame "${(ctx as import("playwright-core").Frame).name() || "(unnamed)"}" @ ${(ctx as import("playwright-core").Frame).url().split("?")[0]}`;
+          console.log(`[doLoginSteps] Step 2: answer field found via CSS selector in ${label}`);
+          break;
+        }
       }
-      await submitBtn.click({ force: true });
+
+      if (foundViaCss) {
+        // Legacy GWT path — fill directly into input[name="answer"].
+        // .fill() works for type="password" and triggers the native change event
+        // that GWT's form handler reads on submit.
+        console.log("[doLoginSteps] Step 2: filling answer via CSS selector (legacy GWT)");
+        await secCtx.waitForSelector(SEL_SECURITY_ANSWER, { state: "visible", timeout: NAV_TIMEOUT_MS });
+        await secCtx.locator(SEL_SECURITY_ANSWER).fill(params.securityAnswer);
+
+        // Try GWT submit button first, then generic role-based fallback.
+        const hasGwtSubmit = await secCtx.$(SEL_SECURITY_SUBMIT).catch(() => null);
+        const submitBtn = hasGwtSubmit
+          ? secCtx.locator(SEL_SECURITY_SUBMIT)
+          : secCtx.getByRole("button", { name: /submit/i });
+        console.log(`[doLoginSteps] Step 2: clicking ${hasGwtSubmit ? "GWT" : "role-based"} Submit button`);
+        await submitBtn.click({ force: true });
+      } else {
+        // ── Path B: Angular iframe via frameLocator ───────────────────────────
+        // page.frame({ name: "new-login-iframe" }) always returns null because
+        // the iframe's name JS property is "" (only its id attribute is set).
+        // Use frameLocator("#new-login-iframe") instead — it locates by id.
+        console.log("[doLoginSteps] Step 2: CSS selector not found — trying Angular iframe via frameLocator");
+        const iframeCtx = page.frameLocator(LOGIN_FRAME_ID_SEL);
+
+        // Wait for any textbox (Angular security-question component renders
+        // the answer as input[type="text"] inside a shadow-DOM fadv-input).
+        await iframeCtx.getByRole("textbox").first().waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS });
+        console.log("[doLoginSteps] Step 2: answer textbox visible in Angular iframe — typing security answer");
+
+        // pressSequentially simulates real keystrokes to trigger Angular's
+        // (input) binding so the reactive form becomes valid before submit.
+        await iframeCtx.getByRole("textbox").first().click();
+        await iframeCtx.getByRole("textbox").first().pressSequentially(params.securityAnswer, { delay: 50 });
+
+        const submitBtn = iframeCtx.getByRole("button", { name: /submit/i });
+        try {
+          await submitBtn.waitFor({ state: "visible", timeout: 5_000 });
+          const enabled = await submitBtn.isEnabled().catch(() => false);
+          console.log(`[doLoginSteps] Step 2: Submit button ${enabled ? "enabled" : "still disabled"} — clicking`);
+        } catch {
+          console.warn("[doLoginSteps] Step 2: Submit button not visible after 5s — clicking anyway");
+        }
+        await submitBtn.click({ force: true });
+      }
 
       // Wait for top-frame navigation away from the security question page.
       try {

@@ -220,41 +220,53 @@ export default function ApplicantsBoard({
     applicantIdSetRef.current = new Set(applicants.map(a => a.id));
   }, [applicants]);
 
-  // One stable Realtime channel per boardId — does not re-subscribe on re-renders.
+  // Realtime subscriptions for board cell updates.
+  // Sets auth explicitly before subscribing so postgres_changes RLS filter
+  // receives the user's JWT — without this the createBrowserClient singleton
+  // may subscribe before the session is resolved from cookies, causing the
+  // realtime server to receive an unauthenticated join and silently drop WAL events.
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`board-cells-${boardId}`)
-      .on(
-        'postgres_changes' as any,
-        { event: '*', schema: 'public', table: 'board_cells' },
-        (payload: any) => {
-          const cell = payload.new as BoardCell;
-          if (cell && applicantIdSetRef.current.has(cell.applicant_id)) {
-            applyRealtimeCell(cell);
-          }
-        }
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [boardId, applyRealtimeCell]);
+    let pgChannel: ReturnType<typeof supabase.channel> | null = null;
+    let bcChannel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
 
-  // Broadcast channel for AI-scored cell updates.
-  // Automations use the Supabase HTTP broadcast API (bypasses RLS) to push
-  // cell data here directly after writing, so clients see updates live even
-  // when postgres_changes RLS filtering blocks the WAL events.
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`board-job-${jobId}`)
-      .on('broadcast', { event: 'cell-upserted' }, ({ payload }) => {
-        if (payload && applicantIdSetRef.current.has(payload.applicant_id)) {
-          applyRealtimeCell(payload as BoardCell);
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [jobId, applyRealtimeCell]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (session?.access_token) {
+        supabase.realtime.setAuth(session.access_token);
+      }
+
+      pgChannel = supabase
+        .channel(`board-cells-${boardId}`)
+        .on(
+          'postgres_changes' as any,
+          { event: '*', schema: 'public', table: 'board_cells' },
+          (payload: any) => {
+            const cell = payload.new as BoardCell;
+            if (cell && applicantIdSetRef.current.has(cell.applicant_id)) {
+              applyRealtimeCell(cell);
+            }
+          }
+        )
+        .subscribe();
+
+      bcChannel = supabase
+        .channel(`board-job-${jobId}`)
+        .on('broadcast', { event: 'cell-upserted' }, ({ payload }) => {
+          if (payload && applicantIdSetRef.current.has(payload.applicant_id)) {
+            applyRealtimeCell(payload as BoardCell);
+          }
+        })
+        .subscribe();
+    });
+
+    return () => {
+      cancelled = true;
+      if (pgChannel) supabase.removeChannel(pgChannel);
+      if (bcChannel) supabase.removeChannel(bcChannel);
+    };
+  }, [boardId, jobId, applyRealtimeCell]);
 
   // Applicant detail side panel
   const [detailApplicantId, setDetailApplicantId] = useState<string | null>(null);
