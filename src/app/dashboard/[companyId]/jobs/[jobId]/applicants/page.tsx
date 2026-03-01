@@ -60,7 +60,7 @@ export default async function ApplicantsPage({
     .eq("id", companyId)
     .maybeSingle();
 
-  if (!company) redirect("/");
+  if (!company) redirect("/dashboard");
 
   const { data: membership } = await supabase
     .from("account_memberships")
@@ -69,7 +69,7 @@ export default async function ApplicantsPage({
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!membership) redirect("/");
+  if (!membership) redirect("/dashboard");
 
   const isSuperAdmin = user.email === SUPER_ADMIN_EMAIL;
 

@@ -14,7 +14,7 @@ export default async function SuperAdminLayout({
   } = await supabase.auth.getUser();
 
   if (!user || user.email !== SUPER_ADMIN_EMAIL) {
-    redirect("/");
+    redirect("/dashboard");
   }
 
   return (
@@ -46,7 +46,7 @@ export default async function SuperAdminLayout({
         </nav>
         <div className="ml-auto">
           <Link
-            href="/"
+            href="/dashboard"
             className="text-sm text-rf-text-secondary hover:text-rf-ink-700 transition-colors"
           >
             ← Back to App

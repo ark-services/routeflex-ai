@@ -30,7 +30,7 @@ export async function getCurrentAccountMembership(accountId: string) {
 export async function requireAdmin(accountId: string) {
   const membership = await getCurrentAccountMembership(accountId);
   if (!membership || membership.role !== "admin") {
-    redirect("/");
+    redirect("/dashboard");
   }
   return membership;
 }
@@ -38,7 +38,7 @@ export async function requireAdmin(accountId: string) {
 export async function requireMemberOrAbove(accountId: string) {
   const membership = await getCurrentAccountMembership(accountId);
   if (!membership || membership.role === "viewer") {
-    redirect("/");
+    redirect("/dashboard");
   }
   return membership;
 }

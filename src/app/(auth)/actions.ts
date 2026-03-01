@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
-  const redirectTo = (formData.get("redirectTo") as string | null) || "/";
+  const redirectTo = (formData.get("redirectTo") as string | null) || "/dashboard";
 
   const { error } = await supabase.auth.signInWithPassword({
     email: formData.get("email") as string,
@@ -15,7 +15,7 @@ export async function login(formData: FormData) {
 
   if (error) {
     const params = new URLSearchParams({ error: error.message });
-    if (redirectTo !== "/") params.set("redirectTo", redirectTo);
+    if (redirectTo !== "/dashboard") params.set("redirectTo", redirectTo);
     redirect(`/login?${params.toString()}`);
   }
 
@@ -25,14 +25,14 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient();
 
-  const redirectTo = (formData.get("redirectTo") as string | null) || "/";
+  const redirectTo = (formData.get("redirectTo") as string | null) || "/dashboard";
 
   // Build the email confirmation redirect so it preserves the final destination
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const callbackUrl =
-    redirectTo !== "/"
+    redirectTo !== "/dashboard"
       ? `${appUrl}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`
       : `${appUrl}/auth/callback`;
 
@@ -44,7 +44,7 @@ export async function signup(formData: FormData) {
 
   if (error) {
     const params = new URLSearchParams({ error: error.message });
-    if (redirectTo !== "/") params.set("redirectTo", redirectTo);
+    if (redirectTo !== "/dashboard") params.set("redirectTo", redirectTo);
     redirect(`/signup?${params.toString()}`);
   }
 
@@ -59,7 +59,7 @@ export async function signup(formData: FormData) {
   const params = new URLSearchParams({
     error: "Check your email to confirm your account",
   });
-  if (redirectTo !== "/") params.set("redirectTo", redirectTo);
+  if (redirectTo !== "/dashboard") params.set("redirectTo", redirectTo);
   redirect(`/login?${params.toString()}`);
 }
 

@@ -13,14 +13,14 @@ export function Header({
     <header className="flex items-center justify-between border-b border-rf-border py-4 mb-12">
       <div className="flex items-center gap-8">
         <Link
-          href="/"
+          href="/dashboard"
           className="text-base font-semibold tracking-tight text-rf-text-primary"
         >
           RouteFlex AI
         </Link>
         <nav className="hidden sm:flex items-center gap-5 text-sm">
           <Link
-            href="/"
+            href="/dashboard"
             className="text-rf-text-secondary hover:text-rf-text-primary transition-colors"
           >
             Companies

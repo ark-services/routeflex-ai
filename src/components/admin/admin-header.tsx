@@ -39,7 +39,7 @@ export function AdminHeader({
 
       {/* ── Branding ────────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <Link href="/" className="hover:opacity-75 transition-opacity">
+        <Link href="/dashboard" className="hover:opacity-75 transition-opacity">
           <RouteFlexLogo size="nav" />
         </Link>
         <span className="text-rf-text-muted text-sm">·</span>

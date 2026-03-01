@@ -34,8 +34,9 @@ export async function middleware(request: NextRequest) {
   const isLearnRoute = path.startsWith("/learn/");
   const isInviteRoute = path.startsWith("/invite/");
   const isStatusRoute = path.startsWith("/status/");
+  const isMarketingRoute = path === "/" || path === "/features" || path === "/pricing";
 
-  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute && !isInviteRoute && !isStatusRoute) {
+  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute && !isInviteRoute && !isStatusRoute && !isMarketingRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const redirectResponse = NextResponse.redirect(url);
@@ -50,7 +51,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/dashboard";
     const redirectResponse = NextResponse.redirect(url);
 
     // Preserve Supabase cookies on redirect

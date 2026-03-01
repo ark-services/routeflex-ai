@@ -40,7 +40,7 @@ export default async function DashboardLayout({
 
   // Verify user has access to current company
   const currentCompany = companies.find((c) => c.id === companyId);
-  if (!currentCompany) redirect("/");
+  if (!currentCompany) redirect("/dashboard");
 
   // Get user's role for this company's account
   const roleByAccount = new Map(

@@ -5,9 +5,9 @@ import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { logout } from "./(auth)/actions";
+import { logout } from "@/app/(auth)/actions";
 
-export default async function Home() {
+export default async function DashboardHome() {
   const supabase = await createClient();
   const {
     data: { user },

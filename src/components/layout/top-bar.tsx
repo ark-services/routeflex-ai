@@ -41,7 +41,7 @@ export function TopBar({
             <Menu className="h-5 w-5 text-rf-ink-500" />
           </button>
         )}
-        <Link href="/">
+        <Link href="/dashboard">
           <RouteFlexLogo size="nav" />
         </Link>
       </div>

@@ -25,7 +25,7 @@ export default async function ApplicationFormPage({
     .eq("id", companyId)
     .single();
 
-  if (!company) redirect("/");
+  if (!company) redirect("/dashboard");
 
   const { data: membership } = await supabase
     .from("account_memberships")
@@ -34,7 +34,7 @@ export default async function ApplicationFormPage({
     .eq("user_id", user.id)
     .single();
 
-  if (!membership) redirect("/");
+  if (!membership) redirect("/dashboard");
 
   // Verify job exists and belongs to company
   const { data: job } = await supabase
