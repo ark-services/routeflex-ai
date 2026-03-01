@@ -1481,7 +1481,7 @@ export default function ApplicantsBoard({
 
         {/* ====== DESKTOP TABLE VIEW (hidden on mobile) ====== */}
         <div className="hidden md:block flex-1 overflow-auto min-h-0">
-          <div className="min-w-max p-6">
+          <div className="min-w-max px-8 py-7">
             {/* Groups */}
             <div className="space-y-8">
               {/* Wrap groups in SortableContext */}
@@ -1493,7 +1493,14 @@ export default function ApplicantsBoard({
                 {localGroups.map((g) => {
                   const rows = applicantsByGroup.get(g.id) ?? [];
                   return (
-                    <section key={g.id}>
+                    <section
+                      key={g.id}
+                      className="mb-5 rounded-[14px]"
+                      style={{
+                        borderLeft: `4px solid ${g.color}`,
+                        boxShadow: '0 0 0 1px rgba(15,22,35,0.08)',
+                      }}
+                    >
                       {/* Sortable Group header */}
                       <SortableGroupHeader
                         group={g}
@@ -1550,8 +1557,7 @@ export default function ApplicantsBoard({
                       const groupTableWidth = getGroupTableWidth(collapsedColIds);
                       return (
                       <div
-                        className="overflow-visible rounded-lg border border-rf-border bg-rf-surface-card border-l-[4px]"
-                        style={{ borderLeftColor: g.color }}
+                        className="overflow-visible rounded-b-[14px] bg-rf-surface-card"
                       >
                         <table
                           className="text-left border-collapse"
@@ -2770,8 +2776,8 @@ function SortableGroupHeader({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-3 px-3 py-2.5 bg-rf-surface-card
-        border-l-[4px] border-b border-rf-ink-100
+      className={`group flex items-center gap-3 px-5 py-3.5 bg-rf-surface-card
+        rounded-t-[14px] border-b border-rf-ink-100
         sticky top-0 z-30
         ${isDragging ? "" : "shadow-[0_1px_0_0_rgb(0,0,0,0.04)]"}`}
       {...attributes}

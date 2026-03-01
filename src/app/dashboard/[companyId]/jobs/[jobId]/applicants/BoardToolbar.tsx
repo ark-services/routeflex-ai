@@ -192,15 +192,15 @@ export function BoardToolbar({
   const searchExpanded = searchFocused || searchQuery.length > 0;
 
   return (
-    <div className="bg-rf-surface-card border-b border-rf-border shrink-0">
+    <div className="shrink-0">
 
       {/* ── Row 1: Job title (primary) · Board actions (right) ───────────────
            Title is the visual anchor — large, bold, breathing room above + below.
            Board-level actions (Integrate, Automate) sit on the same row because
            they operate on the board as a whole, not on a specific view or search. */}
-      <div className="flex items-center gap-3 px-6 pt-5 pb-3 min-w-0">
+      <div className="flex items-center gap-3 px-8 pt-5 pb-2 min-w-0">
 
-        <h1 className="text-[26px] font-semibold leading-tight text-rf-text-primary truncate min-w-0 flex-1">
+        <h1 className="text-[28px] font-black leading-tight tracking-tight text-rf-text-primary truncate min-w-0 flex-1">
           {jobTitle}
         </h1>
 
@@ -277,7 +277,7 @@ export function BoardToolbar({
            No top border here; the spacing from Row 1's pb-3 provides the gap. */}
       {views.length > 0 && (
         <div
-          className="px-6 overflow-x-auto"
+          className="px-8 overflow-x-auto"
           style={{ scrollbarWidth: "none" }}
         >
           <ViewTabs
@@ -299,7 +299,7 @@ export function BoardToolbar({
            injects data-dashlane-* attributes onto form-adjacent elements after SSR,
            causing a React hydration mismatch. This prop tells React to ignore
            attribute differences on these specific nodes only. */}
-      <div className="flex items-center gap-2 px-6 py-2 border-t border-rf-ink-100" suppressHydrationWarning>
+      <div className="flex items-center gap-2 px-8 py-2" suppressHydrationWarning>
 
         {/* Search — collapses/expands on focus */}
         <div
@@ -316,7 +316,7 @@ export function BoardToolbar({
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             placeholder="Search"
-            className="w-full h-8 pl-8 pr-7 rounded-lg border border-rf-border bg-rf-surface-page text-sm text-rf-ink-700 placeholder-rf-text-muted focus:outline-none focus:ring-2 focus:ring-rf-blue focus:bg-rf-surface-card transition-colors"
+            className="w-full h-8 pl-8 pr-7 rounded-lg border border-transparent bg-transparent text-sm text-rf-ink-700 placeholder-rf-text-muted hover:bg-rf-surface-page focus:outline-none focus:border-rf-border focus:ring-2 focus:ring-rf-blue focus:bg-rf-surface-card transition-all"
           />
           {searchQuery && (
             <button

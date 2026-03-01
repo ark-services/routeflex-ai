@@ -29,7 +29,7 @@ export function TopBar({
   onMenuOpen,
 }: TopBarProps) {
   return (
-    <header className="h-14 md:h-16 border-b border-rf-border bg-rf-surface-card flex items-center justify-between px-4 md:px-6 flex-shrink-0">
+    <header className="h-12 border-b border-rf-border bg-rf-surface-card flex items-center justify-between px-4 md:px-5 flex-shrink-0">
       <div className="flex items-center gap-3">
         {/* Hamburger – mobile only */}
         {onMenuOpen && (
