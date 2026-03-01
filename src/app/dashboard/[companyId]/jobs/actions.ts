@@ -179,7 +179,7 @@ export async function addJob(formData: FormData) {
     // Fetch the created fields
     const { data: fields, error: fetchFieldsErr } = await supabase
       .from("job_application_fields")
-      .select("id, key, label, type, sort_order")
+      .select("id, key, label, type, sort_order, settings")
       .eq("form_id", form.id)
       .eq("is_active", true)
       .order("sort_order", { ascending: true });
@@ -195,6 +195,7 @@ export async function addJob(formData: FormData) {
     // STEP 5: Create board columns from form fields
     // ========================================================================
     // Map form field types to board column types
+    // Must stay in sync with form/actions.ts mapFieldTypeToColumnType
     const mapFieldTypeToColumnType = (fieldType: string): string => {
       const typeMap: Record<string, string> = {
         text: "text",
@@ -204,12 +205,19 @@ export async function addJob(formData: FormData) {
         number: "number",
         date: "date",
         file: "file",
-        checkbox: "text",
-        radio: "text",
-        select: "text",
+        checkbox: "checkbox",
+        radio: "status",
+        select: "status",
+        location: "location",
       };
       return typeMap[fieldType] || "text";
     };
+
+    /** Auto-create status labels for select/radio columns. */
+    const STATUS_LABEL_COLORS = [
+      "#6b7280", "#ef4444", "#f59e0b", "#10b981", "#3b82f6",
+      "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#06b6d4",
+    ];
 
     // Create columns from all form fields (including file uploads)
     const columnsToCreate = fields.map((field, index) => ({
@@ -233,6 +241,26 @@ export async function addJob(formData: FormData) {
       // If unique constraint violation, it means columns already exist (idempotent)
       if (!colsErr.message?.includes("unique")) {
         throw colsErr;
+      }
+    }
+
+    // Auto-create status labels for radio/select columns
+    if (insertedColumns) {
+      for (const col of insertedColumns) {
+        if (col.type !== "status") continue;
+        const field = fields.find((f) => f.label === col.name);
+        const options: string[] = (field as any)?.settings?.options ?? [];
+        if (options.length === 0) continue;
+        for (let i = 0; i < options.length; i++) {
+          const label = String(options[i]).trim();
+          if (!label) continue;
+          await supabase
+            .from("board_status_labels")
+            .upsert(
+              { column_id: col.id, label, color: STATUS_LABEL_COLORS[i % STATUS_LABEL_COLORS.length], sort_order: i },
+              { onConflict: "column_id,color" }
+            );
+        }
       }
     }
 
