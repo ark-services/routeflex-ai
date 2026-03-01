@@ -1,18 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { ApplicantsBoardContainer } from "./ApplicantsBoardContainer";
 import { getBoardViews } from "./view-actions";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
-
-/** Service-role client for board creation (bypasses RLS). */
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 const VERBOSE = false; // set to true to re-enable verbose data-loading logs
 
@@ -94,13 +85,11 @@ export default async function ApplicantsPage({
 
   // ============================================================================
   // Get or create the applicants board (self-healing)
-  // Uses service-role client to bypass RLS — the authenticated client's
-  // is_company_member() check can fail in edge cases (e.g. stale session,
-  // board created by a different auth context), causing a 23505 + empty
-  // retry loop.  Auth is already verified above via membership check.
+  // The function internally uses a service-role client for all writes and
+  // recovery fetches, so RLS edge-cases never block board creation.
   // ============================================================================
   const boardResult = await getOrCreateApplicantsBoard(
-    getSvc(),
+    supabase,
     companyId,
     jobId
   );

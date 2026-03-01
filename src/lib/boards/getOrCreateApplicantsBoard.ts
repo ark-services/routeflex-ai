@@ -1,4 +1,17 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
+
+/**
+ * Service-role client that bypasses RLS.
+ * Used for all write operations and the 409 recovery fetch so that
+ * is_company_member() edge-cases never block board creation.
+ */
+function getSvc(): SupabaseClient {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 type GroupConfig = {
   name: string;
@@ -43,10 +56,13 @@ export type GetOrCreateBoardResult =
 /**
  * Gets or creates an "Applicants" board for a job with specified groups.
  * This is idempotent and self-healing - it will create missing boards/groups automatically.
- * Uses select-then-insert pattern with duplicate key retry instead of upsert to avoid
- * PostgREST onConflict inference issues.
  *
- * @param supabase - Supabase client (must be authenticated)
+ * All write operations and the 409-recovery fetch use a **service-role client**
+ * so that RLS edge-cases (stale sessions, cross-context board creation) never
+ * block board access.  The caller's auth is expected to be verified externally
+ * (e.g. membership check in page.tsx).
+ *
+ * @param supabase - Supabase client (used for initial reads; writes use service role)
  * @param companyId - Company ID
  * @param jobId - Job ID
  * @param customGroups - Optional custom groups configuration (defaults to DEFAULT_GROUPS)
@@ -59,16 +75,19 @@ export async function getOrCreateApplicantsBoard(
   customGroups?: GroupConfig[]
 ): Promise<GetOrCreateBoardResult> {
   const groupsToUse = customGroups || DEFAULT_GROUPS;
+  // Service-role client for writes + recovery fetches (bypasses RLS)
+  const svc = getSvc();
+
   try {
     console.log(
       `[getOrCreateApplicantsBoard] Starting for job ${jobId}, company ${companyId}`
     );
 
     // ========================================================================
-    // STEP 1: Try to get existing board (CRITICAL: order by created_at to always get the FIRST one)
-    // This ensures we always return the same board even if duplicates exist
+    // STEP 1: Try to get existing board via service role (bypasses RLS)
+    // CRITICAL: order by created_at to always get the FIRST one
     // ========================================================================
-    const { data: existingBoards, error: fetchError } = await supabase
+    const { data: existingBoards, error: fetchError } = await svc
       .from("boards")
       .select("id, created_at")
       .eq("company_id", companyId)
@@ -76,22 +95,6 @@ export async function getOrCreateApplicantsBoard(
       .eq("name", "Applicants")
       .order("created_at", { ascending: true })
       .limit(1);
-
-    // Check for duplicates and warn
-    const { count: duplicateCount } = await supabase
-      .from("boards")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", companyId)
-      .eq("job_id", jobId)
-      .eq("name", "Applicants");
-
-    if (duplicateCount && duplicateCount > 1) {
-      console.warn(
-        `[getOrCreateApplicantsBoard] WARNING: ${duplicateCount} duplicate Applicants boards found for job ${jobId}. Using oldest board.`
-      );
-    }
-
-    const existingBoard = existingBoards && existingBoards.length > 0 ? existingBoards[0] : null;
 
     if (fetchError) {
       console.error(
@@ -105,6 +108,8 @@ export async function getOrCreateApplicantsBoard(
       };
     }
 
+    const existingBoard = existingBoards && existingBoards.length > 0 ? existingBoards[0] : null;
+
     let boardId: string;
 
     if (existingBoard) {
@@ -115,10 +120,11 @@ export async function getOrCreateApplicantsBoard(
     } else {
       // ========================================================================
       // STEP 2: Create board if it doesn't exist (with duplicate key retry)
+      // Uses service-role client for the INSERT
       // ========================================================================
       console.log("[getOrCreateApplicantsBoard] Board not found, creating...");
 
-      const { data: newBoard, error: createError } = await supabase
+      const { data: newBoard, error: createError } = await svc
         .from("boards")
         .insert({
           company_id: companyId,
@@ -129,28 +135,33 @@ export async function getOrCreateApplicantsBoard(
         .maybeSingle();
 
       if (createError) {
-        // If duplicate key error (23505), another process created it - re-fetch
+        // If duplicate key error (23505 / 409), another process created it — re-fetch
         if (createError.code === "23505") {
           console.log(
-            "[getOrCreateApplicantsBoard] Duplicate key, re-fetching board..."
+            "[getOrCreateApplicantsBoard] Duplicate key (23505), re-fetching with service role..."
           );
-          const { data: retryBoard, error: retryError } = await supabase
+
+          // Recovery fetch — MUST use service-role client and match the exact
+          // unique constraint filters so RLS can never block it.
+          const { data: retryBoard, error: retryError } = await svc
             .from("boards")
             .select("id")
             .eq("company_id", companyId)
             .eq("job_id", jobId)
             .eq("name", "Applicants")
+            .order("created_at", { ascending: true })
+            .limit(1)
             .maybeSingle();
 
           if (retryError || !retryBoard) {
             console.error(
-              "[getOrCreateApplicantsBoard] Failed to fetch after duplicate:",
-              retryError
+              "[getOrCreateApplicantsBoard] Failed to fetch after duplicate (service role):",
+              { retryError, retryBoard, companyId, jobId }
             );
             return {
               success: false,
               error: "Failed to create or fetch board",
-              technicalDetails: retryError?.message || "Board not found after insert conflict",
+              technicalDetails: retryError?.message || `Board not found after 23505 conflict (company=${companyId}, job=${jobId}). This should not happen with service-role client.`,
             };
           }
 
@@ -161,12 +172,12 @@ export async function getOrCreateApplicantsBoard(
         } else {
           console.error(
             "[getOrCreateApplicantsBoard] Failed to create board:",
-            createError
+            { code: createError.code, message: createError.message, details: createError.details }
           );
           return {
             success: false,
             error: "Failed to create board. Please check permissions.",
-            technicalDetails: createError.message,
+            technicalDetails: `${createError.code}: ${createError.message}`,
           };
         }
       } else if (!newBoard) {
@@ -185,9 +196,9 @@ export async function getOrCreateApplicantsBoard(
     }
 
     // ========================================================================
-    // STEP 3: Get existing groups for this board
+    // STEP 3: Get existing groups for this board (service role)
     // ========================================================================
-    const { data: existingGroups, error: groupsFetchError } = await supabase
+    const { data: existingGroups, error: groupsFetchError } = await svc
       .from("board_groups")
       .select("id, name, sort_order, color, is_collapsed, is_default_for_applications, settings, visible_to_applicants, applicant_note")
       .eq("company_id", companyId)
@@ -228,7 +239,7 @@ export async function getOrCreateApplicantsBoard(
       }));
 
       // Insert groups (ignore duplicates from race conditions)
-      const { error: createGroupsError } = await supabase
+      const { error: createGroupsError } = await svc
         .from("board_groups")
         .insert(groupInserts)
         .select("id");
@@ -246,7 +257,7 @@ export async function getOrCreateApplicantsBoard(
       }
 
       // Re-fetch all groups to get complete list
-      const { data: allGroups, error: refetchError } = await supabase
+      const { data: allGroups, error: refetchError } = await svc
         .from("board_groups")
         .select("id, name, sort_order, color, is_collapsed, is_default_for_applications, settings, visible_to_applicants, applicant_note")
         .eq("company_id", companyId)
