@@ -2888,6 +2888,38 @@ export async function debugAutomationRun(
 }
 
 // ============================================================================
+// Realtime broadcast helper for ai.score_resume
+// Sends cell data to subscribed board clients via Supabase HTTP broadcast API.
+// This bypasses RLS (which blocks postgres_changes for complex JOIN policies).
+// Non-fatal: clients fall back to refresh if the fetch fails.
+// ============================================================================
+async function broadcastCell(jobId: string, cellData: Record<string, unknown>) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) return;
+
+  try {
+    await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${serviceKey}`,
+        'apikey':         serviceKey,
+      },
+      body: JSON.stringify({
+        messages: [{
+          topic:   `realtime:board-job-${jobId}`,
+          event:   'cell-upserted',
+          payload:  cellData,
+        }],
+      }),
+    });
+  } catch (e) {
+    console.error('[broadcastCell] non-fatal broadcast error:', e);
+  }
+}
+
+// ============================================================================
 // Action: ai.score_resume
 // Config: {
 //   file_column_id?: string,     — board file column with resume (optional)
@@ -2938,45 +2970,47 @@ async function executeAiScoreResume(
 
   // ── Helpers: write score (number) and feedback (text) to board cells ─────────
   async function writeScoreCell(score: number | null) {
+    const cellData = {
+      applicant_id:          applicantId,
+      column_id:             score_column_id,
+      value_text:            null,
+      value_number:          score,
+      value_date:            null,
+      value_bool:            null,
+      value_status_label_id: null,
+      value_file_path:       null,
+    };
     try {
       await supabase
         .from('board_cells')
-        .upsert(
-          {
-            applicant_id:          applicantId,
-            column_id:             score_column_id,
-            value_text:            null,
-            value_number:          score,
-            value_date:            null,
-            value_status_label_id: null,
-            value_file_path:       null,
-          },
-          { onConflict: 'applicant_id,column_id' }
-        );
+        .upsert(cellData, { onConflict: 'applicant_id,column_id' });
     } catch (err) {
       console.error('[executeAiScoreResume] writeScoreCell error (non-fatal):', err);
     }
+    // Broadcast to board clients regardless of postgres_changes RLS
+    await broadcastCell(jobId, cellData);
   }
 
   async function writeFeedbackCell(text: string) {
+    const cellData = {
+      applicant_id:          applicantId,
+      column_id:             feedback_column_id,
+      value_text:            text,
+      value_number:          null,
+      value_date:            null,
+      value_bool:            null,
+      value_status_label_id: null,
+      value_file_path:       null,
+    };
     try {
       await supabase
         .from('board_cells')
-        .upsert(
-          {
-            applicant_id:          applicantId,
-            column_id:             feedback_column_id,
-            value_text:            text,
-            value_number:          null,
-            value_date:            null,
-            value_status_label_id: null,
-            value_file_path:       null,
-          },
-          { onConflict: 'applicant_id,column_id' }
-        );
+        .upsert(cellData, { onConflict: 'applicant_id,column_id' });
     } catch (err) {
       console.error('[executeAiScoreResume] writeFeedbackCell error (non-fatal):', err);
     }
+    // Broadcast to board clients regardless of postgres_changes RLS
+    await broadcastCell(jobId, cellData);
   }
 
   // ── Resolve resume file ─────────────────────────────────────────────────────

@@ -239,6 +239,23 @@ export default function ApplicantsBoard({
     return () => { supabase.removeChannel(channel); };
   }, [boardId, applyRealtimeCell]);
 
+  // Broadcast channel for AI-scored cell updates.
+  // Automations use the Supabase HTTP broadcast API (bypasses RLS) to push
+  // cell data here directly after writing, so clients see updates live even
+  // when postgres_changes RLS filtering blocks the WAL events.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`board-job-${jobId}`)
+      .on('broadcast', { event: 'cell-upserted' }, ({ payload }) => {
+        if (payload && applicantIdSetRef.current.has(payload.applicant_id)) {
+          applyRealtimeCell(payload as BoardCell);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [jobId, applyRealtimeCell]);
+
   // Applicant detail side panel
   const [detailApplicantId, setDetailApplicantId] = useState<string | null>(null);
 
