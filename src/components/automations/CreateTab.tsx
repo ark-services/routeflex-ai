@@ -599,6 +599,9 @@ export function CreateTab({
                 accountId={accountId}
                 onChange={(updates) => updateAction(index, updates)}
                 onRemove={() => removeAction(index)}
+                triggerKey={selectedTrigger?.key}
+                triggerConfig={triggerConfig}
+                filterConditions={filterConditions}
               />
             ))}
 
@@ -1039,6 +1042,9 @@ function ActionEditor({
   accountId,
   onChange,
   onRemove,
+  triggerKey,
+  triggerConfig,
+  filterConditions,
 }: {
   action: Action;
   index: number;
@@ -1049,6 +1055,9 @@ function ActionEditor({
   accountId: string;
   onChange: (updates: Partial<Action>) => void;
   onRemove: () => void;
+  triggerKey?: string;
+  triggerConfig?: Record<string, any>;
+  filterConditions?: FilterCondition[];
 }) {
   const actionTypes = [
     { value: "move_group", label: "Move item to group" },
@@ -1240,6 +1249,9 @@ function ActionEditor({
             action={action}
             columns={columns}
             onChange={onChange}
+            triggerKey={triggerKey}
+            triggerConfig={triggerConfig}
+            filterConditions={filterConditions}
           />
         )}
 

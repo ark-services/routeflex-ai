@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Mail, Plus, ChevronDown, User, AtSign, AlertCircle } from "lucide-react";
+import { Mail, Plus, ChevronDown, User, AtSign, AlertCircle, Sparkles, X, Loader2 } from "lucide-react";
 
 interface Column {
   id: string;
@@ -14,12 +14,22 @@ interface GmailConnection {
   email_address: string;
 }
 
+interface FilterCondition {
+  type: string;
+  column_id?: string;
+  value: string | number | "";
+}
+
 interface SendEmailGmailActionProps {
   companyId: string;
   accountId: string;
   action: { type: string; config: Record<string, any> };
   columns: Column[];
   onChange: (updates: { config: Record<string, any> }) => void;
+  // Automation context for AI generation
+  triggerKey?: string;
+  triggerConfig?: Record<string, any>;
+  filterConditions?: FilterCondition[];
 }
 
 export function SendEmailGmailAction({
@@ -28,6 +38,9 @@ export function SendEmailGmailAction({
   action,
   columns,
   onChange,
+  triggerKey,
+  triggerConfig,
+  filterConditions,
 }: SendEmailGmailActionProps) {
   const integrationsHref = `/admin/${accountId}/companies/${companyId}/integrations`;
   const [connections, setConnections] = useState<GmailConnection[]>([]);
@@ -36,6 +49,12 @@ export function SendEmailGmailAction({
   const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
   const [showVariableMenu, setShowVariableMenu] = useState(false);
   const [variableTarget, setVariableTarget] = useState<'subject' | 'body'>('subject');
+
+  // AI generation state
+  const [showAiPanel, setShowAiPanel] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     loadConnections();
@@ -52,6 +71,36 @@ export function SendEmailGmailAction({
       console.error('Failed to load connections:', err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleGenerateEmail() {
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const response = await fetch('/api/automations/generate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trigger_key: triggerKey ?? '',
+          trigger_config: triggerConfig ?? {},
+          filter_conditions: filterConditions ?? [],
+          columns,
+          user_prompt: aiPrompt,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setAiError(data.error ?? 'Failed to generate email.');
+        return;
+      }
+      onChange({ config: { ...action.config, subject: data.subject, body: data.body } });
+      setShowAiPanel(false);
+      setAiPrompt('');
+    } catch (err) {
+      setAiError('Failed to generate email. Please try again.');
+    } finally {
+      setAiLoading(false);
     }
   }
 
@@ -158,9 +207,79 @@ export function SendEmailGmailAction({
 
       {/* Step 2: Compose Email */}
       <div>
-        <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">
-          Email
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Email
+          </label>
+          <button
+            onClick={() => {
+              setShowAiPanel(!showAiPanel);
+              setAiError('');
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors"
+          >
+            <Sparkles className="w-3 h-3" />
+            Generate with AI
+          </button>
+        </div>
+
+        {/* AI Generation Panel */}
+        {showAiPanel && (
+          <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-purple-800">Generate email with AI</p>
+                <p className="text-xs text-purple-600 mt-0.5">
+                  AI will use your automation&apos;s trigger and conditions as context.
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowAiPanel(false); setAiError(''); }}
+                className="text-purple-400 hover:text-purple-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-purple-700 mb-1 block">
+                Additional instructions (optional)
+              </label>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="e.g., Keep it short and friendly. Mention that they can reapply in 6 months."
+                className="w-full px-3 py-2 border border-purple-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white resize-none"
+                rows={3}
+              />
+            </div>
+
+            {aiError && (
+              <div className="flex items-center gap-2 text-xs text-red-600">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                {aiError}
+              </div>
+            )}
+
+            <button
+              onClick={handleGenerateEmail}
+              disabled={aiLoading}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {aiLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Generate email
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="space-y-3">
           {/* Subject */}
