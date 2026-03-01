@@ -2899,7 +2899,7 @@ async function broadcastCell(jobId: string, cellData: Record<string, unknown>) {
   if (!supabaseUrl || !serviceKey) return;
 
   try {
-    await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
+    const res = await fetch(`${supabaseUrl}/realtime/v1/api/broadcast`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -2914,8 +2914,14 @@ async function broadcastCell(jobId: string, cellData: Record<string, unknown>) {
         }],
       }),
     });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '(unreadable)');
+      console.error(`[broadcastCell] HTTP ${res.status} from Realtime API:`, body);
+    } else {
+      console.log(`[broadcastCell] OK — jobId=${jobId} col=${String(cellData.column_id)}`);
+    }
   } catch (e) {
-    console.error('[broadcastCell] non-fatal broadcast error:', e);
+    console.error('[broadcastCell] non-fatal fetch error:', e);
   }
 }
 
