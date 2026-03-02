@@ -83,6 +83,16 @@ export async function deleteCourse(companyId: string, courseId: string) {
     .single();
   if (!data) throw new Error("Course not found");
 
+  // lms_enrollments references lms_courses with ON DELETE RESTRICT, so we must
+  // delete enrollments (and their cascading module_progress rows) before the course.
+  // All other child tables (lms_modules, lms_questions) use ON DELETE CASCADE and
+  // are handled automatically when the course row is deleted.
+  const { error: enrollErr } = await svc
+    .from("lms_enrollments")
+    .delete()
+    .eq("course_id", courseId);
+  if (enrollErr) throw new Error(`Failed to delete enrollments: ${enrollErr.message}`);
+
   const { error } = await svc.from("lms_courses").delete().eq("id", courseId);
   if (error) throw new Error(error.message);
   revalidatePath(`/dashboard/${companyId}/training`);
