@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { validateEmail, validatePhone, validateLocation } from "@/lib/validation/columnValidation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
+import { getOrCreateApplicantsBoard as getOrCreateBoardLib } from "@/lib/boards/getOrCreateApplicantsBoard";
 
 const VERBOSE = false; // set to true to re-enable verbose action logs
 
@@ -15,52 +16,6 @@ function actorName(user: { user_metadata?: { full_name?: string }; email?: strin
 
 function dashPath(companyId: string, jobId: string) {
   return `/dashboard/${companyId}/jobs/${jobId}/applicants`;
-}
-
-// ===== Board Management =====
-
-/**
- * Gets or creates the canonical "Applicants" board for a specific job.
- * Ensures exactly one Applicants board exists per job.
- */
-export async function getOrCreateApplicantsBoard(
-  companyId: string,
-  jobId: string
-): Promise<string> {
-  const supabase = await createClient();
-
-  // Look for existing Applicants board for this specific job
-  const { data: existingBoards } = await supabase
-    .from("boards")
-    .select("id, name")
-    .eq("company_id", companyId)
-    .eq("job_id", jobId)
-    .eq("name", "Applicants")
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if (existingBoards && existingBoards.length > 0) {
-    // Return the first (oldest) Applicants board for this job
-    return existingBoards[0].id;
-  }
-
-  // No board exists for this job, create one
-  const { data: newBoard, error: boardError } = await supabase
-    .from("boards")
-    .insert({
-      company_id: companyId,
-      job_id: jobId,
-      name: "Applicants",
-    })
-    .select("id")
-    .single();
-
-  if (boardError) {
-    console.error("[getOrCreateApplicantsBoard] Failed to create Applicants board:", boardError);
-    throw new Error("Failed to create Applicants board");
-  }
-
-  return newBoard.id;
 }
 
 // Note: Board columns and groups are now created during job creation
@@ -698,8 +653,12 @@ export async function createBoardColumn(
 ) {
   const supabase = await createClient();
 
-  // Get or create the job-scoped Applicants board
-  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
+  // Get or create the job-scoped Applicants board (uses service-role internally)
+  const boardResult = await getOrCreateBoardLib(supabase, companyId, jobId);
+  if (!boardResult.success) {
+    throw new Error(boardResult.error);
+  }
+  const boardId = boardResult.board.id;
 
   let targetSortOrder: number;
 
@@ -812,8 +771,12 @@ export async function duplicateBoardColumn(
 ) {
   const supabase = await createClient();
 
-  // Get or create the job-scoped Applicants board
-  const boardId = await getOrCreateApplicantsBoard(companyId, jobId);
+  // Get or create the job-scoped Applicants board (uses service-role internally)
+  const boardResult = await getOrCreateBoardLib(supabase, companyId, jobId);
+  if (!boardResult.success) {
+    throw new Error(boardResult.error);
+  }
+  const boardId = boardResult.board.id;
 
   // Get the source column
   const { data: sourceColumn, error: readErr } = await supabase
