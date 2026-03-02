@@ -568,7 +568,15 @@ export function CreateTab({
         <TriggerSelector
           triggers={triggers}
           selectedTrigger={selectedTrigger}
-          onSelect={setSelectedTrigger}
+          onSelect={(trigger) => {
+            // Reset config when trigger type changes so stale keys
+            // (e.g. to_group_id from applicant.moved_group) don't bleed
+            // into the new trigger's filter on save.
+            if (trigger?.key !== selectedTrigger?.key) {
+              setTriggerConfig({});
+            }
+            setSelectedTrigger(trigger);
+          }}
           triggerConfig={triggerConfig}
           onConfigChange={setTriggerConfig}
           columns={columns}

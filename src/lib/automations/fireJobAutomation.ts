@@ -420,6 +420,21 @@ async function matchesFilter(
       continue;
     }
 
+    // Special handling for to_group_id: only relevant for applicant.moved_group events
+    // (those include to_group_id in their payload). For status-change and other events
+    // the payload has no to_group_id — skip rather than failing the match, because this
+    // key can end up in the filter as stale data when a user switches trigger types in the UI.
+    if (key === 'to_group_id') {
+      if (payload.to_group_id === undefined || payload.to_group_id === null) {
+        console.log(`[matchesFilter] to_group_id: payload has no to_group_id — skipping (stale filter key)`);
+        continue;
+      }
+      const matches = payload.to_group_id === value;
+      console.log(`[matchesFilter] to_group_id: filter=${value}, payload=${payload.to_group_id}, match=${matches}`);
+      if (!matches) return false;
+      continue;
+    }
+
     // Generic key match for any other filter keys
     const matches = payload[key] === value;
     console.log(`[matchesFilter] ${key}: filter=${value}, payload=${payload[key]}, match=${matches}`);
