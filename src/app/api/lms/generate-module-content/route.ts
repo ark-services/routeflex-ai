@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 const MAX_IMAGES = 20;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB decoded
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB per image (decoded)
+
+// Allow up to 60 s for the Anthropic call (image analysis can be slow).
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   // Auth check — must be a signed-in user

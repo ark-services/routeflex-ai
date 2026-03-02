@@ -38,9 +38,9 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
     });
   }
 
-  // Compress image to max 1280px on the longest side, JPEG quality 0.85.
-  // Turns a ~2.5MB slide PNG into ~150KB — 20 slides stay well under 4MB total.
-  async function compressImage(dataUrl: string, maxDim = 1280, quality = 0.85): Promise<string> {
+  // Compress image to max 900px on the longest side, JPEG quality 0.78.
+  // Targets ~60–80 KB per slide so 20 slides stay well under 2 MB total payload.
+  async function compressImage(dataUrl: string, maxDim = 900, quality = 0.78): Promise<string> {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -101,6 +101,22 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
       setError("Upload at least one slide image.");
       return;
     }
+
+    // Client-side payload guard — estimate JSON size before sending.
+    // Each base64 char ≈ 1 byte; add ~200 B per image for JSON framing.
+    const estimatedBytes = images.reduce(
+      (sum, img) => sum + img.dataUrl.length + 200,
+      0
+    );
+    const MB = estimatedBytes / (1024 * 1024);
+    if (MB > 3.5) {
+      setError(
+        `Combined slide data is ~${MB.toFixed(1)} MB — too large to send. ` +
+          `Try uploading ${Math.floor(images.length * 0.7)} slides or fewer.`
+      );
+      return;
+    }
+
     setGenerating(true);
     setError(null);
 
@@ -114,7 +130,19 @@ export function GenerateWithAI({ moduleTitle, onGenerated }: Props) {
         }),
       });
 
-      const data = await res.json();
+      // Handle 413 before trying to parse JSON — the server returns plain text
+      if (res.status === 413) {
+        throw new Error(
+          "Payload too large. Try uploading fewer slides or removing the largest images."
+        );
+      }
+
+      let data: { content?: string; error?: string };
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server error (HTTP ${res.status}). Please try again.`);
+      }
 
       if (!res.ok) {
         throw new Error(data.error ?? "Generation failed");
