@@ -30,11 +30,13 @@ interface Props {
     is_final_exam: boolean;
   };
   questions: Question[];
+  /** Combined content of all non-exam modules — passed in for final-exam question generation. */
+  templateContent?: string;
 }
 
 const OPTION_IDS = ["a", "b", "c", "d"];
 
-export function ModuleEditor({ templateId, module: mod, questions: initialQuestions }: Props) {
+export function ModuleEditor({ templateId, module: mod, questions: initialQuestions, templateContent }: Props) {
   const [title, setTitle] = useState(mod.title);
   const [content, setContent] = useState(mod.content);
   const [contentTab, setContentTab] = useState<"write" | "preview">("write");
@@ -89,8 +91,15 @@ export function ModuleEditor({ templateId, module: mod, questions: initialQuesti
   }
 
   async function handleGenerateQuestions() {
-    if (!content.trim()) {
-      alert("Add module content first, then generate questions.");
+    // For regular modules, require content. For the final exam, fall back to
+    // templateContent (all other modules in the course concatenated).
+    const sourceContent = content.trim() || (mod.is_final_exam ? templateContent : undefined);
+    if (!sourceContent) {
+      alert(
+        mod.is_final_exam
+          ? "No module content found in this course yet. Add content to the training modules first."
+          : "Add module content first, then generate questions."
+      );
       return;
     }
     if (questions.length > 0) {
@@ -104,7 +113,7 @@ export function ModuleEditor({ templateId, module: mod, questions: initialQuesti
       const res = await fetch("/api/lms/generate-questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify({ title, content: sourceContent }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Generation failed");

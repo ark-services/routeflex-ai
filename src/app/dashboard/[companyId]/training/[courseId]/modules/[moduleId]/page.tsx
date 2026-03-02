@@ -53,6 +53,25 @@ export default async function ModulePage({
 
   if (!mod) notFound();
 
+  // For the final exam, compile all other modules' content so question
+  // generation covers the full course rather than requiring exam-level content.
+  let courseContent: string | undefined;
+  if (mod.is_final_exam) {
+    const { data: otherModules } = await svc
+      .from("lms_modules")
+      .select("title, content")
+      .eq("course_id", courseId)
+      .eq("is_final_exam", false)
+      .order("sort_order", { ascending: true });
+
+    if (otherModules && otherModules.length > 0) {
+      courseContent = otherModules
+        .filter((m) => m.content?.trim())
+        .map((m) => `## ${m.title}\n\n${m.content}`)
+        .join("\n\n---\n\n");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-rf-surface-page p-6">
       <div className="max-w-3xl mx-auto">
@@ -74,6 +93,7 @@ export default async function ModulePage({
           courseId={courseId}
           module={mod}
           questions={questions ?? []}
+          templateContent={courseContent}
         />
       </div>
     </div>

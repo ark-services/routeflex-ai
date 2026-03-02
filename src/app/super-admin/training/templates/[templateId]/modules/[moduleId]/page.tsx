@@ -34,6 +34,25 @@ export default async function TemplateModulePage({
 
   if (!template || !mod) notFound();
 
+  // For the final exam, fetch all other modules' content so "Generate Questions"
+  // can generate across the full course rather than requiring exam-level content.
+  let templateContent: string | undefined;
+  if (mod.is_final_exam) {
+    const { data: otherModules } = await svc
+      .from("lms_template_modules")
+      .select("title, content")
+      .eq("template_id", templateId)
+      .eq("is_final_exam", false)
+      .order("sort_order", { ascending: true });
+
+    if (otherModules && otherModules.length > 0) {
+      templateContent = otherModules
+        .filter((m) => m.content?.trim())
+        .map((m) => `## ${m.title}\n\n${m.content}`)
+        .join("\n\n---\n\n");
+    }
+  }
+
   return (
     <div>
       {/* Breadcrumb */}
@@ -56,6 +75,7 @@ export default async function TemplateModulePage({
         templateId={templateId}
         module={mod}
         questions={questions ?? []}
+        templateContent={templateContent}
       />
     </div>
   );
