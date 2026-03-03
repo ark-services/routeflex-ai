@@ -2454,6 +2454,8 @@ async function executeLmsSendTrainingLink(
     in_progress_label_id,
     passed_label_id,
     failed_label_id,
+    custom_subject,
+    custom_message,
   } = config;
   const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
 
@@ -2660,12 +2662,24 @@ async function executeLmsSendTrainingLink(
 
   const companyName = company?.name ?? 'Your employer';
   const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
+  const fullName = applicant.full_name ?? 'there';
+
+  // Substitute {{variables}} in custom subject/message if provided
+  function substituteVars(template: string): string {
+    return template
+      .replace(/\{\{first_name\}\}/g, firstName)
+      .replace(/\{\{full_name\}\}/g, fullName)
+      .replace(/\{\{company_name\}\}/g, companyName)
+      .replace(/\{\{training_link\}\}/g, trainingUrl);
+  }
 
   const { subject, body: emailBody } = buildTrainingLinkEmail({
     firstName,
     companyName,
     logoUrl: company?.logo_url,
     trainingUrl,
+    customSubject: custom_subject ? substituteVars(custom_subject) : undefined,
+    customMessage: custom_message ? substituteVars(custom_message) : undefined,
   });
 
   const emailResult = await sendEmail(gmail.gmail, {

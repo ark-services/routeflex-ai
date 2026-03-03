@@ -1497,6 +1497,37 @@ function ActionEditor({
                 )}
               </div>
 
+              {/* Email customization */}
+              <div className="space-y-2 pt-1 border-t border-gray-100">
+                <div className="flex flex-wrap items-start gap-2">
+                  <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email subject</span>
+                  <input
+                    type="text"
+                    value={action.config.custom_subject ?? ""}
+                    onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
+                    placeholder="Action required: Complete your safety training"
+                    className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex flex-wrap items-start gap-2">
+                  <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email message</span>
+                  <div className="flex-1 min-w-0">
+                    <textarea
+                      value={action.config.custom_message ?? ""}
+                      onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
+                      placeholder={`Hi {{first_name}}, please complete your required training before your start date.`}
+                      rows={3}
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Variables: <code className="bg-gray-100 px-1 rounded">{"{{first_name}}"}</code>{" "}
+                      <code className="bg-gray-100 px-1 rounded">{"{{full_name}}"}</code>{" "}
+                      <code className="bg-gray-100 px-1 rounded">{"{{company_name}}"}</code>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Output column — text only */}
               <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
                 <span className="text-sm text-gray-500 w-36 shrink-0">Write progress to</span>
