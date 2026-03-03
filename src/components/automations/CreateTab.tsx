@@ -1584,7 +1584,7 @@ function ActionEditor({
                 { label: "First Name", token: "{{first_name}}" },
                 { label: "Full Name", token: "{{full_name}}" },
                 { label: "Company Name", token: "{{company_name}}" },
-                { label: "Portal Link", token: "{{portal_link}}" },
+                { label: "Application Progress Page", token: "{{portal_link}}" },
               ],
             },
             ...(columns.length > 0
@@ -2279,10 +2279,6 @@ function VariablePickerButton({
                   className="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
                 >
                   <span className="text-gray-700 truncate">{v.label}</span>
-                  {/* Show code hint only for short built-in tokens; slugs are readable enough */}
-                  {v.token.length <= 20 && (
-                    <code className="text-gray-400 text-xs bg-gray-100 px-1 rounded shrink-0">{v.token}</code>
-                  )}
                 </button>
               ))}
             </div>
