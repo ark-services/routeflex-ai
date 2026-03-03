@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Zap } from "lucide-react";
 import { AutomationOverlay } from "@/components/automations/AutomationOverlay";
 
@@ -23,7 +24,22 @@ export function AutomateButton({
   triggers,
   groups,
 }: AutomateButtonProps) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Auto-open when returning from the Edit Automation page (?automate=open)
+  useEffect(() => {
+    if (searchParams.get("automate") === "open") {
+      setIsOpen(true);
+      // Remove the query param so it doesn't persist on refresh
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("automate");
+      const newUrl = params.size > 0 ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [searchParams, router, pathname]);
 
   return (
     <>
