@@ -2222,7 +2222,7 @@ function VariablePickerButton({
   onChange,
 }: {
   groups: VariableGroup[];
-  fieldRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement>;
+  fieldRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   value: string;
   onChange: (newValue: string) => void;
 }) {
