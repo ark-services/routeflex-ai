@@ -866,7 +866,21 @@ export async function updateBoardColumn(
     throw new Error(error.message);
   }
 
-  revalidatePath(dashPath(companyId, jobId));
+  // Skip revalidatePath for visibility-only changes.
+  // `is_hidden` is managed optimistically on the client; a full RSC re-render
+  // races with the 1500 ms router.refresh() used after status-change automations
+  // and can overwrite the local hide/show state before the DB write is visible.
+  // Structural changes (name, sort_order, settings) still need revalidation so
+  // column headers and ordering stay in sync across the board.
+  const isVisibilityOnly =
+    updates.is_hidden !== undefined &&
+    updates.name === undefined &&
+    updates.sort_order === undefined &&
+    updates.settings === undefined;
+
+  if (!isVisibilityOnly) {
+    revalidatePath(dashPath(companyId, jobId));
+  }
 }
 
 export async function deleteBoardColumn(
