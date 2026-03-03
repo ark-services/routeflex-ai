@@ -151,6 +151,7 @@ export default function ApplicantsBoard({
   cells,
   searchQuery = "",
   activeFilters = [],
+  hasStatusMoveAutomations = false,
 }: {
   companyId: string;
   jobId: string;
@@ -162,6 +163,10 @@ export default function ApplicantsBoard({
   cells: BoardCell[];
   searchQuery?: string;
   activeFilters?: ActiveFilter[];
+  /** Only true when there's an enabled automation with trigger_key=board.status_changes_to
+   *  AND a move_group action. When false, skip router.refresh() after status changes
+   *  since there are no server-side group moves to pick up. */
+  hasStatusMoveAutomations?: boolean;
 }) {
   // CRITICAL: Log props received to debug filtering
   if (VERBOSE) console.log('[ApplicantsBoard] Component rendered with props:', {
@@ -1145,8 +1150,9 @@ export default function ApplicantsBoard({
               return next;
             });
             alert(`Updated ${result.successful} of ${selectedIds.length} applicants. ${result.failed} failed.`);
-          } else {
-            // Refresh to pick up automation-triggered group moves
+          } else if (hasStatusMoveAutomations) {
+            // Only refresh if there's an enabled move_group automation that may
+            // have repositioned applicants in the after() callback.
             setTimeout(() => router.refresh(), 1500);
           }
         } catch (error) {
@@ -1175,9 +1181,9 @@ export default function ApplicantsBoard({
           });
           console.warn('[onUpdateCell] Cell update rejected:', result);
           showCellError(result.message);
-        } else if (columnType === 'status') {
-          // Status changes can trigger automations (e.g. move_group) that run in after().
-          // Refresh after a short delay to pick up any automation-triggered group moves.
+        } else if (columnType === 'status' && hasStatusMoveAutomations) {
+          // Only refresh if there's an enabled move_group automation that may
+          // have repositioned this applicant in the after() callback.
           setTimeout(() => router.refresh(), 1500);
         }
       });

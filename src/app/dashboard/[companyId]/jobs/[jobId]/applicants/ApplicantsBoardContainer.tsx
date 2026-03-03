@@ -72,6 +72,16 @@ export function ApplicantsBoardContainer({
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
   const [activityLogOpen, setActivityLogOpen] = useState(false);
 
+  // Only trigger router.refresh() after status changes when there's an enabled
+  // automation that listens for status changes AND has a move_group action.
+  // Without such an automation, the RSC refetch is unnecessary overhead.
+  const hasStatusMoveAutomations = automations.some(
+    (a) =>
+      a.is_enabled &&
+      a.trigger_key === "board.status_changes_to" &&
+      a.automation_actions?.some((action: any) => action.type === "move_group")
+  );
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Monday-style toolbar: search · filter · integrate · automate | views */}
@@ -109,6 +119,7 @@ export function ApplicantsBoardContainer({
           cells={cells}
           searchQuery={searchQuery}
           activeFilters={activeFilters}
+          hasStatusMoveAutomations={hasStatusMoveAutomations}
         />
       </div>
 
