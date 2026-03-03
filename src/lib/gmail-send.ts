@@ -211,18 +211,27 @@ export function buildPortalLinkEmail(params: {
   companyName: string;
   logoUrl?: string | null;
   portalUrl: string;
+  /** Optional custom subject. Replaces the default subject line. */
+  customSubject?: string;
+  /**
+   * Optional custom message body (plain text with newlines).
+   * Replaces the default greeting + instruction paragraphs.
+   * Supports {{first_name}}, {{full_name}}, {{company_name}} — already
+   * substituted by the caller before being passed here.
+   */
+  customMessage?: string;
 }): { subject: string; body: string } {
-  const { firstName, companyName, logoUrl, portalUrl } = params;
-  const subject = `Your application status - ${companyName}`;
+  const { firstName, companyName, logoUrl, portalUrl, customSubject, customMessage } = params;
+  const subject = customSubject ?? `Your application status - ${companyName}`;
+  const messageHtml = customMessage
+    ? customMessage.replace(/\n/g, '<br>')
+    : `Hi ${firstName},<br><br>Use the link below to check where you are in the hiring process and see what's next.`;
   const body = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; padding: 32px 24px;">
   ${logoUrl ? `<img src="${logoUrl}" alt="${companyName}" style="height: 48px; margin-bottom: 28px; display: block;" />` : `<p style="font-size: 18px; font-weight: 700; margin-bottom: 28px;">${companyName}</p>`}
   <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 12px;">Track your application</h2>
-  <p style="font-size: 15px; color: #555; margin: 0 0 8px; line-height: 1.6;">
-    Hi ${firstName},
-  </p>
   <p style="font-size: 15px; color: #555; margin: 0 0 28px; line-height: 1.6;">
-    Use the link below to check where you are in the hiring process and see what's next.
+    ${messageHtml}
   </p>
   <a href="${portalUrl}"
      style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none;

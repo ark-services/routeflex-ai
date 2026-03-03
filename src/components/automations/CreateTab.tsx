@@ -1501,17 +1501,29 @@ function ActionEditor({
               <div className="space-y-2 pt-1 border-t border-gray-100">
                 <div className="flex flex-wrap items-start gap-2">
                   <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email subject</span>
-                  <input
-                    type="text"
-                    value={action.config.custom_subject ?? ""}
-                    onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
-                    placeholder="Action required: Complete your safety training"
-                    className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-end mb-1">
+                      <VariablePickerButton
+                        onInsert={(v) => onChange({ config: { ...action.config, custom_subject: (action.config.custom_subject ?? "") + v } })}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={action.config.custom_subject ?? ""}
+                      onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
+                      placeholder="Action required: Complete your safety training"
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-start gap-2">
                   <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email message</span>
                   <div className="flex-1 min-w-0">
+                    <div className="flex justify-end mb-1">
+                      <VariablePickerButton
+                        onInsert={(v) => onChange({ config: { ...action.config, custom_message: (action.config.custom_message ?? "") + v } })}
+                      />
+                    </div>
                     <textarea
                       value={action.config.custom_message ?? ""}
                       onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
@@ -1519,11 +1531,6 @@ function ActionEditor({
                       rows={3}
                       className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                     />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Variables: <code className="bg-gray-100 px-1 rounded">{"{{first_name}}"}</code>{" "}
-                      <code className="bg-gray-100 px-1 rounded">{"{{full_name}}"}</code>{" "}
-                      <code className="bg-gray-100 px-1 rounded">{"{{company_name}}"}</code>
-                    </p>
                   </div>
                 </div>
               </div>
@@ -1552,6 +1559,44 @@ function ActionEditor({
                 onSelect={(id) => onChange({ config: { ...action.config, email_column_id: id } })}
                 placeholder="auto-detect"
               />
+            </div>
+
+            {/* Email customization */}
+            <div className="space-y-2 pt-1 border-t border-gray-100">
+              <div className="flex flex-wrap items-start gap-2">
+                <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email subject</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-end mb-1">
+                    <VariablePickerButton
+                      onInsert={(v) => onChange({ config: { ...action.config, custom_subject: (action.config.custom_subject ?? "") + v } })}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={action.config.custom_subject ?? ""}
+                    onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
+                    placeholder="Your application status"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-start gap-2">
+                <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email message</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-end mb-1">
+                    <VariablePickerButton
+                      onInsert={(v) => onChange({ config: { ...action.config, custom_message: (action.config.custom_message ?? "") + v } })}
+                    />
+                  </div>
+                  <textarea
+                    value={action.config.custom_message ?? ""}
+                    onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
+                    placeholder={`Hi {{first_name}}, use the link below to check your application status.`}
+                    rows={3}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2100,6 +2145,56 @@ function CoursePicker({
               No published courses — create and publish a course in Training first
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Variables available for email customization in LMS / portal actions
+const EMAIL_TEMPLATE_VARIABLES = [
+  { label: "First Name", token: "{{first_name}}" },
+  { label: "Full Name", token: "{{full_name}}" },
+  { label: "Company Name", token: "{{company_name}}" },
+];
+
+/** A small "+ Add variable" button that opens a dropdown of template tokens. */
+function VariablePickerButton({ onInsert }: { onInsert: (token: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+      >
+        <Plus className="w-3 h-3" />
+        Add variable
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+          {EMAIL_TEMPLATE_VARIABLES.map((v) => (
+            <button
+              key={v.token}
+              type="button"
+              onClick={() => { onInsert(v.token); setOpen(false); }}
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center justify-between gap-2"
+            >
+              <span className="text-gray-700">{v.label}</span>
+              <code className="text-gray-400 text-xs bg-gray-100 px-1 rounded shrink-0">{v.token}</code>
+            </button>
+          ))}
         </div>
       )}
     </div>

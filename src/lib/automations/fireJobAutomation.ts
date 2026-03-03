@@ -2832,12 +2832,23 @@ async function executePortalSendLink(
 
   const companyName = company?.name ?? 'Your employer';
   const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
+  const fullName = applicant.full_name ?? 'there';
+
+  const { custom_subject, custom_message } = config as { custom_subject?: string; custom_message?: string };
+  function substitutePortalVars(template: string): string {
+    return template
+      .replace(/\{\{first_name\}\}/g, firstName)
+      .replace(/\{\{full_name\}\}/g, fullName)
+      .replace(/\{\{company_name\}\}/g, companyName);
+  }
 
   const { subject, body: emailBody } = buildPortalLinkEmail({
     firstName,
     companyName,
     logoUrl: company?.logo_url,
     portalUrl,
+    customSubject: custom_subject ? substitutePortalVars(custom_subject) : undefined,
+    customMessage: custom_message ? substitutePortalVars(custom_message) : undefined,
   });
 
   const emailResult = await sendEmail(gmail.gmail, {
