@@ -1690,79 +1690,7 @@ export async function moveApplicant(
 ) {
   const supabase = await createClient();
 
-  // Get current user info for debugging
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (VERBOSE) console.log('[moveApplicant] Called with:', {
-    userId: user?.id,
-    userEmail: user?.email,
-    companyId,
-    jobId,
-    applicantId,
-    targetGroupId: groupId,
-  });
-
-  // First, check if the applicant exists and is visible
-  const { data: existingApplicant, error: checkError } = await supabase
-    .from("applicants")
-    .select("id, full_name, group_id, company_id, job_id")
-    .eq("id", applicantId)
-    .maybeSingle();
-
-  if (VERBOSE) console.log('[moveApplicant] Pre-move check:', {
-    found: !!existingApplicant,
-    applicant: existingApplicant,
-    checkError: checkError?.message,
-  });
-
-  if (checkError) {
-    console.error('[moveApplicant] Pre-move check failed:', checkError);
-  }
-
-  if (!existingApplicant) {
-    console.error('[moveApplicant] Applicant not found or no SELECT permission');
-    throw new Error('Applicant not found or you do not have permission to view it.');
-  }
-
-  // Verify user is a company member
-  const { data: membership } = await supabase
-    .from("account_memberships")
-    .select("role, account_id")
-    .eq("user_id", user?.id || '')
-    .maybeSingle();
-
-  const { data: company } = await supabase
-    .from("companies")
-    .select("account_id")
-    .eq("id", companyId)
-    .maybeSingle();
-
-  if (VERBOSE) console.log('[moveApplicant] Permission check:', {
-    userMembership: membership,
-    companyAccount: company?.account_id,
-    hasPermission: membership?.account_id === company?.account_id,
-    userRole: membership?.role,
-  });
-
-  // Verify target group exists
-  const { data: targetGroup } = await supabase
-    .from("board_groups")
-    .select("id, name, board_id")
-    .eq("id", groupId)
-    .maybeSingle();
-
-  if (VERBOSE) console.log('[moveApplicant] Target group check:', {
-    groupId,
-    groupExists: !!targetGroup,
-    groupName: targetGroup?.name,
-    boardId: targetGroup?.board_id,
-  });
-
-  if (!targetGroup) {
-    throw new Error(`Target group ${groupId} not found`);
-  }
-
-  // Attempt move with row count
+  // UPDATE — RLS enforces auth, no pre-flight SELECTs needed
   const { error, count } = await supabase
     .from("applicants")
     .update({ group_id: groupId }, { count: 'exact' })
@@ -1780,52 +1708,47 @@ export async function moveApplicant(
     throw new Error(`Move failed: ${error.message}`);
   }
 
-  if (VERBOSE) console.log('[moveApplicant] Move result:', {
-    movedCount: count,
-    success: count === 1,
-    fromGroup: existingApplicant.group_id,
-    toGroup: groupId,
-    targetGroupName: targetGroup.name,
-  });
-
   if (count === 0) {
-    console.error('[moveApplicant] CRITICAL: No rows updated despite SELECT permission!', {
-      applicantExists: !!existingApplicant,
+    console.error("[moveApplicant] No rows updated — RLS blocked or applicant missing", {
       filters: { id: applicantId, company_id: companyId, job_id: jobId },
       targetGroupId: groupId,
-      possibleCauses: [
-        'RLS UPDATE policy blocking (user not company member - check migration 00027)',
-        'company_id or job_id mismatch between request and database',
-        'Applicant deleted by concurrent request',
-        'Target group belongs to different board/company',
-      ],
     });
-    throw new Error('Failed to move applicant. You may not have update permissions.');
+    throw new Error("Failed to move applicant. You may not have update permissions.");
   }
 
-  if (VERBOSE) console.log('[moveApplicant] ✓ Successfully moved applicant:', {
-    name: existingApplicant.full_name,
-    fromGroup: existingApplicant.group_id,
-    toGroup: targetGroup.name,
+  // Pre-capture user before after() — cookie context is unavailable post-response
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+  // Log activity asynchronously — doesn't block the response
+  after(async () => {
+    try {
+      const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+      const svc = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const actor = actorName(currentUser);
+      const [{ data: applicantRow }, { data: grp }] = await Promise.all([
+        svc.from("applicants").select("full_name").eq("id", applicantId).maybeSingle(),
+        svc.from("board_groups").select("name").eq("id", groupId).maybeSingle(),
+      ]);
+      await logActivityEvent(svc, {
+        companyId,
+        jobId,
+        actorUserId: currentUser?.id ?? null,
+        actorType: "user",
+        eventType: "applicant.moved_group",
+        entityType: "applicant",
+        entityId: applicantId,
+        summary: `${actor} moved ${applicantRow?.full_name ?? "applicant"} to ${grp?.name ?? "a group"}`,
+        data: { actor_name: actor, applicant_name: applicantRow?.full_name, group_name: grp?.name },
+      });
+    } catch {}
   });
 
-  // Log activity
-  try {
-    const actor = actorName(user);
-    await logActivityEvent(supabase, {
-      companyId,
-      jobId,
-      actorUserId: user?.id ?? null,
-      actorType: "user",
-      eventType: "applicant.moved_group",
-      entityType: "applicant",
-      entityId: applicantId,
-      summary: `${actor} moved ${existingApplicant.full_name} to ${targetGroup.name}`,
-      data: { actor_name: actor, applicant_name: existingApplicant.full_name, group_name: targetGroup.name },
-    });
-  } catch {}
-
-  revalidatePath(dashPath(companyId, jobId));
+  // NOTE: revalidatePath intentionally omitted — the board optimistically updates
+  // group_id via setLocalApplicants before this action runs, matching the pattern
+  // used by updateBoardCell / cellOverrides.
 }
 
 export async function deleteApplicant(
@@ -2182,30 +2105,41 @@ export async function quickCreateApplicant(
 
   if (VERBOSE) console.log("[quickCreateApplicant] Created:", newApplicant);
 
-  // Log activity
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const actor = actorName(user);
-    // Fetch group name for summary
-    const { data: grp } = await supabase
-      .from("board_groups")
-      .select("name")
-      .eq("id", groupId)
-      .maybeSingle();
-    await logActivityEvent(supabase, {
-      companyId,
-      jobId,
-      actorUserId: user?.id ?? null,
-      actorType: "user",
-      eventType: "applicant.created",
-      entityType: "applicant",
-      entityId: newApplicant.id,
-      summary: `${actor} added New Applicant to ${grp?.name ?? "a group"}`,
-      data: { actor_name: actor, group_name: grp?.name ?? null },
-    });
-  } catch {}
+  // Pre-capture user before after() — cookie context is unavailable post-response
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  const applicantId = newApplicant.id;
 
-  revalidatePath(dashPath(companyId, jobId));
+  // Log activity asynchronously — doesn't block the response
+  after(async () => {
+    try {
+      const { createClient: createServiceClient } = await import("@supabase/supabase-js");
+      const svc = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+      const actor = actorName(currentUser);
+      const { data: grp } = await svc
+        .from("board_groups")
+        .select("name")
+        .eq("id", groupId)
+        .maybeSingle();
+      await logActivityEvent(svc, {
+        companyId,
+        jobId,
+        actorUserId: currentUser?.id ?? null,
+        actorType: "user",
+        eventType: "applicant.created",
+        entityType: "applicant",
+        entityId: applicantId,
+        summary: `${actor} added New Applicant to ${grp?.name ?? "a group"}`,
+        data: { actor_name: actor, group_name: grp?.name ?? null },
+      });
+    } catch {}
+  });
+
+  // NOTE: revalidatePath intentionally omitted — the new applicant is returned
+  // to the caller and appended to localApplicants state client-side, matching
+  // the optimistic pattern used by updateBoardCell / cellOverrides.
   return newApplicant;
 }
 

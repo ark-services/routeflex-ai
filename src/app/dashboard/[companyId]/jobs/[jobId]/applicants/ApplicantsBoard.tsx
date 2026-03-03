@@ -996,9 +996,21 @@ export default function ApplicantsBoard({
   }
 
   function onMoveApplicant(applicantId: string, groupId: string) {
+    // Optimistically update group_id before the server action completes
+    const snapshot = localApplicants;
+    setLocalApplicants(cur =>
+      cur.map(a => a.id === applicantId ? { ...a, group_id: groupId } : a)
+    );
+    setRowMenuOpen(null);
     startTransition(async () => {
-      await moveApplicant(companyId, jobId, applicantId, groupId);
-      setRowMenuOpen(null);
+      try {
+        await moveApplicant(companyId, jobId, applicantId, groupId);
+      } catch (error) {
+        // Revert optimistic update on failure
+        setLocalApplicants(snapshot);
+        console.error("[onMoveApplicant] Error:", error);
+        alert("Failed to move applicant. Please try again.");
+      }
     });
   }
 
@@ -1094,7 +1106,11 @@ export default function ApplicantsBoard({
   function onQuickCreateApplicant(groupId: string) {
     startTransition(async () => {
       try {
-        await quickCreateApplicant(companyId, jobId, groupId, boardId);
+        const newApplicant = await quickCreateApplicant(companyId, jobId, groupId, boardId);
+        // Append new row to local state — no RSC refetch needed
+        if (newApplicant) {
+          setLocalApplicants(prev => [...prev, newApplicant]);
+        }
       } catch (error) {
         console.error("[onQuickCreateApplicant] Error:", error);
         alert("Failed to create applicant. Please try again.");
