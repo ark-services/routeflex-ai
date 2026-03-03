@@ -2664,21 +2664,44 @@ async function executeLmsSendTrainingLink(
   const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
   const fullName = applicant.full_name ?? 'there';
 
-  // Pre-fetch board column cell values for {{col:UUID}} tokens in custom templates
-  let cellValueMap = new Map<string, string>();
+  // Slugify helper — must match the UI's slugifyColName function
+  function slugifyColName(name: string) {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  // Pre-fetch board column cell values for {{col:slug}} tokens in custom templates
+  // slug format: "FedEx ID" → "fedex_id" → token "{{col:fedex_id}}"
+  let colSlugValueMap = new Map<string, string>(); // slug → resolved cell value
   if (custom_subject || custom_message) {
     const templateContent = (custom_subject ?? '') + ' ' + (custom_message ?? '');
-    const colTokenMatches = [...templateContent.matchAll(/\{\{col:([0-9a-f-]{36})\}\}/g)];
+    const colTokenMatches = [...templateContent.matchAll(/\{\{col:([a-z0-9_]+)\}\}/g)];
     if (colTokenMatches.length > 0) {
-      const colIds = [...new Set(colTokenMatches.map((m) => m[1]))];
-      const { data: cells } = await supabase
-        .from('board_cells')
-        .select('column_id, value_text')
-        .eq('applicant_id', applicantId)
-        .in('column_id', colIds);
-      cellValueMap = new Map(
-        (cells ?? []).map((c: { column_id: string; value_text: string | null }) => [c.column_id, c.value_text ?? ''])
-      );
+      const slugs = [...new Set(colTokenMatches.map((m) => m[1]))];
+      // Fetch board columns for this job to build slug → id map
+      const { data: boardRow } = await supabase
+        .from('boards')
+        .select('board_columns(id, name)')
+        .eq('job_id', jobId)
+        .maybeSingle();
+      const boardCols = (boardRow?.board_columns ?? []) as { id: string; name: string }[];
+      const slugToColId = new Map(boardCols.map((c) => [slugifyColName(c.name), c.id]));
+
+      const colIds = slugs.map((s) => slugToColId.get(s)).filter(Boolean) as string[];
+      if (colIds.length > 0) {
+        const { data: cells } = await supabase
+          .from('board_cells')
+          .select('column_id, value_text')
+          .eq('applicant_id', applicantId)
+          .in('column_id', colIds);
+        const colIdValueMap = new Map(
+          (cells ?? []).map((c: { column_id: string; value_text: string | null }) => [c.column_id, c.value_text ?? ''])
+        );
+        // Keyed by slug for easy substitution
+        for (const slug of slugs) {
+          const colId = slugToColId.get(slug);
+          colSlugValueMap.set(slug, colId ? (colIdValueMap.get(colId) ?? '') : '');
+        }
+      }
     }
   }
 
@@ -2689,9 +2712,9 @@ async function executeLmsSendTrainingLink(
       .replace(/\{\{full_name\}\}/g, fullName)
       .replace(/\{\{company_name\}\}/g, companyName)
       .replace(/\{\{training_link\}\}/g, trainingUrl);
-    // Column cell values: {{col:UUID}}
-    for (const [colId, value] of cellValueMap) {
-      result = result.replace(new RegExp(`\\{\\{col:${colId}\\}\\}`, 'g'), value);
+    // Column cell values: {{col:slug}}
+    for (const [slug, value] of colSlugValueMap) {
+      result = result.replace(new RegExp(`\\{\\{col:${slug}\\}\\}`, 'g'), value);
     }
     return result;
   }
@@ -2859,21 +2882,41 @@ async function executePortalSendLink(
 
   const { custom_subject, custom_message } = config as { custom_subject?: string; custom_message?: string };
 
-  // Pre-fetch board column cell values for {{col:UUID}} tokens in custom templates
-  let portalCellValueMap = new Map<string, string>();
+  // Slugify helper — must match the UI's slugifyColName function
+  function slugifyPortalColName(name: string) {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+
+  // Pre-fetch board column cell values for {{col:slug}} tokens in custom templates
+  let portalColSlugValueMap = new Map<string, string>(); // slug → resolved cell value
   if (custom_subject || custom_message) {
     const templateContent = (custom_subject ?? '') + ' ' + (custom_message ?? '');
-    const colTokenMatches = [...templateContent.matchAll(/\{\{col:([0-9a-f-]{36})\}\}/g)];
+    const colTokenMatches = [...templateContent.matchAll(/\{\{col:([a-z0-9_]+)\}\}/g)];
     if (colTokenMatches.length > 0) {
-      const colIds = [...new Set(colTokenMatches.map((m) => m[1]))];
-      const { data: cells } = await supabase
-        .from('board_cells')
-        .select('column_id, value_text')
-        .eq('applicant_id', applicantId)
-        .in('column_id', colIds);
-      portalCellValueMap = new Map(
-        (cells ?? []).map((c: { column_id: string; value_text: string | null }) => [c.column_id, c.value_text ?? ''])
-      );
+      const slugs = [...new Set(colTokenMatches.map((m) => m[1]))];
+      const { data: boardRow } = await supabase
+        .from('boards')
+        .select('board_columns(id, name)')
+        .eq('job_id', jobId)
+        .maybeSingle();
+      const boardCols = (boardRow?.board_columns ?? []) as { id: string; name: string }[];
+      const slugToColId = new Map(boardCols.map((c) => [slugifyPortalColName(c.name), c.id]));
+
+      const colIds = slugs.map((s) => slugToColId.get(s)).filter(Boolean) as string[];
+      if (colIds.length > 0) {
+        const { data: cells } = await supabase
+          .from('board_cells')
+          .select('column_id, value_text')
+          .eq('applicant_id', applicantId)
+          .in('column_id', colIds);
+        const colIdValueMap = new Map(
+          (cells ?? []).map((c: { column_id: string; value_text: string | null }) => [c.column_id, c.value_text ?? ''])
+        );
+        for (const slug of slugs) {
+          const colId = slugToColId.get(slug);
+          portalColSlugValueMap.set(slug, colId ? (colIdValueMap.get(colId) ?? '') : '');
+        }
+      }
     }
   }
 
@@ -2883,9 +2926,9 @@ async function executePortalSendLink(
       .replace(/\{\{full_name\}\}/g, fullName)
       .replace(/\{\{company_name\}\}/g, companyName)
       .replace(/\{\{portal_link\}\}/g, portalUrl);
-    // Column cell values: {{col:UUID}}
-    for (const [colId, value] of portalCellValueMap) {
-      result = result.replace(new RegExp(`\\{\\{col:${colId}\\}\\}`, 'g'), value);
+    // Column cell values: {{col:slug}}
+    for (const [slug, value] of portalColSlugValueMap) {
+      result = result.replace(new RegExp(`\\{\\{col:${slug}\\}\\}`, 'g'), value);
     }
     return result;
   }

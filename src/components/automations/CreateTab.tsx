@@ -1093,6 +1093,12 @@ function ActionEditor({
     { value: "position_type", label: "Position Type" },
   ];
 
+  // Refs for variable picker cursor-position insertion
+  const lmsSubjectRef   = useRef<HTMLInputElement>(null);
+  const lmsMessageRef   = useRef<HTMLTextAreaElement>(null);
+  const portalSubjectRef = useRef<HTMLInputElement>(null);
+  const portalMessageRef = useRef<HTMLTextAreaElement>(null);
+
   return (
     <div className="border border-green-200 bg-rf-success-bg/60 rounded-lg px-4 py-3">
       <div className="flex items-center justify-between mb-1">
@@ -1437,7 +1443,7 @@ function ActionEditor({
               ],
             },
             ...(columns.length > 0
-              ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${c.id}}}` })) }]
+              ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${slugifyColName(c.name)}}}` })) }]
               : []),
           ];
           return (
@@ -1518,10 +1524,13 @@ function ActionEditor({
                     <div className="flex justify-end mb-1">
                       <VariablePickerButton
                         groups={lmsVarGroups}
-                        onInsert={(v) => onChange({ config: { ...action.config, custom_subject: (action.config.custom_subject ?? "") + v } })}
+                        fieldRef={lmsSubjectRef}
+                        value={action.config.custom_subject ?? ""}
+                        onChange={(newVal) => onChange({ config: { ...action.config, custom_subject: newVal || undefined } })}
                       />
                     </div>
                     <input
+                      ref={lmsSubjectRef}
                       type="text"
                       value={action.config.custom_subject ?? ""}
                       onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
@@ -1536,10 +1545,13 @@ function ActionEditor({
                     <div className="flex justify-end mb-1">
                       <VariablePickerButton
                         groups={lmsVarGroups}
-                        onInsert={(v) => onChange({ config: { ...action.config, custom_message: (action.config.custom_message ?? "") + v } })}
+                        fieldRef={lmsMessageRef}
+                        value={action.config.custom_message ?? ""}
+                        onChange={(newVal) => onChange({ config: { ...action.config, custom_message: newVal || undefined } })}
                       />
                     </div>
                     <textarea
+                      ref={lmsMessageRef}
                       value={action.config.custom_message ?? ""}
                       onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
                       placeholder={`Hi {{first_name}}, please complete your required training before your start date.`}
@@ -1576,7 +1588,7 @@ function ActionEditor({
               ],
             },
             ...(columns.length > 0
-              ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${c.id}}}` })) }]
+              ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${slugifyColName(c.name)}}}` })) }]
               : []),
           ];
           return (
@@ -1599,10 +1611,13 @@ function ActionEditor({
                   <div className="flex justify-end mb-1">
                     <VariablePickerButton
                       groups={portalVarGroups}
-                      onInsert={(v) => onChange({ config: { ...action.config, custom_subject: (action.config.custom_subject ?? "") + v } })}
+                      fieldRef={portalSubjectRef}
+                      value={action.config.custom_subject ?? ""}
+                      onChange={(newVal) => onChange({ config: { ...action.config, custom_subject: newVal || undefined } })}
                     />
                   </div>
                   <input
+                    ref={portalSubjectRef}
                     type="text"
                     value={action.config.custom_subject ?? ""}
                     onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
@@ -1617,10 +1632,13 @@ function ActionEditor({
                   <div className="flex justify-end mb-1">
                     <VariablePickerButton
                       groups={portalVarGroups}
-                      onInsert={(v) => onChange({ config: { ...action.config, custom_message: (action.config.custom_message ?? "") + v } })}
+                      fieldRef={portalMessageRef}
+                      value={action.config.custom_message ?? ""}
+                      onChange={(newVal) => onChange({ config: { ...action.config, custom_message: newVal || undefined } })}
                     />
                   </div>
                   <textarea
+                    ref={portalMessageRef}
                     value={action.config.custom_message ?? ""}
                     onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
                     placeholder={`Hi {{first_name}}, use the link below to check your application status.`}
@@ -2188,28 +2206,56 @@ function CoursePicker({
 interface VariableItem { label: string; token: string }
 interface VariableGroup { section: string; items: VariableItem[] }
 
-/** A small "+ Add variable" button that opens a grouped dropdown of template tokens. */
+/** Slugify a column name for use in template tokens: "FedEx ID" → "fedex_id" */
+function slugifyColName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+/**
+ * A "+ Add variable" button that inserts the chosen token at the current cursor
+ * position of the associated input/textarea (via `fieldRef`).
+ */
 function VariablePickerButton({
   groups,
-  onInsert,
+  fieldRef,
+  value,
+  onChange,
 }: {
   groups: VariableGroup[];
-  onInsert: (token: string) => void;
+  fieldRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement>;
+  value: string;
+  onChange: (newValue: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  function handleInsert(token: string) {
+    const el = fieldRef.current;
+    const start = el?.selectionStart ?? value.length;
+    const end   = el?.selectionEnd   ?? value.length;
+    const newValue = value.slice(0, start) + token + value.slice(end);
+    onChange(newValue);
+    // Restore cursor after React re-renders the controlled input
+    requestAnimationFrame(() => {
+      if (el) {
+        el.focus();
+        el.setSelectionRange(start + token.length, start + token.length);
+      }
+    });
+    setOpen(false);
+  }
+
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -2229,11 +2275,11 @@ function VariablePickerButton({
                 <button
                   key={v.token}
                   type="button"
-                  onClick={() => { onInsert(v.token); setOpen(false); }}
+                  onClick={() => handleInsert(v.token)}
                   className="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
                 >
                   <span className="text-gray-700 truncate">{v.label}</span>
-                  {/* Only show the short token hint for built-in vars; column UUIDs are too long */}
+                  {/* Show code hint only for short built-in tokens; slugs are readable enough */}
                   {v.token.length <= 20 && (
                     <code className="text-gray-400 text-xs bg-gray-100 px-1 rounded shrink-0">{v.token}</code>
                   )}
