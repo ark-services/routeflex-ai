@@ -2661,8 +2661,30 @@ async function executeLmsSendTrainingLink(
     .maybeSingle();
 
   const companyName = company?.name ?? 'Your employer';
-  const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
-  const fullName = applicant.full_name ?? 'there';
+
+  // Prefer board_cells First Name / Last Name over applicants.full_name.
+  // applicants created via the board's "Add item" button start with
+  // full_name = "New Applicant"; the user fills in name cells without the
+  // legacy full_name column being updated (our sync fix covers future saves
+  // but not retroactively).
+  const { data: applicantNameCells } = await supabase
+    .from('board_cells')
+    .select('value_text, board_columns!inner(name)')
+    .eq('applicant_id', applicantId);
+
+  let cellFirstName = '';
+  let cellLastName  = '';
+  for (const cell of applicantNameCells ?? []) {
+    const cn = (cell as any).board_columns?.name?.toLowerCase().trim() ?? '';
+    if (cn === 'first name' || cn === 'firstname') cellFirstName = (cell as any).value_text ?? '';
+    if (cn === 'last name'  || cn === 'lastname')  cellLastName  = (cell as any).value_text ?? '';
+  }
+
+  const firstName = cellFirstName || applicant.full_name?.split(' ')[0] || 'there';
+  const fullName  = [cellFirstName, cellLastName].filter(Boolean).join(' ')
+                    || applicant.full_name
+                    || 'there';
+
   // appUrl is already declared above (used for trainingUrl); reuse it here
   const lmsPortalUrl = applicant.portal_token
     ? `${appUrl}/status/${applicant.portal_token}`
@@ -2882,8 +2904,25 @@ async function executePortalSendLink(
     .maybeSingle();
 
   const companyName = company?.name ?? 'Your employer';
-  const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
-  const fullName = applicant.full_name ?? 'there';
+
+  // Prefer board_cells First Name / Last Name over applicants.full_name
+  const { data: portalNameCells } = await supabase
+    .from('board_cells')
+    .select('value_text, board_columns!inner(name)')
+    .eq('applicant_id', applicantId);
+
+  let portalCellFirstName = '';
+  let portalCellLastName  = '';
+  for (const cell of portalNameCells ?? []) {
+    const cn = (cell as any).board_columns?.name?.toLowerCase().trim() ?? '';
+    if (cn === 'first name' || cn === 'firstname') portalCellFirstName = (cell as any).value_text ?? '';
+    if (cn === 'last name'  || cn === 'lastname')  portalCellLastName  = (cell as any).value_text ?? '';
+  }
+
+  const firstName = portalCellFirstName || applicant.full_name?.split(' ')[0] || 'there';
+  const fullName  = [portalCellFirstName, portalCellLastName].filter(Boolean).join(' ')
+                    || applicant.full_name
+                    || 'there';
 
   const { custom_subject, custom_message } = config as { custom_subject?: string; custom_message?: string };
 
