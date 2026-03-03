@@ -10,6 +10,7 @@
  *   email         (optional) Email — also used for dedup within the job
  *   phone         (optional) Phone number
  *   group_name    (optional) Board group name (case-insensitive). Falls back to default group.
+ *   fedex_id      (optional) Driver's FedEx ID
  *   terminal_preference (optional)
  *   experience    (optional)
  *   resume_link   (optional) External URL to resume
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
     email,
     phone,
     group_name,
+    fedex_id,
     terminal_preference,
     experience,
     resume_link,
@@ -201,6 +203,8 @@ export async function POST(request: NextRequest) {
           value = firstName || null;
         } else if (n === "last name" || n === "lastname") {
           value = lastName || null;
+        } else if (n === "fedex id" || n === "fedex_id" || n === "fedexid") {
+          value = fedex_id?.trim() || null;
         }
 
         if (value) {
