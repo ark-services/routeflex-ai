@@ -326,26 +326,25 @@ export default async function StatusPortalPage({
                       {!isCompleted && checklist.length > 0 && (
                         <div className="mt-3 space-y-1.5">
                           {checklist.map((item) => {
-                            const done = isActive ? isItemComplete(item) : false;
+                            // Show values for any non-completed stage (active OR upcoming).
+                            // Recruiters often fill in columns before moving the applicant,
+                            // so upcoming stages should reflect the actual cell data too.
+                            const done = isItemComplete(item);
                             const colName = columnNameMap.get(item.column_id) ?? "—";
                             const colType = columnTypeMap.get(item.column_id) ?? "text";
 
                             // Status columns: show current label badge
-                            const currentLabelId = isActive
-                              ? cellLabelIdMap.get(item.column_id)
-                              : null;
+                            const currentLabelId = cellLabelIdMap.get(item.column_id);
                             const currentLabel = currentLabelId
                               ? labelInfoMap.get(currentLabelId)
                               : null;
 
                             // Date / text / number columns: show display value
-                            const currentDisplayValue = isActive
-                              ? cellDisplayMap.get(item.column_id)
-                              : null;
+                            const currentDisplayValue = cellDisplayMap.get(item.column_id);
 
                             // For status items with a linked date column
-                            const linkedDateValue = isActive && item.date_column_id
-                              ? cellDisplayMap.get(item.date_column_id)
+                            const linkedDateValue = item.date_column_id
+                              ? cellDisplayMap.get(item.date_column_id) ?? null
                               : null;
 
                             return (
@@ -378,7 +377,7 @@ export default async function StatusPortalPage({
                                   )}
 
                                   {/* Linked date column shown inline after status badge */}
-                                  {colType === "status" && item.date_column_id && isActive && (
+                                  {colType === "status" && item.date_column_id && (linkedDateValue || isActive) && (
                                     <span
                                       className={`ml-1.5 ${
                                         linkedDateValue
@@ -393,7 +392,7 @@ export default async function StatusPortalPage({
                                   )}
 
                                   {/* Standalone date column: show date or placeholder */}
-                                  {colType === "date" && isActive && (
+                                  {colType === "date" && (currentDisplayValue || isActive) && (
                                     <span
                                       className={`ml-1.5 ${
                                         currentDisplayValue
