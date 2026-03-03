@@ -2663,7 +2663,7 @@ async function executeLmsSendTrainingLink(
   const companyName = company?.name ?? 'Your employer';
   const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
   const fullName = applicant.full_name ?? 'there';
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.routeflex.com';
+  // appUrl is already declared above (used for trainingUrl); reuse it here
   const lmsPortalUrl = applicant.portal_token
     ? `${appUrl}/status/${applicant.portal_token}`
     : '';

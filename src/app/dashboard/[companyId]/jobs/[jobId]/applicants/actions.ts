@@ -1341,6 +1341,48 @@ export async function updateBoardCell(
 
   if (VERBOSE) console.log('[updateBoardCell] Success:', data);
 
+  // Sync applicants.full_name when a First Name or Last Name text cell is saved.
+  // quickCreateApplicant sets full_name = "New Applicant" as a placeholder; once
+  // the user fills in the name cells we need to keep full_name in sync so that
+  // automation variable substitution ({{first_name}}) gets the real name.
+  if (columnType === "text") {
+    try {
+      const { data: thisCol } = await supabase
+        .from("board_columns")
+        .select("name")
+        .eq("id", columnId)
+        .maybeSingle();
+
+      const cn = thisCol?.name?.toLowerCase().trim() ?? "";
+      if (cn === "first name" || cn === "firstname" || cn === "last name" || cn === "lastname") {
+        // Re-fetch all name cells for this applicant after the upsert has committed
+        const { data: nameCells } = await supabase
+          .from("board_cells")
+          .select("value_text, board_columns!inner(name)")
+          .eq("applicant_id", applicantId);
+
+        let firstName = "";
+        let lastName  = "";
+        for (const cell of nameCells ?? []) {
+          const cellColName = (cell as any).board_columns?.name?.toLowerCase().trim() ?? "";
+          if (cellColName === "first name" || cellColName === "firstname") {
+            firstName = (cell as any).value_text ?? "";
+          } else if (cellColName === "last name" || cellColName === "lastname") {
+            lastName = (cell as any).value_text ?? "";
+          }
+        }
+
+        const newFullName = [firstName, lastName].filter(Boolean).join(" ");
+        if (newFullName) {
+          await supabase.from("applicants").update({ full_name: newFullName }).eq("id", applicantId);
+          if (VERBOSE) console.log("[updateBoardCell] Synced full_name →", newFullName);
+        }
+      }
+    } catch (syncErr) {
+      console.error("[updateBoardCell] full_name sync error (non-fatal):", syncErr);
+    }
+  }
+
   // Sync FADV columns to applicant_integration_fields
   if (
     columnType === "fadv.package" ||
