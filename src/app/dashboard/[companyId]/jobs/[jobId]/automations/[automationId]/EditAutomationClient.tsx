@@ -130,11 +130,11 @@ export function EditAutomationClient({
         {/* Header */}
         <div className="bg-rf-surface-card border-b border-gray-200 px-6 py-4">
           <button
-            onClick={() => router.push(`/dashboard/${companyId}/jobs/${jobId}/applicants`)}
+            onClick={() => router.back()}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-3"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Board
+            Back
           </button>
           <h1 className="text-2xl font-semibold text-gray-900">
             Edit Automation
