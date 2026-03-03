@@ -1427,6 +1427,19 @@ function ActionEditor({
         {action.type === "lms.send_training_link" && (() => {
           const statusCol = columns.find((c) => c.id === action.config.status_column_id);
           const statusLabels = statusCol?.labels ?? [];
+          const lmsVarGroups: VariableGroup[] = [
+            {
+              section: "Applicant info",
+              items: [
+                { label: "First Name", token: "{{first_name}}" },
+                { label: "Full Name", token: "{{full_name}}" },
+                { label: "Company Name", token: "{{company_name}}" },
+              ],
+            },
+            ...(columns.length > 0
+              ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${c.id}}}` })) }]
+              : []),
+          ];
           return (
             <div className="w-full space-y-3 pt-1">
               {/* Course selector */}
@@ -1504,6 +1517,7 @@ function ActionEditor({
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-end mb-1">
                       <VariablePickerButton
+                        groups={lmsVarGroups}
                         onInsert={(v) => onChange({ config: { ...action.config, custom_subject: (action.config.custom_subject ?? "") + v } })}
                       />
                     </div>
@@ -1521,6 +1535,7 @@ function ActionEditor({
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-end mb-1">
                       <VariablePickerButton
+                        groups={lmsVarGroups}
                         onInsert={(v) => onChange({ config: { ...action.config, custom_message: (action.config.custom_message ?? "") + v } })}
                       />
                     </div>
@@ -1549,7 +1564,22 @@ function ActionEditor({
           );
         })()}
 
-        {action.type === "portal.send_link" && (
+        {action.type === "portal.send_link" && (() => {
+          const portalVarGroups: VariableGroup[] = [
+            {
+              section: "Applicant info",
+              items: [
+                { label: "First Name", token: "{{first_name}}" },
+                { label: "Full Name", token: "{{full_name}}" },
+                { label: "Company Name", token: "{{company_name}}" },
+                { label: "Portal Link", token: "{{portal_link}}" },
+              ],
+            },
+            ...(columns.length > 0
+              ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${c.id}}}` })) }]
+              : []),
+          ];
+          return (
           <div className="w-full space-y-3 pt-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-gray-700 w-36 shrink-0">Get email from</span>
@@ -1568,6 +1598,7 @@ function ActionEditor({
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-end mb-1">
                     <VariablePickerButton
+                      groups={portalVarGroups}
                       onInsert={(v) => onChange({ config: { ...action.config, custom_subject: (action.config.custom_subject ?? "") + v } })}
                     />
                   </div>
@@ -1585,6 +1616,7 @@ function ActionEditor({
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-end mb-1">
                     <VariablePickerButton
+                      groups={portalVarGroups}
                       onInsert={(v) => onChange({ config: { ...action.config, custom_message: (action.config.custom_message ?? "") + v } })}
                     />
                   </div>
@@ -1599,7 +1631,8 @@ function ActionEditor({
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {action.type === "safety_trainer.submit" && (
           <div className="w-full space-y-3 pt-1">
@@ -2152,14 +2185,17 @@ function CoursePicker({
 }
 
 // Variables available for email customization in LMS / portal actions
-const EMAIL_TEMPLATE_VARIABLES = [
-  { label: "First Name", token: "{{first_name}}" },
-  { label: "Full Name", token: "{{full_name}}" },
-  { label: "Company Name", token: "{{company_name}}" },
-];
+interface VariableItem { label: string; token: string }
+interface VariableGroup { section: string; items: VariableItem[] }
 
-/** A small "+ Add variable" button that opens a dropdown of template tokens. */
-function VariablePickerButton({ onInsert }: { onInsert: (token: string) => void }) {
+/** A small "+ Add variable" button that opens a grouped dropdown of template tokens. */
+function VariablePickerButton({
+  groups,
+  onInsert,
+}: {
+  groups: VariableGroup[];
+  onInsert: (token: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -2183,17 +2219,27 @@ function VariablePickerButton({ onInsert }: { onInsert: (token: string) => void 
         Add variable
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-          {EMAIL_TEMPLATE_VARIABLES.map((v) => (
-            <button
-              key={v.token}
-              type="button"
-              onClick={() => { onInsert(v.token); setOpen(false); }}
-              className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 flex items-center justify-between gap-2"
-            >
-              <span className="text-gray-700">{v.label}</span>
-              <code className="text-gray-400 text-xs bg-gray-100 px-1 rounded shrink-0">{v.token}</code>
-            </button>
+        <div className="absolute right-0 top-full mt-1 z-50 w-60 bg-white border border-gray-200 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto">
+          {groups.map((group) => (
+            <div key={group.section}>
+              <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 sticky top-0">
+                {group.section}
+              </div>
+              {group.items.map((v) => (
+                <button
+                  key={v.token}
+                  type="button"
+                  onClick={() => { onInsert(v.token); setOpen(false); }}
+                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
+                >
+                  <span className="text-gray-700 truncate">{v.label}</span>
+                  {/* Only show the short token hint for built-in vars; column UUIDs are too long */}
+                  {v.token.length <= 20 && (
+                    <code className="text-gray-400 text-xs bg-gray-100 px-1 rounded shrink-0">{v.token}</code>
+                  )}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       )}

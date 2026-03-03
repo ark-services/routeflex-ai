@@ -2664,13 +2664,36 @@ async function executeLmsSendTrainingLink(
   const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
   const fullName = applicant.full_name ?? 'there';
 
+  // Pre-fetch board column cell values for {{col:UUID}} tokens in custom templates
+  let cellValueMap = new Map<string, string>();
+  if (custom_subject || custom_message) {
+    const templateContent = (custom_subject ?? '') + ' ' + (custom_message ?? '');
+    const colTokenMatches = [...templateContent.matchAll(/\{\{col:([0-9a-f-]{36})\}\}/g)];
+    if (colTokenMatches.length > 0) {
+      const colIds = [...new Set(colTokenMatches.map((m) => m[1]))];
+      const { data: cells } = await supabase
+        .from('board_cells')
+        .select('column_id, value_text')
+        .eq('applicant_id', applicantId)
+        .in('column_id', colIds);
+      cellValueMap = new Map(
+        (cells ?? []).map((c: { column_id: string; value_text: string | null }) => [c.column_id, c.value_text ?? ''])
+      );
+    }
+  }
+
   // Substitute {{variables}} in custom subject/message if provided
   function substituteVars(template: string): string {
-    return template
+    let result = template
       .replace(/\{\{first_name\}\}/g, firstName)
       .replace(/\{\{full_name\}\}/g, fullName)
       .replace(/\{\{company_name\}\}/g, companyName)
       .replace(/\{\{training_link\}\}/g, trainingUrl);
+    // Column cell values: {{col:UUID}}
+    for (const [colId, value] of cellValueMap) {
+      result = result.replace(new RegExp(`\\{\\{col:${colId}\\}\\}`, 'g'), value);
+    }
+    return result;
   }
 
   const { subject, body: emailBody } = buildTrainingLinkEmail({
@@ -2835,11 +2858,36 @@ async function executePortalSendLink(
   const fullName = applicant.full_name ?? 'there';
 
   const { custom_subject, custom_message } = config as { custom_subject?: string; custom_message?: string };
+
+  // Pre-fetch board column cell values for {{col:UUID}} tokens in custom templates
+  let portalCellValueMap = new Map<string, string>();
+  if (custom_subject || custom_message) {
+    const templateContent = (custom_subject ?? '') + ' ' + (custom_message ?? '');
+    const colTokenMatches = [...templateContent.matchAll(/\{\{col:([0-9a-f-]{36})\}\}/g)];
+    if (colTokenMatches.length > 0) {
+      const colIds = [...new Set(colTokenMatches.map((m) => m[1]))];
+      const { data: cells } = await supabase
+        .from('board_cells')
+        .select('column_id, value_text')
+        .eq('applicant_id', applicantId)
+        .in('column_id', colIds);
+      portalCellValueMap = new Map(
+        (cells ?? []).map((c: { column_id: string; value_text: string | null }) => [c.column_id, c.value_text ?? ''])
+      );
+    }
+  }
+
   function substitutePortalVars(template: string): string {
-    return template
+    let result = template
       .replace(/\{\{first_name\}\}/g, firstName)
       .replace(/\{\{full_name\}\}/g, fullName)
-      .replace(/\{\{company_name\}\}/g, companyName);
+      .replace(/\{\{company_name\}\}/g, companyName)
+      .replace(/\{\{portal_link\}\}/g, portalUrl);
+    // Column cell values: {{col:UUID}}
+    for (const [colId, value] of portalCellValueMap) {
+      result = result.replace(new RegExp(`\\{\\{col:${colId}\\}\\}`, 'g'), value);
+    }
+    return result;
   }
 
   const { subject, body: emailBody } = buildPortalLinkEmail({
