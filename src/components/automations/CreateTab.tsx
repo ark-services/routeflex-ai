@@ -1506,7 +1506,7 @@ function ActionEditor({
                     value={action.config.custom_subject ?? ""}
                     onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
                     placeholder="Action required: Complete your safety training"
-                    className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="flex flex-wrap items-start gap-2">
@@ -1517,7 +1517,7 @@ function ActionEditor({
                       onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
                       placeholder={`Hi {{first_name}}, please complete your required training before your start date.`}
                       rows={3}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                     />
                     <p className="text-xs text-gray-400 mt-1">
                       Variables: <code className="bg-gray-100 px-1 rounded">{"{{first_name}}"}</code>{" "}
