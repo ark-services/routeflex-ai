@@ -171,7 +171,52 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create applicant" }, { status: 500 });
   }
 
-  // ── 9. Fire applicant.created automation trigger ──────────────────────────
+  // ── 9. Populate board_cells for common column types ───────────────────────
+  // Non-system board columns (email, phone, First Name, Last Name) read from
+  // board_cells. The applicants row has the raw values — mirror them so the
+  // board renders correctly without a form submission.
+  try {
+    const { data: boardColumns } = await supabase
+      .from("board_columns")
+      .select("id, name, type, is_system")
+      .eq("board_id", board.id);
+
+    if (boardColumns && boardColumns.length > 0) {
+      const nameParts = full_name.trim().split(/\s+/);
+      const firstName = nameParts[0] ?? "";
+      const lastName = nameParts.slice(1).join(" ") ?? "";
+
+      const cellInserts: { applicant_id: string; column_id: string; value_text: string }[] = [];
+
+      for (const col of boardColumns) {
+        if (col.is_system) continue;
+        const n = col.name.toLowerCase().trim();
+
+        let value: string | null = null;
+        if (col.type === "email") {
+          value = email?.trim() || null;
+        } else if (col.type === "phone") {
+          value = phone?.trim() || null;
+        } else if (n === "first name" || n === "firstname") {
+          value = firstName || null;
+        } else if (n === "last name" || n === "lastname") {
+          value = lastName || null;
+        }
+
+        if (value) {
+          cellInserts.push({ applicant_id: applicant.id, column_id: col.id, value_text: value });
+        }
+      }
+
+      if (cellInserts.length > 0) {
+        await supabase.from("board_cells").insert(cellInserts);
+      }
+    }
+  } catch (cellError) {
+    console.error("[webhook/ingest] Board cells population error (non-fatal):", cellError);
+  }
+
+  // ── 10. Fire applicant.created automation trigger ─────────────────────────
   try {
     await fireJobTrigger(supabase, {
       companyId: job.company_id,
@@ -192,7 +237,7 @@ export async function POST(request: NextRequest) {
     console.error("[webhook/ingest] Trigger error (non-fatal):", triggerError);
   }
 
-  // ── 10. Return success ────────────────────────────────────────────────────
+  // ── 11. Return success ────────────────────────────────────────────────────
   return NextResponse.json(
     {
       created: true,

@@ -234,6 +234,7 @@ export default function ApplicantsBoard({
     const supabase = createClient();
     let pgChannel: ReturnType<typeof supabase.channel> | null = null;
     let bcChannel: ReturnType<typeof supabase.channel> | null = null;
+    let applicantChannel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -264,12 +265,32 @@ export default function ApplicantsBoard({
           }
         })
         .subscribe();
+
+      // Listen for new applicants inserted via webhook or other external sources.
+      // Without this, the board only updates on manual page refresh.
+      applicantChannel = supabase
+        .channel(`board-applicants-${jobId}`)
+        .on(
+          'postgres_changes' as any,
+          { event: 'INSERT', schema: 'public', table: 'applicants', filter: `job_id=eq.${jobId}` },
+          (payload: any) => {
+            const incoming = payload.new as ApplicantRow;
+            if (!incoming?.id) return;
+            applicantIdSetRef.current.add(incoming.id);
+            setLocalApplicants(prev => {
+              if (prev.some(a => a.id === incoming.id)) return prev;
+              return [...prev, { ...incoming, jobs: null }];
+            });
+          }
+        )
+        .subscribe();
     });
 
     return () => {
       cancelled = true;
       if (pgChannel) supabase.removeChannel(pgChannel);
       if (bcChannel) supabase.removeChannel(bcChannel);
+      if (applicantChannel) supabase.removeChannel(applicantChannel);
     };
   }, [boardId, jobId, applyRealtimeCell]);
 
@@ -1050,7 +1071,12 @@ export default function ApplicantsBoard({
     if (cellOverrides.has(overrideKey)) return cellOverrides.get(overrideKey);
 
     const cell = cellsByApplicantAndColumn.get(`${applicant.id}::${column.id}`);
-    if (!cell) return null;
+    if (!cell) {
+      // Fallback for applicants created externally (e.g. webhook) that have no board_cells yet.
+      if (column.type === "email") return applicant.email || null;
+      if (column.type === "phone") return applicant.phone || null;
+      return null;
+    }
 
     if (column.type === "text") return cell.value_text;
     if (column.type === "number") return cell.value_number;
