@@ -2506,10 +2506,10 @@ async function executeLmsSendTrainingLink(
     return { success: false, error: 'lms.send_training_link: course does not belong to this company' };
   }
 
-  // ── Fetch applicant info (name + email) ─────────────────────────────────────
+  // ── Fetch applicant info (name + email + portal_token) ──────────────────────
   const { data: applicant, error: applicantError } = await supabase
     .from('applicants')
-    .select('id, full_name, email')
+    .select('id, full_name, email, portal_token')
     .eq('id', applicantId)
     .maybeSingle();
 
@@ -2663,6 +2663,10 @@ async function executeLmsSendTrainingLink(
   const companyName = company?.name ?? 'Your employer';
   const firstName = applicant.full_name?.split(' ')[0] ?? 'there';
   const fullName = applicant.full_name ?? 'there';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.routeflex.com';
+  const lmsPortalUrl = applicant.portal_token
+    ? `${appUrl}/status/${applicant.portal_token}`
+    : '';
 
   // Slugify helper — must match the UI's slugifyColName function
   function slugifyColName(name: string) {
@@ -2711,7 +2715,8 @@ async function executeLmsSendTrainingLink(
       .replace(/\{\{first_name\}\}/g, firstName)
       .replace(/\{\{full_name\}\}/g, fullName)
       .replace(/\{\{company_name\}\}/g, companyName)
-      .replace(/\{\{training_link\}\}/g, trainingUrl);
+      .replace(/\{\{training_link\}\}/g, trainingUrl)
+      .replace(/\{\{portal_link\}\}/g, lmsPortalUrl);
     // Column cell values: {{col:slug}}
     for (const [slug, value] of colSlugValueMap) {
       result = result.replace(new RegExp(`\\{\\{col:${slug}\\}\\}`, 'g'), value);

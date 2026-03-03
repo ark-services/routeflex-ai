@@ -1440,6 +1440,7 @@ function ActionEditor({
                 { label: "First Name", token: "{{first_name}}" },
                 { label: "Full Name", token: "{{full_name}}" },
                 { label: "Company Name", token: "{{company_name}}" },
+                { label: "Application Progress Page", token: "{{portal_link}}" },
               ],
             },
             ...(columns.length > 0
