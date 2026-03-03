@@ -1138,9 +1138,15 @@ export default function ApplicantsBoard({
     startTransition(async () => {
       try {
         const newApplicant = await quickCreateApplicant(companyId, jobId, groupId, boardId);
-        // Append new row to local state — no RSC refetch needed
+        // Append new row to local state — no RSC refetch needed.
+        // Dedup by id: the realtime subscription may have already added this
+        // row if the postgres_changes event arrived before this callback ran.
         if (newApplicant) {
-          setLocalApplicants(prev => [...prev, newApplicant]);
+          applicantIdSetRef.current.add(newApplicant.id);
+          setLocalApplicants(prev => {
+            if (prev.some(a => a.id === newApplicant.id)) return prev;
+            return [...prev, newApplicant];
+          });
         }
       } catch (error) {
         console.error("[onQuickCreateApplicant] Error:", error);
