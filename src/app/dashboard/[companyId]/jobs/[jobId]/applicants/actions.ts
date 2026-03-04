@@ -1203,6 +1203,26 @@ export async function deleteStatusLabel(
   // Do NOT call revalidatePath here - let the UI handle optimistic updates
 }
 
+export async function reorderStatusLabels(
+  companyId: string,
+  jobId: string,
+  labelOrders: { id: string; sort_order: number }[]
+) {
+  const supabase = await createClient();
+
+  // Update each label's sort_order in parallel
+  await Promise.all(
+    labelOrders.map(({ id, sort_order }) =>
+      supabase
+        .from("board_status_labels")
+        .update({ sort_order })
+        .eq("id", id)
+    )
+  );
+
+  // Do NOT call revalidatePath here - let the UI handle optimistic updates
+}
+
 // ===== Board Cell Actions =====
 
 export type CellUpdateResult =

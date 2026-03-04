@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   Pin,
+  GripVertical,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -69,6 +70,7 @@ import {
   quickCreateApplicant,
   sendToFadv,
   updateGroupCollapsedColumns,
+  reorderStatusLabels,
   type CellUpdateResult,
 } from "./actions";
 import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist } from "./portal-actions";
@@ -2910,12 +2912,18 @@ function SortableGroupHeader({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center gap-3 px-5 py-3.5 bg-rf-surface-card
+      className={`group bg-rf-surface-card
         rounded-t-[14px] border-b border-rf-ink-100
         sticky top-0 z-30
         ${isDragging ? "" : "shadow-[0_1px_0_0_rgb(0,0,0,0.04)]"}`}
       {...attributes}
     >
+      {/* Inner content — sticky left-0 keeps the group name pinned at the
+          left edge of the viewport when scrolling right. Using a narrow
+          (w-max) div is the key: sticky only works when the element is
+          narrower than its containing block. The full-width outer div
+          provides the background; this div just sticks the name. */}
+      <div className="sticky left-0 w-max flex items-center gap-3 px-5 py-3.5 bg-rf-surface-card">
       {/* Drag handle */}
       <button
         {...listeners}
@@ -2974,6 +2982,7 @@ function SortableGroupHeader({
           <circle cx="8" cy="2" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="14" r="1.5"/>
         </svg>
       </button>
+      </div>{/* end inner translateX div */}
 
       {/* Color picker portal — only while rename mode is active (skip until positioned) */}
       {isEditing && clientMounted && pickerPos.top > 0 && createPortal(
@@ -4379,6 +4388,134 @@ function getNextAvailableColor(usedColors: string[]): string {
   return STATUS_COLOR_PALETTE[STATUS_COLOR_PALETTE.length - 1].value;
 }
 
+/** Sortable row used inside StatusLabelsEditor for drag-to-reorder. */
+function SortableLabelRow({
+  label,
+  isFallback,
+  editValue,
+  inputRefs,
+  localLabels,
+  editValues,
+  onUpdateLabel,
+  onDeleteLabel,
+  setEditValues,
+  setEditingLabelId,
+}: {
+  label: StatusLabel;
+  isFallback: boolean;
+  editValue: { label: string; color: string } | undefined;
+  inputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
+  localLabels: StatusLabel[];
+  editValues: Record<string, { label: string; color: string }>;
+  onUpdateLabel: (labelId: string, overrideColor?: string) => void;
+  onDeleteLabel: (labelId: string) => void;
+  setEditValues: React.Dispatch<React.SetStateAction<Record<string, { label: string; color: string }>>>;
+  setEditingLabelId: (id: string | null) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: label.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    position: 'relative',
+    zIndex: isDragging ? 999 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-2 py-1 px-1.5 rounded-lg hover:bg-rf-surface-page transition-colors min-w-0"
+    >
+      {/* Drag handle */}
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab active:cursor-grabbing text-rf-ink-300 hover:text-rf-ink-500 transition-colors touch-none"
+        tabIndex={-1}
+        aria-label="Drag to reorder"
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+
+      <ColorPicker
+        size="sm"
+        value={editValue?.color || label.color}
+        onChange={(color) => {
+          setEditValues((prev) => ({
+            ...prev,
+            [label.id]: { ...prev[label.id], color },
+          }));
+          setEditingLabelId(null);
+          onUpdateLabel(label.id, color);
+        }}
+        disabledColors={localLabels
+          .filter((l) => l.id !== label.id)
+          .map((l) => editValues[l.id]?.color || l.color)}
+      />
+      <input
+        ref={(el) => { inputRefs.current[label.id] = el; }}
+        type="text"
+        value={editValue?.label || label.label}
+        onChange={(e) => {
+          setEditValues((prev) => ({
+            ...prev,
+            [label.id]: { ...prev[label.id], label: e.target.value },
+          }));
+        }}
+        onFocus={() => setEditingLabelId(label.id)}
+        onBlur={() => {
+          onUpdateLabel(label.id);
+          setEditingLabelId(null);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            onUpdateLabel(label.id);
+            setEditingLabelId(null);
+            e.currentTarget.blur();
+          }
+          if (e.key === 'Escape') {
+            setEditValues((prev) => ({
+              ...prev,
+              [label.id]: { label: label.label, color: label.color },
+            }));
+            setEditingLabelId(null);
+            e.currentTarget.blur();
+          }
+        }}
+        className="min-w-0 flex-1 px-1.5 py-0.5 text-sm text-rf-text-primary bg-transparent border border-transparent rounded hover:border-rf-border focus:border-rf-blue focus:bg-rf-surface-card outline-none transition-colors"
+        placeholder="Label name"
+      />
+      {isFallback && (
+        <span className="shrink-0 px-1.5 py-0.5 text-xs font-medium bg-rf-blue-tint text-rf-blue rounded">
+          Default
+        </span>
+      )}
+      {!isFallback && (
+        <button
+          type="button"
+          onClick={() => onDeleteLabel(label.id)}
+          className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-rf-text-muted hover:text-rf-danger transition-all"
+          title="Delete label"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
 function StatusLabelsEditor({
   companyId,
   jobId,
@@ -4395,6 +4532,10 @@ function StatusLabelsEditor({
   const [isPending, startTransition] = useTransition();
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [localLabels, setLocalLabels] = useState<StatusLabel[]>(labels);
+  const labelDndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
   const [editValues, setEditValues] = useState<Record<string, { label: string; color: string }>>({});
   const [newLabel, setNewLabel] = useState("");
   // Smart default: first available unused palette color instead of always "#4F46E5".
@@ -4547,6 +4688,28 @@ function StatusLabelsEditor({
     });
   }
 
+  // Drag-end handler for label reordering
+  function handleLabelDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = localLabels.findIndex((l) => l.id === active.id);
+    const newIndex = localLabels.findIndex((l) => l.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(localLabels, oldIndex, newIndex);
+    setLocalLabels(reordered);
+    startTransition(async () => {
+      try {
+        await reorderStatusLabels(
+          companyId,
+          jobId,
+          reordered.map((l, i) => ({ id: l.id, sort_order: i }))
+        );
+      } catch {
+        setLocalLabels(localLabels);
+      }
+    });
+  }
+
   // Determine fallback label (first label or one named "None")
   const fallbackLabel = localLabels.find((l) => l.label.toLowerCase() === "none") || localLabels[0];
 
@@ -4571,91 +4734,35 @@ function StatusLabelsEditor({
           </div>
         )}
 
-        {/* Labels grid — fills 6 rows then wraps to a new column, expanding horizontally
-            rather than vertically. No JS chunking needed: CSS handles it automatically. */}
-        <div
-          className="mt-4"
-          style={{
-            display: 'grid',
-            gridTemplateRows: 'repeat(6, auto)',
-            gridAutoFlow: 'column',
-            gridAutoColumns: 'minmax(180px, 1fr)',
-            gap: '2px 12px',
-          }}
+        {/* Labels list with drag-to-reorder */}
+        <DndContext
+          sensors={labelDndSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleLabelDragEnd}
         >
-          {localLabels.map((label) => {
-            const isFallback = fallbackLabel?.id === label.id;
-            return (
-            <div key={label.id} className="group flex items-center gap-2 py-1 px-1.5 rounded-lg hover:bg-rf-surface-page transition-colors min-w-0">
-                <ColorPicker
-                  size="sm"
-                  value={editValues[label.id]?.color || label.color}
-                  onChange={(color) => {
-                    setEditValues((prev) => ({
-                      ...prev,
-                      [label.id]: { ...prev[label.id], color },
-                    }));
-                    setEditingLabelId(null);
-                    onUpdateLabel(label.id, color);
-                  }}
-                  disabledColors={localLabels
-                    .filter((l) => l.id !== label.id)
-                    .map((l) => editValues[l.id]?.color || l.color)}
+          <SortableContext
+            items={localLabels.map((l) => l.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="mt-4 flex flex-col gap-0.5">
+              {localLabels.map((label) => (
+                <SortableLabelRow
+                  key={label.id}
+                  label={label}
+                  isFallback={fallbackLabel?.id === label.id}
+                  editValue={editValues[label.id]}
+                  inputRefs={inputRefs}
+                  localLabels={localLabels}
+                  editValues={editValues}
+                  onUpdateLabel={onUpdateLabel}
+                  onDeleteLabel={onDeleteLabel}
+                  setEditValues={setEditValues}
+                  setEditingLabelId={setEditingLabelId}
                 />
-                <input
-                  ref={(el) => { inputRefs.current[label.id] = el; }}
-                  type="text"
-                  value={editValues[label.id]?.label || label.label}
-                  onChange={(e) => {
-                    setEditValues((prev) => ({
-                      ...prev,
-                      [label.id]: { ...prev[label.id], label: e.target.value },
-                    }));
-                  }}
-                  onFocus={() => setEditingLabelId(label.id)}
-                  onBlur={() => {
-                    onUpdateLabel(label.id);
-                    setEditingLabelId(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      onUpdateLabel(label.id);
-                      setEditingLabelId(null);
-                      e.currentTarget.blur();
-                    }
-                    if (e.key === 'Escape') {
-                      setEditValues((prev) => ({
-                        ...prev,
-                        [label.id]: { label: label.label, color: label.color },
-                      }));
-                      setEditingLabelId(null);
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  className="min-w-0 flex-1 px-1.5 py-0.5 text-sm text-rf-text-primary bg-transparent border border-transparent rounded hover:border-rf-border focus:border-rf-blue focus:bg-rf-surface-card outline-none transition-colors"
-                  placeholder="Label name"
-                />
-                {isFallback && (
-                  <span className="shrink-0 px-1.5 py-0.5 text-xs font-medium bg-rf-blue-tint text-rf-blue rounded">
-                    Default
-                  </span>
-                )}
-                {!isFallback && (
-                  <button
-                    type="button"
-                    onClick={() => onDeleteLabel(label.id)}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 text-rf-text-muted hover:text-rf-danger transition-all"
-                    title="Delete label"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
+              ))}
             </div>
-          );
-          })}
-        </div>
+          </SortableContext>
+        </DndContext>
 
         {/* "Add new label" row — hidden and replaced with a message when all 25 palette
             colors are already in use. This makes the constraint obvious without an error. */}
