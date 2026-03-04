@@ -1260,6 +1260,8 @@ export default function ApplicantsBoard({
           <div className="p-3 space-y-6">
             {localGroups.map((g) => {
               const rows = applicantsByGroup.get(g.id) ?? [];
+              const isFiltering = !!searchQuery || (activeFilters ?? []).length > 0;
+              if (isFiltering && rows.length === 0) return null;
               return (
                 <section
                   key={g.id}
@@ -1521,6 +1523,15 @@ export default function ApplicantsBoard({
               );
             })}
 
+            {/* No results — mobile */}
+            {(!!searchQuery || (activeFilters ?? []).length > 0) &&
+              localGroups.every((g) => (applicantsByGroup.get(g.id) ?? []).length === 0) && (
+                <div className="py-16 text-center">
+                  <p className="text-rf-ink-700 font-medium text-sm">No results found</p>
+                  <p className="text-rf-text-muted text-xs mt-1">Try adjusting your search or filters</p>
+                </div>
+              )}
+
             {/* Add new group on mobile — subtle */}
             <button
               onClick={handleAddNewGroup}
@@ -1546,6 +1557,8 @@ export default function ApplicantsBoard({
                 {/* Render regular groups */}
                 {localGroups.map((g) => {
                   const rows = applicantsByGroup.get(g.id) ?? [];
+                  const isFiltering = !!searchQuery || (activeFilters ?? []).length > 0;
+                  if (isFiltering && rows.length === 0) return null;
                   return (
                     <section
                       key={g.id}
@@ -1752,6 +1765,16 @@ export default function ApplicantsBoard({
                   );
                 })}
               </SortableContext>
+
+              {/* No results — desktop */}
+              {(!!searchQuery || (activeFilters ?? []).length > 0) &&
+                localGroups.every((g) => (applicantsByGroup.get(g.id) ?? []).length === 0) &&
+                !(applicantsByGroup.has('__orphaned__') && (applicantsByGroup.get('__orphaned__') ?? []).length > 0) && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <p className="text-rf-ink-700 font-medium">No results found</p>
+                    <p className="text-rf-text-muted text-sm mt-1">Try adjusting your search or filters</p>
+                  </div>
+                )}
 
               {/* Render orphaned applicants group if it exists */}
               {applicantsByGroup.has('__orphaned__') && (() => {

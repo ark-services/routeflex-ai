@@ -316,7 +316,7 @@ export function BoardToolbar({
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
             placeholder="Search"
-            className="w-full h-8 pl-8 pr-7 rounded-lg border border-transparent bg-transparent text-sm text-rf-ink-700 placeholder-rf-text-muted hover:bg-rf-surface-page focus:outline-none focus:border-rf-border focus:ring-2 focus:ring-rf-blue focus:bg-rf-surface-card transition-all"
+            className="w-full h-8 pl-8 pr-7 rounded-lg border border-rf-border bg-white text-sm text-rf-ink-700 placeholder-rf-text-muted focus:outline-none focus:border-rf-blue focus:ring-2 focus:ring-rf-blue/20 transition-all"
           />
           {searchQuery && (
             <button
