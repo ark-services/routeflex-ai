@@ -19,6 +19,7 @@ import {
   X,
   Eye,
   EyeOff,
+  Pin,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -328,6 +329,17 @@ export default function ApplicantsBoard({
   const [localColumns, setLocalColumns] = useState(columns);
   const [localApplicants, setLocalApplicants] = useState(applicants);
   const [localGroups, setLocalGroups] = useState(groups);
+
+  // Frozen columns count — persisted to localStorage per job
+  const [frozenColumnsCount, setFrozenColumnsCount] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const stored = localStorage.getItem(`frozen-cols-${jobId}`);
+    return stored ? Math.max(0, parseInt(stored, 10)) : 0;
+  });
+  const handleFreezeColumns = useCallback((n: number) => {
+    setFrozenColumnsCount(n);
+    localStorage.setItem(`frozen-cols-${jobId}`, String(n));
+  }, [jobId]);
 
   // Mobile card expanded state
   const [mobileExpandedRows, setMobileExpandedRows] = useState<Record<string, boolean>>({});
@@ -1616,12 +1628,23 @@ export default function ApplicantsBoard({
                         onUpdatePortalChecklist={(checklist) => onUpdateGroupPortalChecklist(g.id, checklist)}
                         columns={visibleColumns}
                         labelsByColumn={labelsByColumn}
+                        frozenColumnsCount={frozenColumnsCount}
+                        onFreezeColumns={handleFreezeColumns}
                       />
 
                     {/* Group table */}
                     {!g.is_collapsed && (() => {
                       const collapsedColIds = new Set<string>(g.settings?.collapsed_columns ?? []);
                       const groupTableWidth = getGroupTableWidth(collapsedColIds);
+                      // Compute sticky left offsets for frozen columns in this group
+                      const frozenLeftOffsets: number[] = [];
+                      {
+                        let cumLeft = STICKY_COL_WIDTH;
+                        for (let i = 0; i < frozenColumnsCount && i < visibleColumns.length; i++) {
+                          frozenLeftOffsets.push(cumLeft);
+                          cumLeft += collapsedColIds.has(visibleColumns[i].id) ? 32 : getColumnWidth(visibleColumns[i].id, visibleColumns[i].type);
+                        }
+                      }
                       return (
                       <div
                         className="overflow-visible rounded-b-[14px] bg-rf-surface-card"
@@ -1667,7 +1690,7 @@ export default function ApplicantsBoard({
                                 items={visibleColumns.map((c) => `col-${c.id}`)}
                                 strategy={horizontalListSortingStrategy}
                               >
-                                {visibleColumns.map((col) => (
+                                {visibleColumns.map((col, colIdx) => (
                                   <SortableColumnHeader
                                     key={col.id}
                                     column={col}
@@ -1680,6 +1703,8 @@ export default function ApplicantsBoard({
                                     onToggleMinimize={() => onToggleMinimizeColumn(col.id, g.id)}
                                     onAddRight={() => onAddColumnRight(col.id)}
                                     isCollapsed={collapsedColIds.has(col.id)}
+                                    isFrozen={colIdx < frozenColumnsCount}
+                                    frozenLeft={frozenLeftOffsets[colIdx]}
                                   />
                                 ))}
                               </SortableContext>
@@ -1736,6 +1761,8 @@ export default function ApplicantsBoard({
                                       else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
                                     }}
                                     collapsedColumnIds={collapsedColIds}
+                                    frozenColumnsCount={frozenColumnsCount}
+                                    frozenLeftOffsets={frozenLeftOffsets}
                                   />
                                 ))}
                               </SortableContext>
@@ -2143,6 +2170,8 @@ function SortableColumnHeader({
   onAddRight,
   onSaveEdit,
   isCollapsed: isCollapsedProp,
+  isFrozen = false,
+  frozenLeft,
 }: {
   column: BoardColumn;
   width: number;
@@ -2154,6 +2183,8 @@ function SortableColumnHeader({
   onAddRight: () => void;
   onSaveEdit: (newName: string) => void;
   isCollapsed?: boolean;
+  isFrozen?: boolean;
+  frozenLeft?: number;
 }) {
   // Local edit state - matches CellRenderer pattern exactly
   const [localValue, setLocalValue] = useState(column.name);
@@ -2164,12 +2195,14 @@ function SortableColumnHeader({
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `col-${column.id}`,
-    // Disable when editing, collapsed, or for system columns (system columns were never reorderable)
-    disabled: isEditing || isCollapsed || column.is_system,
+    // Disable when editing, collapsed, system columns, or frozen (sticky + transform don't mix)
+    disabled: isEditing || isCollapsed || column.is_system || isFrozen,
   });
 
+  // Use `undefined` (not "") so browsers don't apply a no-op transform that breaks position:sticky
+  const dndTransform = CSS.Transform.toString(transform);
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: dndTransform || undefined,
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
@@ -2255,10 +2288,16 @@ function SortableColumnHeader({
   return (
     <th
       ref={setNodeRef}
-      style={{ ...style, position: 'relative' }}
+      style={{
+        ...style,
+        position: isFrozen ? 'sticky' : 'relative',
+        left: isFrozen ? frozenLeft : undefined,
+        zIndex: isFrozen ? 19 : undefined,
+      }}
       className={`group py-2 text-sm font-medium text-rf-ink-700 border-r border-rf-border last:border-r-0 ${
-        isCollapsed ? "px-0 w-8" : "px-3"
-      }${!isEditing && !isCollapsed && !column.is_system ? " cursor-grab active:cursor-grabbing" : ""}`}
+        isFrozen ? "bg-rf-surface-card" : ""
+      } ${isCollapsed ? "px-0 w-8" : "px-3"
+      }${!isEditing && !isCollapsed && !column.is_system && !isFrozen ? " cursor-grab active:cursor-grabbing" : ""}`}
       {...attributes}
       {...listeners}
     >
@@ -2464,6 +2503,8 @@ function SortableRow({
   fadvReady = false,
   onSendToFadv,
   collapsedColumnIds = new Set(),
+  frozenColumnsCount = 0,
+  frozenLeftOffsets = [],
 }: {
   applicant: ApplicantRow;
   columns: BoardColumn[];
@@ -2485,6 +2526,8 @@ function SortableRow({
   fadvReady?: boolean;
   onSendToFadv?: () => Promise<void>;
   collapsedColumnIds?: Set<string>;
+  frozenColumnsCount?: number;
+  frozenLeftOffsets?: number[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `row-${applicant.id}`,
@@ -2683,12 +2726,16 @@ function SortableRow({
   );
 
   // Dynamic board columns
-  for (const col of columns) {
+  for (let colIdx = 0; colIdx < columns.length; colIdx++) {
+    const col = columns[colIdx];
     const isCollapsed = collapsedColumnIds.has(col.id);
+    const isFrozen = colIdx < frozenColumnsCount;
+    const frozenLeft = isFrozen ? frozenLeftOffsets[colIdx] : undefined;
     cellEls.push(
       <td
         key={col.id}
-        className={`py-2 border-r border-rf-ink-100 last:border-r-0 relative ${isCollapsed ? "px-1 w-12" : "px-4"}`}
+        className={`py-2 border-r border-rf-ink-100 last:border-r-0 ${isFrozen ? "sticky z-[9] bg-rf-surface-card group-hover:bg-rf-surface-page/60" : "relative"} ${isCollapsed ? "px-1 w-12" : "px-4"}`}
+        style={isFrozen ? { left: frozenLeft } : undefined}
       >
         <CellRenderer
           applicant={applicant}
@@ -2749,6 +2796,8 @@ function SortableGroupHeader({
   columns,
   labelsByColumn,
   canDelete = true,
+  frozenColumnsCount,
+  onFreezeColumns,
 }: {
   group: Group;
   rowCount: number;
@@ -2776,6 +2825,8 @@ function SortableGroupHeader({
   columns: BoardColumn[];
   labelsByColumn: Map<string, StatusLabel[]>;
   canDelete?: boolean;
+  frozenColumnsCount: number;
+  onFreezeColumns: (n: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `group-${group.id}`,
@@ -3028,6 +3079,24 @@ function SortableGroupHeader({
                   <ArrowLeftRight className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                   Expand all
                 </button>
+              </div>
+
+              {/* Freeze columns */}
+              <div className="border-t border-rf-ink-100 mt-1 pt-1">
+                <p className="px-4 py-1.5 text-xs font-semibold text-rf-text-muted uppercase tracking-wider">Freeze columns</p>
+                {[0, ...Array.from({ length: Math.min(3, columns.length) }, (_, i) => i + 1)].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => { onFreezeColumns(n); onMenuToggle(); }}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-rf-ink-500 hover:bg-rf-surface-page transition-colors text-left"
+                  >
+                    <Pin className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
+                    {n === 0 ? "None" : `${n} column${n > 1 ? "s" : ""}`}
+                    {frozenColumnsCount === n && (
+                      <span className="ml-auto text-rf-blue font-bold text-xs">✓</span>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
 
