@@ -238,7 +238,7 @@ export default async function ApplicantsPage({
   // ============================================================================
   const { data: columns, error: colErr } = await supabase
     .from("board_columns")
-    .select("id,board_id,name,type,is_system,sort_order,field_id")
+    .select("id,board_id,name,type,is_system,sort_order,field_id,settings,is_hidden")
     .eq("board_id", board.id)
     .order("sort_order", { ascending: true });
 
