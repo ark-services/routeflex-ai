@@ -2296,9 +2296,9 @@ function SortableColumnHeader({
         position: isFrozen ? 'sticky' : 'relative',
         left: isFrozen ? frozenLeft : undefined,
         zIndex: isFrozen ? 19 : undefined,
-        boxShadow: isLastFrozen ? '3px 0 5px -2px rgba(0,0,0,0.12)' : undefined,
+        borderRight: isLastFrozen ? '2px solid #c8cdd5' : undefined,
       }}
-      className={`group py-2 text-sm font-medium text-rf-ink-700 border-r border-rf-border last:border-r-0 ${
+      className={`group py-2 text-sm font-medium text-rf-ink-700 ${isLastFrozen ? "" : "border-r border-rf-border"} last:border-r-0 ${
         isFrozen ? "bg-rf-surface-card" : ""
       } ${isCollapsed ? "px-0 w-8" : "px-3"
       }${!isEditing && !isCollapsed && !column.is_system && !isFrozen ? " cursor-grab active:cursor-grabbing" : ""}`}
@@ -2739,8 +2739,8 @@ function SortableRow({
     cellEls.push(
       <td
         key={col.id}
-        className={`py-2 border-r border-rf-ink-100 last:border-r-0 ${isFrozen ? "sticky z-[9] bg-rf-surface-card group-hover:bg-rf-surface-page/60" : "relative"} ${isCollapsed ? "px-1 w-12" : "px-4"}`}
-        style={isFrozen ? { left: frozenLeft, boxShadow: isLastFrozen ? '3px 0 5px -2px rgba(0,0,0,0.12)' : undefined } : undefined}
+        className={`py-2 ${isLastFrozen ? "" : "border-r border-rf-ink-100"} last:border-r-0 ${isFrozen ? "sticky z-[9] bg-rf-surface-card group-hover:bg-rf-surface-page" : "relative"} ${isCollapsed ? "px-1 w-12" : "px-4"}`}
+        style={isFrozen ? { left: frozenLeft, borderRight: isLastFrozen ? '2px solid #c8cdd5' : undefined } : undefined}
       >
         <CellRenderer
           applicant={applicant}
