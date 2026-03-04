@@ -1404,7 +1404,10 @@ async function executeEmailGmail(
     .eq('id', jobId)
     .single();
 
-  // Get recipient email from board cell
+  // Get recipient email — three-tier fallback:
+  // 1. board_cells (manual board edits)
+  // 2. applicant_field_values via board_columns.field_id (form submissions)
+  // 3. applicants.email (direct record field)
   const { data: recipientCell } = await supabase
     .from('board_cells')
     .select('value_text')
@@ -1412,7 +1415,29 @@ async function executeEmailGmail(
     .eq('column_id', recipient_column_id)
     .maybeSingle();
 
-  const recipientEmail = recipientCell?.value_text;
+  let recipientEmail: string | null | undefined = recipientCell?.value_text;
+
+  if (!recipientEmail) {
+    const { data: boardCol } = await supabase
+      .from('board_columns')
+      .select('field_id')
+      .eq('id', recipient_column_id)
+      .maybeSingle();
+    if (boardCol?.field_id) {
+      const { data: fieldVal } = await supabase
+        .from('applicant_field_values')
+        .select('value_text')
+        .eq('applicant_id', applicantId)
+        .eq('field_id', boardCol.field_id)
+        .maybeSingle();
+      recipientEmail = fieldVal?.value_text;
+    }
+  }
+
+  if (!recipientEmail) {
+    recipientEmail = applicant?.email || null;
+  }
+
   if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
     return { success: false, error: 'Invalid or missing recipient email' };
   }
@@ -1492,7 +1517,10 @@ async function executeSendEmailGmail(
     .eq('id', jobId)
     .single();
 
-  // Get recipient email from board cell
+  // Get recipient email — three-tier fallback:
+  // 1. board_cells (manual board edits)
+  // 2. applicant_field_values via board_columns.field_id (form submissions)
+  // 3. applicants.email (direct record field)
   const { data: recipientCell } = await supabase
     .from('board_cells')
     .select('value_text')
@@ -1500,7 +1528,28 @@ async function executeSendEmailGmail(
     .eq('column_id', recipient_column_id)
     .maybeSingle();
 
-  const recipientEmail = recipientCell?.value_text;
+  let recipientEmail: string | null | undefined = recipientCell?.value_text;
+
+  if (!recipientEmail) {
+    const { data: boardCol } = await supabase
+      .from('board_columns')
+      .select('field_id')
+      .eq('id', recipient_column_id)
+      .maybeSingle();
+    if (boardCol?.field_id) {
+      const { data: fieldVal } = await supabase
+        .from('applicant_field_values')
+        .select('value_text')
+        .eq('applicant_id', applicantId)
+        .eq('field_id', boardCol.field_id)
+        .maybeSingle();
+      recipientEmail = fieldVal?.value_text;
+    }
+  }
+
+  if (!recipientEmail) {
+    recipientEmail = applicant?.email || null;
+  }
 
   // Validate email
   if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {

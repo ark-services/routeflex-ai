@@ -353,7 +353,7 @@ export function SendEmailGmailAction({
           onChange={(e) => onChange({ config: { ...action.config, subject: e.target.value } })}
           onSelect={() => { cursorPos.current = subjectRef.current?.selectionStart ?? 0; }}
           placeholder="e.g., An update on your application for {{job_title}}"
-          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-[16px] md:text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue"
+          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-[16px] md:text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue bg-white"
         />
       </div>
 

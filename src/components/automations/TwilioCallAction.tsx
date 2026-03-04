@@ -86,7 +86,7 @@ export function TwilioCallAction({ companyId, action, columns, onChange }: Twili
               value={toSource.value ?? ""}
               onChange={(e) => setToSource({ value: e.target.value })}
               placeholder="+15551234567"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
             />
           )}
         </div>
@@ -104,7 +104,7 @@ export function TwilioCallAction({ companyId, action, columns, onChange }: Twili
           value={action.config.say || ""}
           onChange={(e) => onChange({ config: { ...action.config, say: e.target.value } })}
           placeholder="Text to read aloud… use {{applicant_name}} for variables"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-y text-sm"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-y text-sm bg-white"
           rows={3}
         />
         <div className="flex justify-between items-center mt-2">

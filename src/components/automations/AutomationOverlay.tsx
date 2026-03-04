@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { ManageTab } from "./ManageTab";
 import { CreateTab } from "./CreateTab";
 import { HistoryTab } from "./HistoryTab";
+import { AutomationRunHistoryPanel } from "./AutomationRunHistoryPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Automation {
@@ -66,6 +67,7 @@ export function AutomationOverlay({
   const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
   const [isCreateDirty, setIsCreateDirty] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState<{ action: () => void } | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   // Reset to manage tab when automations change (after create)
   useEffect(() => {
@@ -92,6 +94,7 @@ export function AutomationOverlay({
     setEditingAutomation(null);
     setActiveTab("manage");
     setKey(k => k + 1);
+    setHistoryRefreshKey(k => k + 1);
   };
 
   const handleEdit = (automation: Automation) => {
@@ -159,37 +162,56 @@ export function AutomationOverlay({
           </div>
 
           {/* Tab Content - Scrollable Area */}
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex-1 flex min-h-0 overflow-hidden">
             {activeTab === "manage" && (
-              <ManageTab
-                key={`manage-${key}`}
-                companyId={companyId}
-                jobId={jobId}
-                automations={automations}
-                triggers={triggers}
-                onEdit={handleEdit}
-              />
+              <div className="flex-1 overflow-y-auto">
+                <ManageTab
+                  key={`manage-${key}`}
+                  companyId={companyId}
+                  jobId={jobId}
+                  automations={automations}
+                  triggers={triggers}
+                  onEdit={handleEdit}
+                />
+              </div>
             )}
             {activeTab === "create" && (
-              <CreateTab
-                key={`create-${key}`}
-                companyId={companyId}
-                jobId={jobId}
-                accountId={accountId}
-                triggers={triggers}
-                groups={groups}
-                onCreated={handleCreated}
-                editingAutomation={editingAutomation}
-                onCancelEdit={handleCancelEdit}
-                onDirtyChange={setIsCreateDirty}
-              />
+              <>
+                <div className="flex-1 overflow-y-auto">
+                  <CreateTab
+                    key={`create-${key}`}
+                    companyId={companyId}
+                    jobId={jobId}
+                    accountId={accountId}
+                    triggers={triggers}
+                    groups={groups}
+                    onCreated={handleCreated}
+                    editingAutomation={editingAutomation}
+                    onCancelEdit={handleCancelEdit}
+                    onDirtyChange={setIsCreateDirty}
+                  />
+                </div>
+                {/* Run history sidebar — only shown when editing an existing automation */}
+                {editingAutomation && (
+                  <div className="w-72 flex-shrink-0 border-l border-gray-200 overflow-hidden flex flex-col">
+                    <AutomationRunHistoryPanel
+                      companyId={companyId}
+                      jobId={jobId}
+                      automationId={editingAutomation.id}
+                      refreshKey={historyRefreshKey}
+                    />
+                  </div>
+                )}
+              </>
             )}
             {activeTab === "history" && (
-              <HistoryTab
-                companyId={companyId}
-                jobId={jobId}
-                automations={automations}
-              />
+              <div className="flex-1 overflow-y-auto">
+                <HistoryTab
+                  companyId={companyId}
+                  jobId={jobId}
+                  automations={automations}
+                />
+              </div>
             )}
           </div>
         </div>

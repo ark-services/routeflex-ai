@@ -468,11 +468,25 @@ export async function captureJobLayoutToTemplate(
         }
       }
 
+      // Annotate portal_checklist items with portable name fields so
+      // applyTemplate can remap column/label UUIDs to the destination board.
+      const rawChecklist = ((g.settings as any)?.portal_checklist ?? []) as any[];
+      const portableChecklist = rawChecklist.map((item: any) => ({
+        ...item,
+        _column_name: item.column_id ? (colIdToName.get(item.column_id) ?? null) : null,
+        _date_column_name: item.date_column_id ? (colIdToName.get(item.date_column_id) ?? null) : null,
+        _pass_label_text: item.pass_label_id ? (labelIdToText.get(item.pass_label_id) ?? null) : null,
+      }));
+      const portableSettings =
+        rawChecklist.length > 0
+          ? { ...(g.settings as any), portal_checklist: portableChecklist }
+          : (g.settings ?? {});
+
       return {
         name: g.name,
         color: g.color ?? "#0073ea",
         sort_order: g.sort_order,
-        settings: g.settings ?? {},
+        settings: portableSettings,
         rows,
       };
     })

@@ -86,7 +86,7 @@ export function TwilioSmsAction({ companyId, action, columns, onChange }: Twilio
               value={toSource.value ?? ""}
               onChange={(e) => setToSource({ value: e.target.value })}
               placeholder="+15551234567"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
             />
           )}
         </div>
@@ -104,7 +104,7 @@ export function TwilioSmsAction({ companyId, action, columns, onChange }: Twilio
           value={action.config.message || ""}
           onChange={(e) => onChange({ config: { ...action.config, message: e.target.value } })}
           placeholder="Your message… use {{applicant_name}} for variables"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-y text-sm"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-y text-sm bg-white"
           rows={3}
         />
         <div className="flex justify-between items-center mt-2">

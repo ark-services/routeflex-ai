@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { MoreVertical, Trash2, Copy, Pencil } from "lucide-react";
 import {
   toggleJobAutomation,
@@ -234,7 +233,6 @@ export function ManageTab({
   triggers,
   onEdit,
 }: ManageTabProps) {
-  const router = useRouter();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -420,10 +418,11 @@ export function ManageTab({
           {filteredAutomations.map((automation) => (
             <div
               key={automation.id}
-              className={`border-2 rounded-lg p-5 transition-all ${
+              onClick={() => onEdit(automation)}
+              className={`border-2 rounded-lg p-5 transition-all cursor-pointer group ${
                 automation.is_enabled
-                  ? "border-rf-blue-tint bg-rf-blue-tint/30"
-                  : "border-gray-200 bg-gray-50"
+                  ? "border-rf-blue-tint bg-rf-blue-tint/30 hover:border-rf-blue hover:bg-rf-blue-tint/50"
+                  : "border-gray-200 bg-gray-50 hover:border-gray-400 hover:bg-gray-100"
               }`}
             >
               <div className="flex items-start justify-between">
@@ -465,9 +464,10 @@ export function ManageTab({
                   <button
                     role="switch"
                     aria-checked={automation.is_enabled}
-                    onClick={() =>
-                      handleToggle(automation.id, automation.is_enabled)
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggle(automation.id, automation.is_enabled);
+                    }}
                     disabled={actionLoading === automation.id}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rf-blue focus-visible:ring-offset-2 disabled:opacity-50 ${
                       automation.is_enabled ? "bg-rf-success" : "bg-rf-ink-300"
@@ -482,7 +482,7 @@ export function ManageTab({
                   </button>
 
                   {/* Kebab menu */}
-                  <div className="relative">
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() =>
                         setOpenMenuId(
@@ -507,7 +507,7 @@ export function ManageTab({
                         <div className="absolute right-0 mt-1 w-48 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg z-20">
                           <button
                             onClick={() => {
-                              router.push(`/dashboard/${companyId}/jobs/${jobId}/automations/${automation.id}`);
+                              onEdit(automation);
                               setOpenMenuId(null);
                             }}
                             className="w-full px-4 py-2.5 text-left text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-t-lg transition-colors"

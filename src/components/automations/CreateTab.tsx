@@ -153,8 +153,20 @@ export function CreateTab({
 
   const isEditing = !!editingAutomation;
 
+  // Ref used to suppress the dirty-state signal that fires immediately after
+  // the pre-fill effect loads existing automation data.  Without this, the
+  // overlay would show "Discard unsaved changes?" even when nothing was edited.
+  const justPreFilled = useRef(false);
+
   // Track dirty state for unsaved changes guard
   useEffect(() => {
+    // Swallow the first dirty check that fires right after pre-filling the form
+    // with an existing automation — that state change is not a user edit.
+    if (justPreFilled.current) {
+      justPreFilled.current = false;
+      onDirtyChange?.(false);
+      return;
+    }
     const isDirty = selectedTrigger !== null || actions.length > 0;
     onDirtyChange?.(isDirty);
   }, [selectedTrigger, actions.length, onDirtyChange]);
@@ -188,6 +200,10 @@ export function CreateTab({
   // Pre-fill form when editing
   useEffect(() => {
     if (editingAutomation) {
+      // Signal the dirty-state effect to skip the next check — the state
+      // updates below are a programmatic pre-fill, not a user interaction.
+      justPreFilled.current = true;
+
       // Find the trigger
       const trigger = triggers.find((t) => t.key === editingAutomation.trigger_key);
       setSelectedTrigger(trigger || null);
@@ -1231,13 +1247,13 @@ function ActionEditor({
               value={action.config.webhook_url || ""}
               onChange={(e) => onChange({ config: { ...action.config, webhook_url: e.target.value } })}
               placeholder="Slack webhook URL"
-              className="w-full px-3 py-2 border border-gray-300 rounded"
+              className="w-full px-3 py-2 border border-gray-300 rounded bg-white"
             />
             <textarea
               value={action.config.message || ""}
               onChange={(e) => onChange({ config: { ...action.config, message: e.target.value } })}
               placeholder="Message (use {{applicant_id}} for variables)"
-              className="w-full px-3 py-2 border border-gray-300 rounded"
+              className="w-full px-3 py-2 border border-gray-300 rounded bg-white"
               rows={2}
             />
           </div>
@@ -1775,7 +1791,7 @@ function ActionEditor({
                   onChange({ config: { ...action.config, criteria: e.target.value } })
                 }
                 placeholder={"Describe what to evaluate, e.g.:\n- CDL Class A license required\n- 2+ years delivery experience preferred\n- Clean driving record\n- Score 1-10, where 8+ is a strong candidate"}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-rf-blue min-h-[100px] resize-y"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-rf-blue min-h-[100px] resize-y bg-white"
                 rows={5}
               />
             </div>

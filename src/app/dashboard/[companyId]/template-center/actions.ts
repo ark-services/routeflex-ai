@@ -427,6 +427,40 @@ export async function applyTemplate(
       );
     } else {
       // ── Create: no matching group — insert a new one ──────────────────────
+
+      // Remap portal_checklist column/label IDs from source board to destination.
+      // The capture step annotates each item with _column_name, _date_column_name,
+      // and _pass_label_text so we can resolve them via colNameToId / labelMap.
+      const rawChecklist = ((g.settings as any)?.portal_checklist ?? []) as any[];
+      const remappedChecklist = rawChecklist.map((item: any) => {
+        const destColId = item._column_name
+          ? (colNameToId.get((item._column_name as string).toLowerCase()) ?? null)
+          : null;
+        const destDateColId = item._date_column_name
+          ? (colNameToId.get((item._date_column_name as string).toLowerCase()) ?? null)
+          : null;
+        const destLabelId =
+          destColId && item._pass_label_text
+            ? (labelMap.get(`${destColId}|${(item._pass_label_text as string).toLowerCase()}`) ?? null)
+            : null;
+        return {
+          id: item.id ?? undefined,
+          column_id: destColId ?? item.column_id,
+          date_column_id: destDateColId ?? item.date_column_id ?? null,
+          pass_label_id: destLabelId ?? item.pass_label_id ?? null,
+        };
+      });
+      const destSettings: Record<string, unknown> =
+        rawChecklist.length > 0
+          ? { ...(g.settings as any), portal_checklist: remappedChecklist }
+          : (g.settings ?? {});
+      // Strip capture-time annotation fields from settings before storing
+      if (destSettings.portal_checklist) {
+        destSettings.portal_checklist = (destSettings.portal_checklist as any[]).map(
+          ({ _column_name: _a, _date_column_name: _b, _pass_label_text: _c, ...rest }) => rest
+        );
+      }
+
       const { data: newGroup, error: gErr } = await supabase
         .from("board_groups")
         .insert({
@@ -435,7 +469,7 @@ export async function applyTemplate(
           name: g.name,
           color: g.color ?? "#0073ea",
           sort_order: maxSortOrder + g.sort_order,
-          settings: g.settings ?? {},
+          settings: destSettings,
         })
         .select("id")
         .single();
