@@ -398,10 +398,28 @@ export default async function ApplicantsPage({
           value_status_label_id = inner?.get(fv.value_text.toLowerCase()) ?? null;
         }
 
+        // For file columns: encode the storage path as a StoredFile JSON array so
+        // the board can render it with the correct bucket ("resumes") and generate
+        // a valid signed URL. The board's array branch in getCellValue() returns it as-is.
+        let resolvedValueText = fv.value_text || null;
+        if (colType === "file" && fv.value_file_path && !fv.value_text) {
+          const rawName = fv.value_file_path.split("/").pop() || "Resume";
+          const displayName = rawName.replace(/^\d+-/, ""); // strip timestamp prefix
+          resolvedValueText = JSON.stringify([{
+            id: fv.value_file_path,
+            name: displayName,
+            path: fv.value_file_path,
+            bucket: "resumes",
+            type: "",
+            size: 0,
+            createdAt: new Date().toISOString(),
+          }]);
+        }
+
         return {
           applicant_id: fv.applicant_id,
           column_id: columnId,
-          value_text: fv.value_text || fv.value_file_path, // Use value_text for files too
+          value_text: resolvedValueText,
           value_number: fv.value_number,
           value_date: fv.value_date,
           value_bool: fv.value_bool ?? null,
