@@ -1705,6 +1705,7 @@ export default function ApplicantsBoard({
                                     isCollapsed={collapsedColIds.has(col.id)}
                                     isFrozen={colIdx < frozenColumnsCount}
                                     frozenLeft={frozenLeftOffsets[colIdx]}
+                                    isLastFrozen={colIdx === frozenColumnsCount - 1}
                                   />
                                 ))}
                               </SortableContext>
@@ -2172,6 +2173,7 @@ function SortableColumnHeader({
   isCollapsed: isCollapsedProp,
   isFrozen = false,
   frozenLeft,
+  isLastFrozen = false,
 }: {
   column: BoardColumn;
   width: number;
@@ -2185,6 +2187,7 @@ function SortableColumnHeader({
   isCollapsed?: boolean;
   isFrozen?: boolean;
   frozenLeft?: number;
+  isLastFrozen?: boolean;
 }) {
   // Local edit state - matches CellRenderer pattern exactly
   const [localValue, setLocalValue] = useState(column.name);
@@ -2293,6 +2296,7 @@ function SortableColumnHeader({
         position: isFrozen ? 'sticky' : 'relative',
         left: isFrozen ? frozenLeft : undefined,
         zIndex: isFrozen ? 19 : undefined,
+        boxShadow: isLastFrozen ? '3px 0 5px -2px rgba(0,0,0,0.12)' : undefined,
       }}
       className={`group py-2 text-sm font-medium text-rf-ink-700 border-r border-rf-border last:border-r-0 ${
         isFrozen ? "bg-rf-surface-card" : ""
@@ -2730,12 +2734,13 @@ function SortableRow({
     const col = columns[colIdx];
     const isCollapsed = collapsedColumnIds.has(col.id);
     const isFrozen = colIdx < frozenColumnsCount;
+    const isLastFrozen = isFrozen && colIdx === frozenColumnsCount - 1;
     const frozenLeft = isFrozen ? frozenLeftOffsets[colIdx] : undefined;
     cellEls.push(
       <td
         key={col.id}
         className={`py-2 border-r border-rf-ink-100 last:border-r-0 ${isFrozen ? "sticky z-[9] bg-rf-surface-card group-hover:bg-rf-surface-page/60" : "relative"} ${isCollapsed ? "px-1 w-12" : "px-4"}`}
-        style={isFrozen ? { left: frozenLeft } : undefined}
+        style={isFrozen ? { left: frozenLeft, boxShadow: isLastFrozen ? '3px 0 5px -2px rgba(0,0,0,0.12)' : undefined } : undefined}
       >
         <CellRenderer
           applicant={applicant}
