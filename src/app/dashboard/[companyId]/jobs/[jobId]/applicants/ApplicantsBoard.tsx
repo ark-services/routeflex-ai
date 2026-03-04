@@ -2577,7 +2577,7 @@ function SortableRow({
   cellEls.push(
     <td
       key="__sticky__"
-      className="sticky left-0 z-10 bg-rf-surface-card group-hover:bg-rf-surface-page/60 px-4 py-2 border-r border-rf-ink-100"
+      className="sticky left-0 z-10 bg-rf-surface-card group-hover:bg-rf-surface-page px-4 py-2 border-r border-rf-ink-100"
     >
       <div className="flex items-center gap-2">
         {fadvReady && (
