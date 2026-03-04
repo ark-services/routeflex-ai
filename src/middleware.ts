@@ -34,9 +34,10 @@ export async function middleware(request: NextRequest) {
   const isLearnRoute = path.startsWith("/learn/");
   const isInviteRoute = path.startsWith("/invite/");
   const isStatusRoute = path.startsWith("/status/");
+  const isApplyRoute = path.startsWith("/apply/");
   const isMarketingRoute = path === "/" || path === "/features" || path === "/pricing";
 
-  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute && !isInviteRoute && !isStatusRoute && !isMarketingRoute) {
+  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute && !isInviteRoute && !isStatusRoute && !isApplyRoute && !isMarketingRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const redirectResponse = NextResponse.redirect(url);
