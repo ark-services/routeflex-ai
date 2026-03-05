@@ -2166,16 +2166,81 @@ export async function reorderColumns(
   revalidatePath(dashPath(companyId, jobId));
 }
 
+/** Save board-wide default column values. Each column's default is stored in
+ *  board_columns.settings.default_value, merged with existing settings. */
+export async function setBoardDefaultValues(
+  companyId: string,
+  jobId: string,
+  updates: { columnId: string; defaultValue: any }[]
+) {
+  const supabase = await createClient();
+
+  await Promise.all(
+    updates.map(async ({ columnId, defaultValue }) => {
+      // Fetch current settings so we can merge (not replace)
+      const { data: col } = await supabase
+        .from("board_columns")
+        .select("settings")
+        .eq("id", columnId)
+        .eq("company_id", companyId)
+        .single();
+
+      const merged = {
+        ...(col?.settings ?? {}),
+        default_value: defaultValue ?? null,
+      };
+
+      await supabase
+        .from("board_columns")
+        .update({ settings: merged })
+        .eq("id", columnId)
+        .eq("company_id", companyId);
+    })
+  );
+
+  revalidatePath(dashPath(companyId, jobId));
+}
+
+/** Maps a column type + default_value to the correct board_cells fields. */
+function buildDefaultCell(
+  applicantId: string,
+  columnId: string,
+  columnType: string,
+  defaultValue: any
+): Record<string, any> | null {
+  const base = { applicant_id: applicantId, column_id: columnId };
+  switch (columnType) {
+    case "status":
+      return { ...base, value_status_label_id: defaultValue };
+    case "text":
+    case "email":
+    case "phone":
+      return { ...base, value_text: String(defaultValue) };
+    case "number":
+      return { ...base, value_number: Number(defaultValue) };
+    case "date":
+      return { ...base, value_date: String(defaultValue) };
+    case "checkbox":
+      return { ...base, value_bool: Boolean(defaultValue) };
+    default:
+      return null;
+  }
+}
+
 /**
  * Quick create applicant with minimal data directly in a group.
  * Monday.com-style inline item creation.
+ * Applies board-wide default column values if configured.
  */
 export async function quickCreateApplicant(
   companyId: string,
   jobId: string,
   groupId: string,
   boardId: string
-) {
+): Promise<{
+  applicant: any;
+  defaultCells: { columnId: string; columnType: string; value: any }[];
+} | null> {
   const supabase = await createClient();
 
   // Get highest position in group
@@ -2214,6 +2279,36 @@ export async function quickCreateApplicant(
 
   if (VERBOSE) console.log("[quickCreateApplicant] Created:", newApplicant);
 
+  // Apply board-wide default column values
+  const defaultCells: { columnId: string; columnType: string; value: any }[] = [];
+  try {
+    const { data: cols } = await supabase
+      .from("board_columns")
+      .select("id, type, settings")
+      .eq("board_id", boardId)
+      .eq("company_id", companyId);
+
+    const cellsToInsert: Record<string, any>[] = [];
+    for (const col of cols ?? []) {
+      const dv = col.settings?.default_value;
+      if (dv == null) continue;
+      const cell = buildDefaultCell(newApplicant.id, col.id, col.type, dv);
+      if (cell) {
+        cellsToInsert.push(cell);
+        defaultCells.push({ columnId: col.id, columnType: col.type, value: dv });
+      }
+    }
+
+    if (cellsToInsert.length > 0) {
+      await supabase
+        .from("board_cells")
+        .upsert(cellsToInsert, { onConflict: "applicant_id,column_id" });
+    }
+  } catch (err) {
+    console.error("[quickCreateApplicant] Failed to apply defaults:", err);
+    // Non-fatal — applicant was still created
+  }
+
   // Pre-capture user before after() — cookie context is unavailable post-response
   const { data: { user: currentUser } } = await supabase.auth.getUser();
   const applicantId = newApplicant.id;
@@ -2249,7 +2344,7 @@ export async function quickCreateApplicant(
   // NOTE: revalidatePath intentionally omitted — the new applicant is returned
   // to the caller and appended to localApplicants state client-side, matching
   // the optimistic pattern used by updateBoardCell / cellOverrides.
-  return newApplicant;
+  return { applicant: newApplicant, defaultCells };
 }
 
 // ── sendToFadv ────────────────────────────────────────────────────────────────

@@ -71,6 +71,7 @@ export function ApplicantsBoardContainer({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
   const [activityLogOpen, setActivityLogOpen] = useState(false);
+  const [defaultValuesOpen, setDefaultValuesOpen] = useState(false);
 
   // Only trigger router.refresh() after status changes when there's an enabled
   // automation that listens for status changes AND has a move_group action.
@@ -103,6 +104,7 @@ export function ApplicantsBoardContainer({
         triggers={triggers}
         groups={boardGroups}
         onOpenActivityLog={() => setActivityLogOpen(true)}
+        onOpenDefaultValues={() => setDefaultValuesOpen(true)}
         isSuperAdmin={isSuperAdmin}
       />
 
@@ -120,6 +122,8 @@ export function ApplicantsBoardContainer({
           searchQuery={searchQuery}
           activeFilters={activeFilters}
           hasStatusMoveAutomations={hasStatusMoveAutomations}
+          showDefaultValues={defaultValuesOpen}
+          onCloseDefaultValues={() => setDefaultValuesOpen(false)}
         />
       </div>
 

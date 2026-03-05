@@ -39,6 +39,8 @@ export interface BoardToolbarProps {
   groups: any[];
   // Activity log
   onOpenActivityLog: () => void;
+  // Default values modal
+  onOpenDefaultValues?: () => void;
   // Super admin
   isSuperAdmin?: boolean;
 }
@@ -63,6 +65,7 @@ export function BoardToolbar({
   triggers,
   groups,
   onOpenActivityLog,
+  onOpenDefaultValues,
   isSuperAdmin = false,
 }: BoardToolbarProps) {
   const [views, setViews] = useState<BoardView[]>(initialViews);
@@ -216,6 +219,18 @@ export function BoardToolbar({
             >
               <BookTemplate className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Save as Template…</span>
+            </button>
+          )}
+
+          {/* Default values */}
+          {onOpenDefaultValues && (
+            <button
+              onClick={onOpenDefaultValues}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-rf-border bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:border-rf-ink-100 text-sm font-medium transition-colors"
+              title="Set default column values for new items"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Default values</span>
             </button>
           )}
 
