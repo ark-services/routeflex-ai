@@ -164,6 +164,17 @@ export async function updateFormField(
 ) {
   const supabase = await createClient();
 
+  // Capture the current options BEFORE overwriting — needed for rename detection below.
+  let oldOptions: string[] = [];
+  if (updates.settings?.options && syncToBoard) {
+    const { data: currentField } = await supabase
+      .from("job_application_fields")
+      .select("settings")
+      .eq("id", fieldId)
+      .single();
+    oldOptions = ((currentField?.settings as any)?.options ?? []) as string[];
+  }
+
   const { data, error } = await supabase
     .from("job_application_fields")
     .update({
@@ -184,8 +195,11 @@ export async function updateFormField(
       .eq("field_id", fieldId);
   }
 
-  // Sync new select/radio options to board_status_labels when options change.
-  // Only ADDS new labels — never deletes existing ones (preserves board data).
+  // Sync select/radio options to board_status_labels when options change.
+  // Uses index-based comparison to detect renames vs additions:
+  //   - Same index, different text → rename the existing label (no orphan)
+  //   - New index (array grew) → create a new label
+  //   - Index removed (array shrank) → leave existing labels alone
   if (updates.settings?.options && syncToBoard) {
     const { data: col } = await supabase
       .from("board_columns")
@@ -194,36 +208,64 @@ export async function updateFormField(
       .single();
 
     if (col) {
-      const newOptions = (updates.settings.options as string[]);
+      const newOptions = updates.settings.options as string[];
 
       const { data: existingLabels } = await supabase
         .from("board_status_labels")
-        .select("label, color, sort_order")
+        .select("id, label, color, sort_order")
         .eq("column_id", col.id);
 
-      const existingTexts = new Set(
-        (existingLabels ?? []).map((l: any) => (l.label as string).toLowerCase().trim())
-      );
       const usedColors = new Set((existingLabels ?? []).map((l: any) => l.color as string));
       const maxSortOrder = (existingLabels ?? []).reduce(
         (max: number, l: any) => Math.max(max, l.sort_order as number),
         -1
       );
 
-      const toAdd = newOptions.filter(
-        (opt) => !existingTexts.has(opt.toLowerCase().trim())
-      );
+      for (let i = 0; i < newOptions.length; i++) {
+        const newText = newOptions[i]?.trim();
+        if (!newText) continue;
 
-      for (let i = 0; i < toAdd.length; i++) {
-        const label = toAdd[i].trim();
-        if (!label) continue;
-        const color =
-          STATUS_LABEL_COLORS.find((c) => !usedColors.has(c)) ??
-          STATUS_LABEL_COLORS[i % STATUS_LABEL_COLORS.length];
-        usedColors.add(color);
-        await supabase
-          .from("board_status_labels")
-          .insert({ column_id: col.id, label, color, sort_order: maxSortOrder + 1 + i });
+        const oldText = oldOptions[i]?.trim();
+        const newTextLower = newText.toLowerCase();
+        const oldTextLower = oldText?.toLowerCase() ?? "";
+
+        // Already up to date — skip
+        if (oldText && oldTextLower === newTextLower) continue;
+
+        const alreadyExists = (existingLabels ?? []).some(
+          (l: any) => (l.label as string).toLowerCase().trim() === newTextLower
+        );
+
+        if (oldText && oldTextLower !== newTextLower) {
+          // Rename: find the label matching the old text and update it
+          const target = (existingLabels ?? []).find(
+            (l: any) => (l.label as string).toLowerCase().trim() === oldTextLower
+          );
+          if (target) {
+            await supabase
+              .from("board_status_labels")
+              .update({ label: newText })
+              .eq("id", (target as any).id);
+          } else if (!alreadyExists) {
+            // Old label was already deleted — create a fresh one
+            const color =
+              STATUS_LABEL_COLORS.find((c) => !usedColors.has(c)) ??
+              STATUS_LABEL_COLORS[i % STATUS_LABEL_COLORS.length];
+            usedColors.add(color);
+            await supabase
+              .from("board_status_labels")
+              .insert({ column_id: col.id, label: newText, color, sort_order: maxSortOrder + 1 });
+          }
+        } else if (!oldText && !alreadyExists) {
+          // New option added (array grew) — create label
+          const color =
+            STATUS_LABEL_COLORS.find((c) => !usedColors.has(c)) ??
+            STATUS_LABEL_COLORS[i % STATUS_LABEL_COLORS.length];
+          usedColors.add(color);
+          await supabase
+            .from("board_status_labels")
+            .insert({ column_id: col.id, label: newText, color, sort_order: maxSortOrder + 1 });
+        }
       }
     }
   }
