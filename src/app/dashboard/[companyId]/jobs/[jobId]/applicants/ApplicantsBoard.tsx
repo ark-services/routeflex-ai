@@ -71,6 +71,7 @@ import {
   sendToFadv,
   updateGroupCollapsedColumns,
   reorderStatusLabels,
+  getColumnFormOptions,
   type CellUpdateResult,
 } from "./actions";
 import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist } from "./portal-actions";
@@ -4392,6 +4393,7 @@ function getNextAvailableColor(usedColors: string[]): string {
 function SortableLabelRow({
   label,
   isFallback,
+  isFormLinked,
   editValue,
   inputRefs,
   localLabels,
@@ -4403,6 +4405,7 @@ function SortableLabelRow({
 }: {
   label: StatusLabel;
   isFallback: boolean;
+  isFormLinked: boolean;
   editValue: { label: string; color: string } | undefined;
   inputRefs: React.MutableRefObject<Record<string, HTMLInputElement | null>>;
   localLabels: StatusLabel[];
@@ -4495,6 +4498,14 @@ function SortableLabelRow({
         className="min-w-0 flex-1 px-1.5 py-0.5 text-sm text-rf-text-primary bg-transparent border border-transparent rounded hover:border-rf-border focus:border-rf-blue focus:bg-rf-surface-card outline-none transition-colors"
         placeholder="Label name"
       />
+      {isFormLinked && (
+        <span
+          className="shrink-0 px-1.5 py-0.5 text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200 rounded"
+          title="This label is synced from a form dropdown — deleting it may cause it to be re-added"
+        >
+          Form
+        </span>
+      )}
       {isFallback && (
         <span className="shrink-0 px-1.5 py-0.5 text-xs font-medium bg-rf-blue-tint text-rf-blue rounded">
           Default
@@ -4532,6 +4543,17 @@ function StatusLabelsEditor({
   const [isPending, startTransition] = useTransition();
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [localLabels, setLocalLabels] = useState<StatusLabel[]>(labels);
+  // Form-linked options: labels whose text matches a form dropdown option
+  const [formLinkedOptions, setFormLinkedOptions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    getColumnFormOptions(companyId, jobId, columnId)
+      .then((options) => {
+        setFormLinkedOptions(new Set(options.map((o) => o.toLowerCase().trim())));
+      })
+      .catch(() => {});
+  }, [companyId, jobId, columnId]);
+
   const labelDndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -4632,7 +4654,12 @@ function StatusLabelsEditor({
       return;
     }
 
-    const ok = confirm(`Delete "${labelToDelete.label}"?`);
+    const currentText = (editValues[labelId]?.label || labelToDelete.label).toLowerCase().trim();
+    const isLinkedToForm = formLinkedOptions.has(currentText);
+    const confirmMsg = isLinkedToForm
+      ? `"${labelToDelete.label}" is synced from a form dropdown. Deleting it here may cause it to be re-added automatically when the next applicant submits the form. Delete anyway?`
+      : `Delete "${labelToDelete.label}"?`;
+    const ok = confirm(confirmMsg);
     if (!ok) return;
 
     // Immediately remove from local state
@@ -4750,6 +4777,9 @@ function StatusLabelsEditor({
                   key={label.id}
                   label={label}
                   isFallback={fallbackLabel?.id === label.id}
+                  isFormLinked={formLinkedOptions.has(
+                    (editValues[label.id]?.label || label.label).toLowerCase().trim()
+                  )}
                   editValue={editValues[label.id]}
                   inputRefs={inputRefs}
                   localLabels={localLabels}

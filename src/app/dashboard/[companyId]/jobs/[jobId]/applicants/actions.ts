@@ -1223,6 +1223,39 @@ export async function reorderStatusLabels(
   // Do NOT call revalidatePath here - let the UI handle optimistic updates
 }
 
+/** Returns the form field option texts linked to a board column (select/radio only), or [] if not linked. */
+export async function getColumnFormOptions(
+  companyId: string,
+  jobId: string,
+  columnId: string
+): Promise<string[]> {
+  const supabase = await createClient();
+
+  // Get the column's linked field_id
+  const { data: column } = await supabase
+    .from("board_columns")
+    .select("field_id")
+    .eq("id", columnId)
+    .single();
+
+  if (!column?.field_id) return [];
+
+  // Fetch the linked form field — only select/radio have options
+  const { data: field } = await supabase
+    .from("job_application_fields")
+    .select("settings, type")
+    .eq("id", column.field_id)
+    .in("type", ["select", "radio"])
+    .single();
+
+  if (!field) return [];
+
+  const options = (field.settings as any)?.options;
+  if (!Array.isArray(options)) return [];
+
+  return options.filter((o: unknown): o is string => typeof o === "string");
+}
+
 // ===== Board Cell Actions =====
 
 export type CellUpdateResult =
