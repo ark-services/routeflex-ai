@@ -1442,16 +1442,55 @@ async function executeEmailGmail(
     return { success: false, error: 'Invalid or missing recipient email' };
   }
 
-  // Resolve variables
-  const context = {
+  // Build variable context — basic fields + all board column values
+  const nameParts = (applicant.full_name || '').split(' ');
+  const context: Record<string, any> = {
     applicant_name: applicant.full_name || 'N/A',
+    first_name: nameParts[0] || 'N/A',
+    last_name: nameParts.slice(1).join(' ') || 'N/A',
     applicant_email: applicant.email || 'N/A',
     company_name: company?.name || 'N/A',
     job_title: job?.title || 'N/A',
   };
 
+  // Fetch board columns (with field_id to bridge applicant_field_values)
+  const { data: allColumns } = await supabase
+    .from('board_columns')
+    .select('id, name, field_id')
+    .eq('company_id', companyId);
+
+  // Fetch cell values from board_cells
+  const { data: allCells } = await supabase
+    .from('board_cells')
+    .select('column_id, value_text, value_number, value_date')
+    .eq('applicant_id', applicantId);
+
+  // Fetch cell values from applicant_field_values (form submissions)
+  const { data: allFieldValues } = await supabase
+    .from('applicant_field_values')
+    .select('field_id, value_text, value_number, value_date')
+    .eq('applicant_id', applicantId);
+
+  if (allColumns) {
+    const fieldValuesByFieldId = new Map(
+      (allFieldValues ?? []).map((fv: any) => [fv.field_id, fv])
+    );
+    for (const column of allColumns) {
+      const key = colNameToToken(column.name);
+      const cell = (allCells ?? []).find((c: any) => c.column_id === column.id);
+      if (cell?.value_text || cell?.value_number != null || cell?.value_date) {
+        context[key] = cell.value_text || cell.value_number?.toString() || cell.value_date || '';
+      } else if (column.field_id) {
+        const fv = fieldValuesByFieldId.get(column.field_id);
+        if (fv) {
+          context[key] = fv.value_text || fv.value_number?.toString() || fv.value_date || '';
+        }
+      }
+    }
+  }
+
   const resolvedSubject = resolveVariables(subject, context);
-  const resolvedBody = resolveVariables(body, context);
+  const resolvedBody = plainTextToHtml(resolveVariables(body, context));
 
   // Get Gmail client — company-scoped (new path)
   const { getGmailClientForCompany, sendEmail: sendEmailGmail } = await import('@/lib/gmail-send');
@@ -1556,40 +1595,56 @@ async function executeSendEmailGmail(
     return { success: false, error: 'Invalid or missing recipient email' };
   }
 
-  // Build variable context
+  // Build variable context — basic fields + all board column values
+  const nameParts = (applicant.full_name || '').split(' ');
   const context: Record<string, any> = {
     applicant_name: applicant.full_name || 'N/A',
+    first_name: nameParts[0] || 'N/A',
+    last_name: nameParts.slice(1).join(' ') || 'N/A',
     applicant_email: applicant.email || 'N/A',
     company_name: company?.name || 'N/A',
     job_title: job?.title || 'N/A',
   };
 
-  // Get all board columns for column variable substitution
+  // Fetch board columns (with field_id to bridge applicant_field_values)
   const { data: allColumns } = await supabase
     .from('board_columns')
-    .select('id, name')
+    .select('id, name, field_id')
     .eq('company_id', companyId);
 
-  // Get all cell values for this applicant
+  // Fetch cell values from board_cells (manually set on the board)
   const { data: allCells } = await supabase
     .from('board_cells')
     .select('column_id, value_text, value_number, value_date')
     .eq('applicant_id', applicantId);
 
-  // Add column values to context
-  if (allColumns && allCells) {
+  // Fetch cell values from applicant_field_values (form submissions)
+  const { data: allFieldValues } = await supabase
+    .from('applicant_field_values')
+    .select('field_id, value_text, value_number, value_date')
+    .eq('applicant_id', applicantId);
+
+  if (allColumns) {
+    const fieldValuesByFieldId = new Map(
+      (allFieldValues ?? []).map((fv: any) => [fv.field_id, fv])
+    );
     for (const column of allColumns) {
-      const cell = allCells.find(c => c.column_id === column.id);
-      const columnKey = column.name.toLowerCase().replace(/\s+/g, '_');
-      if (cell) {
-        context[columnKey] = cell.value_text || cell.value_number || cell.value_date || '';
+      const key = colNameToToken(column.name);
+      const cell = (allCells ?? []).find((c: any) => c.column_id === column.id);
+      if (cell?.value_text || cell?.value_number != null || cell?.value_date) {
+        context[key] = cell.value_text || cell.value_number?.toString() || cell.value_date || '';
+      } else if (column.field_id) {
+        const fv = fieldValuesByFieldId.get(column.field_id);
+        if (fv) {
+          context[key] = fv.value_text || fv.value_number?.toString() || fv.value_date || '';
+        }
       }
     }
   }
 
-  // Resolve variables in subject and body
+  // Resolve variables in subject and body; convert plain-text newlines to <br>
   const resolvedSubject = resolveVariables(subject, context);
-  const resolvedBody = resolveVariables(body || '', context);
+  const resolvedBody = plainTextToHtml(resolveVariables(body || '', context));
 
   // Get Gmail client — prefer company-scoped lookup; fall back to connection_id (legacy)
   const { getGmailClientForCompany, getGmailClientForConnection, sendEmail } = await import('@/lib/gmail-send');
@@ -2031,6 +2086,25 @@ function resolveVariables(template: string, context: Record<string, any>): strin
   return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
     return context[key]?.toString() || match;
   });
+}
+
+/**
+ * Helper: Convert a plain-text email body to HTML-safe format.
+ * If the body already contains HTML tags it is returned as-is.
+ * Otherwise newlines are converted to <br> tags so the email renders
+ * correctly when sent with Content-Type: text/html.
+ */
+function plainTextToHtml(body: string): string {
+  if (/<[a-z][\s\S]*?>/i.test(body)) return body; // already HTML
+  return body.replace(/\n/g, '<br>\n');
+}
+
+/**
+ * Helper: Build a slug key from a column name matching the {{token}} convention.
+ * e.g. "Vehicle Make and Model" → "vehicle_make_and_model"
+ */
+function colNameToToken(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, '_');
 }
 
 /**
