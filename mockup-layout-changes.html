@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RouteFlex — Layout Changes Mockup (Light Mode)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Darker+Grotesque:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Light mode tokens (from globals.css) ── */
+    :root {
+      --rf-blue:           #1D6FFF;
+      --rf-blue-light:     #4D8FFF;
+      --rf-blue-tint:      #EBF2FF;
+      --rf-blue-dark:      #0A4FCC;
+      --rf-surface-page:   #F3F3F0;
+      --rf-surface-card:   #FFFFFF;
+      --rf-surface-input:  #F3F3F0;
+      --rf-border:         rgba(15, 22, 35, 0.08);
+      --rf-text-primary:   #0F1623;
+      --rf-text-secondary: #4A5568;
+      --rf-text-muted:     #9BAABB;
+      --rf-ink-100:        #E4E8F0;
+      --rf-ink-300:        #9BAABB;
+      --rf-ink-500:        #4A5568;
+      --rf-ink-700:        #2A3347;
+      --rf-ink-900:        #0F1623;
+      --rf-shadow-sm:      0 1px 3px rgba(0,0,0,0.06);
+      --rf-shadow-md:      0 2px 12px rgba(0,0,0,0.08);
+      --rf-shadow-lg:      0 4px 24px rgba(0,0,0,0.10);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--rf-surface-page);
+      color: var(--rf-text-primary);
+      font-family: 'Darker Grotesque', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CHANGE 1: Thinner header (56px fixed, down from 64px)
+       ═══════════════════════════════════════════════ */
+    .top-nav {
+      background: var(--rf-surface-card);
+      border-bottom: 1px solid var(--rf-border);
+      height: 48px;            /* ← was 64px desktop */
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-avatar {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      background: var(--rf-blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 900; color: #fff;
+    }
+    .company-selector {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--rf-ink-500);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .company-selector:hover {
+      background: var(--rf-surface-page);
+    }
+
+    /* ═══════════════════════════════════════════════
+       CHANGE 2: Sidebar layout from dark mode + job switcher
+       ═══════════════════════════════════════════════ */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 48px);
+    }
+    .sidebar {
+      background: var(--rf-surface-card);
+      border-right: 1px solid var(--rf-border);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-section-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--rf-text-muted);
+      padding: 8px 20px 4px;
+    }
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--rf-ink-500);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+    .sidebar-link:hover {
+      color: var(--rf-text-primary);
+      background: var(--rf-surface-page);
+    }
+    .sidebar-link.active {
+      color: var(--rf-blue);
+      border-left-color: var(--rf-blue);
+      background: var(--rf-blue-tint);
+    }
+    .sidebar-icon {
+      width: 16px;
+      height: 16px;
+      opacity: 0.5;
+    }
+    .sidebar-link.active .sidebar-icon {
+      opacity: 1;
+    }
+    .sidebar-divider {
+      height: 1px;
+      background: var(--rf-border);
+      margin: 12px 20px;
+    }
+
+    /* Job switcher inside sidebar */
+    .job-switcher {
+      margin: 8px 16px;
+      padding: 8px 12px;
+      border: 1px solid var(--rf-border);
+      border-radius: 8px;
+      background: var(--rf-surface-page);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .job-switcher:hover {
+      border-color: var(--rf-ink-300);
+    }
+    .job-switcher-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--rf-ink-700);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .job-switcher-chevron {
+      width: 14px;
+      height: 14px;
+      color: var(--rf-text-muted);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CHANGE 3: Job header size/spacing from dark mode
+       ═══════════════════════════════════════════════ */
+    .main-content {
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .page-title {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: var(--rf-text-primary);
+      line-height: 1.1;
+    }
+    .page-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--rf-text-secondary);
+      margin-top: 4px;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Buttons (kept from current) ── */
+    .btn-primary {
+      background: var(--rf-blue);
+      color: #fff;
+      font-family: 'Darker Grotesque', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--rf-ink-500);
+      font-family: 'Darker Grotesque', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      border: 1px solid var(--rf-border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Tabs (same as current) ── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--rf-border);
+    }
+    .tab {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--rf-ink-500);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab.active {
+      color: var(--rf-blue);
+      border-bottom-color: var(--rf-blue);
+    }
+
+    /* Search + Filter bar */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    /* Monday-style search: subtle, expands on focus */
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-icon {
+      position: absolute;
+      left: 8px;
+      pointer-events: none;
+      color: var(--rf-text-muted);
+      transition: color 0.15s;
+    }
+    .search-input {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 6px 10px 6px 30px;
+      font-family: 'Darker Grotesque', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--rf-text-primary);
+      outline: none;
+      width: 100px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .search-input::placeholder {
+      color: var(--rf-text-muted);
+    }
+    .search-input:hover {
+      background: var(--rf-surface-page);
+    }
+    .search-input:focus {
+      width: 220px;
+      background: var(--rf-surface-card);
+      border-color: var(--rf-border);
+      box-shadow: 0 0 0 3px rgba(29,111,255,0.08);
+      cursor: text;
+    }
+    .search-input:focus + .search-icon-hidden,
+    .search-input:focus ~ .search-icon { color: var(--rf-ink-500); }
+
+    /* ═══════════════════════════════════════════════
+       CHANGE 4: Rounded corners on table groups
+       ═══════════════════════════════════════════════ */
+    .group-card {
+      background: var(--rf-surface-card);
+      border: 1px solid var(--rf-border);
+      border-radius: 14px;        /* ← was square/minimal */
+      overflow: hidden;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    /* Color stripe down the left side of each group */
+    .group-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      border-radius: 14px 0 0 14px;
+    }
+    .group-card.color-blue::before { background: #1D6FFF; }
+    .group-card.color-green::before { background: #16A34A; }
+    .group-card.color-yellow::before { background: #CA8A04; }
+    .group-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--rf-border);
+      cursor: pointer;
+    }
+    .group-color-bar {
+      width: 3px;
+      height: 18px;
+      border-radius: 2px;
+    }
+    .group-name {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .group-count {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--rf-text-muted);
+      margin-left: 4px;
+    }
+
+    /* Table inside group */
+    .table-head {
+      display: grid;
+      grid-template-columns: 36px 1fr 1fr 120px 150px 160px 140px 140px;
+      gap: 0;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--rf-border);
+      background: var(--rf-surface-card);
+    }
+    .table-head-cell {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--rf-text-muted);
+      padding: 8px 8px;
+      text-transform: none;
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 36px 1fr 1fr 120px 150px 160px 140px 140px;
+      gap: 0;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--rf-border);
+      transition: background 0.1s;
+      cursor: pointer;
+    }
+    .table-row:last-child { border-bottom: none; }
+    .table-row:hover { background: rgba(29,111,255,0.02); }
+    .table-cell {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--rf-ink-700);
+      padding: 10px 8px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .table-cell.muted {
+      color: var(--rf-text-muted);
+    }
+    input[type="checkbox"] {
+      accent-color: var(--rf-blue);
+      width: 15px;
+      height: 15px;
+    }
+
+    /* Add item row */
+    .add-item-row {
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--rf-text-muted);
+      cursor: pointer;
+    }
+    .add-item-row:hover {
+      color: var(--rf-ink-500);
+    }
+
+    /* ── Change annotation labels ── */
+    .change-label {
+      position: absolute;
+      background: #FF4444;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      z-index: 100;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(255,68,68,0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ CHANGE 1: Thinner header ═══ -->
+  <nav class="top-nav" style="position:relative;">
+
+    <div style="display:flex;align-items:center;gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 48 48" fill="none">
+        <path d="M4 8 L20 24 L4 40" stroke="#1D6FFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M24 8 L40 24 L24 40" stroke="#1D6FFF" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.28"/>
+      </svg>
+      <span style="font-weight:900;font-size:17px;letter-spacing:-0.025em;color:var(--rf-ink-900);">Route<span style="color:var(--rf-blue);">Flex</span></span>
+    </div>
+    <div class="nav-right">
+      <div class="company-selector">
+        Ark Services
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+      <div class="nav-avatar">DA</div>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+
+    <!-- ═══ CHANGE 2: Sidebar from dark mode layout + job switcher ═══ -->
+    <aside class="sidebar" style="position:relative;">
+
+
+      <!-- Job switcher (kept from current) -->
+      <div style="padding:4px 0 0 0;">
+        <div class="sidebar-section-label">Jobs</div>
+        <div class="job-switcher">
+          <span class="job-switcher-label">FedEx Delivery Driver</span>
+          <svg class="job-switcher-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+
+      <!-- Job sub-nav -->
+      <div style="padding:4px 0;">
+        <div class="sidebar-link active">
+          <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="5" height="5" rx="1" fill="currentColor"/>
+            <rect x="9" y="2" width="5" height="5" rx="1" fill="currentColor" opacity="0.4"/>
+            <rect x="2" y="9" width="5" height="5" rx="1" fill="currentColor" opacity="0.4"/>
+            <rect x="9" y="9" width="5" height="5" rx="1" fill="currentColor" opacity="0.4"/>
+          </svg>
+          Applicants Board
+        </div>
+        <div class="sidebar-link">
+          <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none">
+            <rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+            <path d="M6 5h4M6 7.5h4M6 10h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          Application Form
+        </div>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <!-- Account section -->
+      <div class="sidebar-section-label">Account</div>
+      <div class="sidebar-link">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none">
+          <rect x="1" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+          <rect x="9" y="1" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+          <rect x="9" y="9" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+        </svg>
+        Template Center
+      </div>
+      <div class="sidebar-link">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none">
+          <path d="M8 2 L10 6 L14 6.5 L11 9.5 L11.5 14 L8 12 L4.5 14 L5 9.5 L2 6.5 L6 6 Z" stroke="currentColor" stroke-width="1.2" fill="none"/>
+        </svg>
+        Training
+      </div>
+      <div class="sidebar-link">
+        <svg class="sidebar-icon" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <circle cx="8" cy="8" r="2" fill="currentColor"/>
+        </svg>
+        Settings
+      </div>
+    </aside>
+
+    <!-- ═══ Main content ═══ -->
+    <main class="main-content">
+
+      <!-- ═══ CHANGE 3: Job header size from dark mode ═══ -->
+      <div class="page-header" style="position:relative;">
+
+        <div>
+          <div class="page-title">FedEx Delivery Driver</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn-ghost">
+            Save as Template...
+          </button>
+          <button class="btn-ghost">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v6m0 0l2.5-2.5M8 8L5.5 5.5M3 10v2.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Integrate
+          </button>
+          <button class="btn-primary">
+            <svg width="13" height="13" viewBox="0 0 48 48" fill="none">
+              <path d="M4 8 L20 24 L4 40" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M24 8 L40 24 L24 40" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+            </svg>
+            Automate
+          </button>
+          <button class="btn-ghost" style="padding:6px 8px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="3" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="13" r="1.2" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active">Main table</div>
+        <div class="tab">Main tables</div>
+      </div>
+
+      <!-- Search + Filter -->
+      <div class="toolbar">
+        <div class="search-wrapper">
+          <input class="search-input" placeholder="Search" />
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <button class="btn-ghost" style="gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Filter
+        </button>
+      </div>
+
+      <!-- ═══ CHANGE 4: Rounded corners on group cards ═══ -->
+      <!-- Group: New Applications -->
+      <div class="group-card color-blue" style="position:relative;">
+
+        <div class="group-header">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="#1D6FFF" stroke-width="1.5" stroke-linecap="round"/></svg>
+
+          <span class="group-name" style="color:#1D6FFF;">New Applications</span>
+          <span class="group-count">(2)</span>
+        </div>
+        <div class="table-head">
+          <div class="table-head-cell"></div>
+          <div class="table-head-cell">First Name</div>
+          <div class="table-head-cell">Last Name</div>
+          <div class="table-head-cell">Status</div>
+          <div class="table-head-cell">Dropped Reason</div>
+          <div class="table-head-cell">Email Address</div>
+          <div class="table-head-cell">Phone</div>
+          <div class="table-head-cell">Home Address</div>
+        </div>
+        <div class="table-row">
+          <div class="table-cell"><input type="checkbox" /></div>
+          <div class="table-cell">Donte</div>
+          <div class="table-cell">Best</div>
+          <div class="table-cell muted">&mdash;</div>
+          <div class="table-cell muted">&mdash;</div>
+          <div class="table-cell">email@example.com</div>
+          <div class="table-cell">+15551234567</div>
+          <div class="table-cell">City, State</div>
+        </div>
+        <div class="table-row">
+          <div class="table-cell"><input type="checkbox" /></div>
+          <div class="table-cell">Jasmin</div>
+          <div class="table-cell">Taybron</div>
+          <div class="table-cell muted">&mdash;</div>
+          <div class="table-cell muted">&mdash;</div>
+          <div class="table-cell">email@example.com</div>
+          <div class="table-cell">+15551234567</div>
+          <div class="table-cell">City, State</div>
+        </div>
+        <div class="add-item-row">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Add item
+        </div>
+      </div>
+
+      <!-- Group: FADV -->
+      <div class="group-card color-green">
+        <div class="group-header">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round"/></svg>
+
+          <span class="group-name" style="color:#16A34A;">FADV</span>
+          <span class="group-count">(0)</span>
+        </div>
+        <div class="table-head">
+          <div class="table-head-cell"></div>
+          <div class="table-head-cell">First Name</div>
+          <div class="table-head-cell">Last Name</div>
+          <div class="table-head-cell">Status</div>
+          <div class="table-head-cell">Dropped Reason</div>
+          <div class="table-head-cell">Email Address</div>
+          <div class="table-head-cell">Phone</div>
+          <div class="table-head-cell">Home Address</div>
+        </div>
+        <div style="padding:24px 20px;color:var(--rf-text-muted);font-size:13px;font-weight:500;text-align:center;">
+          No applicants in this group
+        </div>
+        <div class="add-item-row">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Add item
+        </div>
+      </div>
+
+      <!-- Group: Road Test -->
+      <div class="group-card color-yellow">
+        <div class="group-header">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 3.5l3 3 3-3" stroke="#CA8A04" stroke-width="1.5" stroke-linecap="round"/></svg>
+
+          <span class="group-name" style="color:#CA8A04;">Road Test</span>
+          <span class="group-count">(0)</span>
+        </div>
+        <div class="table-head">
+          <div class="table-head-cell"></div>
+          <div class="table-head-cell">First Name</div>
+          <div class="table-head-cell">Last Name</div>
+          <div class="table-head-cell">Status</div>
+          <div class="table-head-cell">Dropped Reason</div>
+          <div class="table-head-cell">Email Address</div>
+          <div class="table-head-cell">Phone</div>
+          <div class="table-head-cell">Home Address</div>
+        </div>
+        <div style="padding:24px 20px;color:var(--rf-text-muted);font-size:13px;font-weight:500;text-align:center;">
+          No applicants in this group
+        </div>
+        <div class="add-item-row">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Add item
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+</body>
+</html>

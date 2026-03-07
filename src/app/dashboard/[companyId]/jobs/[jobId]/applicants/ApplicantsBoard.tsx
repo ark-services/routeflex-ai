@@ -1986,7 +1986,7 @@ export default function ApplicantsBoard({
           <BoardDefaultValuesModal
             companyId={companyId}
             jobId={jobId}
-            columns={localColumns.filter(c => !c.is_system && !["file", "location", "fadv.package", "fadv.location", "fadv.facility_id", "fadv.position_type"].includes(c.type))}
+            columns={localColumns.filter(c => !c.is_system && !["file", "location"].includes(c.type))}
             labelsByColumn={labelsByColumn}
             onSaved={(updates) => {
               // Optimistically update localColumns so the modal reflects the new state if reopened
@@ -4958,19 +4958,35 @@ function BoardDefaultValuesModal({
   const hasAnyDefault = Object.keys(draft).length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
-      <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-[10px] border border-rf-border bg-rf-surface-card p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-[10px] border border-rf-border bg-rf-surface-card p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-lg font-semibold text-rf-text-primary">Default values for new items</h3>
-          {hasAnyDefault && (
+          <div className="flex items-center gap-3">
+            {hasAnyDefault && (
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-sm text-rf-text-muted hover:text-rf-danger transition-colors"
+              >
+                Clear all
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleClearAll}
-              className="text-sm text-rf-text-muted hover:text-rf-danger transition-colors"
+              onClick={onClose}
+              className="text-rf-text-muted hover:text-rf-text-primary transition-colors"
+              aria-label="Close"
             >
-              Clear all
+              <X className="h-4 w-4" />
             </button>
-          )}
+          </div>
         </div>
         <p className="text-sm text-rf-text-muted mb-5">
           These values are pre-filled whenever a new row is added to the board.
@@ -5083,6 +5099,17 @@ function BoardDefaultValuesModal({
                     </span>
                     {currentValue === true ? "Checked" : currentValue === false ? "Unchecked" : "No default"}
                   </button>
+                )}
+
+                {/* FADV fields — free text */}
+                {(col.type === "fadv.package" || col.type === "fadv.location" || col.type === "fadv.facility_id" || col.type === "fadv.position_type") && (
+                  <input
+                    type="text"
+                    value={currentValue ?? ""}
+                    onChange={e => e.target.value ? setValue(col.id, e.target.value) : clearValue(col.id)}
+                    placeholder={`Default ${col.name.toLowerCase()}…`}
+                    className="bg-white px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors"
+                  />
                 )}
               </div>
             );

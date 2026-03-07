@@ -222,18 +222,6 @@ export function BoardToolbar({
             </button>
           )}
 
-          {/* Default values */}
-          {onOpenDefaultValues && (
-            <button
-              onClick={onOpenDefaultValues}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-rf-border bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:border-rf-ink-100 text-sm font-medium transition-colors"
-              title="Set default column values for new items"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Default values</span>
-            </button>
-          )}
-
           {/* Integrate */}
           <a
             href={integrationHref}
@@ -271,8 +259,17 @@ export function BoardToolbar({
             {moreOpen && (
               <div
                 ref={moreMenuRef}
-                className="absolute right-0 top-full mt-1 w-44 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg z-50 py-1"
+                className="absolute right-0 top-full mt-1 w-48 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg z-50 py-1"
               >
+                {onOpenDefaultValues && (
+                  <button
+                    onClick={() => { setMoreOpen(false); onOpenDefaultValues(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
+                  >
+                    <SlidersHorizontal className="h-4 w-4 text-rf-text-secondary" />
+                    Default values
+                  </button>
+                )}
                 <button
                   onClick={() => { setMoreOpen(false); onOpenActivityLog(); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
