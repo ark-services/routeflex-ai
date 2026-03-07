@@ -486,20 +486,45 @@ async function callFadvCreateSubject(params: {
     await page.fill(SEL_LAST_NAME,  params.lastName);
     await page.fill(SEL_EMAIL,      params.email);
 
+    // Wait for the dropdowns to be ready before selecting.
+    // GWT may render these asynchronously after the text fields appear.
+    await page.waitForSelector(SEL_CSP_ID,      { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
+      throw new Error(`CSP ID dropdown (${SEL_CSP_ID}) did not appear within ${NAV_TIMEOUT_MS}ms`);
+    });
+
     // CSP ID — select by value (e.g. "V0021753")
     await page.selectOption(SEL_CSP_ID, { value: params.cspId });
+    console.log("[callFadvCreateSubject] CSP ID selected:", params.cspId);
 
     // Package — try by numeric value first, fall back to display label
+    await page.waitForSelector(SEL_PACKAGE, { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
+      throw new Error(`Package dropdown (${SEL_PACKAGE}) did not appear within ${NAV_TIMEOUT_MS}ms`);
+    });
     try {
       await page.selectOption(SEL_PACKAGE, { value: params.packageCode });
     } catch {
       await page.selectOption(SEL_PACKAGE, { label: params.packageCode });
     }
+    console.log("[callFadvCreateSubject] Package selected:", params.packageCode);
 
     // Custom dropdown fields (ID has spaces — use attribute selector)
-    await page.selectOption(SEL_COMPANY_ID,    { value: params.companyIdValue });
-    await page.selectOption(SEL_FACILITY_ID,   { value: params.facilityId });
+    await page.waitForSelector(SEL_COMPANY_ID, { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
+      throw new Error(`Company ID dropdown (${SEL_COMPANY_ID}) did not appear within ${NAV_TIMEOUT_MS}ms`);
+    });
+    await page.selectOption(SEL_COMPANY_ID, { value: params.companyIdValue });
+    console.log("[callFadvCreateSubject] Company ID selected:", params.companyIdValue);
+
+    await page.waitForSelector(SEL_FACILITY_ID, { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
+      throw new Error(`Facility ID dropdown (${SEL_FACILITY_ID}) did not appear within ${NAV_TIMEOUT_MS}ms`);
+    });
+    await page.selectOption(SEL_FACILITY_ID, { value: params.facilityId });
+    console.log("[callFadvCreateSubject] Facility ID selected:", params.facilityId);
+
+    await page.waitForSelector(SEL_POSITION_TYPE, { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
+      throw new Error(`Position Type dropdown (${SEL_POSITION_TYPE}) did not appear within ${NAV_TIMEOUT_MS}ms`);
+    });
     await page.selectOption(SEL_POSITION_TYPE, { value: params.positionType });
+    console.log("[callFadvCreateSubject] Position Type selected:", params.positionType);
 
     // Check "CC: Recruiter on Invitation Email" AFTER all dropdowns.
     // Placed last because GWT dropdown selections can trigger server-side re-renders
