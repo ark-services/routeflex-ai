@@ -22,6 +22,8 @@ import {
   Pin,
   GripVertical,
   SlidersHorizontal,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -340,6 +342,17 @@ export default function ApplicantsBoard({
   const [localApplicants, setLocalApplicants] = useState(applicants);
   const [localGroups, setLocalGroups] = useState(groups);
 
+  // Column sort state — null means use default position order
+  const [sortState, setSortState] = useState<{ columnId: string; direction: "asc" | "desc" } | null>(null);
+
+  function handleSort(columnId: string) {
+    setSortState(prev => {
+      if (!prev || prev.columnId !== columnId) return { columnId, direction: "asc" };
+      if (prev.direction === "asc") return { columnId, direction: "desc" };
+      return null;
+    });
+  }
+
   // Frozen columns count — persisted to localStorage per job
   const [frozenColumnsCount, setFrozenColumnsCount] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
@@ -646,6 +659,58 @@ export default function ApplicantsBoard({
     }
     return map;
   }, [statusLabels]);
+
+  // Sorted view of applicantsByGroup — applies column sort within each group
+  const sortedApplicantsByGroup = useMemo(() => {
+    if (!sortState) return applicantsByGroup;
+    const col = localColumns.find(c => c.id === sortState.columnId);
+    if (!col || col.type === "file") return applicantsByGroup;
+
+    function getSortValue(a: ApplicantRow): string | number | boolean | null {
+      if (col!.is_system) {
+        if (col!.name === "Name") return a.full_name ?? null;
+        if (col!.name === "Email") return a.email ?? null;
+        if (col!.name === "Phone") return a.phone ?? null;
+        return null;
+      }
+      const overrideKey = `${a.id}::${col!.id}`;
+      const cell = cellOverrides.has(overrideKey)
+        ? undefined // use override below
+        : cellsByApplicantAndColumn.get(`${a.id}::${col!.id}`);
+
+      if (cellOverrides.has(overrideKey)) return cellOverrides.get(overrideKey) ?? null;
+      if (!cell) return null;
+
+      if (col!.type === "number") return cell.value_number ?? null;
+      if (col!.type === "date") return cell.value_date ?? null;
+      if (col!.type === "checkbox") return cell.value_bool ?? null;
+      if (col!.type === "status") {
+        const labelId = cell.value_status_label_id;
+        if (!labelId) return null;
+        const label = labelsByColumn.get(col!.id)?.find(l => l.id === labelId);
+        return label?.label ?? null;
+      }
+      // text, email, phone, location, fadv.*
+      return cell.value_text ?? null;
+    }
+
+    const dir = sortState.direction === "asc" ? 1 : -1;
+    const sorted = new Map<string, ApplicantRow[]>();
+    for (const [groupId, rows] of applicantsByGroup.entries()) {
+      sorted.set(groupId, [...rows].sort((a, b) => {
+        const aVal = getSortValue(a);
+        const bVal = getSortValue(b);
+        // Nulls always last regardless of direction
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+        if (typeof aVal === "number" && typeof bVal === "number") return (aVal - bVal) * dir;
+        if (typeof aVal === "boolean" && typeof bVal === "boolean") return ((aVal ? 1 : 0) - (bVal ? 1 : 0)) * dir;
+        return String(aVal).localeCompare(String(bVal), undefined, { sensitivity: "base" }) * dir;
+      }));
+    }
+    return sorted;
+  }, [sortState, applicantsByGroup, localColumns, cellsByApplicantAndColumn, cellOverrides, labelsByColumn]);
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
@@ -1292,7 +1357,7 @@ export default function ApplicantsBoard({
         <div className="md:hidden flex-1 overflow-auto min-h-0">
           <div className="p-3 space-y-6">
             {localGroups.map((g) => {
-              const rows = applicantsByGroup.get(g.id) ?? [];
+              const rows = sortedApplicantsByGroup.get(g.id) ?? [];
               const isFiltering = !!searchQuery || (activeFilters ?? []).length > 0;
               if (isFiltering && rows.length === 0) return null;
               return (
@@ -1589,7 +1654,7 @@ export default function ApplicantsBoard({
               >
                 {/* Render regular groups */}
                 {localGroups.map((g) => {
-                  const rows = applicantsByGroup.get(g.id) ?? [];
+                  const rows = sortedApplicantsByGroup.get(g.id) ?? [];
                   const isFiltering = !!searchQuery || (activeFilters ?? []).length > 0;
                   if (isFiltering && rows.length === 0) return null;
                   return (
@@ -1727,6 +1792,8 @@ export default function ApplicantsBoard({
                                     isFrozen={colIdx < frozenColumnsCount}
                                     frozenLeft={frozenLeftOffsets[colIdx]}
                                     isLastFrozen={colIdx === frozenColumnsCount - 1}
+                                    sortDirection={sortState?.columnId === col.id ? sortState.direction : null}
+                                    onSort={() => handleSort(col.id)}
                                   />
                                 ))}
                               </SortableContext>
@@ -2216,6 +2283,8 @@ function SortableColumnHeader({
   isFrozen = false,
   frozenLeft,
   isLastFrozen = false,
+  sortDirection = null,
+  onSort,
 }: {
   column: BoardColumn;
   width: number;
@@ -2230,6 +2299,8 @@ function SortableColumnHeader({
   isFrozen?: boolean;
   frozenLeft?: number;
   isLastFrozen?: boolean;
+  sortDirection?: "asc" | "desc" | null;
+  onSort?: () => void;
 }) {
   // Local edit state - matches CellRenderer pattern exactly
   const [localValue, setLocalValue] = useState(column.name);
@@ -2364,6 +2435,31 @@ function SortableColumnHeader({
           </div>
         </div>
       ) : (
+        <>
+          {/* Sort badge — floats at top-center, Monday-style */}
+          {column.type !== "file" && onSort && !isCollapsed && (
+            <button
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onSort(); }}
+              className={`absolute -top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-0.5 px-2 h-6 rounded-full border shadow-sm transition-all whitespace-nowrap ${
+                sortDirection != null
+                  ? "opacity-100 bg-rf-blue border-rf-blue text-white"
+                  : "opacity-0 group-hover:opacity-100 bg-white border-rf-border text-rf-text-muted hover:text-rf-blue hover:border-rf-blue"
+              }`}
+              title={sortDirection === "asc" ? "Sorted A→Z · click for Z→A" : sortDirection === "desc" ? "Sorted Z→A · click to clear" : "Sort"}
+            >
+              {sortDirection === "desc" ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : sortDirection === "asc" ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <span className="flex flex-col items-center leading-none gap-px">
+                  <ChevronUp className="h-2.5 w-2.5" />
+                  <ChevronDown className="h-2.5 w-2.5" />
+                </span>
+              )}
+            </button>
+          )}
         <div className="flex items-center w-full min-w-0">
           {isEditing ? (
             // DRAG EXCLUSION: editing input — onPointerDown/onMouseDown stop events reaching <th> drag listeners
@@ -2415,6 +2511,7 @@ function SortableColumnHeader({
             </>
           )}
         </div>
+        </>
       )}
 
       {/* Render menu in a portal */}
