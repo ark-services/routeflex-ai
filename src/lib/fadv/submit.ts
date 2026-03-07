@@ -486,6 +486,34 @@ async function callFadvCreateSubject(params: {
     await page.fill(SEL_LAST_NAME,  params.lastName);
     await page.fill(SEL_EMAIL,      params.email);
 
+    // ── DIAGNOSTIC: Log all frames and whether form selectors exist in each ──
+    try {
+      const frameDiag = await Promise.all(
+        page.frames().map(async (f) => {
+          const url = f.url();
+          const hasCspId = await f.evaluate((sel) => !!document.querySelector(sel), SEL_CSP_ID).catch(() => false);
+          const hasFirstName = await f.evaluate((sel) => !!document.querySelector(sel), SEL_FIRST_NAME).catch(() => false);
+          const cspDetails = hasCspId
+            ? await f.evaluate((sel) => {
+                const el = document.querySelector(sel) as HTMLSelectElement | null;
+                if (!el) return null;
+                return {
+                  disabled: el.disabled,
+                  hasDisabledAttr: el.hasAttribute("disabled"),
+                  optionCount: el.options.length,
+                  tagName: el.tagName,
+                };
+              }, SEL_CSP_ID).catch(() => null)
+            : null;
+          return { url, hasCspId, hasFirstName, cspDetails };
+        })
+      );
+      console.log("[callFadvCreateSubject] FRAME DIAG:", JSON.stringify(frameDiag, null, 2));
+    } catch (diagErr) {
+      console.warn("[callFadvCreateSubject] FRAME DIAG error:", diagErr);
+    }
+    // ── END DIAGNOSTIC ──────────────────────────────────────────────────────
+
     // Wait for each dropdown to be visible AND enabled before selecting.
     // GWT renders dropdowns disabled initially, then enables them after async data load.
     // page.selectOption() waits for the element to be editable (not disabled), so we
@@ -502,10 +530,20 @@ async function callFadvCreateSubject(params: {
     await page.waitForSelector(`${SEL_PACKAGE}:not([disabled])`, { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
       throw new Error(`Package dropdown not enabled within ${NAV_TIMEOUT_MS}ms`);
     });
+    const packageOptions = await page.evaluate((sel) => {
+      const el = document.querySelector(sel) as HTMLSelectElement | null;
+      if (!el) return [] as { value: string; text: string }[];
+      return Array.from(el.options).map((o) => ({ value: o.value, text: o.text }));
+    }, SEL_PACKAGE);
+    console.log("[callFadvCreateSubject] Package options available:", JSON.stringify(packageOptions));
     try {
       await page.selectOption(SEL_PACKAGE, { value: params.packageCode });
     } catch {
-      await page.selectOption(SEL_PACKAGE, { label: params.packageCode });
+      try {
+        await page.selectOption(SEL_PACKAGE, { label: params.packageCode });
+      } catch {
+        throw new Error(`Package "${params.packageCode}" not found in portal dropdown`);
+      }
     }
     console.log("[callFadvCreateSubject] Package selected:", params.packageCode);
 
@@ -519,13 +557,43 @@ async function callFadvCreateSubject(params: {
     await page.waitForSelector(`${SEL_FACILITY_ID}:not([disabled])`, { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
       throw new Error(`Facility ID dropdown not enabled within ${NAV_TIMEOUT_MS}ms`);
     });
-    await page.selectOption(SEL_FACILITY_ID, { value: params.facilityId });
+    // Log available options before selecting so we can diagnose value mismatches
+    const facilityOptions = await page.evaluate((sel) => {
+      const el = document.querySelector(sel) as HTMLSelectElement | null;
+      if (!el) return [] as { value: string; text: string }[];
+      return Array.from(el.options).map((o) => ({ value: o.value, text: o.text }));
+    }, SEL_FACILITY_ID);
+    console.log("[callFadvCreateSubject] Facility ID options available:", JSON.stringify(facilityOptions));
+    try {
+      await page.selectOption(SEL_FACILITY_ID, { value: params.facilityId });
+    } catch {
+      try {
+        await page.selectOption(SEL_FACILITY_ID, { label: params.facilityId });
+      } catch {
+        throw new Error(`Facility ID "${params.facilityId}" not found in portal dropdown`);
+      }
+    }
     console.log("[callFadvCreateSubject] Facility ID selected:", params.facilityId);
 
     await page.waitForSelector(`${SEL_POSITION_TYPE}:not([disabled])`, { state: "visible", timeout: NAV_TIMEOUT_MS }).catch(() => {
       throw new Error(`Position Type dropdown not enabled within ${NAV_TIMEOUT_MS}ms`);
     });
-    await page.selectOption(SEL_POSITION_TYPE, { value: params.positionType });
+    // Log available options before selecting so we can diagnose value mismatches
+    const positionTypeOptions = await page.evaluate((sel) => {
+      const el = document.querySelector(sel) as HTMLSelectElement | null;
+      if (!el) return [] as { value: string; text: string }[];
+      return Array.from(el.options).map((o) => ({ value: o.value, text: o.text }));
+    }, SEL_POSITION_TYPE);
+    console.log("[callFadvCreateSubject] Position Type options available:", JSON.stringify(positionTypeOptions));
+    try {
+      await page.selectOption(SEL_POSITION_TYPE, { value: params.positionType });
+    } catch {
+      try {
+        await page.selectOption(SEL_POSITION_TYPE, { label: params.positionType });
+      } catch {
+        throw new Error(`Position Type "${params.positionType}" not found in portal dropdown`);
+      }
+    }
     console.log("[callFadvCreateSubject] Position Type selected:", params.positionType);
 
     // Check "CC: Recruiter on Invitation Email" AFTER all dropdowns.
