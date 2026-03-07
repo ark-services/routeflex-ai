@@ -106,6 +106,14 @@ export const SEL_AGREE_BUTTON = "button#agreeBtn";
 // Detected by URL containing "shell.jsp".
 // ---------------------------------------------------------------------------
 
+/**
+ * Direct URL to the FADV dashboard shell.
+ * Used by the cookie fast-path: navigate here first; if FADV accepts the
+ * existing session cookies, we land on shell.jsp and skip the login form
+ * (and therefore the Session Override page) entirely.
+ */
+export const FADV_SHELL_URL = "https://enterprise.fadv.com/pub/l/shell/shell.jsp";
+
 /** Top-level "Profile Advantage" nav link that expands the sub-menu. */
 export const SEL_NAV_PROFILE_ADVANTAGE = "a.header";
 

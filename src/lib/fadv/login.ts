@@ -24,6 +24,7 @@ import { launchFadvContext, saveFadvCookies } from "./browser";
 import { loadDbCookies, saveDbCookies } from "./cookie-store";
 import {
   FADV_PORTAL_URL,
+  FADV_SHELL_URL,
   LOGIN_FRAME_NAME,
   LOGIN_FRAME_ID_SEL,
   SEL_SESSION_OVERRIDE_PROCEED,
@@ -175,6 +176,36 @@ export async function doLoginSteps(
       Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
       Object.defineProperty(navigator, "plugins",   { get: () => [1, 2, 3, 4, 5] });
     });
+
+    // ── Cookie fast-path ─────────────────────────────────────────────────────
+    // The Playwright context was pre-loaded with valid DB cookies (done in
+    // performFadvLogin / callFadvCreateSubject before invoking doLoginSteps).
+    // Try navigating directly to the dashboard shell; if FADV accepts the
+    // existing session the top frame lands on shell.jsp and we are done.
+    //
+    // Why this avoids Session Override:
+    //   Session Override is triggered when the LOGIN FORM is submitted while
+    //   FADV already has an active session for that user.  Direct navigation
+    //   with valid cookies continues the existing session without re-submitting
+    //   credentials, so the override page is never shown.
+    console.log("[doLoginSteps] Trying cookie fast-path → shell.jsp...");
+    try {
+      await page.goto(FADV_SHELL_URL, { waitUntil: "load", timeout: NAV_TIMEOUT_MS });
+      if (page.url().includes("shell.jsp")) {
+        console.log("[doLoginSteps] Cookie fast-path succeeded — existing session valid, skipping login form");
+        return { success: true };
+      }
+      console.log(
+        "[doLoginSteps] Cookie fast-path: redirected to",
+        page.url().split("?")[0],
+        "— proceeding with login form"
+      );
+    } catch (e) {
+      console.log(
+        "[doLoginSteps] Cookie fast-path: navigation failed, proceeding with login form:",
+        e instanceof Error ? e.message : String(e)
+      );
+    }
 
     // ── Step 0: Navigate via root domain first ──────────────────────────────
     // Navigating directly to /pub/l/login/ on a fresh context causes FADV to
@@ -349,61 +380,126 @@ export async function doLoginSteps(
 
     // ── Step 1b: Race — top-frame navigation vs Session Override ──────────────
     // When saved cookies are present, FADV renders a "Session Override" page
-    // inside the login iframe before navigating away from userLogin.do.
-    // We must detect the Proceed button and click it to continue.
+    // inside #new-login-iframe before navigating the top frame away from
+    // userLogin.do. We must detect the Proceed button and click it to continue.
     //
-    // Frame lookup: the iframe's `name` attribute is null and its `name` JS
-    // property is "". page.frame({ name: "new-login-iframe" }) always returns
-    // null. Use page.frameLocator('#new-login-iframe') (by id attribute).
+    // The Proceed button is a <fadv-button id="login-proceed-button"> Lit web
+    // component with Shadow DOM. The actual clickable element inside its shadow
+    // root has class "button__interior". Playwright's CSS engine pierces shadow
+    // DOM, so 'fadv-button#login-proceed-button button.button__interior' works.
     //
-    // Button selector: the Proceed button is a <fadv-button> Web Component
-    // (Lit + Shadow DOM). locator("button") finds nothing. Use the stable id.
-    console.log("[doLoginSteps] Step 1: waiting for navigation or Session Override...");
+    // We use frameLocator('#new-login-iframe') + waitFor({ state: 'visible' })
+    // rather than a polling loop: Playwright's built-in retry handles transient
+    // frame-navigation states automatically and resolves once Angular renders
+    // the session-override route.
+    // ── Step 1b: Session Override detection and handling ──────────────────────
+    // When FADV detects an active session, it shows a Session Override page
+    // (still at userLogin.do) with a Proceed button inside #new-login-iframe.
+    // The iframe src becomes 'angular/login/session-override' and the Angular
+    // app renders <fadv-button id="login-proceed-button"> (Lit + Shadow DOM).
+    //
+    // Detection strategy: watch the iframe src attribute via waitForFunction —
+    // this is instantaneous and doesn't require Angular to finish rendering.
+    // We also race against navigation away from userLogin.do.
+    //
+    // Click strategy: wait up to 20 s for Angular to render the button, then
+    // pierce the shadow DOM (button.button__interior inside fadv-button).
+    console.log("[doLoginSteps] Step 1b: watching for navigation or Session Override...");
+    const sessionOverrideFrame = page.frameLocator(LOGIN_FRAME_ID_SEL);
+
     const loginOutcome = await Promise.race([
+      // Side A: navigation to any page other than the login page
       page.waitForURL(
         (url) => !url.toString().includes("userLogin.do"),
         { timeout: LOGIN_TIMEOUT_MS }
       ).then(() => "navigated" as const).catch(() => "timeout" as const),
 
-      (async (): Promise<"session_override" | "timeout"> => {
-        // The login iframe is only findable by id — its `name` attribute is null
-        // and its `name` JS property is "". page.frame({ name }) always returns null.
-        // The Proceed button is a <fadv-button> Web Component (not a native <button>),
-        // so locator("button") finds nothing. Target the host element by its stable id.
-        const deadline = Date.now() + LOGIN_TIMEOUT_MS;
-        while (Date.now() < deadline) {
-          try {
-            const visible = await page
-              .frameLocator(LOGIN_FRAME_ID_SEL)
-              .locator(SEL_SESSION_OVERRIDE_PROCEED)
-              .isVisible();
-            if (visible) return "session_override";
-          } catch {
-            // Frame navigating or detached — retry next tick
-          }
-          await new Promise<void>((r) => setTimeout(r, 300));
-        }
-        return "timeout";
-      })(),
+      // Side B: iframe src flips to session-override (reliable, no DOM parsing)
+      page.waitForFunction(
+        () => {
+          const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
+          return !!(iframe?.src?.includes("session-override"));
+        },
+        undefined,
+        { timeout: LOGIN_TIMEOUT_MS, polling: 300 }
+      ).then(() => "session_override" as const).catch(() => "not_found" as const),
     ]);
 
-    if (loginOutcome === "session_override") {
-      console.log("[doLoginSteps] Step 1b: Session Override detected — clicking Proceed");
-      await page
-        .frameLocator(LOGIN_FRAME_ID_SEL)
-        .locator(SEL_SESSION_OVERRIDE_PROCEED)
-        .click();
-      // Wait for top-frame to navigate away after the override is accepted
+    console.log(
+      "[doLoginSteps] Step 1b: race outcome =", loginOutcome,
+      "| URL =", page.url().split("?")[0]
+    );
+
+    // ── Handle Session Override ────────────────────────────────────────────────
+    // Confirm we're on the session-override page regardless of which side won the
+    // race (handles: direct detection, intermediate redirect, or timeout).
+    let onSessionOverridePage = loginOutcome === "session_override";
+    if (!onSessionOverridePage && page.url().includes("userLogin.do")) {
+      // Re-check the iframe src — catches cases where waitForURL "navigated" fired
+      // on an intermediate redirect that returned to userLogin.do, or where both
+      // sides timed out but Session Override is still showing.
+      onSessionOverridePage = await page.evaluate(() => {
+        const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
+        return !!(iframe?.src?.includes("session-override"));
+      }).catch(() => false);
+    }
+
+    if (onSessionOverridePage) {
+      console.log("[doLoginSteps] Step 1b: Session Override confirmed — waiting for Proceed button...");
+      // Give Angular time to mount the session-override component and render the button.
+      // Try visible first; fall back to attached (the element may be off-screen / Playwright
+      // may not compute visibility correctly for Lit shadow-DOM components).
+      let proceedReady = false;
       try {
-        await page.waitForURL(
-          (url) => !url.toString().includes("userLogin.do"),
-          { timeout: LOGIN_TIMEOUT_MS }
-        );
+        await sessionOverrideFrame
+          .locator(SEL_SESSION_OVERRIDE_PROCEED)
+          .waitFor({ state: "visible", timeout: 20_000 });
+        proceedReady = true;
+        console.log("[doLoginSteps] Step 1b: Proceed button is visible");
       } catch {
-        // Timed out after Proceed — fall through to URL check below
+        try {
+          await sessionOverrideFrame
+            .locator(SEL_SESSION_OVERRIDE_PROCEED)
+            .waitFor({ state: "attached", timeout: 10_000 });
+          proceedReady = true;
+          console.log("[doLoginSteps] Step 1b: Proceed button attached (not visible)");
+        } catch {
+          console.warn("[doLoginSteps] Step 1b: Proceed button not found — clicking anyway");
+          proceedReady = true; // attempt click regardless
+        }
+      }
+
+      if (proceedReady) {
+        console.log("[doLoginSteps] Step 1b: clicking Proceed...");
+        try {
+          // Primary: pierce Lit shadow DOM → inner <button class="button__interior">
+          await sessionOverrideFrame
+            .locator(`${SEL_SESSION_OVERRIDE_PROCEED} button.button__interior`)
+            .click({ timeout: 10_000 });
+        } catch {
+          try {
+            // Fallback A: click the <fadv-button> host element
+            await sessionOverrideFrame
+              .locator(SEL_SESSION_OVERRIDE_PROCEED)
+              .click({ force: true, timeout: 5_000 });
+          } catch {
+            // Fallback B: plain text locator — Angular renders "Proceed" as button text
+            console.warn("[doLoginSteps] Step 1b: shadow-DOM click failed, trying getByText");
+            await sessionOverrideFrame.getByText("Proceed").click({ force: true, timeout: 5_000 });
+          }
+        }
+        try {
+          await page.waitForURL(
+            (url) => !url.toString().includes("userLogin.do"),
+            { timeout: LOGIN_TIMEOUT_MS }
+          );
+          console.log("[doLoginSteps] Step 1b: navigated after Proceed →", page.url().split("?")[0]);
+        } catch {
+          console.warn("[doLoginSteps] Step 1b: navigation after Proceed timed out, URL:", page.url().split("?")[0]);
+        }
       }
     } else if (loginOutcome === "timeout") {
-      console.warn("[doLoginSteps] Step 1: no navigation or Session Override within timeout");
+      console.warn("[doLoginSteps] Step 1b: no navigation and no Session Override within timeout");
     }
 
     const urlAfterLogin       = page.url();
