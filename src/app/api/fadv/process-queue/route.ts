@@ -41,8 +41,9 @@ function makeServiceClient() {
 }
 
 // ── Vercel max function duration ─────────────────────────────────────────────
-// Set to 60 s on Pro plan. Adjust down to 10 s for Hobby.
-export const maxDuration = 60;
+// Browser automation (FADV login + form fill) takes 90–150 s.
+// Raise to 300 s (5 min) — maximum allowed on Vercel Pro.
+export const maxDuration = 300;
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
@@ -56,6 +57,22 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = makeServiceClient();
+
+  // ── 0. Recover stuck "running" submissions ─────────────────────────────────
+  // If a previous worker was killed mid-flight (e.g. Vercel timeout), the row
+  // stays in 'running' forever and never gets retried.  Reset any submission
+  // that has been running for more than 10 minutes back to 'queued'.
+  const stuckCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: stuckRows } = await supabase
+    .from("integration_submissions")
+    .update({ status: "queued", updated_at: new Date().toISOString() })
+    .eq("status", "running")
+    .in("provider", ["fadv", "safety_trainer"])
+    .lt("updated_at", stuckCutoff)
+    .select("id");
+  if (stuckRows && stuckRows.length > 0) {
+    console.log(`[fadv/process-queue] Reset ${stuckRows.length} stuck-running submission(s) to queued`);
+  }
 
   // ── 1. Fetch queued submissions (all providers) ────────────────────────────
   const { data: submissions, error: fetchError } = await supabase

@@ -52,6 +52,8 @@ export async function POST(request: NextRequest) {
   // Reset the submission to queued.
   // RLS on integration_submissions ensures the caller can only see/update
   // submissions belonging to their own company.
+  // Also handles 'running' — a Vercel timeout can leave a row stuck in that
+  // state permanently with no way to retry it otherwise.
   const { data, error } = await supabase
     .from("integration_submissions")
     .update({
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
       updated_at:    new Date().toISOString(),
     })
     .eq("id", submissionId)
-    .eq("status", "failed")          // only reset genuinely failed rows
+    .in("status", ["failed", "running"])  // reset failed OR stuck-running
     .eq("provider", "fadv")
     .select("id, applicant_id, status")
     .maybeSingle();
@@ -73,9 +75,9 @@ export async function POST(request: NextRequest) {
   }
 
   if (!data) {
-    // Row not found, already queued/running/success, or belongs to another company
+    // Row not found, already queued/success, or belongs to another company
     return NextResponse.json(
-      { error: "Submission not found or not in failed state" },
+      { error: "Submission not found or not in a retryable state (failed or running)" },
       { status: 404 }
     );
   }
