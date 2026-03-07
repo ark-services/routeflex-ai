@@ -410,7 +410,8 @@ export async function doLoginSteps(
       page.waitForFunction(
         () => {
           const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
-          return !!(iframe?.src?.includes("session-override"));
+          const s = iframe?.src ?? "";
+          return !!(s.includes("session-override") || s.includes("Session%20Override"));
         },
         undefined,
         { timeout: LOGIN_TIMEOUT_MS, polling: 300 }
@@ -439,7 +440,7 @@ export async function doLoginSteps(
       // sides timed out but Session Override is still showing.
       onSessionOverridePage = await page.evaluate(() => {
         const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
-        return !!(iframe?.src?.includes("session-override"));
+        const s = iframe?.src ?? ""; return !!(s.includes("session-override") || s.includes("Session%20Override"));
       }).catch(() => false);
       if (onSessionOverridePage) {
         console.log("[doLoginSteps] Step 1b: Session Override confirmed via fallback iframe-src check");
@@ -543,7 +544,7 @@ export async function doLoginSteps(
         if (page.url().includes("userLogin.do")) {
           const stillSessionOverride = await page.evaluate(() => {
             const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
-            return !!(iframe?.src?.includes("session-override"));
+            const s = iframe?.src ?? ""; return !!(s.includes("session-override") || s.includes("Session%20Override"));
           }).catch(() => false);
           console.error(
             "[doLoginSteps] Step 1b: URL returned to userLogin.do after Proceed click.",
@@ -570,10 +571,92 @@ export async function doLoginSteps(
       // GWT keeps persistent connections — networkidle may not fire
     }
 
-    const urlAfterLogin       = page.url();
+    let urlAfterLogin         = page.url();
     const iframeUrlAfterLogin = loginContext.url?.() ?? "";
     console.log("[doLoginSteps] Step 1: main page URL after login (settled):", urlAfterLogin);
     console.log("[doLoginSteps] Step 1: iframe URL after login:             ", iframeUrlAfterLogin);
+
+    // ── Diagnostic dump — remove after debugging ──────────────────────────────
+    const diagDump = await page.evaluate(() => {
+      const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
+      const bodyText = (document.body?.innerText || "").slice(0, 1000);
+      return {
+        iframeSrc:   iframe?.src ?? "(no iframe)",
+        iframeName:  iframe?.name ?? "(no name)",
+        iframeId:    iframe?.id ?? "(no id)",
+        bodyPreview: bodyText,
+      };
+    }).catch((e: unknown) => ({ error: String(e) }));
+    console.log("[doLoginSteps] DIAG DUMP:", JSON.stringify(diagDump, null, 2));
+
+    // ── Session Override re-check (post-stabilisation) ────────────────────────
+    // If loginOutcome was "navigated" (a brief intermediate redirect fired
+    // waitForURL before the session-override iframe src was set), the page may
+    // have returned to userLogin.do with the Session Override still showing.
+    // The in-race fallback at Step 1b only checks at the instant the race
+    // resolves; by then the URL may not yet be back at userLogin.do.
+    // Re-check here, after stabilisation, so we never miss it.
+    if (urlAfterLogin.includes("userLogin.do") && !onSessionOverridePage) {
+      const soPostStabilise = await page.evaluate(() => {
+        const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
+        const s = iframe?.src ?? ""; return !!(s.includes("session-override") || s.includes("Session%20Override"));
+      }).catch(() => false);
+
+      if (soPostStabilise) {
+        console.log("[doLoginSteps] Step 1b (post-stabilise): Session Override detected — clicking Proceed...");
+        const soFrame = page.frameLocator(LOGIN_FRAME_ID_SEL);
+        try {
+          await soFrame.locator(SEL_SESSION_OVERRIDE_PROCEED).waitFor({ state: "visible", timeout: 15_000 });
+        } catch { /* proceed regardless */ }
+
+        let soClickMethod = "(none)";
+        try {
+          await soFrame.locator(`${SEL_SESSION_OVERRIDE_PROCEED} >> pierce=button.button__interior`).click({ timeout: 10_000 });
+          soClickMethod = "pierce";
+        } catch {
+          try {
+            await soFrame.locator(`${SEL_SESSION_OVERRIDE_PROCEED} button.button__interior`).click({ timeout: 10_000 });
+            soClickMethod = "CSS-pierce";
+          } catch {
+            try {
+              await soFrame.locator(SEL_SESSION_OVERRIDE_PROCEED).click({ force: true, timeout: 5_000 });
+              soClickMethod = "host";
+            } catch {
+              try {
+                await soFrame.getByText("Proceed").click({ force: true, timeout: 5_000 });
+                soClickMethod = "getByText";
+              } catch (eSO) {
+                soClickMethod = "ALL FAILED";
+                console.error("[doLoginSteps] Step 1b (post-stabilise): ALL Proceed clicks failed:", eSO instanceof Error ? eSO.message : String(eSO));
+              }
+            }
+          }
+        }
+        console.log("[doLoginSteps] Step 1b (post-stabilise): click method →", soClickMethod);
+
+        try {
+          await page.waitForURL(
+            (url) => !url.toString().includes("userLogin.do"),
+            { timeout: LOGIN_TIMEOUT_MS }
+          );
+        } catch {
+          console.warn("[doLoginSteps] Step 1b (post-stabilise): navigation after Proceed timed out, URL:", page.url().split("?")[0]);
+        }
+        try { await page.waitForLoadState("networkidle", { timeout: 8_000 }); } catch {}
+        console.log("[doLoginSteps] Step 1b (post-stabilise): settled URL =", page.url().split("?")[0]);
+
+        if (page.url().includes("userLogin.do")) {
+          return {
+            success: false,
+            errorType: "layout_change",
+            message: `Session Override Proceed click (post-stabilise) did not navigate away (click: ${soClickMethod}). Session cookies may be expired — try re-testing FADV credentials.`,
+          };
+        }
+
+        // Proceed succeeded — update urlAfterLogin and fall through to post-login steps
+        urlAfterLogin = page.url();
+      }
+    }
 
     // Success: top frame navigated to a known post-login page.
     // For Angular login: main frame stays at userLogin.do on failure;
@@ -789,7 +872,7 @@ export async function doLoginSteps(
       console.log("[doLoginSteps] Late catch: URL is still userLogin.do — checking for Session Override...");
       const lateSessionOverride = await page.evaluate(() => {
         const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
-        return !!(iframe?.src?.includes("session-override"));
+        const s = iframe?.src ?? ""; return !!(s.includes("session-override") || s.includes("Session%20Override"));
       }).catch(() => false);
 
       if (lateSessionOverride) {
