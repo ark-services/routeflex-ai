@@ -740,6 +740,96 @@ export async function doLoginSteps(
       await page.waitForLoadState("networkidle", { timeout: LOGIN_TIMEOUT_MS });
     }
 
+    // ── Late catch-all: Session Override can appear after ANY login step ────
+    // Observed in prod (2026-03): FADV shows Session Override AFTER the security
+    // question is submitted, not only after the login form.  The security-question
+    // waitForURL(!secretQuestion) fires when the page moves to userLogin.do?type=ee,
+    // the secretQuestion check passes (URL changed), but we never handle the
+    // Session Override — we just fall through to "Did not reach dashboard".
+    //
+    // This catch-all runs whenever we're still on userLogin.do at this point,
+    // regardless of which earlier step triggered the redirect.
+    if (page.url().includes("userLogin.do")) {
+      console.log("[doLoginSteps] Late catch: URL is still userLogin.do — checking for Session Override...");
+      const lateSessionOverride = await page.evaluate(() => {
+        const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
+        return !!(iframe?.src?.includes("session-override"));
+      }).catch(() => false);
+
+      if (lateSessionOverride) {
+        console.log("[doLoginSteps] Late catch: Session Override confirmed — clicking Proceed...");
+        const lateFrame = page.frameLocator(LOGIN_FRAME_ID_SEL);
+        // Give Angular time to render the button
+        try {
+          await lateFrame.locator(SEL_SESSION_OVERRIDE_PROCEED).waitFor({ state: "visible", timeout: 15_000 });
+        } catch {
+          // proceed regardless
+        }
+
+        let lateClickMethod = "(none)";
+        try {
+          await lateFrame.locator(`${SEL_SESSION_OVERRIDE_PROCEED} >> pierce=button.button__interior`).click({ timeout: 10_000 });
+          lateClickMethod = "pierce";
+        } catch {
+          try {
+            await lateFrame.locator(`${SEL_SESSION_OVERRIDE_PROCEED} button.button__interior`).click({ timeout: 10_000 });
+            lateClickMethod = "CSS-pierce";
+          } catch {
+            try {
+              await lateFrame.locator(SEL_SESSION_OVERRIDE_PROCEED).click({ force: true, timeout: 5_000 });
+              lateClickMethod = "host";
+            } catch {
+              try {
+                await lateFrame.getByText("Proceed").click({ force: true, timeout: 5_000 });
+                lateClickMethod = "getByText";
+              } catch (eLate) {
+                lateClickMethod = "ALL FAILED";
+                console.error("[doLoginSteps] Late catch: ALL Proceed clicks failed:", eLate instanceof Error ? eLate.message : String(eLate));
+              }
+            }
+          }
+        }
+        console.log("[doLoginSteps] Late catch: click method →", lateClickMethod);
+
+        // Wait for navigation away from the login page and stabilise
+        try {
+          await page.waitForURL(
+            (url) => !url.toString().includes("userLogin.do"),
+            { timeout: LOGIN_TIMEOUT_MS }
+          );
+        } catch {
+          console.warn("[doLoginSteps] Late catch: navigation after Proceed timed out, URL:", page.url().split("?")[0]);
+        }
+        try {
+          await page.waitForLoadState("networkidle", { timeout: 8_000 });
+        } catch {}
+        console.log("[doLoginSteps] Late catch: settled URL =", page.url().split("?")[0]);
+
+        // Handle any intermediate pages that may follow the late Proceed click
+        if (page.url().includes("disclaimerNew.jsp")) {
+          console.log("[doLoginSteps] Late catch: disclaimerNew.jsp — clicking I Agree...");
+          await page.waitForSelector(SEL_AGREE_BUTTON, { state: "attached", timeout: NAV_TIMEOUT_MS });
+          await page.locator(SEL_AGREE_BUTTON).dispatchEvent("click");
+          try {
+            await page.waitForURL(
+              (url) => !url.toString().includes("disclaimerNew.jsp"),
+              { timeout: LOGIN_TIMEOUT_MS }
+            );
+          } catch {}
+          console.log("[doLoginSteps] Late catch: post-disclaimer URL:", page.url().split("?")[0]);
+        }
+        if (page.url().includes("session.do")) {
+          console.log("[doLoginSteps] Late catch: session.do — clicking I Agree...");
+          await page.waitForSelector(SEL_AGREE_BUTTON, { state: "attached", timeout: NAV_TIMEOUT_MS });
+          await page.locator(SEL_AGREE_BUTTON).dispatchEvent("click");
+          await page.waitForLoadState("networkidle", { timeout: LOGIN_TIMEOUT_MS });
+          console.log("[doLoginSteps] Late catch: post-session.do URL:", page.url().split("?")[0]);
+        }
+      } else {
+        console.warn("[doLoginSteps] Late catch: URL is userLogin.do but NOT session-override (credentials may have been rejected)");
+      }
+    }
+
     // ── Verify we reached the dashboard ────────────────────────────────────
     if (!page.url().includes("shell.jsp")) {
       const pageTitle = await page.title().catch(() => "(unknown)");
