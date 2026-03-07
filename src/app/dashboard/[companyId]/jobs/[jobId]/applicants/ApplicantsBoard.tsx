@@ -2441,23 +2441,17 @@ function SortableColumnHeader({
             <button
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onSort(); }}
-              className={`absolute -top-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-0.5 px-2 h-6 rounded-full border shadow-sm transition-all whitespace-nowrap ${
+              className={`absolute -top-3 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center w-6 h-6 rounded-full border shadow-sm transition-all ${
                 sortDirection != null
-                  ? "opacity-100 bg-rf-blue border-rf-blue text-white"
-                  : "opacity-0 group-hover:opacity-100 bg-white border-rf-border text-rf-text-muted hover:text-rf-blue hover:border-rf-blue"
+                  ? "opacity-100 bg-rf-ink-700 border-rf-ink-700 text-white"
+                  : "opacity-0 group-hover:opacity-100 bg-white border-rf-border text-rf-text-muted hover:border-rf-ink-300"
               }`}
               title={sortDirection === "asc" ? "Sorted A→Z · click for Z→A" : sortDirection === "desc" ? "Sorted Z→A · click to clear" : "Sort"}
             >
-              {sortDirection === "desc" ? (
-                <ChevronDown className="h-3.5 w-3.5" />
-              ) : sortDirection === "asc" ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <span className="flex flex-col items-center leading-none gap-px">
-                  <ChevronUp className="h-2.5 w-2.5" />
-                  <ChevronDown className="h-2.5 w-2.5" />
-                </span>
-              )}
+              <span className="flex flex-col items-center leading-none gap-px">
+                <ChevronUp className={`h-2.5 w-2.5 ${sortDirection === "desc" ? "opacity-30" : ""}`} />
+                <ChevronDown className={`h-2.5 w-2.5 ${sortDirection === "asc" ? "opacity-30" : ""}`} />
+              </span>
             </button>
           )}
         <div className="flex items-center w-full min-w-0">
