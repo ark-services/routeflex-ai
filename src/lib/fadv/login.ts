@@ -508,17 +508,39 @@ export async function doLoginSteps(
       }
 
       if (foundViaCss) {
-        // CSS path — fill directly into the input.
-        // GWT renders the actual <input name="answer"> as hidden (display:none) behind
-        // a styled GWT wrapper widget — waitForSelector with state:"visible" will never
-        // resolve. Use state:"attached" (element is in DOM) then force:true to bypass
-        // Playwright's visibility guard and write directly to the hidden input.
         console.log(`[doLoginSteps] Step 2: filling answer via CSS selector (${foundSelector})`);
         await secCtx.waitForSelector(foundSelector, { state: "attached", timeout: NAV_TIMEOUT_MS });
-        await secCtx.locator(foundSelector).fill(params.securityAnswer, { force: true });
+
+        const foundIsVisible = await secCtx.locator(foundSelector).first().isVisible().catch(() => false);
+        console.log(`[doLoginSteps] Step 2: found input is ${foundIsVisible ? "visible" : "hidden"}`);
+
+        if (foundIsVisible) {
+          // Visible input — use pressSequentially to trigger Angular's (input) binding
+          // so the reactive FormControl registers the value and enables the Submit button.
+          await secCtx.locator(foundSelector).first().click({ force: true });
+          await secCtx.locator(foundSelector).first().pressSequentially(params.securityAnswer, { delay: 50 });
+        } else {
+          // Hidden GWT backing input — force-fill the DOM value, then dispatch native
+          // input/change events on every visible password/text input so Angular's
+          // FormControl picks up the value and marks the form valid.
+          await secCtx.locator(foundSelector).fill(params.securityAnswer, { force: true });
+          console.log("[doLoginSteps] Step 2: dispatching input events on visible inputs for Angular change detection");
+          await page.evaluate((answer) => {
+            const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(
+              'input[type="password"], input[type="text"]'
+            ));
+            for (const el of inputs) {
+              const style = window.getComputedStyle(el);
+              if (style.display !== "none" && style.visibility !== "hidden" && el.offsetParent !== null) {
+                el.value = answer;
+                el.dispatchEvent(new Event("input",  { bubbles: true }));
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+            }
+          }, params.securityAnswer);
+        }
 
         // Try GWT submit button first, then generic role-based fallback.
-        // SEL_SECURITY_SUBMIT (button#submitBtn) may also be hidden — use force:true.
         const hasGwtSubmit = await secCtx.$(SEL_SECURITY_SUBMIT).catch(() => null);
         const submitBtn = hasGwtSubmit
           ? secCtx.locator(SEL_SECURITY_SUBMIT)
