@@ -61,10 +61,36 @@ export const SEL_ANG_LOGIN_SUBMIT = "#login-button";
 // Security question page — Step 2  (/pub/l/login/secretQuestion.do)
 // Only appears when there is no active browser session.
 // Detected by URL containing "secretQuestion".
+//
+// The visible form is an Angular overlay loaded inside the SAME #new-login-iframe
+// used for the login page (src: /angular/login/security-question).
+// Components are Lit web components with Shadow DOM; Playwright's CSS engine
+// pierces shadow DOM so 'fadv-input#... input' resolves the real <input>.
+//
+// The GWT backing elements (input[name="answer"], button#submitBtn) are present
+// on the main page DOM but hidden — they are NOT what the user sees or interacts
+// with. The Angular form inside the iframe is the visible form.
 // ---------------------------------------------------------------------------
 
-/** The security answer input (rendered as type="password" by FADV). */
+/**
+ * Angular security-question input (inside #new-login-iframe shadow DOM).
+ * The <fadv-input> web component contains <input type="password"> in its shadow root.
+ * Playwright pierces shadow DOM: 'fadv-input#security-question-input input' resolves it.
+ */
+export const SEL_SEC_Q_INPUT = "fadv-input#security-question-input input";
+
+/**
+ * Angular security-question Submit button (inside #new-login-iframe shadow DOM).
+ * The <fadv-button> web component contains <button> in its shadow root.
+ * IMPORTANT: the button starts with [disabled] / aria-disabled="true" and only
+ * becomes enabled after Angular's reactive FormControl validates the input value.
+ * Always wait for ':not([disabled])' before clicking.
+ */
+export const SEL_SEC_Q_SUBMIT = "fadv-button#security-question-submit-button button";
+
+/** Legacy GWT security answer input (hidden, main page). Fallback only. */
 export const SEL_SECURITY_ANSWER = 'input[name="answer"]';
+/** Legacy GWT submit button (hidden, main page). Fallback only. */
 export const SEL_SECURITY_SUBMIT = "button#submitBtn";
 
 // ---------------------------------------------------------------------------

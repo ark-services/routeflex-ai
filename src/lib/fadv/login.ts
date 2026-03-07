@@ -35,6 +35,8 @@ import {
   SEL_ANG_USER_ID,
   SEL_ANG_PASSWORD,
   SEL_ANG_LOGIN_SUBMIT,
+  SEL_SEC_Q_INPUT,
+  SEL_SEC_Q_SUBMIT,
   SEL_SECURITY_ANSWER,
   SEL_SECURITY_SUBMIT,
   SEL_AGREE_BUTTON,
@@ -458,144 +460,92 @@ export async function doLoginSteps(
 
     // ── Step 2: Security question (conditional) ─────────────────────────────
     if (page.url().includes("secretQuestion")) {
-      // The security answer field is input[name="answer"] rendered as type="password".
-      // getByRole("textbox") does NOT match type="password" inputs — it would find
-      // a different (wrong) field and submit the wrong value.
+      // ARCHITECTURE (confirmed via live DOM inspection 2026-03-07):
       //
-      // Strategy:
-      //   1. Scan main page + all frames for SEL_SECURITY_ANSWER (legacy GWT path).
-      //      Also wait briefly for frames to settle before scanning.
-      //   2. If not found via CSS selector, fall back to the Angular iframe path
-      //      using frameLocator("#new-login-iframe") (bypasses the page.frame({ name })
-      //      issue — that API always returns null for this iframe).
-
-      type FrameOrPage = import("playwright-core").Frame | import("playwright-core").Page;
+      // The MAIN PAGE has two hidden GWT elements:
+      //   • input[name="answer"]  — hidden backing field (type="password")
+      //   • button#submitBtn      — hidden submit button
+      //
+      // The VISIBLE form is Angular, loaded inside the SAME #new-login-iframe
+      // used for Step 1 login (src: /angular/login/security-question).
+      // Components are Lit web components with shadow DOM:
+      //   • fadv-input#security-question-input  → shadow DOM: input[type="password"]
+      //   • fadv-button#security-question-submit-button → shadow DOM: button (starts DISABLED)
+      //
+      // Previous iterations tried to fill the hidden GWT input and dispatch events
+      // to the main page DOM — this never reached the Angular iframe's shadow DOM.
+      //
+      // Correct strategy:
+      //   1. Use page.frameLocator('#new-login-iframe') to scope into the iframe.
+      //   2. Fill via SEL_SEC_Q_INPUT (Playwright pierces shadow DOM automatically).
+      //   3. Wait for the Submit button to become enabled (Angular validates on input).
+      //   4. Click the Submit button.
+      //   5. Fall back to hidden GWT path only if the iframe approach fails.
 
       console.log(
         "[doLoginSteps] Step 2: frames on secretQuestion page:",
         page.frames().map((f) => `"${f.name() || "(main)"}@${f.url().split("?")[0]}"`)
       );
 
-      // Longer settle pause — Angular security-question page may still be
-      // rendering when the main frame lands on secretQuestion.do.
+      // Give the Angular overlay iframe time to attach and render its form.
       await new Promise<void>((r) => setTimeout(r, 2_000));
 
-      // ── Path A: Scan all contexts for the answer input ────────────────────
-      // Try two selectors in priority order:
-      //   1. input[name="answer"]  — stable legacy GWT attribute
-      //   2. input[type="password"] — broader fallback (FADV renders the answer
-      //      as type="password" on both GWT and some Angular variants)
-      let secCtx: FrameOrPage = page;
-      let foundViaCss = false;
-      let foundSelector = SEL_SECURITY_ANSWER;
-      const allContexts: FrameOrPage[] = [page, ...page.frames()];
+      // ── Primary path: Angular iframe with Lit web components ─────────────
+      let answeredViaAngular = false;
+      try {
+        const iframeCtx = page.frameLocator(LOGIN_FRAME_ID_SEL);
 
-      for (const selector of [SEL_SECURITY_ANSWER, 'input[type="password"]']) {
-        for (const ctx of allContexts) {
-          const el = await ctx.$(selector).catch(() => null);
-          if (el) {
-            secCtx = ctx;
-            foundViaCss = true;
-            foundSelector = selector;
-            const label = ctx === page
-              ? "(main page)"
-              : `frame "${(ctx as import("playwright-core").Frame).name() || "(unnamed)"}" @ ${(ctx as import("playwright-core").Frame).url().split("?")[0]}`;
-            console.log(`[doLoginSteps] Step 2: answer field found via "${selector}" in ${label}`);
-            break;
-          }
+        // Wait for the shadow-DOM-pierced input to be attached in the iframe.
+        await iframeCtx.locator(SEL_SEC_Q_INPUT).waitFor({ state: "attached", timeout: 8_000 });
+        console.log("[doLoginSteps] Step 2: Angular security-question input found inside #new-login-iframe");
+
+        // pressSequentially triggers Angular's (input) event binding on the
+        // reactive FormControl — .fill() does not dispatch the events Angular needs.
+        await iframeCtx.locator(SEL_SEC_Q_INPUT).click({ force: true });
+        await iframeCtx.locator(SEL_SEC_Q_INPUT).pressSequentially(params.securityAnswer, { delay: 50 });
+
+        // The Submit button starts with [disabled] and only becomes enabled once
+        // Angular's FormControl validates the input as non-empty.
+        // Wait up to 5 s for it to become enabled before clicking.
+        console.log("[doLoginSteps] Step 2: waiting for Submit button to become enabled...");
+        try {
+          await iframeCtx.locator(`${SEL_SEC_Q_SUBMIT}:not([disabled])`).waitFor({
+            state: "attached",
+            timeout: 5_000,
+          });
+          console.log("[doLoginSteps] Step 2: Submit button is enabled — clicking");
+        } catch {
+          console.warn("[doLoginSteps] Step 2: Submit button still disabled after 5s — clicking anyway");
         }
-        if (foundViaCss) break;
+        await iframeCtx.locator(SEL_SEC_Q_SUBMIT).click({ force: true });
+        answeredViaAngular = true;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn("[doLoginSteps] Step 2: Angular iframe path failed, trying GWT fallback:", msg);
       }
 
-      if (foundViaCss) {
-        console.log(`[doLoginSteps] Step 2: filling answer via CSS selector (${foundSelector})`);
-        await secCtx.waitForSelector(foundSelector, { state: "attached", timeout: NAV_TIMEOUT_MS });
-
-        const foundIsVisible = await secCtx.locator(foundSelector).first().isVisible().catch(() => false);
-        console.log(`[doLoginSteps] Step 2: found input is ${foundIsVisible ? "visible" : "hidden"}`);
-
-        if (foundIsVisible) {
-          // Visible input — use pressSequentially to trigger Angular's (input) binding
-          // so the reactive FormControl registers the value and enables the Submit button.
-          await secCtx.locator(foundSelector).first().click({ force: true });
-          await secCtx.locator(foundSelector).first().pressSequentially(params.securityAnswer, { delay: 50 });
+      // ── Fallback: hidden GWT input on main page ───────────────────────────
+      if (!answeredViaAngular) {
+        const gwtInput = await page.$(SEL_SECURITY_ANSWER).catch(() => null);
+        if (gwtInput) {
+          console.log("[doLoginSteps] Step 2: GWT fallback — force-filling hidden input");
+          await page.locator(SEL_SECURITY_ANSWER).fill(params.securityAnswer, { force: true });
+          await new Promise<void>((r) => setTimeout(r, 500));
+          const gwtSubmit = await page.$(SEL_SECURITY_SUBMIT).catch(() => null);
+          if (gwtSubmit) {
+            console.log("[doLoginSteps] Step 2: clicking GWT submitBtn");
+            await page.locator(SEL_SECURITY_SUBMIT).click({ force: true });
+          } else {
+            console.warn("[doLoginSteps] Step 2: GWT submitBtn not found — pressing Enter");
+            await page.keyboard.press("Enter").catch(() => {});
+          }
         } else {
-          // Hidden GWT backing input — force-fill the DOM value, then dispatch native
-          // input/change events on every visible password/text input so Angular's
-          // FormControl picks up the value and marks the form valid.
-          await secCtx.locator(foundSelector).fill(params.securityAnswer, { force: true });
-          console.log("[doLoginSteps] Step 2: dispatching input events on visible inputs for Angular change detection");
-          await page.evaluate((answer) => {
-            const inputs = Array.from(document.querySelectorAll<HTMLInputElement>(
-              'input[type="password"], input[type="text"]'
-            ));
-            for (const el of inputs) {
-              const style = window.getComputedStyle(el);
-              if (style.display !== "none" && style.visibility !== "hidden" && el.offsetParent !== null) {
-                el.value = answer;
-                el.dispatchEvent(new Event("input",  { bubbles: true }));
-                el.dispatchEvent(new Event("change", { bubbles: true }));
-              }
-            }
-          }, params.securityAnswer);
-        }
-
-        // Try GWT submit button first, then generic role-based fallback.
-        const hasGwtSubmit = await secCtx.$(SEL_SECURITY_SUBMIT).catch(() => null);
-        const submitBtn = hasGwtSubmit
-          ? secCtx.locator(SEL_SECURITY_SUBMIT)
-          : secCtx.getByRole("button", { name: /submit/i });
-        console.log(`[doLoginSteps] Step 2: clicking ${hasGwtSubmit ? "GWT" : "role-based"} Submit button`);
-        await submitBtn.click({ force: true });
-      } else {
-        // ── Path B: Angular iframe via frameLocator ───────────────────────────
-        // NOTE: #new-login-iframe only exists on userLogin.do. On secretQuestion.do
-        // FADV may render the form directly on the main page (no iframe wrapper).
-        // Try the iframe first with a short timeout, then fall back to the main page.
-        console.log("[doLoginSteps] Step 2: CSS selector not found — trying Angular iframe, then main page");
-
-        let filledViaIframe = false;
-        try {
-          const iframeCtx = page.frameLocator(LOGIN_FRAME_ID_SEL);
-          await iframeCtx.getByRole("textbox").first().waitFor({ state: "visible", timeout: 8_000 });
-          console.log("[doLoginSteps] Step 2: answer textbox visible in Angular iframe");
-          await iframeCtx.getByRole("textbox").first().click();
-          await iframeCtx.getByRole("textbox").first().pressSequentially(params.securityAnswer, { delay: 50 });
-          const submitBtn = iframeCtx.getByRole("button", { name: /submit/i });
-          try {
-            await submitBtn.waitFor({ state: "visible", timeout: 5_000 });
-          } catch {
-            console.warn("[doLoginSteps] Step 2: iframe Submit button not visible after 5s — clicking anyway");
-          }
-          await submitBtn.click({ force: true });
-          filledViaIframe = true;
-        } catch {
-          console.warn("[doLoginSteps] Step 2: Angular iframe not found or timed out — trying main page textbox");
-        }
-
-        if (!filledViaIframe) {
-          // Last resort: security question form is directly on the main page.
-          try {
-            await page.getByRole("textbox").first().waitFor({ state: "visible", timeout: NAV_TIMEOUT_MS });
-            console.log("[doLoginSteps] Step 2: answer textbox visible on main page");
-            await page.getByRole("textbox").first().click();
-            await page.getByRole("textbox").first().pressSequentially(params.securityAnswer, { delay: 50 });
-            const submitBtn = page.getByRole("button", { name: /submit/i });
-            try {
-              await submitBtn.waitFor({ state: "visible", timeout: 5_000 });
-            } catch {
-              console.warn("[doLoginSteps] Step 2: main page Submit button not visible — clicking anyway");
-            }
-            await submitBtn.click({ force: true });
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            console.error("[doLoginSteps] Step 2: no answer input found anywhere on page", { url: page.url(), error: msg });
-            return {
-              success: false,
-              errorType: "layout_change",
-              message: `Security question input not found. FADV may have changed its page structure. URL: ${page.url()}`,
-            };
-          }
+          console.error("[doLoginSteps] Step 2: no answer input found anywhere on page", { url: page.url() });
+          return {
+            success: false,
+            errorType: "layout_change",
+            message: `Security question input not found. FADV may have changed its page structure. URL: ${page.url()}`,
+          };
         }
       }
 
