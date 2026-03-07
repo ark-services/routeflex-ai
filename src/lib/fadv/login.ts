@@ -509,12 +509,16 @@ export async function doLoginSteps(
 
       if (foundViaCss) {
         // CSS path — fill directly into the input.
-        // .fill() works for type="password" and triggers the native change event.
+        // GWT renders the actual <input name="answer"> as hidden (display:none) behind
+        // a styled GWT wrapper widget — waitForSelector with state:"visible" will never
+        // resolve. Use state:"attached" (element is in DOM) then force:true to bypass
+        // Playwright's visibility guard and write directly to the hidden input.
         console.log(`[doLoginSteps] Step 2: filling answer via CSS selector (${foundSelector})`);
-        await secCtx.waitForSelector(foundSelector, { state: "visible", timeout: NAV_TIMEOUT_MS });
-        await secCtx.locator(foundSelector).fill(params.securityAnswer);
+        await secCtx.waitForSelector(foundSelector, { state: "attached", timeout: NAV_TIMEOUT_MS });
+        await secCtx.locator(foundSelector).fill(params.securityAnswer, { force: true });
 
         // Try GWT submit button first, then generic role-based fallback.
+        // SEL_SECURITY_SUBMIT (button#submitBtn) may also be hidden — use force:true.
         const hasGwtSubmit = await secCtx.$(SEL_SECURITY_SUBMIT).catch(() => null);
         const submitBtn = hasGwtSubmit
           ? secCtx.locator(SEL_SECURITY_SUBMIT)
