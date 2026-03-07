@@ -1254,9 +1254,11 @@ export default function ApplicantsBoard({
   }
 
   function onUpdateCell(applicantId: string, columnId: string, columnType: "text" | "number" | "date" | "status" | "checkbox" | "email" | "phone" | "location" | "file" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type", value: any) {
+    const isBulk = columnType !== "file" && selectedIds.length > 1 && selected[applicantId];
+
     // BULK STATUS UPDATE: If this is a status column AND multiple rows are selected AND this row is selected,
     // update all selected rows with the new status value
-    if (columnType === "status" && selectedIds.length > 1 && selected[applicantId]) {
+    if (isBulk && columnType === "status") {
       if (VERBOSE) console.log('[onUpdateCell] Bulk status update triggered:', {
         applicantId, columnId, statusLabelId: value, selectedCount: selectedIds.length, selectedIds,
       });
@@ -1293,6 +1295,40 @@ export default function ApplicantsBoard({
             return next;
           });
           alert('Failed to update selected applicants. Please try again.');
+        }
+      });
+    } else if (isBulk) {
+      // BULK NON-STATUS UPDATE: text, number, date, checkbox, email, phone, location, fadv.*
+      // Optimistically apply to all selected rows immediately
+      setCellOverrides(prev => {
+        const next = new Map(prev);
+        for (const id of selectedIds) next.set(`${id}::${columnId}`, value);
+        return next;
+      });
+
+      startTransition(async () => {
+        try {
+          const results = await Promise.all(
+            selectedIds.map(id => updateBoardCell(companyId, jobId, id, columnId, columnType, value))
+          );
+          const failedCount = results.filter(r => !r.ok).length;
+          if (failedCount > 0) {
+            // Roll back all overrides for this column
+            setCellOverrides(prev => {
+              const next = new Map(prev);
+              for (const id of selectedIds) next.delete(`${id}::${columnId}`);
+              return next;
+            });
+            showCellError(`Failed to update ${failedCount} of ${selectedIds.length} applicants.`);
+          }
+        } catch (error) {
+          console.error('[onUpdateCell] Bulk non-status update failed:', error);
+          setCellOverrides(prev => {
+            const next = new Map(prev);
+            for (const id of selectedIds) next.delete(`${id}::${columnId}`);
+            return next;
+          });
+          showCellError('Failed to update selected applicants. Please try again.');
         }
       });
     } else {
@@ -2710,7 +2746,7 @@ function SortableRow({
   cellEls.push(
     <td
       key="__sticky__"
-      className="sticky left-0 z-10 bg-rf-surface-card group-hover:bg-rf-surface-page px-4 py-2"
+      className={`sticky left-0 z-10 px-4 py-2 ${selected ? "bg-rf-blue-tint" : "bg-rf-surface-card group-hover:bg-rf-surface-page"}`}
       style={{ boxShadow: 'inset -1px 0 0 0 rgb(228, 232, 240)' }}
     >
       <div className="flex items-center gap-2">
@@ -2873,7 +2909,7 @@ function SortableRow({
     cellEls.push(
       <td
         key={col.id}
-        className={`py-2 ${isFrozen ? "" : "border-r border-rf-ink-100"} last:border-r-0 ${isFrozen ? "sticky z-[9] bg-rf-surface-card group-hover:bg-rf-surface-page" : "relative"} ${isCollapsed ? "px-1 w-12" : "px-4"}`}
+        className={`py-2 ${isFrozen ? "" : "border-r border-rf-ink-100"} last:border-r-0 ${isFrozen ? `sticky z-[9] ${selected ? "bg-rf-blue-tint" : "bg-rf-surface-card group-hover:bg-rf-surface-page"}` : "relative"} ${isCollapsed ? "px-1 w-12" : "px-4"}`}
         style={isFrozen ? { left: frozenLeft, boxShadow: isLastFrozen ? 'inset -2px 0 0 0 #c8cdd5' : 'inset -1px 0 0 0 rgb(228, 232, 240)' } : undefined}
       >
         <CellRenderer
@@ -2898,7 +2934,7 @@ function SortableRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className="group border-b border-rf-ink-100 hover:bg-rf-surface-page/60 relative"
+      className={`group border-b border-rf-ink-100 relative ${selected ? "bg-rf-blue-tint" : "hover:bg-rf-surface-page/60"}`}
       {...attributes}
     >
       {cellEls}
