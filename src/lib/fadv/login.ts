@@ -734,10 +734,46 @@ export async function doLoginSteps(
     }
 
     // ── Step 3: FCRA notice (conditional) ──────────────────────────────────
+    // session.do now renders an Angular overlay inside #new-login-iframe
+    // (src: angular/login/notice) — the same pattern as the security question.
+    // The legacy GWT button#agreeBtn exists on the main page but dispatching
+    // a click to it does not trigger navigation (the Angular app ignores it).
+    // Try the Angular iframe first; fall back to the GWT button.
     if (page.url().includes("session.do")) {
-      await page.waitForSelector(SEL_AGREE_BUTTON, { state: "attached", timeout: NAV_TIMEOUT_MS });
-      await page.locator(SEL_AGREE_BUTTON).dispatchEvent("click");
-      await page.waitForLoadState("networkidle", { timeout: LOGIN_TIMEOUT_MS });
+      console.log("[doLoginSteps] Step 3: FCRA notice (session.do) — clicking I Agree...");
+      let agreedViaAngular = false;
+      try {
+        const noticeFrame = page.frameLocator(LOGIN_FRAME_ID_SEL);
+        // Try common Angular button patterns — getByText is most robust since
+        // we don't know the exact component ID without live DOM inspection.
+        // The fadv-button host wraps a <button>; Playwright pierces shadow DOM.
+        const agreeLocator = noticeFrame.getByRole("button", { name: /agree/i });
+        await agreeLocator.waitFor({ state: "visible", timeout: 8_000 });
+        await agreeLocator.click({ force: true });
+        agreedViaAngular = true;
+        console.log("[doLoginSteps] Step 3: Clicked I Agree via Angular iframe (getByRole)");
+      } catch {
+        console.log("[doLoginSteps] Step 3: Angular iframe approach failed — trying GWT fallback");
+      }
+
+      if (!agreedViaAngular) {
+        // GWT fallback: hidden button on the main page
+        await page.waitForSelector(SEL_AGREE_BUTTON, { state: "attached", timeout: NAV_TIMEOUT_MS });
+        await page.locator(SEL_AGREE_BUTTON).dispatchEvent("click");
+        console.log("[doLoginSteps] Step 3: Clicked I Agree via GWT agreeBtn (dispatchEvent)");
+      }
+
+      // Wait for navigation away from session.do
+      try {
+        await page.waitForURL(
+          (url) => !url.toString().includes("session.do"),
+          { timeout: LOGIN_TIMEOUT_MS }
+        );
+      } catch {
+        console.warn("[doLoginSteps] Step 3: navigation away from session.do timed out, URL:", page.url().split("?")[0]);
+      }
+      try { await page.waitForLoadState("networkidle", { timeout: 8_000 }); } catch {}
+      console.log("[doLoginSteps] Step 3: settled URL =", page.url().split("?")[0]);
     }
 
     // ── Late catch-all: Session Override can appear after ANY login step ────
