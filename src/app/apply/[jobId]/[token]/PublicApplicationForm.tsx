@@ -228,7 +228,7 @@ export default function PublicApplicationForm({
                 type="file"
                 name={field.key}
                 required={field.required}
-                accept={field.settings?.accept || ".pdf,.doc,.docx"}
+                accept={field.settings?.accept || ".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"}
                 className="w-full text-sm text-rf-ink-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-rf-ink-100 file:text-rf-ink-700 hover:file:bg-rf-ink-100 file:transition-colors cursor-pointer"
               />
               <p className="text-xs text-rf-text-muted">

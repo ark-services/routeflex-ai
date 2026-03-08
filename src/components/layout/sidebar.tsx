@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useParams, usePathname } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, BookOpen, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings } from "lucide-react";
 import type { Job, Company } from "@/lib/types";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
@@ -56,6 +56,9 @@ export function Sidebar({
   const isOnForm =
     currentJobId !== null &&
     pathname?.endsWith("/form");
+  const isOnKnowledgeBase =
+    currentJobId !== null &&
+    pathname?.endsWith("/knowledge-base");
   const isOnTemplateCenter = pathname?.includes("/template-center") ?? false;
   const isOnTraining = pathname?.includes("/training") ?? false;
   const isOnSettings = pathname?.includes("/settings") ?? false;
@@ -388,6 +391,33 @@ export function Sidebar({
               >
                 <FileText className={`h-4 w-4 flex-shrink-0 ${isOnForm ? "text-rf-blue" : "text-rf-text-muted"}`} />
                 <span className="flex-1">Form</span>
+              </div>
+
+              {/* Knowledge Base */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  router.push(
+                    `/dashboard/${companyId}/jobs/${currentJobId}/knowledge-base`
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(
+                      `/dashboard/${companyId}/jobs/${currentJobId}/knowledge-base`
+                    );
+                  }
+                }}
+                className={`w-full text-left px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer select-none border-l-2 ${
+                  isOnKnowledgeBase
+                    ? "border-rf-blue bg-rf-blue-tint text-rf-blue"
+                    : "border-transparent text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
+                }`}
+              >
+                <BookOpen className={`h-4 w-4 flex-shrink-0 ${isOnKnowledgeBase ? "text-rf-blue" : "text-rf-text-muted"}`} />
+                <span className="flex-1">Knowledge Base</span>
               </div>
             </div>
           )}

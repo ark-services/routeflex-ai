@@ -1489,6 +1489,10 @@ async function executeEmailGmail(
     }
   }
 
+  // Inject knowledge base content as a template variable
+  const kbCtx = await fetchKnowledgeBaseContext(supabase, jobId);
+  if (kbCtx) context.knowledge_base = kbCtx;
+
   const resolvedSubject = resolveVariables(subject, context);
   const resolvedBody = plainTextToHtml(resolveVariables(body, context));
 
@@ -1641,6 +1645,10 @@ async function executeSendEmailGmail(
       }
     }
   }
+
+  // Inject knowledge base content as a template variable
+  const kbContext = await fetchKnowledgeBaseContext(supabase, jobId);
+  if (kbContext) context.knowledge_base = kbContext;
 
   // Resolve variables in subject and body; convert plain-text newlines to <br>
   const resolvedSubject = resolveVariables(subject, context);
@@ -1954,6 +1962,10 @@ async function buildTwilioVariableContext(
     .maybeSingle();
   if (job) context.job_title = job.title || '';
 
+  // Inject knowledge base content
+  const kbContext = await fetchKnowledgeBaseContext(supabase, jobId);
+  if (kbContext) context.knowledge_base = kbContext;
+
   return context;
 }
 
@@ -2077,6 +2089,28 @@ async function executeIntegrationSetField(
 
   console.log('[executeIntegrationSetField] ✓ Set', `${provider}.${field_key}`, '=', resolvedValue);
   return { success: true };
+}
+
+/**
+ * Helper: Fetch knowledge base Q&A entries for a job and format them as
+ * a single string that can be injected into email / SMS / phone templates
+ * via the {{knowledge_base}} variable.
+ */
+async function fetchKnowledgeBaseContext(
+  supabase: SupabaseClient,
+  jobId: string
+): Promise<string> {
+  const { data: entries } = await supabase
+    .from('job_knowledge_base')
+    .select('question, answer')
+    .eq('job_id', jobId)
+    .order('sort_order', { ascending: true });
+
+  if (!entries || entries.length === 0) return '';
+
+  return entries
+    .map((e, i) => `Q${i + 1}: ${e.question}\nA${i + 1}: ${e.answer}`)
+    .join('\n\n');
 }
 
 /**
