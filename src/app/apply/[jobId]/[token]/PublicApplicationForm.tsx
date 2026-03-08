@@ -154,6 +154,12 @@ export default function PublicApplicationForm({
       }
     }
 
+    // Remove file entries from formData — already uploaded, paths are in filePaths.
+    // Keeping File objects in the payload would re-hit Vercel's 4.5 MB edge limit.
+    for (const field of fileFields) {
+      formData.delete(field.key);
+    }
+
     setUploadStatus("Submitting application…");
 
     try {
