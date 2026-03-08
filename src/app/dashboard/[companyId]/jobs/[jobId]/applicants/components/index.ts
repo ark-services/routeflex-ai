@@ -9,6 +9,10 @@ export { SortableColumnHeader } from "./sortable-column-header";
 export { SortableRow } from "./sortable-row";
 export { SortableGroupHeader } from "./sortable-group-header";
 export { ApplicantDetailPanel } from "./applicant-detail-panel";
+export { VirtualRow } from "./VirtualRow";
+export { VirtualColumnHeaders } from "./VirtualColumnHeaders";
+export { useVirtualBoard, buildGridTemplate, buildGridTotalWidth } from "./useVirtualBoard";
+export type { VirtualItem } from "./useVirtualBoard";
 
 export type {
   Group,

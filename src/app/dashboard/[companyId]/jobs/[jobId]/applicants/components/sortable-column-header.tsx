@@ -150,7 +150,7 @@ export function SortableColumnHeader({
   }, [menuOpen]);
 
   return (
-    <th
+    <div
       ref={setNodeRef}
       style={{
         ...style,
@@ -361,6 +361,6 @@ export function SortableColumnHeader({
           }}
         />
       )}
-    </th>
+    </div>
   );
 }

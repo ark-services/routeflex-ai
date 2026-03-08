@@ -38,6 +38,7 @@ export function SortableRow({
   collapsedColumnIds = new Set(),
   frozenColumnsCount = 0,
   frozenLeftOffsets = [],
+  gridTemplate,
 }: {
   applicant: ApplicantRow;
   columns: BoardColumn[];
@@ -61,6 +62,7 @@ export function SortableRow({
   collapsedColumnIds?: Set<string>;
   frozenColumnsCount?: number;
   frozenLeftOffsets?: number[];
+  gridTemplate?: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `row-${applicant.id}`,
@@ -104,7 +106,7 @@ export function SortableRow({
 
   // Sticky left cell (checkbox + row menu + FADV badge)
   cellEls.push(
-    <td
+    <div
       key="__sticky__"
       className={`sticky left-0 z-10 px-4 py-2 ${selected ? "bg-rf-blue-tint" : "bg-rf-surface-card group-hover:bg-rf-surface-page"}`}
       style={{ boxShadow: 'inset -1px 0 0 0 rgb(228, 232, 240)' }}
@@ -256,7 +258,7 @@ export function SortableRow({
           ⋮⋮
         </button>
       </div>
-    </td>
+    </div>
   );
 
   // Dynamic board columns
@@ -267,7 +269,7 @@ export function SortableRow({
     const isLastFrozen = isFrozen && colIdx === frozenColumnsCount - 1;
     const frozenLeft = isFrozen ? frozenLeftOffsets[colIdx] : undefined;
     cellEls.push(
-      <td
+      <div
         key={col.id}
         className={`py-2 ${isFrozen ? "" : "border-r border-rf-ink-100"} last:border-r-0 ${isFrozen ? `sticky z-[9] ${selected ? "bg-rf-blue-tint" : "bg-rf-surface-card group-hover:bg-rf-surface-page"}` : "relative"} ${isCollapsed ? "px-1 w-12" : "px-4"}`}
         style={isFrozen ? { left: frozenLeft, boxShadow: isLastFrozen ? 'inset -2px 0 0 0 #c8cdd5' : 'inset -1px 0 0 0 rgb(228, 232, 240)' } : undefined}
@@ -283,21 +285,21 @@ export function SortableRow({
           boardId={boardId}
           isCollapsed={isCollapsed}
         />
-      </td>
+      </div>
     );
   }
 
   // Empty cell for + button column
-  cellEls.push(<td key="__plus__" className="px-4 py-2" />);
+  cellEls.push(<div key="__plus__" className="px-4 py-2" />);
 
   return (
-    <tr
+    <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, display: "grid", gridTemplateColumns: gridTemplate }}
       className={`group border-b border-rf-ink-100 relative ${selected ? "bg-rf-blue-tint" : "hover:bg-rf-surface-page/60"}`}
       {...attributes}
     >
       {cellEls}
-    </tr>
+    </div>
   );
 }

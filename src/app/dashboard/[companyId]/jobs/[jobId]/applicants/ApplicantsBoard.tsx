@@ -64,6 +64,7 @@ import {
   type BoardColumn,
   type StatusLabel,
   type StoredFile,
+  type VirtualItem,
   STICKY_COL_WIDTH,
   ADD_COL_BTN_WIDTH,
   getDefaultWidth,
@@ -74,6 +75,9 @@ import {
   ApplicantDetailPanel,
   StatusLabelsEditor,
   BoardDefaultValuesModal,
+  VirtualRow,
+  VirtualColumnHeaders,
+  useVirtualBoard,
 } from "./components";
 
 const VERBOSE = false; // set to true to re-enable verbose board logs
@@ -266,6 +270,8 @@ export default function ApplicantsBoard({
   // Drag state
   const [isDraggingGroup, setIsDraggingGroup] = useState(false);
   const [groupsBeforeDrag, setGroupsBeforeDrag] = useState<Group[]>([]);
+  // Row drag: when set, bypass virtualization for this group so dnd-kit can see all rows
+  const [draggingInGroupId, setDraggingInGroupId] = useState<string | null>(null);
 
   // Local state for optimistic updates
   const [localColumns, setLocalColumns] = useState(columns);
@@ -304,15 +310,15 @@ export default function ApplicantsBoard({
   }, []);
 
   // Update local state when props change
-  useMemo(() => {
+  useEffect(() => {
     setLocalColumns(columns);
   }, [columns]);
 
-  useMemo(() => {
+  useEffect(() => {
     setLocalApplicants(applicants);
   }, [applicants]);
 
-  useMemo(() => {
+  useEffect(() => {
     setLocalGroups(groups);
   }, [groups]);
 
@@ -324,7 +330,7 @@ export default function ApplicantsBoard({
     return init;
   });
 
-  useMemo(() => {
+  useEffect(() => {
     setColumnWidths(prev => {
       const next = { ...prev };
       for (const col of columns) {
@@ -642,6 +648,25 @@ export default function ApplicantsBoard({
     return sorted;
   }, [sortState, applicantsByGroup, localColumns, cellsByApplicantAndColumn, cellOverrides, labelsByColumn]);
 
+  // ── Virtual board hook ──────────────────────────────────────────────────────
+  const {
+    scrollContainerRef,
+    flatItems,
+    virtualizer,
+    gridTemplateByGroup,
+    gridWidthByGroup,
+    maxGridWidth,
+  } = useVirtualBoard({
+    localGroups,
+    localColumns: localColumns.filter((col) => !col.is_hidden),
+    sortedApplicantsByGroup,
+    applicantsByGroup,
+    searchQuery,
+    activeFilters,
+    columnWidths,
+    draggingInGroupId,
+  });
+
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
 
@@ -659,10 +684,22 @@ export default function ApplicantsBoard({
         }
       });
     }
+
+    // Detect row dragging — bypass virtualization for this group so dnd-kit can see all rows
+    if (active.id.toString().startsWith("row-")) {
+      const rowId = active.id.toString().replace("row-", "");
+      const row = localApplicants.find((a) => a.id === rowId);
+      if (row?.group_id) {
+        setDraggingInGroupId(row.group_id);
+      }
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+
+    // Always clear row drag bypass
+    setDraggingInGroupId(null);
 
     if (!over || active.id === over.id) {
       // Reset drag state
@@ -756,6 +793,9 @@ export default function ApplicantsBoard({
   }
 
   function handleDragCancel() {
+    // Clear row drag bypass
+    setDraggingInGroupId(null);
+
     // Restore pre-drag collapse state
     if (isDraggingGroup) {
       setIsDraggingGroup(false);
@@ -1311,6 +1351,337 @@ export default function ApplicantsBoard({
     }
   }
 
+  // ── Helper: compute frozen left offsets for a group's visible columns ──────
+  function computeFrozenLeftOffsets(groupVisibleCols: BoardColumn[], collapsedColIds: Set<string>): number[] {
+    const offsets: number[] = [];
+    let cumLeft = STICKY_COL_WIDTH;
+    for (let i = 0; i < frozenColumnsCount && i < groupVisibleCols.length; i++) {
+      offsets.push(cumLeft);
+      cumLeft += collapsedColIds.has(groupVisibleCols[i].id)
+        ? 32
+        : getColumnWidth(groupVisibleCols[i].id, groupVisibleCols[i].type);
+    }
+    return offsets;
+  }
+
+  // ── Virtual item renderer ──────────────────────────────────────────────────
+  function renderVirtualItem(item: VirtualItem) {
+    switch (item.kind) {
+      case "group-header": {
+        const g = item.group;
+        const rows = sortedApplicantsByGroup.get(g.id) ?? [];
+        const groupHiddenColIds = new Set<string>(g.settings?.hidden_columns ?? []);
+        const groupVisibleCols = localColumns.filter((col) => !col.is_hidden && !groupHiddenColIds.has(col.id));
+        return (
+          <section
+            className="rounded-t-[14px]"
+            style={{
+              borderLeft: `4px solid ${g.color}`,
+              boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
+            }}
+          >
+            <SortableGroupHeader
+              group={g}
+              rowCount={rows.length}
+              isCollapsed={g.is_collapsed}
+              onToggleCollapse={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
+              onColorChange={(color) => onUpdateGroupColor(g.id, color)}
+              isEditing={editingGroupId === g.id}
+              editValue={editingGroupValue}
+              onStartEdit={() => {
+                setEditingGroupId(g.id);
+                setEditingGroupValue(g.name);
+              }}
+              onSaveEdit={() => onRenameGroup(g.id)}
+              onCancelEdit={() => {
+                setEditingGroupId(null);
+                setEditingGroupValue("");
+              }}
+              onChange={setEditingGroupValue}
+              menuOpen={groupMenuOpen === g.id}
+              onMenuToggle={() => setGroupMenuOpen(groupMenuOpen === g.id ? null : g.id)}
+              canDelete={localGroups.length > 1}
+              onRename={() => {
+                setEditingGroupId(g.id);
+                setEditingGroupValue(g.name);
+                setGroupMenuOpen(null);
+              }}
+              onDelete={() => {
+                setGroupToDelete(g);
+                setDeleteGroupModalOpen(true);
+                setGroupMenuOpen(null);
+              }}
+              onMinimizeAll={() => {
+                onMinimizeAllColumns(g.id);
+                setGroupMenuOpen(null);
+              }}
+              onExpandAll={() => {
+                onExpandAllColumns(g.id);
+                setGroupMenuOpen(null);
+              }}
+              allColumns={localColumns}
+              onHideColumn={(colId) => onHideColumnInGroup(colId, g.id)}
+              onShowColumn={(colId) => onShowColumnInGroup(colId, g.id)}
+              onUpdatePortalVisibility={(visible) => onUpdateGroupPortalVisibility(g.id, visible)}
+              onUpdatePortalNote={(note) => onUpdateGroupPortalNote(g.id, note)}
+              onUpdatePortalChecklist={(checklist) => onUpdateGroupPortalChecklist(g.id, checklist)}
+              columns={groupVisibleCols}
+              labelsByColumn={labelsByColumn}
+              frozenColumnsCount={frozenColumnsCount}
+              onFreezeColumns={handleFreezeColumns}
+            />
+          </section>
+        );
+      }
+
+      case "column-headers": {
+        const g = item.group;
+        const rows = sortedApplicantsByGroup.get(g.id) ?? [];
+        const collapsedColIds = new Set<string>(g.settings?.collapsed_columns ?? []);
+        const frozenOffsets = computeFrozenLeftOffsets(item.columns, collapsedColIds);
+        const gridTemplate = gridTemplateByGroup.get(g.id) ?? "";
+        return (
+          <div
+            style={{
+              borderLeft: `4px solid ${g.color}`,
+              boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
+            }}
+          >
+            <VirtualColumnHeaders
+              columns={item.columns}
+              rows={rows}
+              selected={selected}
+              toggleAllInGroup={toggleAllInGroup}
+              groupId={g.id}
+              gridTemplate={gridTemplate}
+              onColumnWidthChange={onColumnWidthChange}
+              onColumnWidthCommit={onColumnWidthCommit}
+              onColumnWidthReset={onColumnWidthReset}
+              onSaveColumnName={onSaveColumnName}
+              onDeleteColumn={onDeleteColumn}
+              onToggleMinimizeColumn={onToggleMinimizeColumn}
+              onAddColumnRight={onAddColumnRight}
+              onShowAddColumnModal={() => setShowAddColumnModal(true)}
+              collapsedColIds={collapsedColIds}
+              frozenColumnsCount={frozenColumnsCount}
+              frozenLeftOffsets={frozenOffsets}
+              sortState={sortState}
+              onSort={handleSort}
+              getColumnWidth={getColumnWidth}
+            />
+          </div>
+        );
+      }
+
+      case "empty-row": {
+        // Find the group for styling
+        const g = localGroups.find((gr) => gr.id === item.groupId);
+        return (
+          <div
+            className="px-4 py-8 text-sm text-rf-text-muted text-center bg-rf-surface-card"
+            style={{
+              borderLeft: g ? `4px solid ${g.color}` : undefined,
+              boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
+            }}
+          >
+            No applicants in this group yet.
+          </div>
+        );
+      }
+
+      case "applicant-row": {
+        const a = item.applicant;
+        const g = localGroups.find((gr) => gr.id === item.groupId);
+        const groupHiddenColIds = new Set<string>(g?.settings?.hidden_columns ?? []);
+        const groupVisibleCols = localColumns.filter((col) => !col.is_hidden && !groupHiddenColIds.has(col.id));
+        const collapsedColIds = new Set<string>(g?.settings?.collapsed_columns ?? []);
+        const frozenOffsets = computeFrozenLeftOffsets(groupVisibleCols, collapsedColIds);
+        const gridTemplate = gridTemplateByGroup.get(item.groupId) ?? "";
+
+        // During row drag in this group, use SortableRow for dnd-kit compatibility
+        if (draggingInGroupId === item.groupId) {
+          return (
+            <div
+              style={{
+                borderLeft: g ? `4px solid ${g.color}` : undefined,
+                boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
+              }}
+            >
+              <SortableRow
+                applicant={a}
+                columns={groupVisibleCols}
+                selected={!!selected[a.id]}
+                onToggle={() => toggleRow(a.id)}
+                getCellValue={(col) => getCellValue(a, col)}
+                onUpdateCell={(colId, colType, val) => onUpdateCell(a.id, colId, colType, val)}
+                labelsByColumn={labelsByColumn}
+                onEditLabels={setEditLabelsColumnId}
+                rowMenuOpen={rowMenuOpen === a.id}
+                setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
+                groups={groups}
+                onOpen={() => setDetailApplicantId(a.id)}
+                onMove={(groupId) => onMoveApplicant(a.id, groupId)}
+                onDuplicate={() => onDuplicateApplicant(a.id)}
+                onDelete={() => onDeleteApplicant(a.id)}
+                companyId={companyId}
+                boardId={boardId}
+                fadvReady={fadvReadyApplicantIds.has(a.id)}
+                onSendToFadv={async () => {
+                  const r = await sendToFadv(companyId, jobId, a.id);
+                  if (!r.success) alert(`FADV: ${r.error}`);
+                  else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                }}
+                collapsedColumnIds={collapsedColIds}
+                frozenColumnsCount={frozenColumnsCount}
+                frozenLeftOffsets={frozenOffsets}
+                gridTemplate={gridTemplate}
+              />
+            </div>
+          );
+        }
+
+        return (
+          <div
+            style={{
+              borderLeft: g ? `4px solid ${g.color}` : undefined,
+              boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
+            }}
+          >
+            <VirtualRow
+              applicant={a}
+              columns={groupVisibleCols}
+              selected={!!selected[a.id]}
+              onToggle={() => toggleRow(a.id)}
+              getCellValue={(col) => getCellValue(a, col)}
+              onUpdateCell={(colId, colType, val) => onUpdateCell(a.id, colId, colType, val)}
+              labelsByColumn={labelsByColumn}
+              onEditLabels={setEditLabelsColumnId}
+              rowMenuOpen={rowMenuOpen === a.id}
+              setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
+              groups={groups}
+              onOpen={() => setDetailApplicantId(a.id)}
+              onMove={(groupId) => onMoveApplicant(a.id, groupId)}
+              onDuplicate={() => onDuplicateApplicant(a.id)}
+              onDelete={() => onDeleteApplicant(a.id)}
+              companyId={companyId}
+              boardId={boardId}
+              fadvReady={fadvReadyApplicantIds.has(a.id)}
+              onSendToFadv={async () => {
+                const r = await sendToFadv(companyId, jobId, a.id);
+                if (!r.success) alert(`FADV: ${r.error}`);
+                else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+              }}
+              collapsedColumnIds={collapsedColIds}
+              frozenColumnsCount={frozenColumnsCount}
+              frozenLeftOffsets={frozenOffsets}
+              gridTemplate={gridTemplate}
+            />
+          </div>
+        );
+      }
+
+      case "add-item-row": {
+        const g = localGroups.find((gr) => gr.id === item.groupId);
+        return (
+          <div
+            onClick={() => onQuickCreateApplicant(item.groupId)}
+            className="border-t border-rf-border hover:bg-rf-blue-tint/30 cursor-pointer transition-colors group/addrow bg-rf-surface-card rounded-b-[14px]"
+            style={{
+              borderLeft: g ? `4px solid ${g.color}` : undefined,
+              boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
+            }}
+          >
+            <div className="px-4 py-3 flex items-center gap-2 text-rf-text-muted group-hover/addrow:text-rf-blue transition-colors">
+              <span className="text-sm font-semibold">+</span>
+              <span className="text-sm font-medium">Add item</span>
+            </div>
+          </div>
+        );
+      }
+
+      case "group-spacer":
+        return <div style={{ height: 32 }} />;
+
+      case "orphaned-header": {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 px-2 bg-rf-danger-bg border border-red-200 rounded-lg p-3">
+              <div className="h-4 w-4 rounded" style={{ backgroundColor: "#ef4444" }} />
+              <h2 className="text-base font-semibold text-red-900">Orphaned Applicants</h2>
+              <span className="text-sm text-rf-danger">({item.rowCount})</span>
+              <span className="text-xs text-rf-danger ml-auto">
+                Board mismatch - check console for details
+              </span>
+            </div>
+            <div className="bg-red-100 p-3 text-sm text-rf-danger border-b border-red-200">
+              <strong>Warning:</strong> These applicants have group_ids that don&apos;t match any group in the current board.
+            </div>
+          </div>
+        );
+      }
+
+      case "orphaned-row": {
+        const a = item.applicant;
+        const gridTemplate = gridTemplateByGroup.get(localGroups[0]?.id ?? "") ?? "";
+        return (
+          <div className="border-2 border-red-300 bg-rf-danger-bg/30">
+            <VirtualRow
+              applicant={a}
+              columns={visibleColumns}
+              selected={!!selected[a.id]}
+              onToggle={() => toggleRow(a.id)}
+              getCellValue={(col) => getCellValue(a, col)}
+              onUpdateCell={(colId, colType, val) => onUpdateCell(a.id, colId, colType, val)}
+              labelsByColumn={labelsByColumn}
+              onEditLabels={setEditLabelsColumnId}
+              rowMenuOpen={rowMenuOpen === a.id}
+              setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
+              groups={groups}
+              onOpen={() => setDetailApplicantId(a.id)}
+              onMove={(groupId) => onMoveApplicant(a.id, groupId)}
+              onDuplicate={() => onDuplicateApplicant(a.id)}
+              onDelete={() => onDeleteApplicant(a.id)}
+              companyId={companyId}
+              boardId={boardId}
+              fadvReady={fadvReadyApplicantIds.has(a.id)}
+              onSendToFadv={async () => {
+                const r = await sendToFadv(companyId, jobId, a.id);
+                if (!r.success) alert(`FADV: ${r.error}`);
+                else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+              }}
+              gridTemplate={gridTemplate}
+            />
+          </div>
+        );
+      }
+
+      case "add-group-button":
+        return (
+          <div className="pt-3 px-2">
+            <button
+              onClick={handleAddNewGroup}
+              disabled={isPending}
+              className="flex items-center gap-2 h-8 px-3 text-sm text-rf-text-secondary hover:text-rf-ink-700 bg-rf-surface-card hover:bg-rf-surface-page border border-dashed border-rf-ink-100 hover:border-rf-ink-300 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <span className="font-medium">+</span>
+              <span>Add new group</span>
+            </button>
+          </div>
+        );
+
+      case "no-results":
+        return (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <p className="text-rf-ink-700 font-medium">No results found</p>
+            <p className="text-rf-text-muted text-sm mt-1">Try adjusting your search or filters</p>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  }
+
   if (!mounted) {
     return <div className="min-h-[60vh] bg-rf-surface-page" />;
   }
@@ -1633,343 +2004,61 @@ export default function ApplicantsBoard({
           </div>
         </div>
 
-        {/* ====== DESKTOP TABLE VIEW (hidden on mobile) ====== */}
-        <div className="hidden md:block flex-1 overflow-auto min-h-0">
-          <div className="min-w-max px-8 py-7">
-            {/* Groups */}
-            <div className="space-y-8">
-              {/* Wrap groups in SortableContext */}
+        {/* ====== DESKTOP VIRTUAL TABLE VIEW (hidden on mobile) ====== */}
+        <div
+          ref={scrollContainerRef}
+          className="hidden md:block flex-1 overflow-auto min-h-0"
+        >
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              position: "relative",
+              minWidth: `${maxGridWidth}px`,
+              padding: "28px 32px",
+            }}
+          >
+            <SortableContext
+              items={localGroups.map((g) => `group-${g.id}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              {/* Column-drag SortableContext — always active so column reordering works */}
               <SortableContext
-                items={localGroups.map((g) => `group-${g.id}`)}
-                strategy={verticalListSortingStrategy}
+                items={visibleColumns.map((c) => `col-${c.id}`)}
+                strategy={horizontalListSortingStrategy}
               >
-                {/* Render regular groups */}
-                {localGroups.map((g) => {
-                  const rows = sortedApplicantsByGroup.get(g.id) ?? [];
-                  const isFiltering = !!searchQuery || (activeFilters ?? []).length > 0;
-                  if (isFiltering && rows.length === 0) return null;
-                  const groupHiddenColIds = new Set<string>(g.settings?.hidden_columns ?? []);
-                  const groupVisibleColumns = localColumns.filter((col) => !groupHiddenColIds.has(col.id));
-                  return (
-                    <section
-                      key={g.id}
-                      className="mb-5 rounded-[14px]"
-                      style={{
-                        borderLeft: `4px solid ${g.color}`,
-                        boxShadow: '0 0 0 1px rgba(15,22,35,0.08)',
-                      }}
-                    >
-                      {/* Sortable Group header */}
-                      <SortableGroupHeader
-                        group={g}
-                        rowCount={rows.length}
-                        isCollapsed={g.is_collapsed}
-                        onToggleCollapse={() => onToggleGroupCollapse(g.id, g.is_collapsed)}
-                        onColorChange={(color) => onUpdateGroupColor(g.id, color)}
-                        isEditing={editingGroupId === g.id}
-                        editValue={editingGroupValue}
-                        onStartEdit={() => {
-                          setEditingGroupId(g.id);
-                          setEditingGroupValue(g.name);
-                        }}
-                        onSaveEdit={() => onRenameGroup(g.id)}
-                        onCancelEdit={() => {
-                          setEditingGroupId(null);
-                          setEditingGroupValue("");
-                        }}
-                        onChange={setEditingGroupValue}
-                        menuOpen={groupMenuOpen === g.id}
-                        onMenuToggle={() => setGroupMenuOpen(groupMenuOpen === g.id ? null : g.id)}
-                        canDelete={localGroups.length > 1}
-                        onRename={() => {
-                          setEditingGroupId(g.id);
-                          setEditingGroupValue(g.name);
-                          setGroupMenuOpen(null);
-                        }}
-                        onDelete={() => {
-                          setGroupToDelete(g);
-                          setDeleteGroupModalOpen(true);
-                          setGroupMenuOpen(null);
-                        }}
-                        onMinimizeAll={() => {
-                          onMinimizeAllColumns(g.id);
-                          setGroupMenuOpen(null);
-                        }}
-                        onExpandAll={() => {
-                          onExpandAllColumns(g.id);
-                          setGroupMenuOpen(null);
-                        }}
-                        allColumns={localColumns}
-                        onHideColumn={(colId) => onHideColumnInGroup(colId, g.id)}
-                        onShowColumn={(colId) => onShowColumnInGroup(colId, g.id)}
-                        onUpdatePortalVisibility={(visible) => onUpdateGroupPortalVisibility(g.id, visible)}
-                        onUpdatePortalNote={(note) => onUpdateGroupPortalNote(g.id, note)}
-                        onUpdatePortalChecklist={(checklist) => onUpdateGroupPortalChecklist(g.id, checklist)}
-                        columns={groupVisibleColumns}
-                        labelsByColumn={labelsByColumn}
-                        frozenColumnsCount={frozenColumnsCount}
-                        onFreezeColumns={handleFreezeColumns}
-                      />
-
-                    {/* Group table */}
-                    {!g.is_collapsed && (() => {
-                      const collapsedColIds = new Set<string>(g.settings?.collapsed_columns ?? []);
-                      const groupTableWidth = STICKY_COL_WIDTH
-                        + groupVisibleColumns.reduce((sum, col) =>
-                            sum + (collapsedColIds.has(col.id) ? 32 : (columnWidths[col.id] ?? getDefaultWidth(col.type))),
-                          0)
-                        + ADD_COL_BTN_WIDTH;
-                      // Compute sticky left offsets for frozen columns in this group
-                      const frozenLeftOffsets: number[] = [];
-                      {
-                        let cumLeft = STICKY_COL_WIDTH;
-                        for (let i = 0; i < frozenColumnsCount && i < groupVisibleColumns.length; i++) {
-                          frozenLeftOffsets.push(cumLeft);
-                          cumLeft += collapsedColIds.has(groupVisibleColumns[i].id) ? 32 : getColumnWidth(groupVisibleColumns[i].id, groupVisibleColumns[i].type);
-                        }
-                      }
-                      return (
-                      <div
-                        className="overflow-visible rounded-b-[14px] bg-rf-surface-card"
-                      >
-                        <table
-                          className="text-left border-collapse"
-                          style={{ tableLayout: 'fixed', width: `${groupTableWidth}px` }}
-                        >
-                          <colgroup>
-                            <col style={{ width: `${STICKY_COL_WIDTH}px` }} />
-                            {groupVisibleColumns.map(col => (
-                              <col
-                                key={col.id}
-                                style={{ width: collapsedColIds.has(col.id) ? "32px" : `${getColumnWidth(col.id, col.type)}px` }}
-                              />
-                            ))}
-                            <col style={{ width: `${ADD_COL_BTN_WIDTH}px` }} />
-                          </colgroup>
-                          <thead className="bg-rf-surface-card sticky top-[41px] z-20">
-                            <tr className="border-b border-rf-border">
-                              <th className="sticky left-0 z-20 w-10 bg-rf-surface-card px-4 py-2" style={{ boxShadow: 'inset -1px 0 0 0 rgb(228, 232, 240)' }}>
-                                <div className="flex items-center gap-2">
-                                  {/* invisible spacer matching the hidden ⋮ row-menu button */}
-                                  <div className="opacity-0 text-sm select-none">⋮</div>
-                                  {rows.length > 0 && (() => {
-                                    const allSelected = rows.every((r) => selected[r.id]);
-                                    const someSelected = !allSelected && rows.some((r) => selected[r.id]);
-                                    return (
-                                      <input
-                                        type="checkbox"
-                                        checked={allSelected}
-                                        ref={(el) => { if (el) el.indeterminate = someSelected; }}
-                                        onChange={() => toggleAllInGroup(g.id, rows)}
-                                        className="h-4 w-4 rounded border-rf-ink-100 cursor-pointer accent-green-600"
-                                      />
-                                    );
-                                  })()}
-                                </div>
-                              </th>
-
-                              {/* Sortable columns */}
-                              <SortableContext
-                                items={groupVisibleColumns.map((c) => `col-${c.id}`)}
-                                strategy={horizontalListSortingStrategy}
-                              >
-                                {groupVisibleColumns.map((col, colIdx) => (
-                                  <SortableColumnHeader
-                                    key={col.id}
-                                    column={col}
-                                    width={getColumnWidth(col.id, col.type)}
-                                    onWidthChange={(w) => onColumnWidthChange(col.id, w)}
-                                    onWidthCommit={(w) => onColumnWidthCommit(col.id, w)}
-                                    onWidthReset={() => onColumnWidthReset(col.id, col.type)}
-                                    onSaveEdit={(newName) => onSaveColumnName(col.id, newName)}
-                                    onDelete={() => onDeleteColumn(col.id)}
-                                    onToggleMinimize={() => onToggleMinimizeColumn(col.id, g.id)}
-                                    onAddRight={() => onAddColumnRight(col.id)}
-                                    isCollapsed={collapsedColIds.has(col.id)}
-                                    isFrozen={colIdx < frozenColumnsCount}
-                                    frozenLeft={frozenLeftOffsets[colIdx]}
-                                    isLastFrozen={colIdx === frozenColumnsCount - 1}
-                                    sortDirection={sortState?.columnId === col.id ? sortState.direction : null}
-                                    onSort={() => handleSort(col.id)}
-                                  />
-                                ))}
-                              </SortableContext>
-
-                              {/* Add column button */}
-                              <th className="px-4 py-2">
-                                <button
-                                  onClick={() => setShowAddColumnModal(true)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-rf-ink-100 bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:text-rf-text-primary transition"
-                                  title="Add column"
-                                >
-                                  +
-                                </button>
-                              </th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {rows.length === 0 ? (
-                              <tr>
-                                <td colSpan={groupVisibleColumns.length + 2} className="px-4 py-8 text-sm text-rf-text-muted text-center">
-                                  No applicants in this group yet.
-                                </td>
-                              </tr>
-                            ) : (
-                              <SortableContext
-                                items={rows.map((r) => `row-${r.id}`)}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                {rows.map((a) => (
-                                  <SortableRow
-                                    key={a.id}
-                                    applicant={a}
-                                    columns={groupVisibleColumns}
-                                    selected={!!selected[a.id]}
-                                    onToggle={() => toggleRow(a.id)}
-                                    getCellValue={(col) => getCellValue(a, col)}
-                                    onUpdateCell={(colId, colType, val) => onUpdateCell(a.id, colId, colType, val)}
-                                    labelsByColumn={labelsByColumn}
-                                    onEditLabels={setEditLabelsColumnId}
-                                    rowMenuOpen={rowMenuOpen === a.id}
-                                    setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
-                                    groups={groups}
-                                    onOpen={() => setDetailApplicantId(a.id)}
-                                    onMove={(groupId) => onMoveApplicant(a.id, groupId)}
-                                    onDuplicate={() => onDuplicateApplicant(a.id)}
-                                    onDelete={() => onDeleteApplicant(a.id)}
-                                    companyId={companyId}
-                                    boardId={boardId}
-                                    fadvReady={fadvReadyApplicantIds.has(a.id)}
-                                    onSendToFadv={async () => {
-                                      const r = await sendToFadv(companyId, jobId, a.id);
-                                      if (!r.success) alert(`FADV: ${r.error}`);
-                                      else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
-                                    }}
-                                    collapsedColumnIds={collapsedColIds}
-                                    frozenColumnsCount={frozenColumnsCount}
-                                    frozenLeftOffsets={frozenLeftOffsets}
-                                  />
-                                ))}
-                              </SortableContext>
-                            )}
-
-                            {/* "+ Add item" row - Monday.com style inline creation */}
-                            <tr
-                              onClick={() => onQuickCreateApplicant(g.id)}
-                              className="border-t border-rf-border hover:bg-rf-blue-tint/30 cursor-pointer transition-colors group/addrow"
-                            >
-                              <td className="sticky left-0 z-10 bg-rf-surface-card group-hover/addrow:bg-rf-blue-tint/30 px-4 py-3 border-r border-rf-ink-100">
-                                <div className="flex items-center gap-2 text-rf-text-muted group-hover/addrow:text-rf-blue transition-colors">
-                                  <span className="text-sm font-semibold">+</span>
-                                </div>
-                              </td>
-                              <td colSpan={groupVisibleColumns.length + 1} className="px-4 py-3">
-                                <span className="text-sm text-rf-text-muted group-hover/addrow:text-rf-blue font-medium transition-colors">
-                                  Add item
-                                </span>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    )})()}
-                    </section>
-                  );
-                })}
-              </SortableContext>
-
-              {/* No results — desktop */}
-              {(!!searchQuery || (activeFilters ?? []).length > 0) &&
-                localGroups.every((g) => (applicantsByGroup.get(g.id) ?? []).length === 0) &&
-                !(applicantsByGroup.has('__orphaned__') && (applicantsByGroup.get('__orphaned__') ?? []).length > 0) && (
-                  <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <p className="text-rf-ink-700 font-medium">No results found</p>
-                    <p className="text-rf-text-muted text-sm mt-1">Try adjusting your search or filters</p>
-                  </div>
-                )}
-
-              {/* Render orphaned applicants group if it exists */}
-              {applicantsByGroup.has('__orphaned__') && (() => {
-                const orphanedRows = applicantsByGroup.get('__orphaned__') ?? [];
-                return (
-                  <section key="__orphaned__" className="space-y-2">
-                    {/* Orphaned group header with warning styling */}
-                    <div className="flex items-center gap-3 px-2 bg-rf-danger-bg border border-red-200 rounded-lg p-3">
-                      <div className="h-4 w-4 rounded" style={{ backgroundColor: '#ef4444' }} />
-                      <h2 className="text-base font-semibold text-red-900">⚠️ Orphaned Applicants</h2>
-                      <span className="text-sm text-rf-danger">({orphanedRows.length})</span>
-                      <span className="text-xs text-rf-danger ml-auto">
-                        Board mismatch - check console for details
-                      </span>
-                    </div>
-
-                    {/* Orphaned group table */}
-                    <div className="overflow-visible rounded-lg border-2 border-red-300 bg-rf-danger-bg/30">
-                      <div className="bg-red-100 p-3 text-sm text-rf-danger border-b border-red-200">
-                        <strong>⚠️ Warning:</strong> These applicants have group_ids that don't match any group in the current board.
-                        This usually means multiple boards exist for this job. Check the browser console for diagnostic information.
-                      </div>
-                      <table className="w-full text-left border-collapse bg-rf-surface-card">
-                        <thead className="bg-rf-surface-page/80">
-                          <tr className="border-b border-rf-border">
-                            <th className="sticky left-0 z-20 w-10 bg-rf-surface-page/80 px-4 py-2"></th>
-                            {visibleColumns.map((col) => (
-                              <th key={col.id} className="px-4 py-2 text-xs font-medium text-rf-ink-700 border-r border-rf-border">
-                                {col.name}
-                              </th>
-                            ))}
-                            <th className="px-4 py-2"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {orphanedRows.map((a) => (
-                            <SortableRow
-                              key={a.id}
-                              applicant={a}
-                              columns={localColumns}
-                              selected={!!selected[a.id]}
-                              onToggle={() => toggleRow(a.id)}
-                              getCellValue={(col) => getCellValue(a, col)}
-                              onUpdateCell={(colId, colType, val) => onUpdateCell(a.id, colId, colType, val)}
-                              labelsByColumn={labelsByColumn}
-                              onEditLabels={setEditLabelsColumnId}
-                              rowMenuOpen={rowMenuOpen === a.id}
-                              setRowMenuOpen={(open) => setRowMenuOpen(open ? a.id : null)}
-                              groups={groups}
-                              onOpen={() => setDetailApplicantId(a.id)}
-                              onMove={(groupId) => onMoveApplicant(a.id, groupId)}
-                              onDuplicate={() => onDuplicateApplicant(a.id)}
-                              onDelete={() => onDeleteApplicant(a.id)}
-                              companyId={companyId}
-                              boardId={boardId}
-                              fadvReady={fadvReadyApplicantIds.has(a.id)}
-                              onSendToFadv={async () => {
-                                const r = await sendToFadv(companyId, jobId, a.id);
-                                if (!r.success) alert(`FADV: ${r.error}`);
-                                else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
-                              }}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
-                );
-              })()}
-
-              {/* Add new group — subtle Monday-style */}
-              <div className="pt-3 px-2">
-                <button
-                  onClick={handleAddNewGroup}
-                  disabled={isPending}
-                  className="flex items-center gap-2 h-8 px-3 text-sm text-rf-text-secondary hover:text-rf-ink-700 bg-rf-surface-card hover:bg-rf-surface-page border border-dashed border-rf-ink-100 hover:border-rf-ink-300 rounded-lg transition-colors disabled:opacity-50"
+                {/* Row-drag SortableContext — only active during row drag for the dragging group */}
+                <SortableContext
+                  items={
+                    draggingInGroupId
+                      ? (sortedApplicantsByGroup.get(draggingInGroupId) ?? []).map(
+                          (r) => `row-${r.id}`
+                        )
+                      : []
+                  }
+                  strategy={verticalListSortingStrategy}
                 >
-                  <span className="font-medium">+</span>
-                  <span>Add new group</span>
-                </button>
-              </div>
-            </div>
+                  {virtualizer.getVirtualItems().map((vi) => {
+                    const item = flatItems[vi.index];
+                    return (
+                      <div
+                        key={vi.key}
+                        ref={virtualizer.measureElement}
+                        data-index={vi.index}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${vi.start}px)`,
+                        }}
+                      >
+                        {renderVirtualItem(item)}
+                      </div>
+                    );
+                  })}
+                </SortableContext>
+              </SortableContext>
+            </SortableContext>
           </div>
         </div>
 

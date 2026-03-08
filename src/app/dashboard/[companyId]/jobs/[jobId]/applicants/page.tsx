@@ -120,35 +120,69 @@ export default async function ApplicantsPage({
   });
 
   // ============================================================================
-  // Fetch applicants for this job
-  // CRITICAL: Only filter by job_id and company_id (source of truth)
-  // Do NOT filter by board_id, status, or any other field
+  // Block 1: Parallel-fetch all independent data
+  // These queries only need companyId, jobId, board.id — all available now.
   // ============================================================================
-  if (VERBOSE) console.log('[Applicants Page] Fetching applicants with filters:', {
-    company_id: companyId,
-    job_id: jobId,
-  });
+  const [
+    applicantsResult,
+    columnsResult,
+    automationsResult,
+    triggersResult,
+    groupsForAutomationResult,
+    savedViews,
+  ] = await Promise.all([
+    supabase
+      .from("applicants")
+      .select(
+        "id,full_name,email,phone,status,created_at,resume_path,group_id,position,job_id,board_id,portal_token"
+      )
+      .eq("company_id", companyId)
+      .eq("job_id", jobId)
+      .order("position", { ascending: true }),
+    supabase
+      .from("board_columns")
+      .select("id,board_id,name,type,is_system,sort_order,field_id,settings,is_hidden")
+      .eq("board_id", board.id)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("automations")
+      .select(`
+        id,
+        name,
+        is_enabled,
+        trigger_key,
+        filter,
+        created_at,
+        updated_at,
+        automation_actions (
+          id,
+          type,
+          config,
+          sort_order
+        )
+      `)
+      .eq("company_id", companyId)
+      .eq("job_id", jobId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("automation_triggers")
+      .select("*")
+      .order("key"),
+    supabase
+      .from("board_groups")
+      .select("id, name, color")
+      .eq("board_id", board.id)
+      .order("sort_order", { ascending: true }),
+    getBoardViews(companyId, board.id),
+  ]);
 
-  const { data: applicants, error: appErr } = await supabase
-    .from("applicants")
-    .select(
-      "id,full_name,email,phone,status,created_at,resume_path,group_id,position,job_id,board_id,portal_token"
-    )
-    .eq("company_id", companyId)
-    .eq("job_id", jobId)
-    .order("position", { ascending: true });
+  const { data: applicants, error: appErr } = applicantsResult;
+  const { data: columns, error: colErr } = columnsResult;
+  const automations = automationsResult.data;
+  const triggers = triggersResult.data;
+  const groupsForAutomation = groupsForAutomationResult.data;
 
-  if (VERBOSE) console.log('[Applicants Page] Raw Supabase response:', {
-    hasData: !!applicants,
-    hasError: !!appErr,
-    dataLength: applicants?.length,
-    error: appErr ? {
-      message: appErr.message,
-      code: appErr.code,
-      details: appErr.details,
-      hint: appErr.hint,
-    } : null,
-  });
+  // ── Error handling for critical queries ────────────────────────────────────
 
   if (appErr) {
     console.error('[Applicants Page] ERROR fetching applicants:', {
@@ -171,21 +205,17 @@ export default async function ApplicantsPage({
     );
   }
 
-  if (VERBOSE) console.log('[Applicants Page] Applicants fetched:', {
-    count: applicants?.length || 0,
-    companyId,
-    jobId,
-    sample: applicants?.slice(0, 5).map(a => ({
-      id: a.id,
-      name: a.full_name,
-      email: a.email,
-      group_id: a.group_id,
-      board_id: a.board_id,
-      position: a.position,
-      status: a.status,
-    })) || [],
-    allApplicants: applicants || [],
-  });
+  if (colErr) {
+    const isDev = process.env.NODE_ENV === "development";
+    return (
+      <ErrorPanel
+        title="Data Error"
+        message="Failed to load board columns"
+        technicalDetails={colErr.message}
+        showDetails={isDev}
+      />
+    );
+  }
 
   // CRITICAL DEBUG: If count is 0, run diagnostic queries only if there's a problem
   if (!applicants || applicants.length === 0) {
@@ -233,114 +263,88 @@ export default async function ApplicantsPage({
   }
 
   // ============================================================================
-  // Fetch board columns (filter by board_id for this job's board)
-  // CRITICAL: Include field_id to map applicant_field_values to columns
+  // Block 2: Parallel-fetch data that depends on block 1 results
+  // - status_labels needs column IDs
+  // - board_cells and field_values need applicant IDs
   // ============================================================================
-  const { data: columns, error: colErr } = await supabase
-    .from("board_columns")
-    .select("id,board_id,name,type,is_system,sort_order,field_id,settings,is_hidden")
-    .eq("board_id", board.id)
-    .order("sort_order", { ascending: true });
-
-  if (VERBOSE) console.log('[Applicants Page] Columns fetched:', {
-    count: columns?.length || 0,
-    columnNames: columns?.map(c => c.name) || [],
-  });
-
-  if (colErr) {
-    const isDev = process.env.NODE_ENV === "development";
-    return (
-      <ErrorPanel
-        title="Data Error"
-        message="Failed to load board columns"
-        technicalDetails={colErr.message}
-        showDetails={isDev}
-      />
-    );
-  }
-
-  // ============================================================================
-  // Fetch status labels for all status-type columns
-  // ============================================================================
+  const applicantIds = (applicants ?? []).map((a) => a.id);
   const statusColumnIds = (columns ?? [])
     .filter((c) => c.type === "status")
     .map((c) => c.id);
 
   let statusLabels: any[] = [];
-  if (statusColumnIds.length > 0) {
-    const { data: labels, error: labelErr } = await supabase
-      .from("board_status_labels")
-      .select("id,column_id,label,color,sort_order")
-      .in("column_id", statusColumnIds)
-      .order("sort_order", { ascending: true });
+  let cells: any[] = [];
 
-    if (labelErr) {
+  if (applicantIds.length > 0 || statusColumnIds.length > 0) {
+    const [statusLabelsResult, boardCellsResult, fieldValuesResult] = await Promise.all([
+      statusColumnIds.length > 0
+        ? supabase
+            .from("board_status_labels")
+            .select("id,column_id,label,color,sort_order")
+            .in("column_id", statusColumnIds)
+            .order("sort_order", { ascending: true })
+        : Promise.resolve({ data: [] as any[], error: null }),
+      applicantIds.length > 0
+        ? supabase
+            .from("board_cells")
+            .select(
+              "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id,value_file_path,value_bool"
+            )
+            .in("applicant_id", applicantIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+      applicantIds.length > 0
+        ? supabase
+            .from("applicant_field_values")
+            .select(
+              "applicant_id,field_id,value_text,value_number,value_bool,value_date,value_file_path"
+            )
+            .in("applicant_id", applicantIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+    ]);
+
+    if (statusLabelsResult.error) {
       const isDev = process.env.NODE_ENV === "development";
       return (
         <ErrorPanel
           title="Data Error"
           message="Failed to load status labels"
-          technicalDetails={labelErr.message}
+          technicalDetails={statusLabelsResult.error.message}
           showDetails={isDev}
         />
       );
     }
-    statusLabels = labels ?? [];
-  }
 
-  // ============================================================================
-  // Fetch all cell values for applicants
-  // CRITICAL: Merge data from TWO sources:
-  // 1. board_cells (manual edits on the board)
-  // 2. applicant_field_values (form submissions) mapped via field_id → column_id
-  // ============================================================================
-  const applicantIds = (applicants ?? []).map((a) => a.id);
-  let cells: any[] = [];
-
-  if (applicantIds.length > 0) {
-    // Fetch manual board edits from board_cells
-    const { data: boardCellData, error: boardCellErr } = await supabase
-      .from("board_cells")
-      .select(
-        "applicant_id,column_id,value_text,value_number,value_date,value_status_label_id,value_file_path,value_bool"
-      )
-      .in("applicant_id", applicantIds);
-
-    if (boardCellErr) {
+    if (boardCellsResult.error) {
       const isDev = process.env.NODE_ENV === "development";
       return (
         <ErrorPanel
           title="Data Error"
           message="Failed to load board cell data"
-          technicalDetails={boardCellErr.message}
+          technicalDetails={boardCellsResult.error.message}
           showDetails={isDev}
         />
       );
     }
 
-    // Fetch form submission data from applicant_field_values
-    const { data: fieldValueData, error: fieldValueErr } = await supabase
-      .from("applicant_field_values")
-      .select(
-        "applicant_id,field_id,value_text,value_number,value_bool,value_date,value_file_path"
-      )
-      .in("applicant_id", applicantIds);
-
-    if (fieldValueErr) {
+    if (fieldValuesResult.error) {
       const isDev = process.env.NODE_ENV === "development";
       return (
         <ErrorPanel
           title="Data Error"
           message="Failed to load applicant field values"
-          technicalDetails={fieldValueErr.message}
+          technicalDetails={fieldValuesResult.error.message}
           showDetails={isDev}
         />
       );
     }
 
+    statusLabels = statusLabelsResult.data ?? [];
+    const boardCellData = boardCellsResult.data ?? [];
+    const fieldValueData = fieldValuesResult.data ?? [];
+
     if (VERBOSE) console.log('[Applicants Page] Data fetched:', {
-      boardCells: boardCellData?.length || 0,
-      fieldValues: fieldValueData?.length || 0,
+      boardCells: boardCellData.length,
+      fieldValues: fieldValueData.length,
     });
 
     // Build a map of field_id → column_id for transformation
@@ -369,19 +373,10 @@ export default async function ApplicantsPage({
       inner.set(lbl.label.toLowerCase(), lbl.id);
     }
 
-    if (VERBOSE) console.log('[Applicants Page] Field to column mapping:', {
-      mappingCount: fieldToColumnMap.size,
-      mappings: Array.from(fieldToColumnMap.entries()).map(([fieldId, colId]) => ({
-        fieldId,
-        columnId: colId,
-        columnName: columns?.find(c => c.id === colId)?.name,
-      })),
-    });
-
     // Transform applicant_field_values into board cell format
     const unmappedFieldIds = new Set<string>();
-    const transformedFieldValues = (fieldValueData ?? [])
-      .map((fv) => {
+    const transformedFieldValues = (fieldValueData)
+      .map((fv: any) => {
         const columnId = fieldToColumnMap.get(fv.field_id);
         if (!columnId) {
           unmappedFieldIds.add(fv.field_id);
@@ -426,14 +421,7 @@ export default async function ApplicantsPage({
           value_status_label_id,
         };
       })
-      .filter((v): v is NonNullable<typeof v> => v !== null);
-
-    if (VERBOSE) console.log('[Applicants Page] Transformed field values:', {
-      totalFieldValues: fieldValueData?.length || 0,
-      transformedCount: transformedFieldValues.length,
-      unmappedFieldsCount: unmappedFieldIds.size,
-      sample: transformedFieldValues.slice(0, 3),
-    });
+      .filter((v: any): v is NonNullable<typeof v> => v !== null);
 
     // Log unmapped fields if any (these are fields that exist in the form but not as board columns)
     if (unmappedFieldIds.size > 0) {
@@ -454,7 +442,7 @@ export default async function ApplicantsPage({
     }
 
     // Override with manual board edits
-    for (const cell of boardCellData ?? []) {
+    for (const cell of boardCellData) {
       const key = `${cell.applicant_id}::${cell.column_id}`;
       cellMap.set(key, cell);
     }
@@ -463,7 +451,6 @@ export default async function ApplicantsPage({
 
     if (VERBOSE) console.log('[Applicants Page] Final merged cells:', {
       count: cells.length,
-      sample: cells.slice(0, 3),
     });
   }
 
@@ -476,51 +463,10 @@ export default async function ApplicantsPage({
   });
 
   // ============================================================================
-  // Fetch automations for this job
+  // Seed default board view if none exist
   // ============================================================================
-  const { data: automations } = await supabase
-    .from("automations")
-    .select(`
-      id,
-      name,
-      is_enabled,
-      trigger_key,
-      filter,
-      created_at,
-      updated_at,
-      automation_actions (
-        id,
-        type,
-        config,
-        sort_order
-      )
-    `)
-    .eq("company_id", companyId)
-    .eq("job_id", jobId)
-    .order("created_at", { ascending: false });
-
-  // Fetch trigger types
-  const { data: triggers } = await supabase
-    .from("automation_triggers")
-    .select("*")
-    .order("key");
-
-  // Fetch groups for automation config
-  const { data: groupsForAutomation } = await supabase
-    .from("board_groups")
-    .select("id, name, color")
-    .eq("board_id", board.id)
-    .order("sort_order", { ascending: true });
-
-  // ============================================================================
-  // Fetch saved board views (Monday-style view tabs)
-  // ============================================================================
-  const savedViews = await getBoardViews(companyId, board.id);
-
-  // If no views exist yet, seed the default "Main table" view
   let initialViews = savedViews;
   if (savedViews.length === 0) {
-    // Insert default view via direct supabase call (server-side only)
     const { data: defaultView } = await supabase
       .from("board_views")
       .insert({

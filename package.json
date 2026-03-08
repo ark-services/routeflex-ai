@@ -17,6 +17,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tailwindcss/typography": "^0.5.19",
+    "@tanstack/react-virtual": "^3.13.21",
     "googleapis": "^134.0.0",
     "lucide-react": "^0.564.0",
     "mammoth": "^1.11.0",

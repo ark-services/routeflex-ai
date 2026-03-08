@@ -78,6 +78,19 @@ export async function fireJobTrigger(
       return; // No automations configured for this job
     }
 
+    // Hoist account_id lookup — needed for metering but constant across all automations/actions
+    let accountId: string | null = null;
+    try {
+      const { data: companyRow } = await supabase
+        .from('companies')
+        .select('account_id')
+        .eq('id', companyId)
+        .single();
+      accountId = companyRow?.account_id ?? null;
+    } catch {
+      console.error('[fireJobTrigger] Failed to fetch company account_id for metering');
+    }
+
     // Execute each matching automation
     for (const automation of automations) {
       console.log('[fireJobTrigger] Checking automation:', {
@@ -196,22 +209,12 @@ export async function fireJobTrigger(
 
           // ============================================================
           // METERING: Track successful action execution for quota
+          // Uses hoisted accountId (fetched once before the automation loop)
           // ============================================================
-          try {
-            // Get account_id from company
-            const { data: company, error: companyError } = await supabase
-              .from('companies')
-              .select('account_id')
-              .eq('id', companyId)
-              .single();
-
-            if (companyError) {
-              console.error('[fireJobTrigger] Failed to fetch company for metering:', companyError);
-            } else if (!company?.account_id) {
-              console.error('[fireJobTrigger] No account_id found for company:', companyId);
-            } else {
-              const meteringParams = {
-                p_account_id: company.account_id,
+          if (accountId) {
+            try {
+              const { error: meteringError } = await supabase.rpc('record_action_usage', {
+                p_account_id: accountId,
                 p_units: 1,
                 p_source: 'automation',
                 p_rule_id: automation.id,
@@ -224,18 +227,13 @@ export async function fireJobTrigger(
                   action_type: action.type,
                   trigger_key,
                 }
-              };
-
-              const { error: meteringError } = await supabase.rpc('record_action_usage', meteringParams);
-
+              });
               if (meteringError) {
                 console.error('[fireJobTrigger] Metering RPC error (non-fatal):', meteringError);
-                // Don't fail automation on metering error
               }
+            } catch (meteringErr) {
+              console.error('[fireJobTrigger] Metering exception (non-fatal):', meteringErr);
             }
-          } catch (meteringErr) {
-            console.error('[fireJobTrigger] Metering exception (non-fatal):', meteringErr);
-            // Continue execution even if metering fails
           }
           // ============================================================
         } catch (err: any) {
