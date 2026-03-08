@@ -5,7 +5,7 @@ import { uploadResume } from "@/lib/storage/resumeUpload";
 import { getOrCreateApplicantsBoard, type BoardGroup } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { revalidatePath } from "next/cache";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
-import { validatePhone } from "@/lib/validation/columnValidation";
+import { validatePhone, validateEmail } from "@/lib/validation/columnValidation";
 
 /**
  * Submit a public job application.
@@ -14,7 +14,11 @@ import { validatePhone } from "@/lib/validation/columnValidation";
 export async function submitApplication(
   jobId: string,
   token: string,
-  formData: FormData
+  formData: FormData,
+  /** Pre-uploaded file paths keyed by field key. Files are uploaded
+   *  client-side via /api/upload before calling this action so that
+   *  large images never flow through the server action body. */
+  filePaths: Record<string, string> = {}
 ) {
   // Create service role client (bypasses RLS)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -196,35 +200,35 @@ export async function submitApplication(
 
     console.log('[Application Submit] Using board:', board.id, 'group:', destinationGroup.id, `"${destinationGroup.name}"`);
 
-    // Handle resume upload if present
-    let resumePath: string | null = null;
-    const resumeField = fields.find((f: any) => f.type === "file" && f.key === "resume");
+    // Resolve storage paths for all file fields.
+    // Files are uploaded client-side before calling this action, so
+    // filePaths[field.key] already contains the Supabase Storage path.
+    // For legacy/fallback, also attempt server-side upload if a File object
+    // is present and no pre-uploaded path exists.
+    const resolvedFilePaths: Record<string, string> = { ...filePaths };
 
-    if (resumeField) {
-      const resumeFile = formData.get("resume");
+    for (const field of fields.filter((f: any) => f.type === "file")) {
+      if (resolvedFilePaths[field.key]) continue; // already uploaded client-side
 
-      if (resumeFile && resumeFile instanceof File && resumeFile.size > 0) {
-        console.log('[Application Submit] Processing resume upload');
-
-        const uploadResult = await uploadResume(
-          supabase,
-          resumeFile,
-          form.company_id,
-          jobId
-        );
-
+      const fileValue = formData.get(field.key);
+      if (fileValue && fileValue instanceof File && fileValue.size > 0) {
+        // Fallback: server-side upload (only reached if client-side upload was skipped)
+        console.log(`[Application Submit] Fallback server-side upload for field: ${field.key}`);
+        const uploadResult = await uploadResume(supabase, fileValue, form.company_id, jobId);
         if (!uploadResult.success) {
-          console.error('[Application Submit] Resume upload failed:', uploadResult.error);
-          return { error: uploadResult.error || "Failed to upload resume. Please try again." };
+          console.error('[Application Submit] File upload failed:', field.key, uploadResult.error);
+          return { error: uploadResult.error || `Failed to upload ${field.label}. Please try again.` };
         }
-
-        resumePath = uploadResult.path!;
-        console.log('[Application Submit] Resume uploaded successfully:', resumePath);
-      } else if (resumeField.required) {
-        console.error('[Application Submit] Required resume missing');
-        return { error: `${resumeField.label} is required` };
+        resolvedFilePaths[field.key] = uploadResult.path!;
+        console.log(`[Application Submit] Fallback upload successful: ${field.key} → ${uploadResult.path}`);
+      } else if (field.required) {
+        console.error('[Application Submit] Required file missing:', field.key);
+        return { error: `${field.label} is required` };
       }
     }
+
+    // Keep backward-compat: resume_path on the applicant row
+    const resumePath = resolvedFilePaths["resume"] || null;
 
     // Build applicant name from first_name and last_name or fallback
     const firstName = formData.get("first_name") as string | null;
@@ -318,9 +322,10 @@ export async function submitApplication(
         fieldValue.value_bool = value === "on" || value === "true";
         fieldValues.push(fieldValue);
       } else if (field.type === "file") {
-        // File field: save the storage path
-        if (resumePath) {
-          fieldValue.value_file_path = resumePath;
+        // File field: use the resolved storage path (uploaded client-side)
+        const filePath = resolvedFilePaths[field.key];
+        if (filePath) {
+          fieldValue.value_file_path = filePath;
           fieldValues.push(fieldValue);
         } else if (field.required) {
           console.error('[Application Submit] Required file missing:', field.key);
@@ -342,8 +347,22 @@ export async function submitApplication(
           await supabase.from("applicants").delete().eq("id", applicant.id);
           return { error: `${field.label} is required` };
         }
+      } else if (field.type === "email") {
+        // Email: validate format server-side as a defence-in-depth measure
+        if (value && typeof value === 'string' && value.trim()) {
+          const validation = validateEmail(value);
+          if (!validation.valid) {
+            await supabase.from("applicants").delete().eq("id", applicant.id);
+            return { error: `${field.label}: ${validation.error}` };
+          }
+          fieldValue.value_text = value.trim();
+          fieldValues.push(fieldValue);
+        } else if (field.required) {
+          await supabase.from("applicants").delete().eq("id", applicant.id);
+          return { error: `${field.label} is required` };
+        }
       } else {
-        // Text, email, textarea, select, radio, etc.
+        // Text, textarea, select, radio, etc.
         if (value && typeof value === 'string' && value.trim()) {
           fieldValue.value_text = value;
           fieldValues.push(fieldValue);

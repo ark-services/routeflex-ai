@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { submitApplication } from "./actions";
+import { validateEmail, validatePhone } from "@/lib/validation/columnValidation";
 
 type FormField = {
   field_id: string;
@@ -38,17 +39,21 @@ export default function PublicApplicationForm({
   fields: FormField[];
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setUploadStatus(null);
 
     const formData = new FormData(e.currentTarget);
 
-    // Client-side validation for required fields
+    // Client-side validation for required fields + file size
     const requiredFields = fields.filter(f => f.required);
     for (const field of requiredFields) {
       const value = formData.get(field.key);
@@ -66,22 +71,113 @@ export default function PublicApplicationForm({
       }
     }
 
+    // Format validation for email and phone fields
+    for (const field of fields.filter(f => !f.settings?.hidden)) {
+      const value = formData.get(field.key);
+      if (!value || typeof value !== 'string' || !value.trim()) continue;
+
+      if (field.type === 'email') {
+        const result = validateEmail(value);
+        if (!result.valid) {
+          setError(`${field.label}: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (field.type === 'phone') {
+        const result = validatePhone(value);
+        if (!result.valid) {
+          setError(`${field.label}: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+    }
+
+    // Validate file sizes before uploading
+    const fileFields = fields.filter(f => f.type === 'file');
+    for (const field of fileFields) {
+      const file = formData.get(field.key);
+      if (file instanceof File && file.size > MAX_FILE_SIZE) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setError(`"${field.label}" is ${sizeMB} MB — files must be under 10 MB. Please choose a smaller file.`);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
+    // Upload all file fields directly to Supabase Storage from the browser.
+    // This bypasses Vercel's hard 4.5 MB server-action body limit.
+    const filesToUpload = fileFields.filter(f => {
+      const file = formData.get(f.key);
+      return file instanceof File && file.size > 0;
+    });
+
+    const filePaths: Record<string, string> = {};
+
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const field = filesToUpload[i];
+      const file = formData.get(field.key) as File;
+
+      setUploadStatus(
+        filesToUpload.length > 1
+          ? `Uploading ${field.label} (${i + 1} of ${filesToUpload.length})…`
+          : `Uploading ${field.label}…`
+      );
+
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      uploadData.append('token', token);
+      uploadData.append('jobId', jobId);
+      uploadData.append('fieldKey', field.key);
+
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
+
+        let json: any = {};
+        try { json = await res.json(); } catch { /* ignore parse error */ }
+
+        if (!res.ok || !json.path) {
+          const msg = json?.error || `Failed to upload "${field.label}".`;
+          setError(`${msg} Please try again.`);
+          setIsSubmitting(false);
+          setUploadStatus(null);
+          return;
+        }
+        filePaths[field.key] = json.path;
+      } catch {
+        setError(`Could not upload "${field.label}" — please check your internet connection and try again.`);
+        setIsSubmitting(false);
+        setUploadStatus(null);
+        return;
+      }
+    }
+
+    setUploadStatus("Submitting application…");
+
     try {
       console.log('[Form] Submitting application...');
-      const result = await submitApplication(jobId, token, formData);
+      const result = await submitApplication(jobId, token, formData, filePaths);
 
       if (result.error) {
         console.error('[Form] Submission failed:', result.error);
         setError(result.error);
         setIsSubmitting(false);
+        setUploadStatus(null);
       } else {
         console.log('[Form] Submission successful:', result.applicantId);
         setSubmitted(true);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Form] Unexpected submission error:', err);
-      setError("An unexpected error occurred. Please try again.");
+      // Surface a more helpful message when possible
+      const msg = err?.message?.includes('fetch')
+        ? 'Network error — please check your connection and try again.'
+        : 'Something went wrong submitting your application. Please try again.';
+      setError(msg);
       setIsSubmitting(false);
+      setUploadStatus(null);
     }
   };
 
@@ -194,7 +290,7 @@ export default function PublicApplicationForm({
               type="tel"
               name={field.key}
               required={field.required}
-              placeholder={field.settings?.placeholder}
+              placeholder={field.settings?.placeholder || "(555) 123-4567"}
               className={inputCls}
             />
           )}
@@ -314,16 +410,26 @@ export default function PublicApplicationForm({
         </div>
       ))}
 
-      <div className="pt-2">
+      <div className="pt-2 space-y-3">
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full py-2.5 px-6 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full py-2.5 px-6 bg-rf-blue text-white text-sm font-medium rounded-lg hover:bg-rf-blue-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
-          {isSubmitting ? "Submitting…" : "Submit Application"}
+          {isSubmitting && (
+            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+          )}
+          {isSubmitting ? (uploadStatus ?? "Submitting…") : "Submit Application"}
         </button>
 
-        <p className="text-xs text-rf-text-muted text-center mt-3">
+        {isSubmitting && uploadStatus && (
+          <p className="text-xs text-rf-text-muted text-center">{uploadStatus}</p>
+        )}
+
+        <p className="text-xs text-rf-text-muted text-center">
           By submitting this form, you agree to the processing of your personal
           data in accordance with our privacy policy.
         </p>
