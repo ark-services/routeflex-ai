@@ -35,6 +35,7 @@ export const AUTOMATION_ACTION_TYPES = [
   // ── Integration / FADV actions ──────────────────────────────────────────────
   "integration.set_field",
   "fadv.add_subject",
+  "fadv.approve_order",
   // ── Safety Trainer Hub ──────────────────────────────────────────────────────
   "safety_trainer.submit",
   // ── LMS (Learning Management System) ───────────────────────────────────────

@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { loadFadvConfig, runFadvApiCall } from "@/lib/fadv/submit";
+import { runFadvApproveOrder } from "@/lib/fadv/approve";
 import { decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 import { loadSafetyTrainerConfig } from "@/components/integrations/safety-trainer-actions";
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
     .from("integration_submissions")
     .update({ status: "queued", updated_at: new Date().toISOString() })
     .eq("status", "running")
-    .in("provider", ["fadv", "safety_trainer"])
+    .in("provider", ["fadv", "fadv_approve", "safety_trainer"])
     .lt("updated_at", stuckCutoff)
     .select("id");
   if (stuckRows && stuckRows.length > 0) {
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
     .from("integration_submissions")
     .select("*")
     .eq("status", "queued")
-    .in("provider", ["fadv", "safety_trainer"])
+    .in("provider", ["fadv", "fadv_approve", "safety_trainer"])
     .order("created_at", { ascending: true })
     .limit(BATCH_SIZE);
 
@@ -118,6 +119,8 @@ export async function GET(request: NextRequest) {
     try {
       if (claimed.provider === "safety_trainer") {
         await processSafetyTrainerSubmission(supabase, claimed);
+      } else if (claimed.provider === "fadv_approve") {
+        await processFadvApproveSubmission(supabase, claimed);
       } else {
         await processFadvSubmission(supabase, claimed);
       }
@@ -142,7 +145,7 @@ export async function GET(request: NextRequest) {
 
       // Best-effort output column write
       if (claimed.output_column_id) {
-        const label = provider === "safety_trainer" ? "Safety Trainer" : "FADV";
+        const label = provider === "safety_trainer" ? "Safety Trainer" : provider === "fadv_approve" ? "FADV Approve" : "FADV";
         await writeOutputCell(
           supabase,
           claimed.applicant_id,
@@ -552,6 +555,152 @@ async function processSafetyTrainerSubmission(
   }
 }
 
+// ── processFadvApproveSubmission ──────────────────────────────────────────────
+
+async function processFadvApproveSubmission(
+  supabase: ReturnType<typeof makeServiceClient>,
+  submission: any
+) {
+  const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id } = submission;
+
+  console.log("[fadv_approve/process-queue] Processing submission:", {
+    id,
+    applicant_id,
+    profile_id: input_snapshot?.profile_id,
+  });
+
+  // ── Load company FADV config ──────────────────────────────────────────────
+  const configResult = await loadFadvConfig(supabase, company_id);
+  if (!configResult.ok) {
+    await markFailed(
+      supabase, id, applicant_id, job_id, company_id, output_column_id,
+      "config_missing", configResult.reason,
+      `FADV Approve failed: ${configResult.reason}`,
+      "fadv_approve"
+    );
+    return;
+  }
+
+  // ── Decrypt credentials ───────────────────────────────────────────────────
+  let password: string | null = null;
+  if (configResult.encryptedPassword) {
+    try {
+      password = decrypt(configResult.encryptedPassword);
+    } catch {
+      await markFailed(
+        supabase, id, applicant_id, job_id, company_id, output_column_id,
+        "decrypt_error", "Failed to decrypt FADV password",
+        "FADV Approve failed ❌ credential_error",
+        "fadv_approve"
+      );
+      return;
+    }
+  }
+
+  let securityAnswer: string | null = null;
+  if (configResult.encryptedSecurityAnswer) {
+    try {
+      securityAnswer = decrypt(configResult.encryptedSecurityAnswer);
+    } catch {
+      await markFailed(
+        supabase, id, applicant_id, job_id, company_id, output_column_id,
+        "decrypt_error", "Failed to decrypt FADV security answer",
+        "FADV Approve failed ❌ credential_error",
+        "fadv_approve"
+      );
+      return;
+    }
+  }
+
+  // ── Run browser automation ────────────────────────────────────────────────
+  const profileId = input_snapshot?.profile_id ?? "";
+  console.log("[fadv_approve/process-queue] Running approve automation for profile:", profileId);
+
+  const result = await runFadvApproveOrder({
+    clientId:       configResult.clientId,
+    username:       configResult.username,
+    password,
+    securityAnswer,
+    profileId,
+    companyId:      company_id,
+  });
+
+  const now = new Date().toISOString();
+  const ts  = new Date().toLocaleString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit",
+  });
+
+  if (result.success) {
+    await supabase
+      .from("integration_submissions")
+      .update({
+        status:       "success",
+        updated_at:   now,
+        completed_at: now,
+      })
+      .eq("id", id);
+
+    const msg = `FADV approved ✅ (${ts})`;
+    if (output_column_id) {
+      await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+    }
+
+    await logActivityEvent(supabase, {
+      companyId:  company_id,
+      jobId:      job_id ?? null,
+      actorType:  "system",
+      eventType:  "fadv.approve.success",
+      entityType: "applicant",
+      entityId:   applicant_id,
+      summary:    `FADV order approved (Review & Place Order) for profile ${profileId}`,
+      data: {
+        applicant_id:  applicant_id,
+        submission_id: id,
+        profile_id:    profileId,
+      },
+    });
+
+    console.log("[fadv_approve/process-queue] ✓ Approve succeeded:", id);
+  } else {
+    const errorCode = (result.error ?? "unknown_error").slice(0, 80);
+
+    await supabase
+      .from("integration_submissions")
+      .update({
+        status:        "failed",
+        error_code:    errorCode,
+        error_message: result.error ?? "FADV approve failed",
+        updated_at:    now,
+        completed_at:  now,
+      })
+      .eq("id", id);
+
+    const msg = `FADV Approve failed ❌ ${errorCode}`;
+    if (output_column_id) {
+      await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+    }
+
+    await logActivityEvent(supabase, {
+      companyId:  company_id,
+      jobId:      job_id ?? null,
+      actorType:  "system",
+      eventType:  "fadv.approve.failed",
+      entityType: "applicant",
+      entityId:   applicant_id,
+      summary:    `FADV approve failed: ${result.error ?? "unknown"}`,
+      data: {
+        applicant_id:  applicant_id,
+        submission_id: id,
+        profile_id:    profileId,
+        error:         result.error ?? null,
+      },
+    });
+
+    console.error("[fadv_approve/process-queue] ✗ Approve failed:", id, result.error);
+  }
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -567,7 +716,7 @@ async function markFailed(
   errorCode:        string,
   errorMessage:     string,
   outputMsg:        string,
-  provider:         "fadv" | "safety_trainer" = "fadv"
+  provider:         "fadv" | "fadv_approve" | "safety_trainer" = "fadv"
 ) {
   const now = new Date().toISOString();
   await supabase
@@ -587,8 +736,10 @@ async function markFailed(
 
   const eventType = provider === "safety_trainer"
     ? "safety_trainer.submission.failed"
+    : provider === "fadv_approve"
+    ? "fadv.approve.failed"
     : "fadv.submission.failed";
-  const summaryPrefix = provider === "safety_trainer" ? "Safety Trainer" : "FADV";
+  const summaryPrefix = provider === "safety_trainer" ? "Safety Trainer" : provider === "fadv_approve" ? "FADV Approve" : "FADV";
 
   await logActivityEvent(supabase, {
     companyId,

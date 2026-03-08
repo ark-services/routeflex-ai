@@ -168,9 +168,30 @@ export const SEL_POSITION_TYPE = '[id="Position Type"]';
 export const SEL_SEND_BUTTON_TEXT = "Send";
 
 // ---------------------------------------------------------------------------
+// Find Subject page  (Profile Advantage → Find Subject)
+// Used by fadv.approve_order to search by Profile ID and place an order.
+// ---------------------------------------------------------------------------
+
+/** Profile ID input field on the Find Subject search form.
+ *  GWT ID: CDC_SEARCH_SUBJECT_PROFILE_ID_LBL */
+export const SEL_FIND_SUBJECT_PROFILE_ID = "#CDC_SEARCH_SUBJECT_PROFILE_ID_LBL";
+
+/**
+ * Search button on the Find Subject form.
+ * GWT renders it as a <td class="html-face"> containing "Search".
+ * Use: page.locator('td.html-face').filter({ hasText: /^Search$/ })
+ */
+export const SEL_FIND_SUBJECT_SEARCH_BTN_TEXT = "Search";
+
+/** Text of the "Review & Place Order" option in the Actions dropdown. */
+export const SEL_REVIEW_PLACE_ORDER_TEXT = "Review & Place Order";
+
+// ---------------------------------------------------------------------------
 // Timeouts (milliseconds)
 // ---------------------------------------------------------------------------
 
 export const NAV_TIMEOUT_MS    = 30_000;
 export const LOGIN_TIMEOUT_MS  = 30_000;
 export const SUBMIT_TIMEOUT_MS = 45_000;
+export const SEARCH_TIMEOUT_MS = 30_000;
+export const ORDER_CONFIRM_TIMEOUT_MS = 45_000;

@@ -155,6 +155,8 @@ function buildDynamicName(
       }
       case "fadv.add_subject":
         return "submit applicant to First Advantage";
+      case "fadv.approve_order":
+        return "approve FADV application (Review & Place Order)";
       case "safety_trainer.submit":
         return "submit applicant to Impact Solutions Safety Cert";
       case "lms.send_training_link":
@@ -357,6 +359,7 @@ export function ManageTab({
         'twilio.make_call_say': 'make call',
         'integration.set_field':    'set fadv field',
         'fadv.add_subject':         'add to fadv',
+        'fadv.approve_order':       'approve fadv order',
         'safety_trainer.submit':    'impact solutions safety cert',
         'lms.send_training_link':   'send training link',
         'portal.send_link':         'send status portal link',

@@ -404,6 +404,12 @@ async function matchesFilter(
     if (key === 'conditions' || key === 'operator') continue;
     if (key.startsWith('_')) continue; // template annotation fields (_column_name etc.)
 
+    // Skip Gmail trigger config keys — these live in the filter JSON for storage
+    // convenience but are NOT filter conditions; they describe how to match the
+    // email to an applicant, not whether the automation should run.
+    if (['match_column_id', 'sender_contains', 'subject_contains',
+         'match_applicant_by', 'body_extract_pattern'].includes(key)) continue;
+
     // Special handling for column_id match (for board.status_changes_to trigger)
     if (key === 'column_id') {
       const matches = payload.column_id === value;
@@ -563,10 +569,14 @@ async function evaluateCondition(
       .maybeSingle();
 
     if (!cell) {
+      // No cell row means the column has never been set (value is effectively null/empty).
+      // For "_is_not" and "_is_empty" conditions this should PASS (null ≠ any concrete value).
+      // For "_is" / "_equals" conditions it should FAIL.
+      const passWhenEmpty = type.endsWith('_is_not') || type === 'is_empty' || type === 'text_contains';
       console.warn(
-        `[evaluateCondition] No board_cell found for applicant=${applicantId} column=${column_id} — treating as fail`
+        `[evaluateCondition] No board_cell found for applicant=${applicantId} column=${column_id} — ${passWhenEmpty ? 'passing' : 'failing'} (${type})`
       );
-      return false;
+      return passWhenEmpty;
     }
 
     if      (type.startsWith('status_'))  cellValue = cell.value_status_label_id ?? null;
@@ -663,6 +673,9 @@ async function executeAction(
 
     case 'fadv.add_subject':
       return executeFadvAddSubject(supabase, companyId, jobId, config, payload);
+
+    case 'fadv.approve_order':
+      return executeFadvApproveOrder(supabase, companyId, jobId, config, payload);
 
     case 'safety_trainer.submit':
       return executeSafetyTrainerSubmit(supabase, companyId, jobId, config, payload);
@@ -2371,6 +2384,191 @@ async function executeFadvAddSubject(
     firstNameVal,
     lastNameVal,
     emailVal,
+  });
+
+  return { success: true };
+}
+
+/**
+ * Action: fadv.approve_order
+ *
+ * Reads the FADV Profile ID from a board column, then enqueues a background
+ * FADV "approve order" submission. The queue processor searches for the subject
+ * by Profile ID and clicks "Review & Place Order" in the FADV portal.
+ *
+ * Config: { subject_id_column_id: uuid, output_column_id: uuid }
+ */
+async function executeFadvApproveOrder(
+  supabase: SupabaseClient,
+  companyId: string,
+  jobId: string,
+  config: any,
+  payload: Record<string, any>
+): Promise<ActionResult> {
+  const { subject_id_column_id, output_column_id } = config;
+
+  const applicantId: string | undefined =
+    payload.applicant_id || payload.subject_id;
+
+  console.log('[executeFadvApproveOrder] Starting:', {
+    subject_id_column_id,
+    output_column_id,
+    applicantId,
+    companyId,
+    jobId,
+  });
+
+  // ── Validate config ─────────────────────────────────────────────────────────
+  if (!subject_id_column_id) {
+    return {
+      success: false,
+      error:
+        'fadv.approve_order: subject_id_column_id is required (column containing FADV Profile ID)',
+    };
+  }
+
+  if (!applicantId) {
+    return {
+      success: false,
+      error: 'fadv.approve_order: missing applicant_id in payload',
+    };
+  }
+
+  // ── Helper: write a message to the output column ────────────────────────────
+  async function writeOutput(message: string) {
+    if (!output_column_id) return;
+    try {
+      await supabase
+        .from('board_cells')
+        .upsert(
+          {
+            applicant_id: applicantId,
+            column_id: output_column_id,
+            value_text: message,
+            value_number: null,
+            value_date: null,
+            value_status_label_id: null,
+            value_file_path: null,
+          },
+          { onConflict: 'applicant_id,column_id' }
+        );
+    } catch (err) {
+      console.error(
+        '[executeFadvApproveOrder] writeOutput error (non-fatal):',
+        err
+      );
+    }
+  }
+
+  // ── Read Profile ID from the board column ───────────────────────────────────
+  const { data: cell, error: cellError } = await supabase
+    .from('board_cells')
+    .select('value_text')
+    .eq('applicant_id', applicantId)
+    .eq('column_id', subject_id_column_id)
+    .maybeSingle();
+
+  if (cellError) {
+    console.error(
+      '[executeFadvApproveOrder] Failed to read Profile ID cell:',
+      cellError
+    );
+    return {
+      success: false,
+      error: `Failed to read Profile ID column: ${cellError.message}`,
+    };
+  }
+
+  const profileId = (cell?.value_text ?? '').trim();
+
+  if (!profileId) {
+    const msg = 'FADV approve skipped — Profile ID column is empty';
+    console.log('[executeFadvApproveOrder]', msg);
+    await writeOutput(msg);
+    await logActivityEvent(supabase, {
+      companyId,
+      jobId,
+      actorType: 'automation',
+      eventType: 'fadv.approve.missing_profile_id',
+      entityType: 'applicant',
+      entityId: applicantId,
+      summary: msg,
+      data: { applicant_id: applicantId },
+    });
+    return { success: true };
+  }
+
+  // ── Idempotency: skip if already successfully approved ──────────────────────
+  const { data: existing } = await supabase
+    .from('integration_submissions')
+    .select('id')
+    .eq('applicant_id', applicantId)
+    .eq('provider', 'fadv_approve')
+    .eq('status', 'success')
+    .maybeSingle();
+
+  if (existing) {
+    const msg = 'FADV order already approved ✅';
+    console.log('[executeFadvApproveOrder] Skipping:', existing.id);
+    await writeOutput(msg);
+    return { success: true };
+  }
+
+  // ── Resolve board_id (best-effort; nullable) ────────────────────────────────
+  const { data: board } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('job_id', jobId)
+    .maybeSingle();
+
+  // ── Enqueue submission ──────────────────────────────────────────────────────
+  const { data: submission, error: insertError } = await supabase
+    .from('integration_submissions')
+    .insert({
+      company_id: companyId,
+      applicant_id: applicantId,
+      job_id: jobId,
+      board_id: board?.id ?? null,
+      provider: 'fadv_approve',
+      status: 'queued',
+      input_snapshot: { profile_id: profileId },
+      output_column_id: output_column_id ?? null,
+    })
+    .select('id')
+    .single();
+
+  if (insertError) {
+    console.error(
+      '[executeFadvApproveOrder] Failed to create submission record:',
+      insertError
+    );
+    return {
+      success: false,
+      error: `Failed to queue FADV approval: ${insertError.message}`,
+    };
+  }
+
+  await writeOutput('FADV approval queued...');
+
+  await logActivityEvent(supabase, {
+    companyId,
+    jobId,
+    actorType: 'automation',
+    eventType: 'fadv.approve.queued',
+    entityType: 'applicant',
+    entityId: applicantId,
+    summary: `FADV order approval queued for Profile ID: ${profileId}`,
+    data: {
+      applicant_id: applicantId,
+      submission_id: submission.id,
+      profile_id: profileId,
+    },
+  });
+
+  console.log('[executeFadvApproveOrder] ✓ Queued submission:', submission.id, {
+    applicantId,
+    profileId,
   });
 
   return { success: true };

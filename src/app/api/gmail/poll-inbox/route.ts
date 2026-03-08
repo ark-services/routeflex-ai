@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
   // ── 1. Find all enabled automations with gmail.email_received trigger ──────
   const { data: automations, error: fetchError } = await supabase
     .from("automations")
-    .select("id, company_id, job_id, trigger_config")
+    .select("id, company_id, job_id, trigger_config, filter")
     .eq("trigger_key", "gmail.email_received")
     .eq("is_enabled", true);
 
@@ -85,7 +85,14 @@ export async function GET(request: NextRequest) {
   // ── 2. Group automations by company ────────────────────────────────────────
   const byCompany = new Map<string, AutomationRow[]>();
   for (const a of automations) {
-    const config = a.trigger_config as GmailTriggerConfig | null;
+    // The UI saves Gmail trigger config into the `filter` column (merged with
+    // conditions). Fall back to `filter` (stripping conditions) when
+    // `trigger_config` is empty — which is the case for automations saved
+    // before migration 00100 added the dedicated column.
+    const rawConfig = (a.trigger_config && Object.keys(a.trigger_config).length > 0)
+      ? a.trigger_config
+      : (() => { const { conditions: _c, ...rest } = (a.filter ?? {}); return rest; })();
+    const config = rawConfig as GmailTriggerConfig | null;
     if (!config?.match_applicant_by) continue; // skip misconfigured
 
     const list = byCompany.get(a.company_id) || [];
@@ -221,7 +228,9 @@ async function processCompany(
           const regex = new RegExp(config.body_extract_pattern, "i");
           const bodyMatch = message.bodyText.match(regex);
           if (bodyMatch && bodyMatch[1]) {
-            extractedValue = bodyMatch[1];
+            // Strip any trailing HTML tags/entities that bleed in from HTML emails
+            // e.g. "UA5JKOH2V4<br" → "UA5JKOH2V4"
+            extractedValue = bodyMatch[1].replace(/<[^>]*$/, "").replace(/&\w+;$/, "").trim();
 
             if (config.match_column_id) {
               const match = await matchByColumnValue(supabase, companyId, config.match_column_id, extractedValue);

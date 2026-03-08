@@ -80,6 +80,56 @@ const COLUMN_CONDITIONS: Record<string, Array<{ value: string; label: string }>>
 // Text-like column types that store their value in value_text
 const TEXT_COL_TYPES = ["text", "email", "phone", "location"];
 
+// ── Body-extract pattern helpers ─────────────────────────────────────────────
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function unescapeRegex(str: string): string {
+  return str.replace(/\\([.*+?^${}()|[\]\\])/g, "$1");
+}
+
+// The middle section when a suffix is provided (phrase capture)
+const PHRASE_MID = "\\s*(.+?)\\s*";
+// The tail when no suffix is provided (single-word capture)
+const WORD_TAIL = "\\s*(\\S+)";
+
+/**
+ * Parse a pattern built by buildSimplePattern() back into {prefix, suffix}.
+ * Returns null if the pattern wasn't built by us (i.e. it's a custom regex).
+ */
+function parseSimplePattern(pattern: string): { prefix: string; suffix?: string } | null {
+  if (!pattern) return { prefix: "" };
+  // Phrase match: prefix + \s*(.+?)\s* + suffix
+  const midIdx = pattern.indexOf(PHRASE_MID);
+  if (midIdx !== -1) {
+    return {
+      prefix: unescapeRegex(pattern.slice(0, midIdx)),
+      suffix: unescapeRegex(pattern.slice(midIdx + PHRASE_MID.length)),
+    };
+  }
+  // Single-word match: prefix + \s*(\S+)
+  if (pattern.endsWith(WORD_TAIL)) {
+    return { prefix: unescapeRegex(pattern.slice(0, -WORD_TAIL.length)) };
+  }
+  return null;
+}
+
+/**
+ * Build a regex pattern from a prefix and optional suffix.
+ * No suffix → captures a single word (\S+).
+ * With suffix → captures everything between prefix and suffix (lazy .+?).
+ */
+function buildSimplePattern(prefix: string, suffix?: string): string {
+  if (!prefix) return "";
+  const ep = escapeRegex(prefix);
+  if (suffix && suffix.trim()) {
+    return ep + PHRASE_MID + escapeRegex(suffix);
+  }
+  return ep + WORD_TAIL;
+}
+
 // Map a board column to its condition category
 function getColCategory(col?: Column): string | null {
   if (!col) return null;
@@ -150,6 +200,8 @@ export function CreateTab({
   const [columns, setColumns] = useState<Column[]>([]);
   const [lmsCourses, setLmsCourses] = useState<{ id: string; name: string }[]>([]);
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
+  // For Gmail body-extract: true = show raw regex input, false = friendly "value comes after" input
+  const [bodyExtractAdvanced, setBodyExtractAdvanced] = useState(false);
 
   const isEditing = !!editingAutomation;
 
@@ -211,6 +263,15 @@ export function CreateTab({
       // Separate trigger-config keys from the "and only if…" conditions array
       const { conditions: savedConditions, ...triggerConfigOnly } = editingAutomation.filter || {};
       setTriggerConfig(triggerConfigOnly || {});
+
+      // If the saved body_extract_pattern isn't parseable as a simple prefix pattern,
+      // open the advanced regex editor so the user can see/edit it directly.
+      const savedPattern = (triggerConfigOnly as any)?.body_extract_pattern;
+      if (savedPattern && parseSimplePattern(savedPattern) === null) {
+        setBodyExtractAdvanced(true);
+      } else {
+        setBodyExtractAdvanced(false);
+      }
       setFilterConditions(
         Array.isArray(savedConditions)
           ? savedConditions.map((c: any) => ({
@@ -237,6 +298,7 @@ export function CreateTab({
     setTriggerConfig({});
     setActions([]);
     setFilterConditions([]);
+    setBodyExtractAdvanced(false);
   };
 
   const addAction = () => {
@@ -368,6 +430,16 @@ export function CreateTab({
         }
         if (!action.config.output_column_id) {
           alert("Please select an output column for the FADV action (where status messages will be written)");
+          return;
+        }
+      }
+      if (action.type === "fadv.approve_order") {
+        if (!action.config.subject_id_column_id) {
+          alert("Please select the Profile ID column for the FADV Approve action");
+          return;
+        }
+        if (!action.config.output_column_id) {
+          alert("Please select an output column for the FADV Approve action");
           return;
         }
       }
@@ -550,6 +622,8 @@ export function CreateTab({
         }
         case "fadv.add_subject":
           return "submit applicant to First Advantage";
+        case "fadv.approve_order":
+          return "approve FADV application (Review & Place Order)";
         case "safety_trainer.submit":
           return "submit applicant to Impact Solutions Safety Cert";
         case "lms.send_training_link":
@@ -616,6 +690,8 @@ export function CreateTab({
           groups={groups}
           filterConditions={filterConditions}
           onFilterConditionsChange={setFilterConditions}
+          bodyExtractAdvanced={bodyExtractAdvanced}
+          onBodyExtractAdvancedChange={setBodyExtractAdvanced}
         />
 
         {/* Connector line */}
@@ -702,6 +778,8 @@ function TriggerSelector({
   groups,
   filterConditions = [],
   onFilterConditionsChange,
+  bodyExtractAdvanced = false,
+  onBodyExtractAdvancedChange,
 }: {
   triggers: Trigger[];
   selectedTrigger: Trigger | null;
@@ -712,6 +790,8 @@ function TriggerSelector({
   groups: Group[];
   filterConditions?: FilterCondition[];
   onFilterConditionsChange?: (conditions: FilterCondition[]) => void;
+  bodyExtractAdvanced?: boolean;
+  onBodyExtractAdvancedChange?: (v: boolean) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -874,7 +954,10 @@ function TriggerSelector({
                   type="radio"
                   name="match_applicant_by"
                   checked={triggerConfig.match_applicant_by === "body_extract"}
-                  onChange={() => onConfigChange({ ...triggerConfig, match_applicant_by: "body_extract" })}
+                  onChange={() => {
+                    onConfigChange({ ...triggerConfig, match_applicant_by: "body_extract" });
+                    onBodyExtractAdvancedChange?.(false);
+                  }}
                   className="text-rf-blue"
                 />
                 <span className="text-xs text-gray-600">Extract value from email body</span>
@@ -883,16 +966,59 @@ function TriggerSelector({
 
             {triggerConfig.match_applicant_by === "body_extract" && (
               <div className="mt-2 ml-5 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-24 shrink-0">Body pattern</span>
-                  <input
-                    type="text"
-                    value={triggerConfig.body_extract_pattern ?? ""}
-                    onChange={(e) => onConfigChange({ ...triggerConfig, body_extract_pattern: e.target.value })}
-                    placeholder="e.g. Applicant ID:\s*(\S+)"
-                    className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded font-mono focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
-                  />
-                </div>
+                {bodyExtractAdvanced ? (
+                  /* Advanced: raw regex input */
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-24 shrink-0">Body pattern</span>
+                    <input
+                      type="text"
+                      value={triggerConfig.body_extract_pattern ?? ""}
+                      onChange={(e) => onConfigChange({ ...triggerConfig, body_extract_pattern: e.target.value })}
+                      placeholder={String.raw`e.g. Applicant ID:\s*(\S+)`}
+                      className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded font-mono focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+                    />
+                  </div>
+                ) : (
+                  /* Simple: prefix + optional suffix inputs */
+                  (() => {
+                    const parsed = parseSimplePattern(triggerConfig.body_extract_pattern ?? "");
+                    const prefix = parsed?.prefix ?? "";
+                    const suffix = parsed?.suffix ?? "";
+                    const update = (newPrefix: string, newSuffix: string) => {
+                      onConfigChange({ ...triggerConfig, body_extract_pattern: buildSimplePattern(newPrefix, newSuffix) });
+                    };
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-24 shrink-0">Value comes after</span>
+                          <input
+                            type="text"
+                            value={prefix}
+                            onChange={(e) => update(e.target.value, suffix)}
+                            placeholder='e.g. "Applicant ID:" or "Status:"'
+                            className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-24 shrink-0">Value ends before</span>
+                          <input
+                            type="text"
+                            value={suffix}
+                            onChange={(e) => update(prefix, e.target.value)}
+                            placeholder='optional — e.g. "|" or "." (blank = single word)'
+                            className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+                          />
+                        </div>
+                        {triggerConfig.body_extract_pattern && (
+                          <p className="text-[10px] text-gray-400 font-mono pl-[104px]">
+                            ↳ {triggerConfig.body_extract_pattern}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()
+                )}
+
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 w-24 shrink-0">Match to column</span>
                   <ColumnPicker
@@ -904,10 +1030,32 @@ function TriggerSelector({
                     placeholder="column"
                   />
                 </div>
-                <p className="text-[10px] text-gray-400 ml-0">
-                  Use a regex with a capture group. The captured value will be matched against the selected column.
-                  Also checks FADV Applicant IDs automatically.
-                </p>
+
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-gray-400">
+                    {bodyExtractAdvanced
+                      ? "Use a capture group to extract the value. Also checks FADV Applicant IDs automatically."
+                      : "Extracts the word after that label. Also checks FADV Applicant IDs automatically."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (bodyExtractAdvanced) {
+                        // Switching to simple: if pattern isn't parseable, clear it first
+                        if (
+                          triggerConfig.body_extract_pattern &&
+                          parseSimplePattern(triggerConfig.body_extract_pattern) === null
+                        ) {
+                          onConfigChange({ ...triggerConfig, body_extract_pattern: "" });
+                        }
+                      }
+                      onBodyExtractAdvancedChange?.(!bodyExtractAdvanced);
+                    }}
+                    className="text-[10px] text-rf-blue hover:underline shrink-0 ml-2"
+                  >
+                    {bodyExtractAdvanced ? "← Simple mode" : "Advanced (regex) →"}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1562,6 +1710,38 @@ function ActionEditor({
           </div>
         )}
 
+        {action.type === "fadv.approve_order" && (
+          <div className="w-full space-y-3 pt-1">
+            {/* Profile ID column */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700 w-28 shrink-0">Profile ID from</span>
+              <ColumnPicker
+                columns={columns.filter(
+                  (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                )}
+                selectedId={action.config.subject_id_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, subject_id_column_id: id } })
+                }
+                placeholder="column"
+              />
+            </div>
+
+            {/* Output column */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
+              <span className="text-sm text-gray-500 w-28 shrink-0">Write result to</span>
+              <ColumnPicker
+                columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
+                selectedId={action.config.output_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, output_column_id: id } })
+                }
+                placeholder="output column"
+              />
+            </div>
+          </div>
+        )}
+
         {action.type === "lms.send_training_link" && (() => {
           const statusCol = columns.find((c) => c.id === action.config.status_column_id);
           const statusLabels = statusCol?.labels ?? [];
@@ -1950,6 +2130,7 @@ const ACTION_CATEGORIES = [
     actions: [
       { value: "integration.set_field", label: "Set FADV field", icon: Settings },
       { value: "fadv.add_subject", label: "Submit to First Advantage", icon: Shield },
+      { value: "fadv.approve_order", label: "Approve FADV Application", icon: Shield },
       { value: "safety_trainer.submit", label: "Submit Safety Cert", icon: Award },
     ],
   },
