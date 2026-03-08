@@ -85,16 +85,15 @@ export async function submitApplication(
   // Validate required fields (skip hidden fields — they don't appear on the form)
   for (const field of fields) {
     if (field.required && !field.settings?.hidden) {
-      const value = formData.get(field.key);
-
-      // Special handling for file fields
+      // File fields: check filePaths (uploaded client-side) — they are stripped
+      // from formData before the server action is called to avoid Vercel's 4.5 MB limit.
       if (field.type === 'file') {
-        if (!value || !(value instanceof File) || value.size === 0) {
+        if (!filePaths[field.key]) {
           console.error('[Application Submit] Required file missing:', field.key);
           return { error: `${field.label} is required` };
         }
       } else {
-        // For non-file fields
+        const value = formData.get(field.key);
         if (!value || (typeof value === "string" && !value.trim())) {
           console.error('[Application Submit] Required field missing:', field.key);
           return { error: `${field.label} is required` };
