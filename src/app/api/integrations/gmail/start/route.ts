@@ -110,6 +110,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('scope', [
       'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/gmail.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
     ].join(' '));

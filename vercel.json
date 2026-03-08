@@ -3,12 +3,20 @@
     {
       "path": "/api/fadv/process-queue",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/gmail/poll-inbox",
+      "schedule": "*/5 * * * *"
     }
   ],
   "functions": {
     "src/app/api/fadv/process-queue/route.ts": {
       "maxDuration": 60,
       "memory": 1024
+    },
+    "src/app/api/gmail/poll-inbox/route.ts": {
+      "maxDuration": 60,
+      "memory": 512
     },
     "src/app/dashboard/[companyId]/jobs/[jobId]/applicants/page.tsx": {
       "memory": 512

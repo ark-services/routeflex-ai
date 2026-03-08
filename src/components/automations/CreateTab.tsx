@@ -276,6 +276,16 @@ export function CreateTab({
         return;
       }
     }
+    if (selectedTrigger.key === "gmail.email_received") {
+      if (!triggerConfig.match_applicant_by) {
+        alert("Please select how to match emails to applicants");
+        return;
+      }
+      if (triggerConfig.match_applicant_by === "body_extract" && !triggerConfig.body_extract_pattern) {
+        alert("Please enter a body pattern to extract values from emails");
+        return;
+      }
+    }
 
     // Validate actions
     for (const action of actions) {
@@ -468,6 +478,13 @@ export function CreateTab({
       if (group) {
         triggerText = `applicant moved to ${group.name}`;
       }
+    } else if (selectedTrigger.key === "gmail.email_received") {
+      const parts: string[] = [];
+      if (triggerConfig.sender_contains) parts.push(`from ${triggerConfig.sender_contains}`);
+      if (triggerConfig.subject_contains) parts.push(`"${triggerConfig.subject_contains}"`);
+      triggerText = parts.length > 0
+        ? `email received ${parts.join(" ")}`
+        : "email received in Gmail";
     }
 
     // Build readable action text
@@ -797,8 +814,12 @@ function TriggerSelector({
             <span className="text-gray-600">When application form is submitted</span>
           )}
 
+          {selectedTrigger.key === "gmail.email_received" && (
+            <span className="text-gray-600">When a matching email is received in Gmail</span>
+          )}
+
           {/* Fallback for any trigger without a custom sentence */}
-          {!["board.status_changes_to", "applicant.moved_group", "applicant.created", "form.submitted"].includes(selectedTrigger.key) && (
+          {!["board.status_changes_to", "applicant.moved_group", "applicant.created", "form.submitted", "gmail.email_received"].includes(selectedTrigger.key) && (
             <span className="text-gray-600">When {selectedTrigger.name.toLowerCase()}</span>
           )}
         </div>
@@ -810,6 +831,88 @@ function TriggerSelector({
           <X className="w-3.5 h-3.5 text-gray-500" />
         </button>
       </div>
+
+      {/* Gmail trigger config */}
+      {selectedTrigger.key === "gmail.email_received" && (
+        <div className="mt-3 pt-3 border-t border-rf-blue-tint space-y-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 w-28 shrink-0">Sender contains</span>
+            <input
+              type="text"
+              value={triggerConfig.sender_contains ?? ""}
+              onChange={(e) => onConfigChange({ ...triggerConfig, sender_contains: e.target.value })}
+              placeholder="e.g. do_not_reply@fadv.com"
+              className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 w-28 shrink-0">Subject contains</span>
+            <input
+              type="text"
+              value={triggerConfig.subject_contains ?? ""}
+              onChange={(e) => onConfigChange({ ...triggerConfig, subject_contains: e.target.value })}
+              placeholder="e.g. Application Completed"
+              className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+            />
+          </div>
+
+          <div className="pt-1.5 border-t border-rf-blue-tint/50">
+            <span className="text-xs font-medium text-gray-600">Match to applicant by:</span>
+            <div className="mt-1.5 space-y-1.5">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="match_applicant_by"
+                  checked={triggerConfig.match_applicant_by === "sender_email"}
+                  onChange={() => onConfigChange({ ...triggerConfig, match_applicant_by: "sender_email", body_extract_pattern: undefined, match_column_id: undefined })}
+                  className="text-rf-blue"
+                />
+                <span className="text-xs text-gray-600">Sender email matches applicant&apos;s email</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="match_applicant_by"
+                  checked={triggerConfig.match_applicant_by === "body_extract"}
+                  onChange={() => onConfigChange({ ...triggerConfig, match_applicant_by: "body_extract" })}
+                  className="text-rf-blue"
+                />
+                <span className="text-xs text-gray-600">Extract value from email body</span>
+              </label>
+            </div>
+
+            {triggerConfig.match_applicant_by === "body_extract" && (
+              <div className="mt-2 ml-5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-24 shrink-0">Body pattern</span>
+                  <input
+                    type="text"
+                    value={triggerConfig.body_extract_pattern ?? ""}
+                    onChange={(e) => onConfigChange({ ...triggerConfig, body_extract_pattern: e.target.value })}
+                    placeholder="e.g. Applicant ID:\s*(\S+)"
+                    className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded font-mono focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 w-24 shrink-0">Match to column</span>
+                  <ColumnPicker
+                    columns={columns.filter(
+                      (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
+                    )}
+                    selectedId={triggerConfig.match_column_id}
+                    onSelect={(id) => onConfigChange({ ...triggerConfig, match_column_id: id })}
+                    placeholder="column"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 ml-0">
+                  Use a regex with a capture group. The captured value will be matched against the selected column.
+                  Also checks FADV Applicant IDs automatically.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Inline "and only if..." conditions */}
       {onFilterConditionsChange && (
