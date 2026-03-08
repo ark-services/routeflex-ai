@@ -2,7 +2,11 @@
  * POST /api/webhooks/ingest
  *
  * Inbound webhook for creating applicants from external sources (e.g. Zapier).
- * Secured with a Bearer token via the WEBHOOK_API_KEY env var.
+ *
+ * Auth (in priority order):
+ *   1. HMAC-SHA256 signature (WEBHOOK_SIGNING_SECRET) — preferred
+ *      Headers: x-webhook-timestamp, x-webhook-signature
+ *   2. Bearer token (WEBHOOK_API_KEY) — legacy fallback
  *
  * Request body (JSON):
  *   job_id        (required) UUID of the target job
@@ -17,29 +21,82 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 
 export const maxDuration = 30;
 
+const REPLAY_WINDOW_SECONDS = 300; // 5 minutes
+
 export async function POST(request: NextRequest) {
-  // ── 1. Auth ────────────────────────────────────────────────────────────────
+  // ── 1. Read raw body (needed for HMAC and JSON parse) ───────────────────
+  let rawBody: string;
+  try {
+    rawBody = await request.text();
+  } catch {
+    return NextResponse.json({ error: "Failed to read body" }, { status: 400 });
+  }
+
+  // ── 2. Auth: HMAC signature preferred, bearer token fallback ────────────
+  const signingSecret = process.env.WEBHOOK_SIGNING_SECRET;
   const webhookKey = process.env.WEBHOOK_API_KEY;
-  if (!webhookKey) {
-    console.error("[webhook/ingest] WEBHOOK_API_KEY not configured");
+
+  if (signingSecret) {
+    // HMAC-SHA256 verification
+    const timestamp = request.headers.get("x-webhook-timestamp");
+    const signature = request.headers.get("x-webhook-signature");
+
+    if (!timestamp || !signature) {
+      return NextResponse.json(
+        { error: "Missing x-webhook-timestamp or x-webhook-signature headers" },
+        { status: 401 }
+      );
+    }
+
+    // Reject stale timestamps (replay protection)
+    const ts = parseInt(timestamp, 10);
+    if (isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > REPLAY_WINDOW_SECONDS) {
+      return NextResponse.json(
+        { error: "Timestamp expired or invalid" },
+        { status: 401 }
+      );
+    }
+
+    // Compute expected signature
+    const signedPayload = `${timestamp}.${rawBody}`;
+    const expected = crypto
+      .createHmac("sha256", signingSecret)
+      .update(signedPayload)
+      .digest("hex");
+
+    // Constant-time comparison
+    try {
+      const sigBuf = Buffer.from(signature, "hex");
+      const expBuf = Buffer.from(expected, "hex");
+      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid signature format" }, { status: 401 });
+    }
+  } else if (webhookKey) {
+    // Legacy bearer token fallback
+    console.warn("[webhook/ingest] Using legacy bearer token auth. Set WEBHOOK_SIGNING_SECRET for HMAC verification.");
+    const authHeader = request.headers.get("authorization");
+    if (authHeader !== `Bearer ${webhookKey}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else {
+    console.error("[webhook/ingest] Neither WEBHOOK_SIGNING_SECRET nor WEBHOOK_API_KEY configured");
     return NextResponse.json({ error: "Webhook not configured" }, { status: 500 });
   }
 
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${webhookKey}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // ── 2. Parse body ─────────────────────────────────────────────────────────
+  // ── 3. Parse body ─────────────────────────────────────────────────────────
   let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = JSON.parse(rawBody);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -65,7 +122,7 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // ── 3. Validate job exists ────────────────────────────────────────────────
+  // ── 4. Validate job exists ────────────────────────────────────────────────
   const { data: job, error: jobError } = await supabase
     .from("jobs")
     .select("id, company_id")
@@ -76,7 +133,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  // ── 4. Duplicate check (email + job_id) ───────────────────────────────────
+  // ── 5. Duplicate check (email + job_id) ───────────────────────────────────
   if (email && typeof email === "string" && email.trim()) {
     const { data: existing } = await supabase
       .from("applicants")
@@ -95,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── 5. Get or create board ────────────────────────────────────────────────
+  // ── 6. Get or create board ────────────────────────────────────────────────
   const boardResult = await getOrCreateApplicantsBoard(
     supabase,
     job.company_id,
@@ -109,7 +166,7 @@ export async function POST(request: NextRequest) {
 
   const { board, groups } = boardResult;
 
-  // ── 6. Resolve destination group ──────────────────────────────────────────
+  // ── 7. Resolve destination group ──────────────────────────────────────────
   let destinationGroup = null;
 
   if (group_name && typeof group_name === "string") {
@@ -129,7 +186,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No board groups available" }, { status: 500 });
   }
 
-  // ── 7. Next position in group ─────────────────────────────────────────────
+  // ── 8. Next position in group ─────────────────────────────────────────────
   const { data: maxPos } = await supabase
     .from("applicants")
     .select("position")
@@ -140,7 +197,7 @@ export async function POST(request: NextRequest) {
 
   const nextPosition = maxPos ? maxPos.position + 1 : 0;
 
-  // ── 8. Insert applicant ───────────────────────────────────────────────────
+  // ── 9. Insert applicant ───────────────────────────────────────────────────
   const { data: applicant, error: insertError } = await supabase
     .from("applicants")
     .insert({
@@ -165,10 +222,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create applicant" }, { status: 500 });
   }
 
-  // ── 9. Populate board_cells for common column types ───────────────────────
-  // Non-system board columns (email, phone, First Name, Last Name) read from
-  // board_cells. The applicants row has the raw values — mirror them so the
-  // board renders correctly without a form submission.
+  // ── 10. Populate board_cells for common column types ───────────────────────
   try {
     const { data: boardColumns } = await supabase
       .from("board_columns")
@@ -212,7 +266,7 @@ export async function POST(request: NextRequest) {
     console.error("[webhook/ingest] Board cells population error (non-fatal):", cellError);
   }
 
-  // ── 10. Fire applicant.created automation trigger ─────────────────────────
+  // ── 11. Fire applicant.created automation trigger ─────────────────────────
   try {
     await fireJobTrigger(supabase, {
       companyId: job.company_id,
@@ -233,7 +287,7 @@ export async function POST(request: NextRequest) {
     console.error("[webhook/ingest] Trigger error (non-fatal):", triggerError);
   }
 
-  // ── 11. Return success ────────────────────────────────────────────────────
+  // ── 12. Return success ────────────────────────────────────────────────────
   return NextResponse.json(
     {
       created: true,

@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { ActionResult } from './types';
 import { logActivityEvent } from '@/lib/activity/logActivityEvent';
+import { defaultTokenExpiresAt } from '@/lib/helpers/tokenExpiry';
 
 /**
  * Action: lms.send_training_link
@@ -174,6 +175,7 @@ export async function executeLmsSendTrainingLink(
         applicant_id: applicantId,
         course_id,
         status: 'enrolled',
+        token_expires_at: defaultTokenExpiresAt(),
         ...(output_column_id     && { output_column_id }),
         ...(status_column_id     && { status_column_id }),
         ...(link_sent_label_id   && { link_sent_label_id }),
@@ -388,7 +390,7 @@ export async function executePortalSendLink(
   // ── Fetch applicant (name, email, portal_token) ─────────────────────────────
   const { data: applicant, error: applicantError } = await supabase
     .from('applicants')
-    .select('id, full_name, email, portal_token')
+    .select('id, full_name, email, portal_token, token_expires_at')
     .eq('id', applicantId)
     .maybeSingle();
 
@@ -398,6 +400,14 @@ export async function executePortalSendLink(
 
   if (!applicant.portal_token) {
     return { success: false, error: 'portal.send_link: applicant has no portal_token' };
+  }
+
+  // Set token expiry on first send (existing tokens with NULL expiry are left as-is until sent)
+  if (!applicant.token_expires_at) {
+    await supabase
+      .from('applicants')
+      .update({ token_expires_at: defaultTokenExpiresAt() })
+      .eq('id', applicantId);
   }
 
   // ── Resolve email ───────────────────────────────────────────────────────────

@@ -23,17 +23,9 @@ export async function submitApplication(
   // Create service role client (bypasses RLS)
   const supabase = createServiceClient();
 
-  // Log FormData entries for debugging (mask sensitive values)
-  const formDataEntries = Array.from(formData.entries()).map(([key, value]) => {
-    if (key.toLowerCase().includes('password') || key.toLowerCase().includes('ssn')) {
-      return [key, '[REDACTED]'];
-    }
-    if (value instanceof File) {
-      return [key, `File: ${value.name} (${value.size} bytes)`];
-    }
-    return [key, typeof value === 'string' ? value.substring(0, 100) : value];
-  });
-  console.log('[Application Submit] FormData entries:', formDataEntries);
+  // Log field keys only — no PII values
+  const fieldKeys = Array.from(formData.keys());
+  console.log('[Application Submit] Fields received:', fieldKeys.length, 'keys:', fieldKeys);
 
   // Validate token and get form details using the helper function
   const { data: formDetails, error: formError } = await supabase.rpc(
@@ -42,7 +34,7 @@ export async function submitApplication(
   );
 
   if (formError || !formDetails || formDetails.length === 0) {
-    console.error('[Application Submit] Invalid token:', { token, formError });
+    console.error('[Application Submit] Invalid token', formError?.message);
     return { error: "Invalid application form link" };
   }
 

@@ -215,8 +215,20 @@ async function processCompany(
           jobId = match.jobId;
         }
       } else if (config.match_applicant_by === "body_extract" && config.body_extract_pattern) {
+        const pattern: string = config.body_extract_pattern;
+
+        // Regex safety: reject patterns that are too long or contain nested quantifiers (ReDoS risk)
+        if (pattern.length > 500) {
+          console.warn(`[gmail/poll-inbox] Regex too long (${pattern.length} chars) in automation ${automation.id} — skipping`);
+          continue;
+        }
+        if (/([+*])\s*\)[+*?]/.test(pattern)) {
+          console.warn(`[gmail/poll-inbox] Unsafe regex (nested quantifiers) in automation ${automation.id} — skipping`);
+          continue;
+        }
+
         try {
-          const regex = new RegExp(config.body_extract_pattern, "i");
+          const regex = new RegExp(pattern, "i");
           const bodyMatch = message.bodyText.match(regex);
           if (bodyMatch && bodyMatch[1]) {
             // Strip any trailing HTML tags/entities that bleed in from HTML emails

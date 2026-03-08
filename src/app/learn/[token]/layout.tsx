@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { checkTokenValidity } from "@/lib/helpers/tokenExpiry";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
@@ -19,6 +20,8 @@ export default async function LearnLayout({
     .select(`
       id,
       status,
+      token_expires_at,
+      token_revoked_at,
       lms_courses (
         id,
         name,
@@ -35,6 +38,22 @@ export default async function LearnLayout({
     .single();
 
   if (!enrollment) notFound();
+
+  const tokenError = checkTokenValidity(
+    (enrollment as any).token_expires_at,
+    (enrollment as any).token_revoked_at
+  );
+
+  if (tokenError) {
+    return (
+      <div className="min-h-screen bg-rf-surface-page flex items-center justify-center">
+        <div className="max-w-md text-center p-8">
+          <h1 className="text-xl font-bold text-rf-text-primary mb-2">Link Unavailable</h1>
+          <p className="text-rf-text-secondary">{tokenError}</p>
+        </div>
+      </div>
+    );
+  }
 
   const course = (enrollment as any).lms_courses;
   const company = course?.companies;

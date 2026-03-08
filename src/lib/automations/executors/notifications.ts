@@ -70,7 +70,7 @@ export async function executeSendSlack(
     return { success: false, error: 'Missing webhook_url in config' };
   }
 
-  if (!isAllowedWebhookUrl(webhook_url)) {
+  if (!(await isAllowedWebhookUrl(webhook_url))) {
     return { success: false, error: 'Slack webhook URL targets a blocked address (localhost or private network)' };
   }
 

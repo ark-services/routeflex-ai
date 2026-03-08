@@ -17,6 +17,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing required param: path" }, { status: 400 });
     }
 
+    // Path safety: reject traversal, null bytes, double slashes, and paths outside expected prefix
+    if (
+      path.includes('..') ||
+      path.includes('\0') ||
+      path.includes('//') ||
+      !path.startsWith('thumbnails/')
+    ) {
+      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    }
+
     const supabase = await createClient();
     const {
       data: { user },

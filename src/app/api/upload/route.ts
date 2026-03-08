@@ -16,6 +16,31 @@ const ALLOWED_TYPES = [
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+// ── In-memory rate limiter (20 uploads per 5-min window per IP:token) ────────
+const RATE_WINDOW_MS = 5 * 60 * 1000;
+const RATE_MAX = 20;
+const rateMap = new Map<string, { count: number; start: number }>();
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = rateMap.get(key);
+  if (!entry || now - entry.start > RATE_WINDOW_MS) {
+    rateMap.set(key, { count: 1, start: now });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_MAX;
+}
+
+// Cleanup stale entries periodically
+const cleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of rateMap) {
+    if (now - v.start > RATE_WINDOW_MS) rateMap.delete(k);
+  }
+}, 10 * 60 * 1000);
+if (cleanup.unref) cleanup.unref();
+
 /**
  * POST /api/upload
  *
@@ -55,6 +80,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Rate limit: max 20 uploads per 5-min window per IP+token
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!checkRateLimit(`${clientIp}:${token}`)) {
+    return NextResponse.json(
+      { error: "Too many uploads. Please wait a few minutes." },
+      { status: 429 }
+    );
+  }
+
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json(
@@ -86,13 +120,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Verify jobId matches the form's job
+  if (formDetails[0].job_id !== jobId) {
+    return NextResponse.json(
+      { error: "Job ID mismatch" },
+      { status: 403 }
+    );
+  }
+
   const companyId: string = formDetails[0].company_id;
 
   // Build storage path: {companyId}/{jobId}/{fieldKey}/{timestamp}-{filename}
   const timestamp = Date.now();
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-  const folder = fieldKey || "files";
-  const storagePath = `${companyId}/${jobId}/${folder}/${timestamp}-${sanitizedName}`;
+  const sanitizedFolder = (fieldKey || "files").replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 64);
+  const storagePath = `${companyId}/${jobId}/${sanitizedFolder}/${timestamp}-${sanitizedName}`;
 
   const { error: uploadError } = await supabase.storage
     .from("resumes")

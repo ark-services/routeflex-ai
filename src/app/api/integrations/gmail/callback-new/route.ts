@@ -128,6 +128,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(redirectUrl);
     }
 
+    // Verify user belongs to the claimed account
+    const { data: membership } = await supabase
+      .from('account_memberships')
+      .select('role')
+      .eq('account_id', state.accountId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!membership) {
+      console.error('[OAuth callback-new] User not a member of account:', state.accountId);
+      const redirectUrl = buildRedirectUrl(baseUrl, '/admin', { error: 'forbidden' });
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Verify company belongs to the claimed account
+    const { data: companyCheck } = await supabase
+      .from('companies')
+      .select('account_id')
+      .eq('id', state.companyId)
+      .maybeSingle();
+
+    if (!companyCheck || companyCheck.account_id !== state.accountId) {
+      console.error('[OAuth callback-new] Company-account mismatch:', state.companyId);
+      const redirectUrl = buildRedirectUrl(baseUrl, '/admin', { error: 'forbidden' });
+      return NextResponse.redirect(redirectUrl);
+    }
+
     // Exchange code for tokens (using validated env vars)
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
