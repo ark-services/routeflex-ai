@@ -1,16 +1,10 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ClipboardList } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function ModuleContentPage({
   params,
@@ -18,7 +12,7 @@ export default async function ModuleContentPage({
   params: Promise<{ token: string; moduleId: string }>;
 }) {
   const { token, moduleId } = await params;
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Load enrollment + course
   const { data: enrollment } = await svc

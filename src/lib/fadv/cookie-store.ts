@@ -23,18 +23,12 @@
  *     run will need to go through the security question again.
  */
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { encrypt, decrypt } from "@/lib/encryption";
 import type { Cookie } from "playwright-core";
 
 // ── Service-role client (bypasses RLS for server-side writes) ─────────────────
 
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 // ── loadDbCookies ─────────────────────────────────────────────────────────────
 
@@ -47,7 +41,7 @@ function getServiceClient() {
  */
 export async function loadDbCookies(companyId: string): Promise<Cookie[] | null> {
   try {
-    const { data } = await getServiceClient()
+    const { data } = await createServiceClient()
       .from("fadv_connections")
       .select("encrypted_session_cookies")
       .eq("company_id", companyId)
@@ -78,7 +72,7 @@ export async function saveDbCookies(companyId: string, cookies: Cookie[]): Promi
   if (!cookies.length) return;
   try {
     const encrypted = encrypt(JSON.stringify(cookies));
-    const { error } = await getServiceClient()
+    const { error } = await createServiceClient()
       .from("fadv_connections")
       .update({
         encrypted_session_cookies: encrypted,

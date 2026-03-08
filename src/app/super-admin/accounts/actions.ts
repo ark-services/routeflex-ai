@@ -1,16 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { revalidatePath } from "next/cache";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 async function assertSuperAdmin() {
   const supabase = await createClient();
@@ -24,7 +18,7 @@ async function assertSuperAdmin() {
 
 export async function changePlan(accountId: string, newPlan: string) {
   await assertSuperAdmin();
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Validate plan exists
   const { data: plan } = await svc
@@ -50,7 +44,7 @@ export async function addExtraCredits(accountId: string, creditsToAdd: number) {
   await assertSuperAdmin();
   if (!creditsToAdd || creditsToAdd <= 0) return { error: "Credits must be a positive number" };
 
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Ensure the current billing period row exists
   await svc.rpc("get_or_create_action_period", { p_account_id: accountId });

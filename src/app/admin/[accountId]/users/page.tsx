@@ -1,14 +1,8 @@
 import { requireAdmin } from "@/lib/rbac";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { UsersPageClient } from "@/components/admin/users-page-client";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function AdminUsersPage({
   params,
@@ -18,7 +12,7 @@ export default async function AdminUsersPage({
   const { accountId } = await params;
   const membership = await requireAdmin(accountId);
   const supabase = await createClient();
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Use service role for member fetches — the regular client's JOIN to auth.users
   // (for emails) is blocked by PostgREST and silently drops all rows.

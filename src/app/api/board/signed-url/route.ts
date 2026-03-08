@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createServiceClient } from "@/lib/supabase/service";
 
 /**
  * GET /api/board/signed-url?path=<storage-path>&bucket=<bucket>
@@ -59,16 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Use service role client to generate signed URL (bypasses RLS on storage)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    if (!supabaseServiceKey) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-    }
-
-    const serviceClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const serviceClient = createServiceClient();
 
     const { data: signedData, error: signedError } = await serviceClient.storage
       .from(bucket)

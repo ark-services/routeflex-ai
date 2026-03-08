@@ -1,4 +1,4 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Plus, BookOpen, ClipboardCheck } from "lucide-react";
@@ -6,12 +6,6 @@ import { TemplateSettingsForm } from "./TemplateSettingsForm";
 import { AddModuleForm } from "./AddModuleForm";
 import { DeleteModuleButton } from "./DeleteModuleButton";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function TrainingTemplatePage({
   params,
@@ -19,7 +13,7 @@ export default async function TrainingTemplatePage({
   params: Promise<{ templateId: string }>;
 }) {
   const { templateId } = await params;
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   const [{ data: template }, { data: modules }] = await Promise.all([
     svc

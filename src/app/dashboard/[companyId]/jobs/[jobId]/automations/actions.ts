@@ -5,10 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 import { AutomationActionType } from "@/lib/automations/actionTypes";
-
-function actorName(user: { user_metadata?: { full_name?: string }; email?: string } | null): string {
-  return user?.user_metadata?.full_name ?? user?.email ?? "Someone";
-}
+import { actorName } from "@/lib/helpers/actorName";
 
 function jobPath(companyId: string, jobId: string) {
   return `/dashboard/${companyId}/jobs/${jobId}/applicants`;

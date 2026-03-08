@@ -3,16 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { validateEmail, validatePhone, validateLocation } from "@/lib/validation/columnValidation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 import { getOrCreateApplicantsBoard as getOrCreateBoardLib } from "@/lib/boards/getOrCreateApplicantsBoard";
+import { actorName } from "@/lib/helpers/actorName";
 
 const VERBOSE = false; // set to true to re-enable verbose action logs
-
-/** Returns actor name from user metadata for activity log entries. */
-function actorName(user: { user_metadata?: { full_name?: string }; email?: string } | null): string {
-  return user?.user_metadata?.full_name ?? user?.email ?? "Someone";
-}
 
 function dashPath(companyId: string, jobId: string) {
   return `/dashboard/${companyId}/jobs/${jobId}/applicants`;
@@ -403,6 +400,32 @@ export async function updateGroupCollapsedColumns(
   await supabase
     .from("board_groups")
     .update({ settings: { collapsed_columns: collapsedColumns } })
+    .eq("id", groupId)
+    .eq("company_id", companyId)
+    .eq("board_id", boardId);
+  revalidatePath(dashPath(companyId, jobId));
+}
+
+export async function updateGroupHiddenColumns(
+  companyId: string,
+  jobId: string,
+  boardId: string,
+  groupId: string,
+  hiddenColumns: string[]
+) {
+  const supabase = await createClient();
+  // Merge into existing settings to preserve other keys (collapsed_columns, etc.)
+  const { data: group } = await supabase
+    .from("board_groups")
+    .select("settings")
+    .eq("id", groupId)
+    .eq("company_id", companyId)
+    .eq("board_id", boardId)
+    .single();
+  const newSettings = { ...(group?.settings ?? {}), hidden_columns: hiddenColumns };
+  await supabase
+    .from("board_groups")
+    .update({ settings: newSettings })
     .eq("id", groupId)
     .eq("company_id", companyId)
     .eq("board_id", boardId);
@@ -1507,11 +1530,7 @@ export async function updateBoardCell(
     after(async () => {
       try {
         // Service role client — no cookies needed, safe to use inside after()
-        const { createClient: createServiceClient } = await import("@supabase/supabase-js");
-        const svc = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
+        const svc = createServiceClient();
 
         // Import fireJobTrigger dynamically to avoid circular dependencies
         const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
@@ -1723,11 +1742,7 @@ export async function bulkUpdateStatusCells(
         after(async () => {
           try {
             // Service role client — no cookies needed, safe to use inside after()
-            const { createClient: createServiceClient } = await import("@supabase/supabase-js");
-            const svc = createServiceClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL!,
-              process.env.SUPABASE_SERVICE_ROLE_KEY!
-            );
+            const svc = createServiceClient();
 
             const { fireJobTrigger } = await import("@/lib/automations/fireJobAutomation");
 
@@ -1831,11 +1846,7 @@ export async function moveApplicant(
   // Log activity asynchronously — doesn't block the response
   after(async () => {
     try {
-      const { createClient: createServiceClient } = await import("@supabase/supabase-js");
-      const svc = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
+      const svc = createServiceClient();
       const actor = actorName(currentUser);
       const [{ data: applicantRow }, { data: grp }] = await Promise.all([
         svc.from("applicants").select("full_name").eq("id", applicantId).maybeSingle(),
@@ -2316,11 +2327,7 @@ export async function quickCreateApplicant(
   // Log activity asynchronously — doesn't block the response
   after(async () => {
     try {
-      const { createClient: createServiceClient } = await import("@supabase/supabase-js");
-      const svc = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
+      const svc = createServiceClient();
       const actor = actorName(currentUser);
       const { data: grp } = await svc
         .from("board_groups")

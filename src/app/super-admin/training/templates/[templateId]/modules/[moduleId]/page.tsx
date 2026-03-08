@@ -1,14 +1,8 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ModuleEditor } from "./ModuleEditor";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function TemplateModulePage({
   params,
@@ -16,7 +10,7 @@ export default async function TemplateModulePage({
   params: Promise<{ templateId: string; moduleId: string }>;
 }) {
   const { templateId, moduleId } = await params;
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   const [{ data: template }, { data: mod }, { data: questions }] = await Promise.all([
     svc.from("lms_course_templates").select("id, name").eq("id", templateId).single(),

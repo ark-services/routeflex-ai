@@ -1,4 +1,4 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,12 +10,6 @@ import {
   PartyPopper,
 } from "lucide-react";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 type ChecklistItem = {
   id: string;
@@ -30,7 +24,7 @@ export default async function StatusPortalPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // ── 1. Applicant + job + company ────────────────────────────────────────────
   const { data: applicant } = await svc

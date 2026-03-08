@@ -17,19 +17,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 
 export const maxDuration = 30;
-
-function makeServiceClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
 
 export async function POST(request: NextRequest) {
   // ── 1. Auth ────────────────────────────────────────────────────────────────
@@ -71,7 +63,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "full_name is required" }, { status: 400 });
   }
 
-  const supabase = makeServiceClient();
+  const supabase = createServiceClient();
 
   // ── 3. Validate job exists ────────────────────────────────────────────────
   const { data: job, error: jobError } = await supabase

@@ -1,16 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Lock } from "lucide-react";
 import { EnrollModalTrigger } from "./EnrollModal";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function LearnersPage({
   params,
@@ -19,7 +13,7 @@ export default async function LearnersPage({
 }) {
   const { companyId, courseId } = await params;
   const supabase = await createClient();
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   const { data: company } = await supabase
     .from("companies")

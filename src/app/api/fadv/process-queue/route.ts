@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { loadFadvConfig, runFadvApiCall } from "@/lib/fadv/submit";
 import { runFadvApproveOrder } from "@/lib/fadv/approve";
 import { decrypt } from "@/lib/encryption";
@@ -31,15 +31,6 @@ import { runSafetyTrainerSubmission } from "@/lib/safety-trainer/submit";
 
 // Max submissions processed per cron invocation
 const BATCH_SIZE = 5;
-
-// ── Service-role client (bypasses RLS) ───────────────────────────────────────
-function makeServiceClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
 
 // ── Vercel max function duration ─────────────────────────────────────────────
 // Browser automation (FADV login + form fill) takes 90–150 s.
@@ -57,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const supabase = makeServiceClient();
+  const supabase = createServiceClient();
 
   // ── 0. Recover stuck "running" submissions ─────────────────────────────────
   // If a previous worker was killed mid-flight (e.g. Vercel timeout), the row
@@ -162,7 +153,7 @@ export async function GET(request: NextRequest) {
 
 // ── processFadvSubmission ─────────────────────────────────────────────────────
 
-async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClient>, submission: any) {
+async function processFadvSubmission(supabase: ReturnType<typeof createServiceClient>, submission: any) {
   const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id, subject_id_column_id } = submission;
 
   console.log("[fadv/process-queue] Processing submission:", {
@@ -413,7 +404,7 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
 // ── processSafetyTrainerSubmission ────────────────────────────────────────────
 
 async function processSafetyTrainerSubmission(
-  supabase: ReturnType<typeof makeServiceClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   submission: any
 ) {
   const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id } = submission;
@@ -558,10 +549,14 @@ async function processSafetyTrainerSubmission(
 // ── processFadvApproveSubmission ──────────────────────────────────────────────
 
 async function processFadvApproveSubmission(
-  supabase: ReturnType<typeof makeServiceClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   submission: any
 ) {
   const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id } = submission;
+  // Status column + label IDs stored in input_snapshot (no extra DB column needed)
+  const status_column_id:  string | undefined = input_snapshot?.status_column_id;
+  const approved_label_id: string | undefined = input_snapshot?.approved_label_id;
+  const error_label_id:    string | undefined = input_snapshot?.error_label_id;
 
   console.log("[fadv_approve/process-queue] Processing submission:", {
     id,
@@ -578,6 +573,7 @@ async function processFadvApproveSubmission(
       `FADV Approve failed: ${configResult.reason}`,
       "fadv_approve"
     );
+    if (status_column_id && error_label_id) await writeStatusLabelCell(supabase, applicant_id, status_column_id, error_label_id);
     return;
   }
 
@@ -593,6 +589,7 @@ async function processFadvApproveSubmission(
         "FADV Approve failed ❌ credential_error",
         "fadv_approve"
       );
+      if (status_column_id && error_label_id) await writeStatusLabelCell(supabase, applicant_id, status_column_id, error_label_id);
       return;
     }
   }
@@ -608,6 +605,7 @@ async function processFadvApproveSubmission(
         "FADV Approve failed ❌ credential_error",
         "fadv_approve"
       );
+      if (status_column_id && error_label_id) await writeStatusLabelCell(supabase, applicant_id, status_column_id, error_label_id);
       return;
     }
   }
@@ -645,6 +643,9 @@ async function processFadvApproveSubmission(
     if (output_column_id) {
       await writeOutputCell(supabase, applicant_id, output_column_id, msg);
     }
+    if (status_column_id && approved_label_id) {
+      await writeStatusLabelCell(supabase, applicant_id, status_column_id, approved_label_id);
+    }
 
     await logActivityEvent(supabase, {
       companyId:  company_id,
@@ -680,6 +681,9 @@ async function processFadvApproveSubmission(
     if (output_column_id) {
       await writeOutputCell(supabase, applicant_id, output_column_id, msg);
     }
+    if (status_column_id && error_label_id) {
+      await writeStatusLabelCell(supabase, applicant_id, status_column_id, error_label_id);
+    }
 
     await logActivityEvent(supabase, {
       companyId:  company_id,
@@ -707,7 +711,7 @@ async function processFadvApproveSubmission(
  * Marks a submission as failed and (optionally) writes to the output column.
  */
 async function markFailed(
-  supabase:         ReturnType<typeof makeServiceClient>,
+  supabase:         ReturnType<typeof createServiceClient>,
   submissionId:     string,
   applicantId:      string,
   jobId:            string | null,
@@ -761,8 +765,34 @@ async function markFailed(
 /**
  * Upserts a text value into a board_cells row for the given applicant + column.
  */
+async function writeStatusLabelCell(
+  supabase:    ReturnType<typeof createServiceClient>,
+  applicantId: string,
+  columnId:    string,
+  labelId:     string
+) {
+  const { error } = await supabase
+    .from("board_cells")
+    .upsert(
+      {
+        applicant_id:          applicantId,
+        column_id:             columnId,
+        value_status_label_id: labelId,
+        value_text:            null,
+        value_number:          null,
+        value_date:            null,
+        value_file_path:       null,
+      },
+      { onConflict: "applicant_id,column_id" }
+    );
+
+  if (error) {
+    console.error("[fadv/process-queue] writeStatusLabelCell error (non-fatal):", error);
+  }
+}
+
 async function writeOutputCell(
-  supabase:    ReturnType<typeof makeServiceClient>,
+  supabase:    ReturnType<typeof createServiceClient>,
   applicantId: string,
   columnId:    string,
   value:       string

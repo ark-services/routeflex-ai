@@ -1,15 +1,9 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { QuizForm } from "./QuizForm";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function QuizPage({
   params,
@@ -17,7 +11,7 @@ export default async function QuizPage({
   params: Promise<{ token: string; moduleId: string }>;
 }) {
   const { token, moduleId } = await params;
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Load enrollment + module
   const { data: enrollment } = await svc

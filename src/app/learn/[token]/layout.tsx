@@ -1,14 +1,8 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function LearnLayout({
   children,
@@ -18,7 +12,7 @@ export default async function LearnLayout({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   const { data: enrollment } = await svc
     .from("lms_enrollments")

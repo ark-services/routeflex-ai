@@ -1,15 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Lock, Clock } from "lucide-react";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function ApplicantTrainingPage({
   params,
@@ -18,7 +12,7 @@ export default async function ApplicantTrainingPage({
 }) {
   const { companyId, applicantId } = await params;
   const supabase = await createClient();
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Verify applicant belongs to this company (RLS)
   const { data: applicant } = await supabase

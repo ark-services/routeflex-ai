@@ -486,34 +486,6 @@ async function callFadvCreateSubject(params: {
     await page.fill(SEL_LAST_NAME,  params.lastName);
     await page.fill(SEL_EMAIL,      params.email);
 
-    // ── DIAGNOSTIC: Log all frames and whether form selectors exist in each ──
-    try {
-      const frameDiag = await Promise.all(
-        page.frames().map(async (f) => {
-          const url = f.url();
-          const hasCspId = await f.evaluate((sel) => !!document.querySelector(sel), SEL_CSP_ID).catch(() => false);
-          const hasFirstName = await f.evaluate((sel) => !!document.querySelector(sel), SEL_FIRST_NAME).catch(() => false);
-          const cspDetails = hasCspId
-            ? await f.evaluate((sel) => {
-                const el = document.querySelector(sel) as HTMLSelectElement | null;
-                if (!el) return null;
-                return {
-                  disabled: el.disabled,
-                  hasDisabledAttr: el.hasAttribute("disabled"),
-                  optionCount: el.options.length,
-                  tagName: el.tagName,
-                };
-              }, SEL_CSP_ID).catch(() => null)
-            : null;
-          return { url, hasCspId, hasFirstName, cspDetails };
-        })
-      );
-      console.log("[callFadvCreateSubject] FRAME DIAG:", JSON.stringify(frameDiag, null, 2));
-    } catch (diagErr) {
-      console.warn("[callFadvCreateSubject] FRAME DIAG error:", diagErr);
-    }
-    // ── END DIAGNOSTIC ──────────────────────────────────────────────────────
-
     // Wait for each dropdown to be visible AND enabled before selecting.
     // GWT renders dropdowns disabled initially, then enables them after async data load.
     // page.selectOption() waits for the element to be editable (not disabled), so we

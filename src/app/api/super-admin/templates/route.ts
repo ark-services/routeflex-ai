@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
-
-function makeServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
 
 /**
  * GET /api/super-admin/templates
@@ -70,7 +62,7 @@ export async function DELETE(request: Request) {
     }
 
     // Use service-role client so the UPDATE is not subject to RLS.
-    const serviceClient = makeServiceClient();
+    const serviceClient = createServiceClient();
     const { error } = await serviceClient
       .from("templates")
       .update({ deleted_at: new Date().toISOString() })

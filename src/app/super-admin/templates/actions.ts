@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import type { TemplatePayload, TemplateForm } from "@/lib/types";
 
@@ -109,11 +109,7 @@ async function requireSuperAdmin() {
 }
 
 function makeServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  return createServiceClient();
 }
 
 // ─── Create ──────────────────────────────────────────────────────────────────

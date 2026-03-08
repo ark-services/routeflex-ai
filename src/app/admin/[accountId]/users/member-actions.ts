@@ -1,15 +1,9 @@
 "use server";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { requireAdmin } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 /** Changes the role of a membership. Only account admins can call this. */
 export async function changeMemberRole(
@@ -24,7 +18,7 @@ export async function changeMemberRole(
     return { error: "Invalid role" };
   }
 
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Confirm the membership actually belongs to this account
   const { data: membership, error: fetchError } = await svc
@@ -56,7 +50,7 @@ export async function removeMember(
 ): Promise<{ error?: string }> {
   await requireAdmin(accountId);
 
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Confirm the membership actually belongs to this account
   const { data: membership, error: fetchError } = await svc

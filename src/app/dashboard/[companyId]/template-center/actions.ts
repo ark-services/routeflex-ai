@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { TemplatePayload, TemplateColumn, TemplateForm } from "@/lib/types";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
@@ -769,11 +769,7 @@ export async function applyTemplate(
         const destPath = `${companyId}/${destForm.id}/${Date.now()}-${srcFilename}`;
 
         try {
-          const svcClient = createServiceClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!,
-            { auth: { autoRefreshToken: false, persistSession: false } }
-          );
+          const svcClient = createServiceClient();
 
           const { data: fileBlob, error: dlErr } = await svcClient.storage
             .from("logos")

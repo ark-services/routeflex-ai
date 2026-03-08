@@ -1,19 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 async function requireAdminMembership(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -149,7 +143,7 @@ export async function upsertSafetyTrainerConnection(
     if (!companyEntityId.trim())  return { success: false, error: "Company Entity ID is required" };
     if (!companyName.trim())      return { success: false, error: "Company Name is required" };
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     // Fetch existing row to know what's already stored
     const { data: existing } = await svcClient
@@ -257,7 +251,7 @@ export async function updateSafetyTrainerEnabled(
     if ("error" in authResult) return { success: false, error: authResult.error };
     const { userId } = authResult;
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     if (isEnabled) {
       const { data: row } = await svcClient
@@ -330,7 +324,7 @@ export async function deleteSafetyTrainerConnection(
     if ("error" in authResult) return { success: false, error: authResult.error };
     const { userId } = authResult;
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     const { error } = await svcClient
       .from("safety_trainer_connections")

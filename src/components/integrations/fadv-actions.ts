@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
@@ -9,12 +9,6 @@ import { performFadvLogin } from "@/lib/fadv/login";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 async function requireAdminMembership(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -132,7 +126,7 @@ export async function upsertFadvConnection(
       return { success: false, error: "Company ID is required" };
     }
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     // Fetch existing row to know what's already stored
     const { data: existing } = await svcClient
@@ -265,7 +259,7 @@ export async function updateFadvEnabled(
     if ("error" in authResult) return { success: false, error: authResult.error };
     const { userId } = authResult;
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     // Validate all required fields before allowing enable
     if (isEnabled) {
@@ -338,7 +332,7 @@ export async function deleteFadvConnection(
     if ("error" in authResult) return { success: false, error: authResult.error };
     const { userId } = authResult;
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     const { error } = await svcClient
       .from("fadv_connections")
@@ -383,7 +377,7 @@ export async function testFadvConnection(
     if ("error" in authResult) return { success: false, error: authResult.error };
     const { userId } = authResult;
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     const { data: connection } = await svcClient
       .from("fadv_connections")

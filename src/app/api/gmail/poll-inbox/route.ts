@@ -18,22 +18,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getGmailClientForCompany } from "@/lib/gmail-send";
 import { searchGmailMessages, getGmailMessage } from "@/lib/gmail-read";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
 export const maxDuration = 60;
-
-// ── Service-role client (bypasses RLS) ───────────────────────────────────────
-function makeServiceClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,7 +55,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const supabase = makeServiceClient();
+  const supabase = createServiceClient();
 
   // ── 1. Find all enabled automations with gmail.email_received trigger ──────
   const { data: automations, error: fetchError } = await supabase
@@ -133,7 +124,7 @@ export async function GET(request: NextRequest) {
 // ── processCompany ───────────────────────────────────────────────────────────
 
 async function processCompany(
-  supabase: ReturnType<typeof makeServiceClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   companyId: string,
   automations: AutomationRow[],
 ): Promise<{ messagesProcessed: number; triggersFireed: number }> {
@@ -365,7 +356,7 @@ interface ApplicantMatch {
  * Match by sender email → applicants.email
  */
 async function matchBySenderEmail(
-  supabase: ReturnType<typeof makeServiceClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   companyId: string,
   jobId: string,
   senderEmail: string,
@@ -402,7 +393,7 @@ async function matchBySenderEmail(
  * Match by extracted value → board_cells.value_text for a specific column
  */
 async function matchByColumnValue(
-  supabase: ReturnType<typeof makeServiceClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   companyId: string,
   columnId: string,
   value: string,
@@ -435,7 +426,7 @@ async function matchByColumnValue(
  * This is the FADV Applicant ID matching path.
  */
 async function matchByExternalReference(
-  supabase: ReturnType<typeof makeServiceClient>,
+  supabase: ReturnType<typeof createServiceClient>,
   companyId: string,
   externalRef: string,
 ): Promise<ApplicantMatch | null> {

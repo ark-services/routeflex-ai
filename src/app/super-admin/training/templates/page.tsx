@@ -1,13 +1,7 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import Link from "next/link";
 import { Plus, Eye, EyeOff, BookOpen } from "lucide-react";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 const CARRIER_LABELS: Record<string, string> = {
   fedex_pd: "FedEx P&D",
@@ -17,7 +11,7 @@ const CARRIER_LABELS: Record<string, string> = {
 };
 
 export default async function TrainingTemplatesPage() {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const { data: templates, error } = await svc
     .from("lms_course_templates")
     .select("id, name, description, carrier_type, is_published, created_at")

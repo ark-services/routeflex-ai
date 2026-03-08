@@ -1,17 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
-
-/**
- * Service-role client that bypasses RLS.
- * Used for all write operations and the 409 recovery fetch so that
- * is_company_member() edge-cases never block board creation.
- */
-function getSvc(): SupabaseClient {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
+import { createServiceClient } from "@/lib/supabase/service";
 
 type GroupConfig = {
   name: string;
@@ -76,7 +64,7 @@ export async function getOrCreateApplicantsBoard(
 ): Promise<GetOrCreateBoardResult> {
   const groupsToUse = customGroups || DEFAULT_GROUPS;
   // Service-role client for writes + recovery fetches (bypasses RLS)
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   try {
     console.log(

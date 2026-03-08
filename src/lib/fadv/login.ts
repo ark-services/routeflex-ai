@@ -576,19 +576,6 @@ export async function doLoginSteps(
     console.log("[doLoginSteps] Step 1: main page URL after login (settled):", urlAfterLogin);
     console.log("[doLoginSteps] Step 1: iframe URL after login:             ", iframeUrlAfterLogin);
 
-    // ── Diagnostic dump — remove after debugging ──────────────────────────────
-    const diagDump = await page.evaluate(() => {
-      const iframe = document.getElementById("new-login-iframe") as HTMLIFrameElement | null;
-      const bodyText = (document.body?.innerText || "").slice(0, 1000);
-      return {
-        iframeSrc:   iframe?.src ?? "(no iframe)",
-        iframeName:  iframe?.name ?? "(no name)",
-        iframeId:    iframe?.id ?? "(no id)",
-        bodyPreview: bodyText,
-      };
-    }).catch((e: unknown) => ({ error: String(e) }));
-    console.log("[doLoginSteps] DIAG DUMP:", JSON.stringify(diagDump, null, 2));
-
     // ── Session Override re-check (post-stabilisation) ────────────────────────
     // If loginOutcome was "navigated" (a brief intermediate redirect fired
     // waitForURL before the session-override iframe src was set), the page may

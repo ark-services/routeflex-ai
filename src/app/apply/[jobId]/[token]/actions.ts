@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { uploadResume } from "@/lib/storage/resumeUpload";
 import { getOrCreateApplicantsBoard, type BoardGroup } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { revalidatePath } from "next/cache";
@@ -21,19 +21,7 @@ export async function submitApplication(
   filePaths: Record<string, string> = {}
 ) {
   // Create service role client (bypasses RLS)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  if (!supabaseServiceKey) {
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY not configured");
-  }
-
-  const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  const supabase = createServiceClient();
 
   // Log FormData entries for debugging (mask sensitive values)
   const formDataEntries = Array.from(formData.entries()).map(([key, value]) => {

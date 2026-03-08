@@ -1,16 +1,10 @@
 "use server";
 
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 async function assertSuperAdmin() {
   const supabase = await createClient();
@@ -28,7 +22,7 @@ export async function createCourseTemplate(input: {
   carrier_type?: string;
 }) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
   const { data, error } = await svc
     .from("lms_course_templates")
     .insert({
@@ -54,7 +48,7 @@ export async function updateCourseTemplate(
   }
 ) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
   const update: Record<string, any> = {};
   if (input.name !== undefined) update.name = input.name.trim();
   if (input.description !== undefined) update.description = input.description.trim() || null;
@@ -71,7 +65,7 @@ export async function updateCourseTemplate(
 
 export async function deleteCourseTemplate(templateId: string) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
   const { error } = await svc
     .from("lms_course_templates")
     .delete()
@@ -87,7 +81,7 @@ export async function createTemplateModule(
   input: { title: string; content?: string; is_final_exam?: boolean }
 ) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
 
   // Get max sort_order
   const { data: existing } = await svc
@@ -120,7 +114,7 @@ export async function updateTemplateModule(
   input: { title?: string; content?: string; is_final_exam?: boolean }
 ) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
   const update: Record<string, any> = {};
   if (input.title !== undefined) update.title = input.title.trim();
   if (input.content !== undefined) update.content = input.content;
@@ -136,7 +130,7 @@ export async function updateTemplateModule(
 
 export async function deleteTemplateModule(moduleId: string, templateId: string) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
   const { error } = await svc
     .from("lms_template_modules")
     .delete()
@@ -157,7 +151,7 @@ export async function createTemplateQuestion(
   }
 ) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
 
   const { data: existing } = await svc
     .from("lms_template_questions")
@@ -194,7 +188,7 @@ export async function updateTemplateQuestion(
   }
 ) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
   const update: Record<string, any> = {};
   if (input.question_text !== undefined) update.question_text = input.question_text.trim();
   if (input.options !== undefined) update.options = input.options;
@@ -213,7 +207,7 @@ export async function deleteTemplateQuestion(
   templateId: string
 ) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
   const { error } = await svc
     .from("lms_template_questions")
     .delete()
@@ -232,7 +226,7 @@ export async function createTemplateQuestionsBulk(
   }>
 ) {
   await assertSuperAdmin();
-  const svc = getServiceClient();
+  const svc = createServiceClient();
 
   const { data: existing } = await svc
     .from("lms_template_questions")

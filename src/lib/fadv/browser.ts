@@ -169,13 +169,3 @@ function patchClose(context: BrowserContext, browser: import("playwright-core").
     await browser.close().catch(() => {});
   };
 }
-
-// ---------------------------------------------------------------------------
-// Back-compat shim
-// ---------------------------------------------------------------------------
-/** @deprecated Use launchFadvContext instead. */
-export async function launchFadvBrowser(): Promise<never> {
-  throw new Error(
-    "launchFadvBrowser is deprecated — use launchFadvContext(clientId) instead"
-  );
-}

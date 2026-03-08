@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { assertCompanyAccess } from "@/lib/rbac";
-import { fireTrigger } from "@/lib/automations/fire";
+import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 import { AutomationActionType } from "@/lib/automations/actionTypes";
 
 function dashPath(companyId: string) {
@@ -149,8 +149,14 @@ export async function testFireAutomation(
   await assertCompanyAccess(companyId);
   const supabase = await createClient();
 
-  await fireTrigger(supabase, {
+  const jobId = input.payload?.job_id;
+  if (!jobId) {
+    throw new Error("payload.job_id is required for test-firing automations");
+  }
+
+  await fireJobTrigger(supabase, {
     companyId,
+    jobId,
     trigger_key: input.trigger_key,
     subject_type: input.subject_type,
     subject_id: input.subject_id,

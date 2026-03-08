@@ -1,19 +1,13 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 function maskSid(sid: string): string {
   if (sid.length <= 8) return "AC••••••••";
@@ -120,7 +114,7 @@ export async function upsertTwilioConnection(
       };
     }
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     // Check for existing row to determine event type
     const { data: existing } = await svcClient
@@ -215,7 +209,7 @@ export async function updateTwilioEnabled(
       return { success: false, error: "Forbidden" };
     }
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     const { error } = await svcClient
       .from("twilio_connections")
@@ -271,7 +265,7 @@ export async function deleteTwilioConnection(
       return { success: false, error: "Forbidden" };
     }
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     const { error } = await svcClient
       .from("twilio_connections")
@@ -334,7 +328,7 @@ export async function sendTwilioTestSms(
       };
     }
 
-    const svcClient = getServiceClient();
+    const svcClient = createServiceClient();
 
     // Fetch encrypted credentials — never expose to client
     const { data: connection } = await svcClient

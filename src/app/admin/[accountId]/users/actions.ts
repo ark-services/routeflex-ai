@@ -1,16 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { requireAdmin } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 /** Returns the active invite link token for a given role, creating one if needed. */
 export async function getOrCreateInviteLink(
@@ -18,7 +12,7 @@ export async function getOrCreateInviteLink(
   role: string = "member"
 ): Promise<{ token: string }> {
   await requireAdmin(accountId);
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Try to find an existing active link for this role
   const { data: existing } = await svc
@@ -56,7 +50,7 @@ export async function regenerateInviteLink(
   role: string = "member"
 ): Promise<{ token: string }> {
   await requireAdmin(accountId);
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Revoke existing
   await svc
@@ -89,7 +83,7 @@ export async function sendEmailInvites(
   role: string
 ): Promise<{ results: { email: string; success?: boolean; error?: string }[] }> {
   await requireAdmin(accountId);
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   const {
     data: { user },

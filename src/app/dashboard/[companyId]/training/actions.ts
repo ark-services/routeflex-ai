@@ -1,15 +1,9 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { revalidatePath } from "next/cache";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 async function assertCompanyMember(companyId: string) {
   const supabase = await createClient();
@@ -72,7 +66,7 @@ export async function updateCourse(
 
 export async function deleteCourse(companyId: string, courseId: string) {
   // Use service role to force-delete (cascades to modules/questions)
-  const svc = getSvc();
+  const svc = createServiceClient();
   // But first verify the course belongs to this company using the user session
   const supabase = await createClient();
   const { data } = await supabase
@@ -104,7 +98,7 @@ export async function cloneCourseFromTemplate(
   companyId: string,
   templateId: string
 ): Promise<string> {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
 
   // Verify user can access this company
@@ -180,7 +174,7 @@ export async function createModule(
   courseId: string,
   input: { title: string; content?: string; is_final_exam?: boolean }
 ) {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   // Verify ownership
   const { data: course } = await supabase
@@ -221,7 +215,7 @@ export async function updateModule(
   moduleId: string,
   input: { title?: string; content?: string }
 ) {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   const { data: course } = await supabase
     .from("lms_courses")
@@ -241,7 +235,7 @@ export async function updateModule(
 }
 
 export async function deleteModule(companyId: string, courseId: string, moduleId: string) {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   const { data: course } = await supabase
     .from("lms_courses")
@@ -267,7 +261,7 @@ export async function createQuestion(
     correct_option_id: string;
   }
 ) {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   const { data: course } = await supabase
     .from("lms_courses")
@@ -312,7 +306,7 @@ export async function updateQuestion(
     correct_option_id?: string;
   }
 ) {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   const { data: course } = await supabase
     .from("lms_courses")
@@ -337,7 +331,7 @@ export async function deleteQuestion(
   moduleId: string,
   questionId: string
 ) {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   const { data: course } = await supabase
     .from("lms_courses")
@@ -361,7 +355,7 @@ export async function createQuestionsBulk(
     correct_option_id: string;
   }>
 ) {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
   const { data: course } = await supabase
     .from("lms_courses")
@@ -412,7 +406,7 @@ export async function getUnenrolledApplicants(
   companyId: string,
   courseId: string
 ): Promise<Array<{ id: string; full_name: string; email: string | null; jobs: { title: string } | null }>> {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
 
   // RLS check — user must have access to this company
@@ -538,7 +532,7 @@ export async function enrollApplicant(
   courseId: string,
   applicantId: string
 ): Promise<{ token: string }> {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
 
   // Verify course belongs to this company (RLS)
@@ -602,7 +596,7 @@ export async function sendTrainingEmail(
   applicantId: string,
   token: string
 ): Promise<{ sent: boolean; error?: string }> {
-  const svc = getSvc();
+  const svc = createServiceClient();
   const supabase = await createClient();
 
   // Fetch applicant with job_id so we can resolve email/name from board cells

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { uploadBoardFile } from '@/lib/storage/fileUpload';
 
 /**
@@ -85,23 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create service role client for storage operations
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    if (!supabaseServiceKey) {
-      console.error('[Board File Upload API] Service role key not configured');
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      );
-    }
-
-    const serviceClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const serviceClient = createServiceClient();
 
     // Upload file using service role client
     const uploadResult = await uploadBoardFile(

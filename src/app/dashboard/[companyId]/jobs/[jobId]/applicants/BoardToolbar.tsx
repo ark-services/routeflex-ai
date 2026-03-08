@@ -210,18 +210,6 @@ export function BoardToolbar({
         {/* Board-level actions — right-aligned, compact */}
         <div className="flex items-center gap-2 shrink-0">
 
-          {/* Save as Template — super admin only */}
-          {isSuperAdmin && (
-            <button
-              onClick={() => setSaveAsTemplateOpen(true)}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-rf-border bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:border-rf-ink-100 text-sm font-medium transition-colors"
-              title="Save this job's layout as a template (Super Admin)"
-            >
-              <BookTemplate className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Save as Template…</span>
-            </button>
-          )}
-
           {/* Integrate */}
           <a
             href={integrationHref}
@@ -261,6 +249,15 @@ export function BoardToolbar({
                 ref={moreMenuRef}
                 className="absolute right-0 top-full mt-1 w-48 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg z-50 py-1"
               >
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => { setMoreOpen(false); setSaveAsTemplateOpen(true); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
+                  >
+                    <BookTemplate className="h-4 w-4 text-rf-text-secondary" />
+                    Save as Template…
+                  </button>
+                )}
                 {onOpenDefaultValues && (
                   <button
                     onClick={() => { setMoreOpen(false); onOpenDefaultValues(); }}

@@ -1,15 +1,9 @@
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { AcceptInviteClient } from "./AcceptInviteClient";
 import { Card } from "@/components/ui/card";
 
-function getSvc() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function InvitePage({
   params,
@@ -17,7 +11,7 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const svc = getSvc();
+  const svc = createServiceClient();
 
   // Look up invite link info — SECURITY DEFINER so it works unauthenticated
   const { data: info } = await svc.rpc("get_invite_link_info", { p_token: token });

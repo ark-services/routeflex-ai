@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import PublicApplicationForm from "./PublicApplicationForm";
 
 export default async function PublicApplicationPage({
@@ -41,11 +41,7 @@ export default async function PublicApplicationPage({
   // (unauthenticated) users cannot call createSignedUrl on a private bucket.
   let logoSignedUrl = "";
   if (logoPath) {
-    const serviceSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const serviceSupabase = createServiceClient();
     const { data: signed } = await serviceSupabase.storage
       .from("logos")
       .createSignedUrl(logoPath, 3600);

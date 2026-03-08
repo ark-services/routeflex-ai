@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -31,19 +31,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
  *   fieldKey — form field key (used in the storage path for organisation)
  */
 export async function POST(req: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-  if (!supabaseServiceKey) {
-    return NextResponse.json(
-      { error: "Server configuration error" },
-      { status: 500 }
-    );
-  }
-
-  const supabase = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = createServiceClient();
 
   let formData: FormData;
   try {
