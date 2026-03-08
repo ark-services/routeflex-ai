@@ -1443,6 +1443,19 @@ function ActionEditor({
                 placeholder="output column"
               />
             </div>
+
+            {/* Subject ID column (optional) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-500 w-28 shrink-0">Applicant ID to</span>
+              <ColumnPicker
+                columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
+                selectedId={action.config.subject_id_column_id}
+                onSelect={(id) =>
+                  onChange({ config: { ...action.config, subject_id_column_id: id } })
+                }
+                placeholder="column (optional)"
+              />
+            </div>
           </div>
         )}
 

@@ -2144,6 +2144,7 @@ async function executeFadvAddSubject(
     last_name_column_id,
     email_column_id,
     output_column_id,
+    subject_id_column_id,
   } = config;
 
   const applicantId: string | undefined = payload.applicant_id || payload.subject_id;
@@ -2156,6 +2157,7 @@ async function executeFadvAddSubject(
     last_name_column_id,
     email_column_id,
     output_column_id,
+    subject_id_column_id,
     applicantId,
     companyId,
     jobId,
@@ -2295,7 +2297,8 @@ async function executeFadvAddSubject(
         ...(lastNameVal  && { last_name:  lastNameVal  }),
         ...(emailVal     && { email:      emailVal     }),
       },
-      output_column_id: output_column_id ?? null,
+      output_column_id:     output_column_id     ?? null,
+      subject_id_column_id: subject_id_column_id ?? null,
     })
     .select('id')
     .single();

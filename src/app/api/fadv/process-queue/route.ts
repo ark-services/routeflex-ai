@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
 // ── processFadvSubmission ─────────────────────────────────────────────────────
 
 async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClient>, submission: any) {
-  const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id } = submission;
+  const { id, company_id, applicant_id, job_id, input_snapshot, output_column_id, subject_id_column_id } = submission;
 
   console.log("[fadv/process-queue] Processing submission:", {
     id,
@@ -339,6 +339,11 @@ async function processFadvSubmission(supabase: ReturnType<typeof makeServiceClie
 
     if (output_column_id) {
       await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+    }
+
+    // Write the FADV Applicant ID to its dedicated column (if configured)
+    if (subject_id_column_id && fadvResult.subjectId) {
+      await writeOutputCell(supabase, applicant_id, subject_id_column_id, fadvResult.subjectId);
     }
 
     await logActivityEvent(supabase, {
