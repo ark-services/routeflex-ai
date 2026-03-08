@@ -1197,15 +1197,26 @@ export default function ApplicantsBoard({
           }
         } catch {}
       }
-      // Bare path only (no metadata) — synthesize a minimal StoredFile
+      // Bare path only (no metadata) — synthesize a minimal StoredFile.
+      // Board file-cell uploads always persist full JSON in value_text, so this
+      // branch is only reached for application-form uploads (→ "resumes" bucket).
+      // Infer MIME type from the file extension so the viewer can show a preview.
       if (cell.value_file_path) {
         const name = cell.value_file_path.split("/").pop() || "File";
+        const ext = name.split(".").pop()?.toLowerCase() ?? "";
+        const MIME_MAP: Record<string, string> = {
+          jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+          gif: "image/gif", webp: "image/webp", heic: "image/heic", heif: "image/heif",
+          pdf: "application/pdf",
+          doc: "application/msword",
+          docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        };
         return [{
           id: cell.value_file_path,
           name,
           path: cell.value_file_path,
-          bucket: "files",
-          type: "",
+          bucket: "resumes",
+          type: MIME_MAP[ext] ?? "",
           size: 0,
           createdAt: new Date().toISOString(),
         }] as StoredFile[];
