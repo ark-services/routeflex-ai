@@ -41,13 +41,20 @@ export async function uploadResume(
   const allowedTypes = [
     "application/pdf",
     "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/heic",
+    "image/heif",
   ];
 
   if (!allowedTypes.includes(file.type)) {
     return {
       success: false,
-      error: "Invalid file type. Only PDF and Word documents are allowed."
+      error: "Invalid file type. Allowed: PDF, Word documents, and images (JPG, PNG, GIF, WebP, HEIC)."
     };
   }
 
