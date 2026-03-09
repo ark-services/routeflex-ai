@@ -20,8 +20,6 @@ export default async function StatusPortalLayout({
     .select(`
       id,
       full_name,
-      token_expires_at,
-      token_revoked_at,
       jobs (
         title,
         companies (
@@ -35,10 +33,21 @@ export default async function StatusPortalLayout({
 
   if (!applicant) notFound();
 
-  const tokenError = checkTokenValidity(
-    (applicant as any).token_expires_at,
-    (applicant as any).token_revoked_at
-  );
+  // Token expiry columns added in migration 00102 — query separately so the
+  // main applicant lookup never fails if the migration hasn't been applied yet.
+  let tokenError: string | null = null;
+  const { data: tokenInfo, error: tokenQueryError } = await svc
+    .from("applicants")
+    .select("token_expires_at, token_revoked_at")
+    .eq("id", applicant.id)
+    .single();
+
+  if (!tokenQueryError && tokenInfo) {
+    tokenError = checkTokenValidity(
+      (tokenInfo as any).token_expires_at,
+      (tokenInfo as any).token_revoked_at
+    );
+  }
 
   if (tokenError) {
     return (
