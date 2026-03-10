@@ -257,8 +257,6 @@ async function processCompany(
         } catch (regexErr) {
           console.warn(`[gmail/poll-inbox] Invalid regex in automation ${automation.id}:`, regexErr);
         }
-      }
-
       } else if (config.match_applicant_by === "subject_name") {
         const result = await matchBySubjectName(
           supabase,
