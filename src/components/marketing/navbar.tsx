@@ -24,23 +24,23 @@ export function MarketingNavbar() {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-rf-surface-card/95 backdrop-blur-sm border-b border-rf-border shadow-rf-sm"
+          ? "bg-rf-surface-card/95 backdrop-blur-md border-b border-rf-border shadow-rf-sm"
           : "bg-transparent"
       }`}
     >
-      <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 flex items-center justify-between h-[72px]">
         {/* Logo */}
-        <Link href="/">
+        <Link href="/" className="relative z-10">
           <RouteFlexLogo size="nav" />
         </Link>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* Desktop nav — centered */}
+        <div className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-semibold text-rf-text-secondary hover:text-rf-text-primary transition-colors"
+              className="relative text-sm font-semibold text-rf-text-secondary hover:text-rf-text-primary transition-colors px-4 py-2 rounded-rf-md hover:bg-rf-ink-100/50"
             >
               {link.label}
             </Link>
@@ -48,16 +48,16 @@ export function MarketingNavbar() {
         </div>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2 relative z-10">
           <Link
             href="/login"
-            className="text-sm font-semibold text-rf-text-secondary hover:text-rf-text-primary transition-colors px-3 py-2"
+            className="text-sm font-semibold text-rf-text-secondary hover:text-rf-text-primary transition-colors px-4 py-2 rounded-rf-md hover:bg-rf-ink-100/50"
           >
             Log in
           </Link>
           <Link
             href="/signup"
-            className="text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-4 py-2 rounded-rf-md transition-colors"
+            className="text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-5 py-2.5 rounded-rf-lg transition-all shadow-rf-sm hover:shadow-rf-md"
           >
             Get Started
           </Link>
@@ -65,11 +65,15 @@ export function MarketingNavbar() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden p-2 text-rf-text-secondary hover:text-rf-text-primary transition-colors"
+          className="md:hidden p-2 text-rf-text-secondary hover:text-rf-text-primary transition-colors relative z-10"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
         >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {mobileOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
         </button>
       </div>
 

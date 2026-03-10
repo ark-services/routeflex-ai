@@ -18,13 +18,13 @@ const footerLinks = {
 
 export function MarketingFooter() {
   return (
-    <footer className="bg-rf-ink-900">
-      <div className="max-w-6xl mx-auto px-6 py-16">
+    <footer className="bg-[#0F1623]">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
             <RouteFlexLogo size="nav" />
-            <p className="mt-4 text-sm text-rf-ink-300 leading-relaxed">
+            <p className="mt-4 text-sm text-[#9BAABB] leading-relaxed">
               The recruiting platform built for FedEx Ground contractors.
             </p>
           </div>
@@ -32,7 +32,7 @@ export function MarketingFooter() {
           {/* Link columns */}
           {Object.entries(footerLinks).map(([heading, links]) => (
             <div key={heading}>
-              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-rf-ink-300 mb-4">
+              <h4 className="text-xs font-bold uppercase tracking-[0.2em] text-[#4A5568] mb-4">
                 {heading}
               </h4>
               <ul className="space-y-2.5">
@@ -40,7 +40,7 @@ export function MarketingFooter() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-rf-ink-300 hover:text-white transition-colors"
+                      className="text-sm text-[#9BAABB] hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -52,8 +52,8 @@ export function MarketingFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-rf-ink-700 pt-8 mt-12">
-          <p className="text-sm text-rf-ink-300">
+        <div className="border-t border-[#2A3347] pt-8 mt-12">
+          <p className="text-sm text-[#4A5568]">
             &copy; {new Date().getFullYear()} RouteFlex. All rights reserved.
           </p>
         </div>
