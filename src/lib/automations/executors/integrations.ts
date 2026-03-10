@@ -143,21 +143,19 @@ export async function executeFadvAddSubject(
     return { success: true };
   }
 
-  // ── Idempotency: skip if already successfully submitted WITH a Profile ID ───
-  // Require external_reference to be non-null: a success row without a Profile
-  // ID may be a false-positive (e.g. a session-expired GWT dialog was mistaken
-  // for the confirmation modal). Those rows should be retried.
+  // ── Idempotency: skip if already successfully submitted ─────────────────────
   const { data: existing } = await supabase
     .from('integration_submissions')
     .select('id, external_reference')
     .eq('applicant_id', applicantId)
     .eq('provider', 'fadv')
     .eq('status', 'success')
-    .not('external_reference', 'is', null)
     .maybeSingle();
 
   if (existing) {
-    const msg = `FADV already submitted (ID: ${existing.external_reference})`;
+    const msg = existing.external_reference
+      ? `FADV already submitted (ID: ${existing.external_reference})`
+      : 'FADV already submitted';
     console.log('[executeFadvAddSubject] Skipping — already submitted:', existing.id);
     await writeOutput(msg);
     return { success: true };
