@@ -26,9 +26,9 @@ function getStatusIcon(status: string) {
     case "failed":
       return <XCircle className="w-4 h-4 text-rf-danger flex-shrink-0" />;
     case "skipped":
-      return <MinusCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />;
+      return <MinusCircle className="w-4 h-4 text-rf-text-muted flex-shrink-0" />;
     default:
-      return <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />;
+      return <Clock className="w-4 h-4 text-rf-text-muted flex-shrink-0" />;
   }
 }
 
@@ -39,9 +39,9 @@ function getStatusColor(status: string) {
     case "failed":
       return "bg-rf-danger-bg text-red-700 border-red-200";
     case "skipped":
-      return "bg-gray-50 text-gray-600 border-gray-200";
+      return "bg-rf-surface-page text-rf-text-secondary border-rf-border";
     default:
-      return "bg-gray-50 text-gray-600 border-gray-200";
+      return "bg-rf-surface-page text-rf-text-secondary border-rf-border";
   }
 }
 
@@ -109,17 +109,17 @@ export function AutomationRunHistoryPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-rf-border flex-shrink-0">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">Run History</h3>
+          <h3 className="text-sm font-semibold text-rf-ink-900">Run History</h3>
           {!loading && (
-            <p className="text-xs text-gray-500 mt-0.5">Last {runs.length} runs</p>
+            <p className="text-xs text-rf-text-muted mt-0.5">Last {runs.length} runs</p>
           )}
         </div>
         <button
           onClick={load}
           disabled={loading}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 disabled:opacity-40"
+          className="p-1.5 hover:bg-rf-ink-100 rounded-lg transition-colors text-rf-text-muted disabled:opacity-40"
           title="Refresh"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -131,29 +131,29 @@ export function AutomationRunHistoryPanel({
         {loading ? (
           <div className="p-4 space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="animate-pulse flex items-start gap-2 p-2 rounded-lg bg-gray-50">
-                <div className="w-4 h-4 rounded-full bg-gray-200 mt-0.5 flex-shrink-0" />
+              <div key={i} className="animate-pulse flex items-start gap-2 p-2 rounded-lg bg-rf-surface-page">
+                <div className="w-4 h-4 rounded-full bg-rf-ink-100 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 space-y-1.5">
-                  <div className="h-3 bg-gray-200 rounded w-3/4" />
-                  <div className="h-2.5 bg-gray-200 rounded w-1/2" />
+                  <div className="h-3 bg-rf-ink-100 rounded w-3/4" />
+                  <div className="h-2.5 bg-rf-ink-100 rounded w-1/2" />
                 </div>
               </div>
             ))}
           </div>
         ) : runs.length === 0 ? (
           <div className="p-6 text-center">
-            <Clock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-            <p className="text-sm text-gray-500 font-medium">No runs yet</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <Clock className="w-8 h-8 mx-auto text-rf-text-muted mb-2" />
+            <p className="text-sm text-rf-text-muted font-medium">No runs yet</p>
+            <p className="text-xs text-rf-text-muted mt-1">
               This automation hasn't been triggered
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-rf-border">
             {runs.map((run) => {
               const isExpanded = expandedRuns.has(run.id);
               return (
-                <div key={run.id} className="hover:bg-gray-50/70 transition-colors">
+                <div key={run.id} className="hover:bg-rf-surface-page/70 transition-colors">
                   <button
                     onClick={() => toggleExpanded(run.id)}
                     className="w-full text-left p-3"
@@ -169,21 +169,21 @@ export function AutomationRunHistoryPanel({
                               {run.status}
                             </span>
                             {run.duration_ms !== undefined && (
-                              <span className="text-xs text-gray-400">{run.duration_ms}ms</span>
+                              <span className="text-xs text-rf-text-muted">{run.duration_ms}ms</span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">{timeAgo(run.created_at)}</p>
+                          <p className="text-xs text-rf-text-muted mt-1">{timeAgo(run.created_at)}</p>
                           {run.actions_attempted !== undefined && (
-                            <p className="text-xs text-gray-600 mt-0.5">
+                            <p className="text-xs text-rf-text-secondary mt-0.5">
                               {run.actions_succeeded}/{run.actions_attempted} actions
                             </p>
                           )}
                         </div>
                       </div>
                       {isExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <ChevronDown className="w-3.5 h-3.5 text-rf-text-muted flex-shrink-0 mt-0.5" />
                       ) : (
-                        <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <ChevronRight className="w-3.5 h-3.5 text-rf-text-muted flex-shrink-0 mt-0.5" />
                       )}
                     </div>
                   </button>
@@ -192,8 +192,8 @@ export function AutomationRunHistoryPanel({
                     <div className="px-3 pb-3 pl-9 space-y-2">
                       {run.skip_reason && (
                         <div className="text-xs">
-                          <p className="font-medium text-gray-700">Skip Reason:</p>
-                          <p className="text-gray-600 mt-1 bg-gray-50 p-2 rounded">
+                          <p className="font-medium text-rf-ink-700">Skip Reason:</p>
+                          <p className="text-rf-text-secondary mt-1 bg-rf-surface-page p-2 rounded">
                             {run.skip_reason}
                           </p>
                         </div>
@@ -210,7 +210,7 @@ export function AutomationRunHistoryPanel({
 
                       {run.action_results && run.action_results.length > 0 && (
                         <div className="text-xs">
-                          <p className="font-medium text-gray-700 mb-1.5">Actions:</p>
+                          <p className="font-medium text-rf-ink-700 mb-1.5">Actions:</p>
                           <div className="space-y-1">
                             {run.action_results.map((result: any, idx: number) => (
                               <div
@@ -238,10 +238,10 @@ export function AutomationRunHistoryPanel({
 
                       {run.payload && (
                         <details className="text-xs">
-                          <summary className="font-medium text-gray-700 cursor-pointer">
+                          <summary className="font-medium text-rf-ink-700 cursor-pointer">
                             ▶ Payload
                           </summary>
-                          <pre className="mt-1 bg-gray-50 p-2 rounded overflow-x-auto text-xs leading-relaxed">
+                          <pre className="mt-1 bg-rf-surface-page p-2 rounded overflow-x-auto text-xs leading-relaxed">
                             {JSON.stringify(run.payload, null, 2)}
                           </pre>
                         </details>

@@ -50,10 +50,10 @@ export default function SettingsPanel({
   };
 
   return (
-    <div className="w-80 bg-rf-surface-card border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
+    <div className="w-80 bg-rf-surface-card border-l border-rf-border flex flex-col overflow-hidden flex-shrink-0">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
-        <h3 className="text-base font-semibold text-gray-900">Settings</h3>
+      <div className="px-6 py-4 border-b border-rf-border flex-shrink-0">
+        <h3 className="text-base font-semibold text-rf-ink-900">Settings</h3>
       </div>
 
       {/* Scrollable Content */}
@@ -61,12 +61,12 @@ export default function SettingsPanel({
 
         {/* Form Tags */}
         <section>
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+          <h4 className="text-xs font-semibold text-rf-text-muted uppercase tracking-wider mb-1">
             Form Tags
           </h4>
-          <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+          <p className="text-xs text-rf-text-muted mb-3 leading-relaxed">
             Add tracking parameters (e.g.{" "}
-            <code className="bg-gray-100 px-1 rounded text-gray-700">utm_source=google</code>)
+            <code className="bg-rf-ink-100 px-1 rounded text-rf-ink-700">utm_source=google</code>)
             that will be appended to the copied form link.
           </p>
 
@@ -106,7 +106,7 @@ export default function SettingsPanel({
                 }
               }}
               placeholder="utm_source=google"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-rf-blue focus:border-rf-blue"
+              className="flex-1 px-3 py-2 border border-rf-border rounded-lg text-sm focus:ring-2 focus:ring-rf-blue focus:border-rf-blue"
             />
             <button
               onClick={handleAddTag}
@@ -121,7 +121,7 @@ export default function SettingsPanel({
           <button
             onClick={handleCopyLinkWithTags}
             disabled={!publicUrl}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors disabled:opacity-40"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-rf-border text-sm text-rf-ink-700 rounded-lg hover:bg-rf-surface-page font-medium transition-colors disabled:opacity-40"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -135,7 +135,7 @@ export default function SettingsPanel({
           </button>
 
           {formSettings.tags.length > 0 && publicUrl && (
-            <p className="mt-2 text-xs text-gray-400 break-all leading-relaxed">
+            <p className="mt-2 text-xs text-rf-text-muted break-all leading-relaxed">
               {publicUrl}?{formSettings.tags.join("&")}
             </p>
           )}
@@ -143,14 +143,14 @@ export default function SettingsPanel({
 
         {/* Sync Setting */}
         <section>
-          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          <h4 className="text-xs font-semibold text-rf-text-muted uppercase tracking-wider mb-3">
             Column Sync
           </h4>
           <label className="flex items-start gap-3 cursor-pointer" onClick={handleSyncToggle}>
             <div className="flex-shrink-0 mt-0.5">
               <div
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  formSettings.syncQuestions ? "bg-rf-blue" : "bg-gray-300"
+                  formSettings.syncQuestions ? "bg-rf-blue" : "bg-rf-ink-100"
                 }`}
               >
                 <span
@@ -161,10 +161,10 @@ export default function SettingsPanel({
               </div>
             </div>
             <div>
-              <div className="text-sm font-medium text-gray-900">
+              <div className="text-sm font-medium text-rf-ink-900">
                 Sync questions and column titles
               </div>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+              <p className="text-xs text-rf-text-muted mt-1 leading-relaxed">
                 When enabled, renaming a question also updates the matching
                 column title in the Applicants Board.
               </p>

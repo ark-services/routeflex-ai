@@ -19,16 +19,16 @@ function ErrorPanel({
   showDetails?: boolean;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-rf-surface-page flex items-center justify-center p-4">
       <div className="bg-rf-surface-card rounded-lg shadow-md p-8 max-w-md w-full">
         <h1 className="text-2xl font-bold text-rf-danger mb-4">{title}</h1>
-        <p className="text-gray-700 mb-4">{message}</p>
+        <p className="text-rf-ink-700 mb-4">{message}</p>
         {showDetails && technicalDetails && (
           <details className="mt-4">
-            <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+            <summary className="text-sm text-rf-text-muted cursor-pointer hover:text-rf-ink-700">
               Show technical details
             </summary>
-            <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
+            <pre className="mt-2 text-xs bg-rf-ink-100 p-2 rounded overflow-auto">
               {technicalDetails}
             </pre>
           </details>

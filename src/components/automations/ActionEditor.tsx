@@ -82,7 +82,7 @@ export function ActionEditor({
           onClick={onRemove}
           className="p-1 hover:bg-rf-success-bg rounded flex-shrink-0"
         >
-          <X className="w-3.5 h-3.5 text-gray-500" />
+          <X className="w-3.5 h-3.5 text-rf-text-muted" />
         </button>
       </div>
 
@@ -202,20 +202,20 @@ export function ActionEditor({
               value={action.config.webhook_url || ""}
               onChange={(e) => onChange({ config: { ...action.config, webhook_url: e.target.value } })}
               placeholder="Slack webhook URL"
-              className="w-full px-3 py-2 border border-gray-300 rounded bg-white"
+              className="w-full px-3 py-2 border border-rf-border rounded bg-rf-surface-card"
             />
             <textarea
               value={action.config.message || ""}
               onChange={(e) => onChange({ config: { ...action.config, message: e.target.value } })}
               placeholder="Message (use {{applicant_id}} for variables)"
-              className="w-full px-3 py-2 border border-gray-300 rounded bg-white"
+              className="w-full px-3 py-2 border border-rf-border rounded bg-rf-surface-card"
               rows={2}
             />
           </div>
         )}
 
         {action.type === "send_email" && (
-          <span className="text-gray-500 text-sm">(Email integration stub - configure in code)</span>
+          <span className="text-rf-text-muted text-sm">(Email integration stub - configure in code)</span>
         )}
 
         {action.type === "email_gmail" && (
@@ -298,7 +298,7 @@ export function ActionEditor({
           <div className="w-full space-y-3 pt-1">
             {/* Package column */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-28 shrink-0">Package from</span>
+              <span className="text-sm text-rf-ink-700 w-28 shrink-0">Package from</span>
               <ColumnPicker
                 columns={columns.filter(
                   (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -313,7 +313,7 @@ export function ActionEditor({
 
             {/* Facility ID column */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-28 shrink-0">Facility ID from</span>
+              <span className="text-sm text-rf-ink-700 w-28 shrink-0">Facility ID from</span>
               <ColumnPicker
                 columns={columns.filter(
                   (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -328,7 +328,7 @@ export function ActionEditor({
 
             {/* Position Type column */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-28 shrink-0">Position Type from</span>
+              <span className="text-sm text-rf-ink-700 w-28 shrink-0">Position Type from</span>
               <ColumnPicker
                 columns={columns.filter(
                   (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -343,7 +343,7 @@ export function ActionEditor({
 
             {/* First Name column (optional) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-28 shrink-0">First Name from</span>
+              <span className="text-sm text-rf-ink-700 w-28 shrink-0">First Name from</span>
               <ColumnPicker
                 columns={columns.filter(
                   (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -358,7 +358,7 @@ export function ActionEditor({
 
             {/* Last Name column (optional) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-28 shrink-0">Last Name from</span>
+              <span className="text-sm text-rf-ink-700 w-28 shrink-0">Last Name from</span>
               <ColumnPicker
                 columns={columns.filter(
                   (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -373,7 +373,7 @@ export function ActionEditor({
 
             {/* Email column (optional) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-28 shrink-0">Email from</span>
+              <span className="text-sm text-rf-ink-700 w-28 shrink-0">Email from</span>
               <ColumnPicker
                 columns={columns.filter(
                   (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -387,8 +387,8 @@ export function ActionEditor({
             </div>
 
             {/* Output column */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-              <span className="text-sm text-gray-500 w-28 shrink-0">Write result to</span>
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rf-border">
+              <span className="text-sm text-rf-text-muted w-28 shrink-0">Write result to</span>
               <ColumnPicker
                 columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
                 selectedId={action.config.output_column_id}
@@ -401,7 +401,7 @@ export function ActionEditor({
 
             {/* Subject ID column (optional) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-500 w-28 shrink-0">Applicant ID to</span>
+              <span className="text-sm text-rf-text-muted w-28 shrink-0">Applicant ID to</span>
               <ColumnPicker
                 columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
                 selectedId={action.config.subject_id_column_id}
@@ -421,7 +421,7 @@ export function ActionEditor({
             <div className="w-full space-y-3 pt-1">
               {/* Profile ID column */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-700 w-28 shrink-0">Profile ID from</span>
+                <span className="text-sm text-rf-ink-700 w-28 shrink-0">Profile ID from</span>
                 <ColumnPicker
                   columns={columns.filter(
                     (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -435,8 +435,8 @@ export function ActionEditor({
               </div>
 
               {/* Output column */}
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-                <span className="text-sm text-gray-500 w-28 shrink-0">Write result to</span>
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rf-border">
+                <span className="text-sm text-rf-text-muted w-28 shrink-0">Write result to</span>
                 <ColumnPicker
                   columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
                   selectedId={action.config.output_column_id}
@@ -448,9 +448,9 @@ export function ActionEditor({
               </div>
 
               {/* Status column + label pickers (optional) */}
-              <div className="space-y-2 pt-1 border-t border-gray-100">
+              <div className="space-y-2 pt-1 border-t border-rf-border">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-gray-500 w-28 shrink-0">Write status to</span>
+                  <span className="text-sm text-rf-text-muted w-28 shrink-0">Write status to</span>
                   <ColumnPicker
                     columns={columns.filter((c) => c.type === "status")}
                     selectedId={action.config.status_column_id}
@@ -468,19 +468,19 @@ export function ActionEditor({
                 {statusLabels.length > 0 && (
                   <>
                     <div className="flex flex-wrap items-center gap-2 pl-1">
-                      <span className="text-xs text-gray-400 w-28 shrink-0">{"\u21b3"} Queued label</span>
+                      <span className="text-xs text-rf-text-muted w-28 shrink-0">{"\u21b3"} Queued label</span>
                       <LabelPicker labels={statusLabels} selectedId={action.config.queued_label_id}
                         onSelect={(id) => onChange({ config: { ...action.config, queued_label_id: id } })}
                         placeholder="choose label" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pl-1">
-                      <span className="text-xs text-gray-400 w-28 shrink-0">{"\u21b3"} Approved label</span>
+                      <span className="text-xs text-rf-text-muted w-28 shrink-0">{"\u21b3"} Approved label</span>
                       <LabelPicker labels={statusLabels} selectedId={action.config.approved_label_id}
                         onSelect={(id) => onChange({ config: { ...action.config, approved_label_id: id } })}
                         placeholder="choose label" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pl-1">
-                      <span className="text-xs text-gray-400 w-28 shrink-0">{"\u21b3"} Error label</span>
+                      <span className="text-xs text-rf-text-muted w-28 shrink-0">{"\u21b3"} Error label</span>
                       <LabelPicker labels={statusLabels} selectedId={action.config.error_label_id}
                         onSelect={(id) => onChange({ config: { ...action.config, error_label_id: id } })}
                         placeholder="choose label" />
@@ -513,7 +513,7 @@ export function ActionEditor({
             <div className="w-full space-y-3 pt-1">
               {/* Course selector */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-700 w-36 shrink-0">Send course</span>
+                <span className="text-sm text-rf-ink-700 w-36 shrink-0">Send course</span>
                 <CoursePicker
                   courses={lmsCourses}
                   selectedId={action.config.course_id}
@@ -523,7 +523,7 @@ export function ActionEditor({
 
               {/* Email column */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-gray-700 w-36 shrink-0">Get email from</span>
+                <span className="text-sm text-rf-ink-700 w-36 shrink-0">Get email from</span>
                 <ColumnPicker
                   columns={columns.filter((c) => c.type === "email" || c.type === "text")}
                   selectedId={action.config.email_column_id}
@@ -533,9 +533,9 @@ export function ActionEditor({
               </div>
 
               {/* Status column + label pickers */}
-              <div className="space-y-2 pt-1 border-t border-gray-100">
+              <div className="space-y-2 pt-1 border-t border-rf-border">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-gray-700 w-36 shrink-0">Write status to</span>
+                  <span className="text-sm text-rf-ink-700 w-36 shrink-0">Write status to</span>
                   <ColumnPicker
                     columns={columns.filter((c) => c.type === "status")}
                     selectedId={action.config.status_column_id}
@@ -552,25 +552,25 @@ export function ActionEditor({
                 {statusLabels.length > 0 && (
                   <>
                     <div className="flex flex-wrap items-center gap-2 pl-1">
-                      <span className="text-xs text-gray-400 w-36 shrink-0">{"\u21b3"} Link sent label</span>
+                      <span className="text-xs text-rf-text-muted w-36 shrink-0">{"\u21b3"} Link sent label</span>
                       <LabelPicker labels={statusLabels} selectedId={action.config.link_sent_label_id}
                         onSelect={(id) => onChange({ config: { ...action.config, link_sent_label_id: id } })}
                         placeholder="choose label" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pl-1">
-                      <span className="text-xs text-gray-400 w-36 shrink-0">{"\u21b3"} In progress label</span>
+                      <span className="text-xs text-rf-text-muted w-36 shrink-0">{"\u21b3"} In progress label</span>
                       <LabelPicker labels={statusLabels} selectedId={action.config.in_progress_label_id}
                         onSelect={(id) => onChange({ config: { ...action.config, in_progress_label_id: id } })}
                         placeholder="choose label" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pl-1">
-                      <span className="text-xs text-gray-400 w-36 shrink-0">{"\u21b3"} Passed label</span>
+                      <span className="text-xs text-rf-text-muted w-36 shrink-0">{"\u21b3"} Passed label</span>
                       <LabelPicker labels={statusLabels} selectedId={action.config.passed_label_id}
                         onSelect={(id) => onChange({ config: { ...action.config, passed_label_id: id } })}
                         placeholder="choose label" />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pl-1">
-                      <span className="text-xs text-gray-400 w-36 shrink-0">{"\u21b3"} Failed label</span>
+                      <span className="text-xs text-rf-text-muted w-36 shrink-0">{"\u21b3"} Failed label</span>
                       <LabelPicker labels={statusLabels} selectedId={action.config.failed_label_id}
                         onSelect={(id) => onChange({ config: { ...action.config, failed_label_id: id } })}
                         placeholder="choose label" />
@@ -580,9 +580,9 @@ export function ActionEditor({
               </div>
 
               {/* Email customization */}
-              <div className="space-y-2 pt-1 border-t border-gray-100">
+              <div className="space-y-2 pt-1 border-t border-rf-border">
                 <div className="flex flex-wrap items-start gap-2">
-                  <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email subject</span>
+                  <span className="text-sm text-rf-ink-700 w-36 shrink-0 pt-1.5">Email subject</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-end mb-1">
                       <VariablePickerButton
@@ -598,12 +598,12 @@ export function ActionEditor({
                       value={action.config.custom_subject ?? ""}
                       onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
                       placeholder="Action required: Complete your safety training"
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full text-sm border border-rf-border rounded-lg px-3 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue"
                     />
                   </div>
                 </div>
                 <div className="flex flex-wrap items-start gap-2">
-                  <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email message</span>
+                  <span className="text-sm text-rf-ink-700 w-36 shrink-0 pt-1.5">Email message</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-end mb-1">
                       <VariablePickerButton
@@ -619,15 +619,15 @@ export function ActionEditor({
                       onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
                       placeholder={`Hi {{first_name}}, please complete your required training before your start date.`}
                       rows={3}
-                      className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                      className="w-full text-sm border border-rf-border rounded-lg px-3 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue resize-y"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Output column */}
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-                <span className="text-sm text-gray-500 w-36 shrink-0">Write progress to</span>
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rf-border">
+                <span className="text-sm text-rf-text-muted w-36 shrink-0">Write progress to</span>
                 <ColumnPicker
                   columns={columns.filter((c) => c.type === "text")}
                   selectedId={action.config.output_column_id}
@@ -657,7 +657,7 @@ export function ActionEditor({
           return (
           <div className="w-full space-y-3 pt-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-36 shrink-0">Get email from</span>
+              <span className="text-sm text-rf-ink-700 w-36 shrink-0">Get email from</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "email" || c.type === "text")}
                 selectedId={action.config.email_column_id}
@@ -667,9 +667,9 @@ export function ActionEditor({
             </div>
 
             {/* Email customization */}
-            <div className="space-y-2 pt-1 border-t border-gray-100">
+            <div className="space-y-2 pt-1 border-t border-rf-border">
               <div className="flex flex-wrap items-start gap-2">
-                <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email subject</span>
+                <span className="text-sm text-rf-ink-700 w-36 shrink-0 pt-1.5">Email subject</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-end mb-1">
                     <VariablePickerButton
@@ -685,12 +685,12 @@ export function ActionEditor({
                     value={action.config.custom_subject ?? ""}
                     onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
                     placeholder="Your application status"
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full text-sm border border-rf-border rounded-lg px-3 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue"
                   />
                 </div>
               </div>
               <div className="flex flex-wrap items-start gap-2">
-                <span className="text-sm text-gray-700 w-36 shrink-0 pt-1.5">Email message</span>
+                <span className="text-sm text-rf-ink-700 w-36 shrink-0 pt-1.5">Email message</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-end mb-1">
                     <VariablePickerButton
@@ -706,7 +706,7 @@ export function ActionEditor({
                     onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
                     placeholder={`Hi {{first_name}}, use the link below to check your application status.`}
                     rows={3}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                    className="w-full text-sm border border-rf-border rounded-lg px-3 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue resize-y"
                   />
                 </div>
               </div>
@@ -719,7 +719,7 @@ export function ActionEditor({
           <div className="w-full space-y-3 pt-1">
             {/* Driver FedEx ID column */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-36 shrink-0">Driver FedEx ID from</span>
+              <span className="text-sm text-rf-ink-700 w-36 shrink-0">Driver FedEx ID from</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "text" || c.type === "number")}
                 selectedId={action.config.driver_fedex_id_column_id}
@@ -732,7 +732,7 @@ export function ActionEditor({
 
             {/* Stage 1 Start Date column */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-36 shrink-0">Stage 1 Start Date from</span>
+              <span className="text-sm text-rf-ink-700 w-36 shrink-0">Stage 1 Start Date from</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "date")}
                 selectedId={action.config.start_date_column_id}
@@ -745,7 +745,7 @@ export function ActionEditor({
 
             {/* Stage 1 Completion Date column */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-36 shrink-0">Completion Date from</span>
+              <span className="text-sm text-rf-ink-700 w-36 shrink-0">Completion Date from</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "date")}
                 selectedId={action.config.completion_date_column_id}
@@ -758,7 +758,7 @@ export function ActionEditor({
 
             {/* Contract Number column */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-36 shrink-0">Contract Number from</span>
+              <span className="text-sm text-rf-ink-700 w-36 shrink-0">Contract Number from</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "text" || c.type === "number")}
                 selectedId={action.config.contract_number_column_id}
@@ -770,8 +770,8 @@ export function ActionEditor({
             </div>
 
             {/* Output column */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-              <span className="text-sm text-gray-500 w-36 shrink-0">Write result to</span>
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rf-border">
+              <span className="text-sm text-rf-text-muted w-36 shrink-0">Write result to</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "text")}
                 selectedId={action.config.output_column_id}
@@ -788,7 +788,7 @@ export function ActionEditor({
           <div className="w-full space-y-3 pt-1">
             {/* Resume file column (optional) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-32 shrink-0">Resume from</span>
+              <span className="text-sm text-rf-ink-700 w-32 shrink-0">Resume from</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "file")}
                 selectedId={action.config.file_column_id}
@@ -798,13 +798,13 @@ export function ActionEditor({
                 placeholder="file column (optional)"
               />
             </div>
-            <p className="text-xs text-gray-400 ml-32">
+            <p className="text-xs text-rf-text-muted ml-32">
               Optional. Falls back to the applicant&apos;s uploaded resume if left empty.
             </p>
 
             {/* Score output column (required) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-32 shrink-0">Write score to</span>
+              <span className="text-sm text-rf-ink-700 w-32 shrink-0">Write score to</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "number")}
                 selectedId={action.config.score_column_id}
@@ -817,7 +817,7 @@ export function ActionEditor({
 
             {/* Feedback output column (required) */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-700 w-32 shrink-0">Write feedback to</span>
+              <span className="text-sm text-rf-ink-700 w-32 shrink-0">Write feedback to</span>
               <ColumnPicker
                 columns={columns.filter((c) => TEXT_COL_TYPES.includes(c.type))}
                 selectedId={action.config.feedback_column_id}
@@ -829,15 +829,15 @@ export function ActionEditor({
             </div>
 
             {/* Criteria prompt (required) */}
-            <div className="flex flex-col gap-1.5 pt-2 border-t border-gray-100">
-              <span className="text-sm text-gray-700">Scoring criteria</span>
+            <div className="flex flex-col gap-1.5 pt-2 border-t border-rf-border">
+              <span className="text-sm text-rf-ink-700">Scoring criteria</span>
               <textarea
                 value={action.config.criteria || ""}
                 onChange={(e) =>
                   onChange({ config: { ...action.config, criteria: e.target.value } })
                 }
                 placeholder={"Describe what to evaluate, e.g.:\n- CDL Class A license required\n- 2+ years delivery experience preferred\n- Clean driving record\n- Score 1-10, where 8+ is a strong candidate"}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-rf-blue min-h-[100px] resize-y bg-white"
+                className="w-full px-3 py-2 border border-rf-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-rf-blue min-h-[100px] resize-y bg-rf-surface-card"
                 rows={5}
               />
             </div>

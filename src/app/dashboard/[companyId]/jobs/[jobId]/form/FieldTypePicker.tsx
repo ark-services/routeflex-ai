@@ -161,15 +161,15 @@ export default function FieldTypePicker({ onSelect, onCancel }: FieldTypePickerP
     <div className="relative">
       <div
         ref={pickerRef}
-        className="absolute top-0 left-0 right-0 bg-rf-surface-card rounded-xl shadow-xl border-2 border-gray-200 z-10 max-h-[400px] overflow-y-auto"
+        className="absolute top-0 left-0 right-0 bg-rf-surface-card rounded-xl shadow-xl border-2 border-rf-border z-10 max-h-[400px] overflow-y-auto"
       >
         {/* Header */}
-        <div className="sticky top-0 bg-rf-surface-card border-b border-gray-200 px-4 py-3 rounded-t-xl">
+        <div className="sticky top-0 bg-rf-surface-card border-b border-rf-border px-4 py-3 rounded-t-xl">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">Select Question Type</h3>
+            <h3 className="text-sm font-semibold text-rf-ink-900">Select Question Type</h3>
             <button
               onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-rf-text-muted hover:text-rf-text-secondary transition-colors"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -184,16 +184,16 @@ export default function FieldTypePicker({ onSelect, onCancel }: FieldTypePickerP
             <button
               key={fieldType.value}
               onClick={() => onSelect(fieldType.value)}
-              className="flex items-start gap-3 p-3 text-left rounded-lg border border-gray-200 hover:border-rf-blue hover:bg-rf-blue-tint transition-all group"
+              className="flex items-start gap-3 p-3 text-left rounded-lg border border-rf-border hover:border-rf-blue hover:bg-rf-blue-tint transition-all group"
             >
-              <div className="flex-shrink-0 text-gray-600 group-hover:text-rf-blue transition-colors mt-0.5">
+              <div className="flex-shrink-0 text-rf-text-secondary group-hover:text-rf-blue transition-colors mt-0.5">
                 {fieldType.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900 group-hover:text-rf-blue transition-colors">
+                <div className="text-sm font-medium text-rf-ink-900 group-hover:text-rf-blue transition-colors">
                   {fieldType.label}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5 group-hover:text-rf-blue transition-colors">
+                <div className="text-xs text-rf-text-muted mt-0.5 group-hover:text-rf-blue transition-colors">
                   {fieldType.description}
                 </div>
               </div>

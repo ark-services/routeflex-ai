@@ -101,7 +101,7 @@ export function VirtualRow({
   return (
     <div
       className={`group border-b border-rf-ink-100 relative ${
-        selected ? "bg-rf-blue-tint" : "hover:bg-rf-surface-page/60"
+        selected ? "bg-rf-blue-tint" : "bg-rf-surface-card hover:bg-rf-surface-page/60"
       }`}
       style={{ display: "grid", gridTemplateColumns: gridTemplate }}
     >

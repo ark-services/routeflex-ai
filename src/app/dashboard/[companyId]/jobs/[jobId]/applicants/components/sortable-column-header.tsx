@@ -192,7 +192,7 @@ export function SortableColumnHeader({
               className={`absolute -top-3 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center w-6 h-6 rounded-full border shadow-sm transition-all ${
                 sortDirection != null
                   ? "opacity-100 bg-rf-ink-700 border-rf-ink-700 text-white"
-                  : "opacity-0 group-hover:opacity-100 bg-white border-rf-border text-rf-text-muted hover:border-rf-ink-300"
+                  : "opacity-0 group-hover:opacity-100 bg-rf-surface-card border-rf-border text-rf-text-muted hover:border-rf-ink-300"
               }`}
               title={sortDirection === "asc" ? "Sorted A->Z - click for Z->A" : sortDirection === "desc" ? "Sorted Z->A - click to clear" : "Sort"}
             >

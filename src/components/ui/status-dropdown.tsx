@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Check } from "lucide-react";
 
 interface StatusLabel {
@@ -32,26 +33,34 @@ export function StatusDropdown({
 }: StatusDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null);
 
   const selectedLabel = labels.find((l) => l.id === value);
 
-  // Close dropdown when clicking outside
+  // Calculate portal position when dropdown opens — flip upward if not enough space below
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const MARGIN = 12;
+      if (spaceBelow >= 200 || spaceBelow >= spaceAbove) {
+        setMenuPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX,
+          width: Math.max(rect.width, 200),
+          maxHeight: spaceBelow - MARGIN,
+        });
+      } else {
+        setMenuPosition({
+          bottom: window.innerHeight - rect.top,
+          left: rect.left + window.scrollX,
+          width: Math.max(rect.width, 200),
+          maxHeight: spaceAbove - MARGIN,
+        });
       }
-    }
-
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+    } else {
+      setMenuPosition(null);
     }
   }, [isOpen]);
 
@@ -70,7 +79,7 @@ export function StatusDropdown({
   }, [isOpen]);
 
   return (
-    <div className="relative w-full">
+    <div className="w-full">
       <button
         ref={buttonRef}
         type="button"
@@ -95,68 +104,82 @@ export function StatusDropdown({
         </div>
       </button>
 
-      {isOpen && (
-        <div
-          ref={dropdownRef}
-          className="absolute left-0 top-full mt-1 z-50 w-full min-w-[200px] rounded-lg border border-rf-border bg-rf-surface-card py-1 shadow-rf-xl transition-all duration-150 opacity-100 scale-100"
-        >
-          {/* Empty option */}
-          <button
-            type="button"
-            onClick={() => {
-              onChange(null);
-              setIsOpen(false);
+      {isOpen && menuPosition && typeof window !== 'undefined' && createPortal(
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[998]"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            className="fixed z-[999] rounded-lg border border-rf-border bg-rf-surface-card py-1 shadow-rf-xl overflow-y-auto"
+            style={{
+              top: menuPosition.top != null ? `${menuPosition.top}px` : undefined,
+              bottom: menuPosition.bottom != null ? `${menuPosition.bottom}px` : undefined,
+              left: `${menuPosition.left}px`,
+              width: `${menuPosition.width}px`,
+              maxHeight: `${menuPosition.maxHeight}px`,
             }}
-            className="w-full px-3 py-2 text-left text-sm text-rf-text-secondary hover:bg-rf-surface-page transition-colors flex items-center gap-2"
           >
-            <div className="h-2 w-2" /> {/* Spacer for alignment */}
-            <span>—</span>
-            {value === null && (
-              <Check className="ml-auto h-4 w-4 text-rf-blue" strokeWidth={2.5} />
-            )}
-          </button>
-
-          {/* Divider */}
-          <div className="my-1 border-t border-rf-ink-100" />
-
-          {/* Status options */}
-          {labels.map((label) => (
+            {/* Empty option */}
             <button
-              key={label.id}
               type="button"
               onClick={() => {
-                onChange(label.id);
+                onChange(null);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-rf-surface-page flex items-center gap-2"
-              style={{ color: label.color }}
+              className="w-full px-3 py-2 text-left text-sm text-rf-text-secondary hover:bg-rf-surface-page transition-colors flex items-center gap-2"
             >
-              <div
-                className="h-2 w-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: label.color }}
-              />
-              <span className="flex-1 truncate">{label.label}</span>
-              {value === label.id && (
-                <Check className="h-4 w-4 flex-shrink-0" strokeWidth={2.5} />
+              <div className="h-2 w-2" />
+              <span>—</span>
+              {value === null && (
+                <Check className="ml-auto h-4 w-4 text-rf-blue" strokeWidth={2.5} />
               )}
             </button>
-          ))}
 
-          {/* Divider */}
-          <div className="my-1 border-t border-rf-ink-100" />
+            {/* Divider */}
+            <div className="my-1 border-t border-rf-ink-100" />
 
-          {/* Edit labels option */}
-          <button
-            type="button"
-            onClick={() => {
-              onEditLabels();
-              setIsOpen(false);
-            }}
-            className="w-full px-3 py-2 text-left text-sm text-rf-ink-500 hover:bg-rf-surface-page transition-colors"
-          >
-            Edit labels
-          </button>
-        </div>
+            {/* Status options */}
+            {labels.map((label) => (
+              <button
+                key={label.id}
+                type="button"
+                onClick={() => {
+                  onChange(label.id);
+                  setIsOpen(false);
+                }}
+                className="w-full px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-rf-surface-page flex items-center gap-2"
+                style={{ color: label.color }}
+              >
+                <div
+                  className="h-2 w-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: label.color }}
+                />
+                <span className="flex-1 truncate">{label.label}</span>
+                {value === label.id && (
+                  <Check className="h-4 w-4 flex-shrink-0" strokeWidth={2.5} />
+                )}
+              </button>
+            ))}
+
+            {/* Divider */}
+            <div className="my-1 border-t border-rf-ink-100" />
+
+            {/* Edit labels option */}
+            <button
+              type="button"
+              onClick={() => {
+                onEditLabels();
+                setIsOpen(false);
+              }}
+              className="w-full px-3 py-2 text-left text-sm text-rf-ink-500 hover:bg-rf-surface-page transition-colors"
+            >
+              Edit labels
+            </button>
+          </div>
+        </>,
+        document.body
       )}
     </div>
   );

@@ -65,7 +65,7 @@ export function DailyActionChart({ data }: { data: DailyActionData[] }) {
               fontSize: "12px",
             }}
             labelFormatter={formatTooltipDate}
-            formatter={(value: number | undefined) => [value ?? 0, "Actions"]}
+            formatter={(value) => [value ?? 0, "Actions"]}
           />
           <Bar
             dataKey="actions"

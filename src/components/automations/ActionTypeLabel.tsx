@@ -37,16 +37,16 @@ export function ActionTypeLabel({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => { setIsOpen(false); setSearch(""); }} />
-          <div className="absolute z-20 left-0 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-xl max-h-72 w-64 overflow-hidden flex flex-col">
-            <div className="p-2 border-b border-gray-100">
+          <div className="absolute z-20 left-0 mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-xl max-h-72 w-64 overflow-hidden flex flex-col">
+            <div className="p-2 border-b border-rf-border">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-rf-text-muted" />
                 <input
                   type="text"
                   placeholder="Search actions..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-green-400"
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-rf-border rounded-md focus:outline-none focus:ring-1 focus:ring-green-400"
                   autoFocus
                 />
               </div>
@@ -54,7 +54,7 @@ export function ActionTypeLabel({
             <div className="overflow-y-auto">
               {filtered.map((cat) => (
                 <div key={cat.label}>
-                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                  <div className="px-3 py-1.5 text-xs font-semibold text-rf-text-muted uppercase tracking-wider bg-rf-surface-page">
                     {cat.label}
                   </div>
                   {cat.actions.map((action) => {
@@ -71,7 +71,7 @@ export function ActionTypeLabel({
                           action.value === type ? "bg-rf-success-bg text-rf-success" : ""
                         }`}
                       >
-                        <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <Icon className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                         <span>{action.label}</span>
                       </button>
                     );
@@ -79,7 +79,7 @@ export function ActionTypeLabel({
                 </div>
               ))}
               {filtered.length === 0 && (
-                <div className="px-3 py-4 text-sm text-gray-500 text-center">No matching actions</div>
+                <div className="px-3 py-4 text-sm text-rf-text-muted text-center">No matching actions</div>
               )}
             </div>
           </div>

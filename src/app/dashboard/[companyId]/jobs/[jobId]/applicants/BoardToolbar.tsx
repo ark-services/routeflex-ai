@@ -73,7 +73,6 @@ export function BoardToolbar({
     initialViews.find((v) => v.is_default)?.id ?? initialViews[0]?.id ?? ""
   );
   const [filterOpen, setFilterOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [saveAsTemplateOpen, setSaveAsTemplateOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -192,8 +191,6 @@ export function BoardToolbar({
 
   // ─────────────────────────────────────────────────────────────────────────
 
-  const searchExpanded = searchFocused || searchQuery.length > 0;
-
   return (
     <div className="shrink-0">
 
@@ -310,10 +307,9 @@ export function BoardToolbar({
            attribute differences on these specific nodes only. */}
       <div className="flex items-center gap-2 px-8 py-2" suppressHydrationWarning>
 
-        {/* Search — collapses/expands on focus */}
+        {/* Search */}
         <div
-          className="relative transition-[width] duration-200 ease-in-out shrink-0"
-          style={{ width: searchExpanded ? 260 : 140 }}
+          className="relative shrink-0 w-[220px] max-w-[55vw]"
         >
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rf-text-muted pointer-events-none" />
           <input
@@ -322,10 +318,8 @@ export function BoardToolbar({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
             placeholder="Search"
-            className="w-full h-8 pl-8 pr-7 rounded-lg border border-rf-border bg-white text-sm text-rf-ink-700 placeholder-rf-text-muted focus:outline-none focus:border-rf-blue focus:ring-2 focus:ring-rf-blue/20 transition-all"
+            className="w-full h-8 pl-8 pr-7 rounded-lg border border-rf-border bg-rf-surface-card text-sm text-rf-ink-700 placeholder-rf-text-muted focus:outline-none focus:border-rf-blue focus:ring-2 focus:ring-rf-blue/20 transition-colors"
           />
           {searchQuery && (
             <button

@@ -67,7 +67,7 @@ function SortableFieldItem({
         className={`w-full flex items-start gap-2 px-2 py-2 rounded-lg text-left transition-colors ${
           selectedFieldId === field.id
             ? "bg-rf-blue-tint text-rf-blue"
-            : "text-gray-700 hover:bg-gray-50"
+            : "text-rf-ink-700 hover:bg-rf-surface-page"
         }`}
       >
         {/* Drag handle */}
@@ -75,7 +75,8 @@ function SortableFieldItem({
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
-          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 mt-1 flex-shrink-0"
+          className="cursor-grab active:cursor-grabbing text-rf-border hover:text-rf-text-muted mt-1 flex-shrink-0"
+          suppressHydrationWarning
         >
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 12 16">
             <circle cx="3" cy="2.5" r="1.2" />
@@ -87,15 +88,15 @@ function SortableFieldItem({
           </svg>
         </div>
 
-        <span className="text-xs font-medium text-gray-400 mt-0.5 flex-shrink-0 w-4 text-right">
+        <span className="text-xs font-medium text-rf-text-muted mt-0.5 flex-shrink-0 w-4 text-right">
           {index + 1}
         </span>
 
         <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium truncate ${field.settings?.hidden ? "text-gray-400" : ""}`}>
+          <div className={`text-sm font-medium truncate ${field.settings?.hidden ? "text-rf-text-muted" : ""}`}>
             {field.label}
           </div>
-          <div className="text-xs text-gray-500 capitalize mt-0.5 flex items-center gap-1">
+          <div className="text-xs text-rf-text-muted capitalize mt-0.5 flex items-center gap-1">
             {field.settings?.hidden && (
               <svg className="w-3 h-3 text-rf-warning flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -132,10 +133,10 @@ export default function FormBuilderSidebar({
   };
 
   return (
-    <div className="w-64 bg-rf-surface-card border-r border-gray-200 h-full overflow-y-auto flex flex-col">
+    <div className="w-64 bg-rf-surface-card border-r border-rf-border h-full overflow-y-auto flex flex-col">
       {/* Sidebar Header */}
-      <div className="px-4 py-4 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
+      <div className="px-4 py-4 border-b border-rf-border">
+        <h3 className="text-sm font-semibold text-rf-ink-900 uppercase tracking-wider">
           Form Structure
         </h3>
       </div>
@@ -143,14 +144,14 @@ export default function FormBuilderSidebar({
       {/* Form Structure */}
       <div className="flex-1 py-2">
         <div className="mt-1 mb-2 px-4">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <div className="text-xs font-semibold text-rf-text-muted uppercase tracking-wider">
             Page 1
           </div>
         </div>
 
         <div className="space-y-0.5 px-2">
           {fields.length === 0 ? (
-            <div className="px-2 py-3 text-sm text-gray-400 italic">
+            <div className="px-2 py-3 text-sm text-rf-text-muted italic">
               No questions yet
             </div>
           ) : (
@@ -179,15 +180,15 @@ export default function FormBuilderSidebar({
       </div>
 
       {/* Sidebar Footer Info */}
-      <div className="border-t border-gray-200 px-4 py-3">
-        <div className="text-xs text-gray-500">
+      <div className="border-t border-rf-border px-4 py-3">
+        <div className="text-xs text-rf-text-muted">
           <div className="flex items-center justify-between mb-1">
             <span>Total Questions:</span>
-            <span className="font-semibold text-gray-900">{fields.length}</span>
+            <span className="font-semibold text-rf-ink-900">{fields.length}</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Required:</span>
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-rf-ink-900">
               {fields.filter((f) => f.required).length}
             </span>
           </div>

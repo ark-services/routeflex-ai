@@ -205,7 +205,7 @@ function TabChrome({
         ref={btnRef}
         onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
-        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-rf-surface-page rounded transition-opacity mr-1 shrink-0"
+        className="opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 p-0.5 hover:bg-rf-surface-page rounded transition-opacity mr-1 shrink-0"
         title="View actions"
       >
         <MoreHorizontal className="h-3.5 w-3.5 text-rf-text-secondary" />

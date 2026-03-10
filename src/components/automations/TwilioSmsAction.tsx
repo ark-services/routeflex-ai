@@ -40,7 +40,7 @@ export function TwilioSmsAction({ companyId, action, columns, onChange }: Twilio
     onChange({ config: { ...action.config, message: current + `{{${variable}}}` } });
   };
 
-  if (loading) return <div className="text-sm text-gray-500">Loading Twilio...</div>;
+  if (loading) return <div className="text-sm text-rf-text-muted">Loading Twilio...</div>;
 
   if (!connected) {
     return (
@@ -55,19 +55,19 @@ export function TwilioSmsAction({ companyId, action, columns, onChange }: Twilio
   return (
     <div className="space-y-4 w-full">
       {/* From number display */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
+      <div className="flex items-center gap-2 text-sm text-rf-text-secondary">
         <Phone className="w-4 h-4" />
         <span>Sending from: <strong>{fromNumber}</strong></span>
       </div>
 
       {/* To source selector */}
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-2">Send to</label>
+        <label className="text-sm font-medium text-rf-ink-700 block mb-2">Send to</label>
         <div className="flex gap-2 items-center flex-wrap">
           <select
             value={toSource.type ?? "column"}
             onChange={(e) => setToSource({ type: e.target.value, columnId: undefined, value: "" })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-rf-surface-card"
+            className="px-3 py-2 border border-rf-border rounded-lg text-sm bg-rf-surface-card"
           >
             <option value="column">Phone column</option>
             <option value="manual">Manual number</option>
@@ -86,7 +86,7 @@ export function TwilioSmsAction({ companyId, action, columns, onChange }: Twilio
               value={toSource.value ?? ""}
               onChange={(e) => setToSource({ value: e.target.value })}
               placeholder="+15551234567"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+              className="flex-1 px-3 py-2 border border-rf-border rounded-lg text-sm bg-rf-surface-card"
             />
           )}
         </div>
@@ -99,16 +99,16 @@ export function TwilioSmsAction({ companyId, action, columns, onChange }: Twilio
 
       {/* Message */}
       <div>
-        <label className="text-sm font-medium text-gray-700 block mb-2">Message</label>
+        <label className="text-sm font-medium text-rf-ink-700 block mb-2">Message</label>
         <textarea
           value={action.config.message || ""}
           onChange={(e) => onChange({ config: { ...action.config, message: e.target.value } })}
           placeholder="Your message… use {{applicant_name}} for variables"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-y text-sm bg-white"
+          className="w-full px-3 py-2 border border-rf-border rounded-lg resize-y text-sm bg-rf-surface-card"
           rows={3}
         />
         <div className="flex justify-between items-center mt-2">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-rf-text-secondary cursor-pointer">
             <input
               type="checkbox"
               checked={onlyIfPresent}
@@ -144,12 +144,12 @@ function ColumnPicker({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-3 py-2 border border-gray-300 rounded-lg text-left flex items-center gap-2 hover:border-blue-400 bg-rf-surface-card text-sm min-w-[180px]"
+        className="px-3 py-2 border border-rf-border rounded-lg text-left flex items-center gap-2 hover:border-rf-ink-300 bg-rf-surface-card text-sm min-w-[180px]"
       >
-        <span className={selected ? "text-gray-900" : "text-gray-500 flex-1"}>
+        <span className={selected ? "text-rf-ink-900" : "text-rf-text-muted flex-1"}>
           {selected?.name || placeholder}
         </span>
-        <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <ChevronDown className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
       </button>
       {isOpen && (
         <div className="absolute z-20 w-full mt-1 bg-rf-surface-card border rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -163,7 +163,7 @@ function ColumnPicker({
             </button>
           ))}
           {columns.length === 0 && (
-            <div className="px-3 py-2 text-gray-500 text-sm">No phone columns</div>
+            <div className="px-3 py-2 text-rf-text-muted text-sm">No phone columns</div>
           )}
         </div>
       )}
@@ -200,7 +200,7 @@ function VariableMenu({ onInsert }: { onInsert: (v: string) => void }) {
               className="w-full px-3 py-2 text-left text-sm hover:bg-rf-blue-tint"
             >
               {v.label}
-              <span className="block text-xs text-gray-500 mt-0.5">{`{{${v.key}}}`}</span>
+              <span className="block text-xs text-rf-text-muted mt-0.5">{`{{${v.key}}}`}</span>
             </button>
           ))}
         </div>

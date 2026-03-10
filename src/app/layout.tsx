@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Darker_Grotesque, DM_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import "./globals.css";
 
 const darkerGrotesque = Darker_Grotesque({
@@ -29,11 +30,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${darkerGrotesque.variable} ${dmMono.variable} antialiased bg-rf-surface-page min-h-screen`}
       >
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

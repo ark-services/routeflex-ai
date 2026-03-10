@@ -105,7 +105,7 @@ export default async function IntegrationsPage({
         {/* Connected Accounts */}
         {activeConnections.length > 0 ? (
           <div className="space-y-3">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-rf-text-muted uppercase tracking-wide">
               Your connected accounts
             </p>
             {activeConnections.map((connection) => (
@@ -117,10 +117,10 @@ export default async function IntegrationsPage({
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-            <Mail className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">No Gmail accounts connected yet</p>
-            <p className="text-xs text-gray-500 mt-1">
+          <div className="text-center py-8 border-2 border-dashed border-rf-border rounded-lg">
+            <Mail className="w-8 h-8 text-rf-text-muted mx-auto mb-2" />
+            <p className="text-sm text-rf-text-secondary">No Gmail accounts connected yet</p>
+            <p className="text-xs text-rf-text-muted mt-1">
               Click "Connect Gmail" above to get started
             </p>
           </div>

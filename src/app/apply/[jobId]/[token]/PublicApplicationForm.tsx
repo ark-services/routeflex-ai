@@ -225,22 +225,24 @@ export default function PublicApplicationForm({
       )}
 
       {error && (
-        <div className="bg-rf-danger-bg border border-red-200 rounded-lg px-4 py-3">
+        <div role="alert" className="bg-rf-danger-bg border border-red-200 rounded-lg px-4 py-3">
           <p className="text-red-700 text-sm">{error}</p>
         </div>
       )}
 
       {fields.filter((field) => !field.settings?.hidden).map((field) => (
         <div key={field.field_id} className="space-y-1.5">
-          <label
-            htmlFor={field.key}
-            className="block text-sm font-medium text-rf-ink-700"
-          >
-            {field.label}
-            {field.required && (
-              <span className="text-red-400 ml-1" aria-hidden="true">*</span>
-            )}
-          </label>
+          {field.type !== "checkbox" && (
+            <label
+              htmlFor={field.key}
+              className="block text-sm font-medium text-rf-ink-700"
+            >
+              {field.label}
+              {field.required && (
+                <span className="text-red-400 ml-1" aria-hidden="true">*</span>
+              )}
+            </label>
+          )}
 
           {/* Optional description */}
           {field.settings?.description && (
@@ -352,7 +354,9 @@ export default function PublicApplicationForm({
                 defaultChecked={field.settings?.defaultChecked ?? false}
                 className="h-4 w-4 rounded border-rf-ink-100 text-rf-blue focus:ring-rf-blue/30"
               />
-              <span className="text-sm text-rf-ink-500">{field.label}</span>
+              <label htmlFor={field.key} className="text-sm text-rf-ink-500">
+                {field.label}
+              </label>
             </div>
           )}
 

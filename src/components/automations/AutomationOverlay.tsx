@@ -129,20 +129,20 @@ export function AutomationOverlay({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-b border-gray-200 flex-shrink-0">
-            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900">
-              Automations{jobTitle && <span className="text-gray-400 font-normal"> &middot; {jobTitle}</span>}
+          <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-b border-rf-border flex-shrink-0">
+            <h2 className="text-xl sm:text-2xl font-semibold text-rf-ink-900">
+              Automations{jobTitle && <span className="text-rf-text-muted font-normal"> &middot; {jobTitle}</span>}
             </h2>
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-rf-ink-100 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5 text-rf-text-muted" />
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-gray-200 px-4 sm:px-8 flex-shrink-0">
+          <div className="flex border-b border-rf-border px-4 sm:px-8 flex-shrink-0">
             {(["manage", "create", "history"] as const).map((tab) => (
               <button
                 key={tab}
@@ -150,7 +150,7 @@ export function AutomationOverlay({
                 className={`px-4 py-3 font-medium transition-colors relative capitalize ${
                   activeTab === tab
                     ? "text-rf-blue"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-rf-text-secondary hover:text-rf-ink-900"
                 }`}
               >
                 {tab}
@@ -193,7 +193,7 @@ export function AutomationOverlay({
                 </div>
                 {/* Run history sidebar — only shown when editing an existing automation */}
                 {editingAutomation && (
-                  <div className="w-72 flex-shrink-0 border-l border-gray-200 overflow-hidden flex flex-col">
+                  <div className="w-72 flex-shrink-0 border-l border-rf-border overflow-hidden flex flex-col">
                     <AutomationRunHistoryPanel
                       companyId={companyId}
                       jobId={jobId}
@@ -223,13 +223,13 @@ export function AutomationOverlay({
           <DialogHeader>
             <DialogTitle>Discard unsaved changes?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-rf-text-secondary mb-6">
             You have unsaved changes in your automation recipe. Leaving now will discard them.
           </p>
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setConfirmDiscard(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-rf-surface-card border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 text-sm font-medium text-rf-ink-700 bg-rf-surface-card border border-rf-border rounded-lg hover:bg-rf-surface-page"
             >
               Keep building
             </button>

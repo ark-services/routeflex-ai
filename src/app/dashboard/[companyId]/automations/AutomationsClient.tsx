@@ -83,7 +83,7 @@ export function AutomationsClient({
       {/* Automations List */}
       <div className="space-y-4">
         {automations.length === 0 && (
-          <div className="bg-rf-surface-card rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+          <div className="bg-rf-surface-card rounded-lg border border-rf-border p-8 text-center text-rf-text-muted">
             No automations yet. Create one to get started.
           </div>
         )}
@@ -91,32 +91,32 @@ export function AutomationsClient({
         {automations.map((automation) => (
           <div
             key={automation.id}
-            className="bg-rf-surface-card rounded-lg border border-gray-200 p-6"
+            className="bg-rf-surface-card rounded-lg border border-rf-border p-6"
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-rf-ink-900">
                     {automation.name}
                   </h3>
                   <span
                     className={`px-2 py-1 text-xs rounded-full ${
                       automation.is_enabled
                         ? "bg-rf-success-bg text-rf-success"
-                        : "bg-gray-100 text-gray-800"
+                        : "bg-rf-ink-100 text-rf-ink-900"
                     }`}
                   >
                     {automation.is_enabled ? "Enabled" : "Disabled"}
                   </span>
                 </div>
 
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-rf-text-secondary mt-1">
                   Trigger: <span className="font-mono">{automation.trigger_key}</span>
                 </p>
 
                 {automation.automation_actions.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                    <p className="text-xs text-rf-text-muted uppercase tracking-wide mb-2">
                       Actions
                     </p>
                     <div className="space-y-1">
@@ -125,11 +125,11 @@ export function AutomationsClient({
                         .map((action) => (
                           <div
                             key={action.id}
-                            className="text-sm text-gray-700 flex items-center gap-2"
+                            className="text-sm text-rf-ink-700 flex items-center gap-2"
                           >
-                            <span className="text-gray-400">→</span>
+                            <span className="text-rf-text-muted">→</span>
                             <span className="font-medium">{action.type}</span>
-                            <span className="text-gray-500 font-mono text-xs">
+                            <span className="text-rf-text-muted font-mono text-xs">
                               {JSON.stringify(action.config)}
                             </span>
                           </div>
@@ -144,7 +144,7 @@ export function AutomationsClient({
                   onClick={() =>
                     handleToggle(automation.id, automation.is_enabled)
                   }
-                  className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                  className="px-3 py-1 text-sm border border-rf-border rounded hover:bg-rf-surface-page"
                 >
                   {automation.is_enabled ? "Disable" : "Enable"}
                 </button>
@@ -223,27 +223,27 @@ function CreateAutomationModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rf-ink-700 mb-1">
               Name
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded"
+              className="w-full px-3 py-2 border border-rf-border rounded"
               placeholder="e.g. Move new applicants to screening"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rf-ink-700 mb-1">
               Trigger
             </label>
             <select
               value={triggerKey}
               onChange={(e) => setTriggerKey(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded"
+              className="w-full px-3 py-2 border border-rf-border rounded"
               required
             >
               <option value="">Select a trigger...</option>
@@ -256,7 +256,7 @@ function CreateAutomationModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rf-ink-700 mb-1">
               Action Type
             </label>
             <select
@@ -270,7 +270,7 @@ function CreateAutomationModal({
                     | "send_email"
                 )
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded"
+              className="w-full px-3 py-2 border border-rf-border rounded"
             >
               <option value="move_group">Move to Group</option>
               <option value="set_status">Set Status</option>
@@ -281,7 +281,7 @@ function CreateAutomationModal({
 
           {/* Action Config */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-rf-ink-700 mb-1">
               Action Configuration
             </label>
 
@@ -291,7 +291,7 @@ function CreateAutomationModal({
                 onChange={(e) =>
                   setActionConfig({ ...actionConfig, to_group_id: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded"
+                className="w-full px-3 py-2 border border-rf-border rounded"
                 required
               >
                 <option value="">Select target group...</option>
@@ -309,7 +309,7 @@ function CreateAutomationModal({
                 onChange={(e) =>
                   setActionConfig({ ...actionConfig, status: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded"
+                className="w-full px-3 py-2 border border-rf-border rounded"
                 required
               >
                 <option value="">Select status...</option>
@@ -332,7 +332,7 @@ function CreateAutomationModal({
                   onChange={(e) =>
                     setActionConfig({ ...actionConfig, url: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  className="w-full px-3 py-2 border border-rf-border rounded"
                   placeholder="https://example.com/webhook"
                   required
                 />
@@ -347,7 +347,7 @@ function CreateAutomationModal({
                   onChange={(e) =>
                     setActionConfig({ ...actionConfig, subject: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  className="w-full px-3 py-2 border border-rf-border rounded"
                   placeholder="Email subject"
                   required
                 />
@@ -356,7 +356,7 @@ function CreateAutomationModal({
                   onChange={(e) =>
                     setActionConfig({ ...actionConfig, body: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded"
+                  className="w-full px-3 py-2 border border-rf-border rounded"
                   placeholder="Email body"
                   rows={4}
                   required
@@ -376,7 +376,7 @@ function CreateAutomationModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+              className="px-4 py-2 border border-rf-border rounded hover:bg-rf-surface-page"
             >
               Cancel
             </button>

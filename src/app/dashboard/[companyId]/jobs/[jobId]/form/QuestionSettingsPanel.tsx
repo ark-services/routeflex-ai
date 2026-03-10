@@ -122,13 +122,13 @@ export default function QuestionSettingsPanel({
   const supportsDefaultChecked = field.type === "checkbox";
 
   return (
-    <div className="w-80 bg-rf-surface-card border-l border-gray-200 sticky top-0 h-screen flex flex-col">
+    <div className="w-80 bg-rf-surface-card border-l border-rf-border sticky top-0 h-screen flex flex-col">
       {/* Header */}
-      <div className="bg-rf-surface-card border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <h3 className="text-lg font-semibold text-gray-900">Question Settings</h3>
+      <div className="bg-rf-surface-card border-b border-rf-border px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <h3 className="text-lg font-semibold text-rf-ink-900">Question Settings</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-rf-text-muted hover:text-rf-text-secondary transition-colors"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -141,11 +141,11 @@ export default function QuestionSettingsPanel({
         {/* Required Toggle */}
         <div>
           <label className="flex items-center justify-between cursor-pointer">
-            <span className="text-sm font-medium text-gray-700">Required Field</span>
+            <span className="text-sm font-medium text-rf-ink-700">Required Field</span>
             <div
               onClick={handleRequiredToggle}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                required ? "bg-rf-blue" : "bg-gray-300"
+                required ? "bg-rf-blue" : "bg-rf-ink-100"
               }`}
             >
               <span
@@ -155,7 +155,7 @@ export default function QuestionSettingsPanel({
               />
             </div>
           </label>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-rf-text-muted mt-1">
             Applicants must answer this question
           </p>
         </div>
@@ -164,15 +164,15 @@ export default function QuestionSettingsPanel({
         <div>
           <label className="flex items-center justify-between cursor-pointer">
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-rf-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
               </svg>
-              <span className="text-sm font-medium text-gray-700">Hidden from Form</span>
+              <span className="text-sm font-medium text-rf-ink-700">Hidden from Form</span>
             </div>
             <div
               onClick={handleHiddenToggle}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                hidden ? "bg-rf-warning" : "bg-gray-300"
+                hidden ? "bg-rf-warning" : "bg-rf-ink-100"
               }`}
             >
               <span
@@ -182,7 +182,7 @@ export default function QuestionSettingsPanel({
               />
             </div>
           </label>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-rf-text-muted mt-1">
             Question won&apos;t appear on the form but the board column is preserved
           </p>
         </div>
@@ -191,11 +191,11 @@ export default function QuestionSettingsPanel({
         {supportsDefaultChecked && (
           <div>
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-sm font-medium text-gray-700">Selected by Default</span>
+              <span className="text-sm font-medium text-rf-ink-700">Selected by Default</span>
               <div
                 onClick={handleDefaultCheckedToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  defaultChecked ? "bg-rf-blue" : "bg-gray-300"
+                  defaultChecked ? "bg-rf-blue" : "bg-rf-ink-100"
                 }`}
               >
                 <span
@@ -205,7 +205,7 @@ export default function QuestionSettingsPanel({
                 />
               </div>
             </label>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-rf-text-muted mt-1">
               Checkbox will be pre-checked when the form loads
             </p>
           </div>
@@ -214,7 +214,7 @@ export default function QuestionSettingsPanel({
         {/* Placeholder (for text-based fields) */}
         {supportsPlaceholder && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-rf-ink-700 mb-2">
               Placeholder Text
             </label>
             <input
@@ -223,9 +223,9 @@ export default function QuestionSettingsPanel({
               onChange={(e) => setPlaceholder(e.target.value)}
               onBlur={handlePlaceholderSave}
               placeholder="Enter placeholder text..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rf-blue focus:border-rf-blue text-sm"
+              className="w-full px-3 py-2 border border-rf-border rounded-lg focus:ring-2 focus:ring-rf-blue focus:border-rf-blue text-sm"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-rf-text-muted mt-1">
               Hint text shown in the input field
             </p>
           </div>
@@ -234,7 +234,7 @@ export default function QuestionSettingsPanel({
         {/* Options (for radio, checkbox, select) */}
         {supportsOptions && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-rf-ink-700 mb-3">
               Answer Options
             </label>
             <div className="space-y-2">
@@ -245,7 +245,7 @@ export default function QuestionSettingsPanel({
                     value={option}
                     onChange={(e) => updateOption(index, e.target.value)}
                     onBlur={() => handleOptionsUpdate(options)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rf-blue focus:border-rf-blue text-sm"
+                    className="flex-1 px-3 py-2 border border-rf-border rounded-lg focus:ring-2 focus:ring-rf-blue focus:border-rf-blue text-sm"
                   />
                   {options.length > 1 && (
                     <button
@@ -262,7 +262,7 @@ export default function QuestionSettingsPanel({
             </div>
             <button
               onClick={addOption}
-              className="mt-3 w-full px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors"
+              className="mt-3 w-full px-3 py-2 border-2 border-dashed border-rf-border rounded-lg text-sm text-rf-text-secondary hover:border-rf-ink-300 hover:text-rf-ink-700 transition-colors"
             >
               + Add Option
             </button>
@@ -271,17 +271,17 @@ export default function QuestionSettingsPanel({
 
         {/* Question Image */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-rf-ink-700 mb-2">
             Question Image
           </label>
           {imageUrl ? (
             <div className="space-y-2">
-              <div className="relative rounded-lg overflow-hidden border border-gray-200">
+              <div className="relative rounded-lg overflow-hidden border border-rf-border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
                   alt="Question image preview"
-                  className="w-full object-contain max-h-48 bg-gray-50"
+                  className="w-full object-contain max-h-48 bg-rf-surface-page"
                 />
               </div>
               <button
@@ -298,7 +298,7 @@ export default function QuestionSettingsPanel({
             <div>
               <button
                 onClick={() => imageInputRef.current?.click()}
-                className="w-full flex flex-col items-center gap-2 px-3 py-5 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-blue-400 hover:text-rf-blue hover:bg-rf-blue-tint/40 transition-colors"
+                className="w-full flex flex-col items-center gap-2 px-3 py-5 border-2 border-dashed border-rf-border rounded-lg text-sm text-rf-text-muted hover:border-blue-400 hover:text-rf-blue hover:bg-rf-blue-tint/40 transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M13.5 10.5a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM18 12h.008v.008H18V12z" />
@@ -314,29 +314,29 @@ export default function QuestionSettingsPanel({
               />
             </div>
           )}
-          <p className="text-xs text-gray-500 mt-1.5">
+          <p className="text-xs text-rf-text-muted mt-1.5">
             Displayed below the question description
           </p>
         </div>
 
         {/* Field Type Info */}
-        <div className="pt-4 border-t border-gray-200">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="pt-4 border-t border-rf-border">
+          <label className="block text-sm font-medium text-rf-ink-700 mb-2">
             Question Type
           </label>
-          <div className="px-3 py-2 bg-gray-50 rounded-lg">
-            <span className="text-sm text-gray-900 font-medium capitalize">
+          <div className="px-3 py-2 bg-rf-surface-page rounded-lg">
+            <span className="text-sm text-rf-ink-900 font-medium capitalize">
               {field.type}
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-rf-text-muted mt-1">
             To change the question type, create a new question
           </p>
         </div>
       </div>
 
       {/* Footer - Sticky at bottom */}
-      <div className="bg-rf-surface-card border-t border-gray-200 px-6 py-4 flex-shrink-0">
+      <div className="bg-rf-surface-card border-t border-rf-border px-6 py-4 flex-shrink-0">
         <Button
           variant="secondary"
           onClick={onClose}

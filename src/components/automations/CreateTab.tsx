@@ -551,7 +551,7 @@ export function CreateTab({
         {/* Connector line */}
         {selectedTrigger && (
           <div className="flex justify-center">
-            <div className="w-px h-4 bg-gray-300" />
+            <div className="w-px h-4 bg-rf-border" />
           </div>
         )}
 
@@ -593,7 +593,7 @@ export function CreateTab({
               <button
                 onClick={onCancelEdit}
                 disabled={loading}
-                className="px-5 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 font-medium"
+                className="px-5 py-2 text-sm bg-rf-ink-100 text-rf-ink-700 rounded-lg hover:bg-rf-ink-100 transition-colors disabled:opacity-50 font-medium"
               >
                 Cancel
               </button>

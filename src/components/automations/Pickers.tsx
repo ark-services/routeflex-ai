@@ -63,10 +63,10 @@ export function ColumnPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[200px]">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg min-w-[200px]">
           {/* Search input */}
-          <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-gray-100">
-            <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          <div className="flex items-center gap-1.5 px-2.5 py-2 border-b border-rf-border">
+            <Search className="w-3.5 h-3.5 text-rf-text-muted flex-shrink-0" />
             <input
               ref={searchRef}
               type="text"
@@ -80,7 +80,7 @@ export function ColumnPicker({
                 }
               }}
               placeholder="Search columns\u2026"
-              className="w-full text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
+              className="w-full text-sm outline-none bg-transparent text-rf-ink-900 placeholder-rf-text-muted"
             />
           </div>
 
@@ -90,7 +90,7 @@ export function ColumnPicker({
               <button
                 key={col.id}
                 onClick={() => { onSelect(col.id); close(); }}
-                className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
+                className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0"
               >
                 {col.name}
               </button>
@@ -99,13 +99,13 @@ export function ColumnPicker({
               <button
                 key={opt.id}
                 onClick={() => { onSelect(opt.id); close(); }}
-                className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 text-gray-500 italic"
+                className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0 text-rf-text-muted italic"
               >
                 {opt.name}
               </button>
             ))}
             {filteredColumns.length === 0 && filteredExtra.length === 0 && (
-              <div className="px-3 py-2 text-gray-400 text-xs">No matches</div>
+              <div className="px-3 py-2 text-rf-text-muted text-xs">No matches</div>
             )}
           </div>
         </div>
@@ -151,12 +151,12 @@ export function LabelPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[160px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg min-w-[160px] max-h-52 overflow-y-auto">
           {labels.map((lbl) => (
             <button
               key={lbl.id}
               onClick={() => { onSelect(lbl.id); setIsOpen(false); }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0 flex items-center gap-1.5"
             >
               <span
                 className="inline-block w-2 h-2 rounded-full flex-shrink-0"
@@ -166,7 +166,7 @@ export function LabelPicker({
             </button>
           ))}
           {labels.length === 0 && (
-            <div className="px-3 py-1.5 text-gray-500 text-xs">No labels available</div>
+            <div className="px-3 py-1.5 text-rf-text-muted text-xs">No labels available</div>
           )}
         </div>
       )}
@@ -201,7 +201,7 @@ export function CoursePicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[220px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg min-w-[220px] max-h-52 overflow-y-auto">
           {courses.map((course) => (
             <button
               key={course.id}
@@ -209,13 +209,13 @@ export function CoursePicker({
                 onSelect(course.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0"
             >
               {course.name}
             </button>
           ))}
           {courses.length === 0 && (
-            <div className="px-3 py-1.5 text-gray-500 text-xs">
+            <div className="px-3 py-1.5 text-rf-text-muted text-xs">
               No published courses — create and publish a course in Training first
             </div>
           )}
@@ -283,10 +283,10 @@ export function VariablePickerButton({
         Add variable
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-60 bg-white border border-gray-200 rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto">
+        <div className="absolute right-0 top-full mt-1 z-50 w-60 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg py-1 max-h-72 overflow-y-auto">
           {groups.map((group) => (
             <div key={group.section}>
-              <div className="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 sticky top-0">
+              <div className="px-3 py-1 text-xs font-semibold text-rf-text-muted uppercase tracking-wide bg-rf-surface-page sticky top-0">
                 {group.section}
               </div>
               {group.items.map((v) => (
@@ -294,9 +294,9 @@ export function VariablePickerButton({
                   key={v.token}
                   type="button"
                   onClick={() => handleInsert(v.token)}
-                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 flex items-center justify-between gap-2"
+                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-rf-surface-page flex items-center justify-between gap-2"
                 >
-                  <span className="text-gray-700 truncate">{v.label}</span>
+                  <span className="text-rf-ink-700 truncate">{v.label}</span>
                 </button>
               ))}
             </div>
@@ -337,7 +337,7 @@ export function StatusLabelPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
           {labels.map((label) => (
             <button
               key={label.id}
@@ -345,7 +345,7 @@ export function StatusLabelPicker({
                 onSelect(label.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0 flex items-center gap-1.5"
             >
               <div
                 className="w-2.5 h-2.5 rounded-full"
@@ -355,7 +355,7 @@ export function StatusLabelPicker({
             </button>
           ))}
           {labels.length === 0 && (
-            <div className="px-3 py-1.5 text-gray-500 text-xs">No labels available</div>
+            <div className="px-3 py-1.5 text-rf-text-muted text-xs">No labels available</div>
           )}
         </div>
       )}
@@ -394,16 +394,16 @@ export function GroupPicker({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
+        <div className="absolute z-20 mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg min-w-[140px] max-h-52 overflow-y-auto">
           {allowAny && (
             <button
               onClick={() => {
                 onSelect(undefined);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-rf-border"
             >
-              <span className="text-gray-500 italic">Any group</span>
+              <span className="text-rf-text-muted italic">Any group</span>
             </button>
           )}
           {groups.map((group) => (
@@ -413,7 +413,7 @@ export function GroupPicker({
                 onSelect(group.id);
                 setIsOpen(false);
               }}
-              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-1.5"
+              className="w-full px-3 py-1.5 text-left text-sm hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0 flex items-center gap-1.5"
             >
               <div
                 className="w-2.5 h-2.5 rounded-full"

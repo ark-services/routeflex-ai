@@ -150,7 +150,7 @@ export function BoardDefaultValuesModal({
                     value={currentValue ?? ""}
                     onChange={e => e.target.value ? setValue(col.id, e.target.value) : clearValue(col.id)}
                     placeholder={`Default ${col.name.toLowerCase()}...`}
-                    className="bg-white px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors"
+                    className="bg-rf-surface-card px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors"
                   />
                 )}
 
@@ -161,7 +161,7 @@ export function BoardDefaultValuesModal({
                     value={currentValue ?? ""}
                     onChange={e => e.target.value !== "" ? setValue(col.id, Number(e.target.value)) : clearValue(col.id)}
                     placeholder="0"
-                    className="bg-white px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors w-40"
+                    className="bg-rf-surface-card px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors w-40"
                   />
                 )}
 
@@ -171,7 +171,7 @@ export function BoardDefaultValuesModal({
                     type="date"
                     value={currentValue ?? ""}
                     onChange={e => e.target.value ? setValue(col.id, e.target.value) : clearValue(col.id)}
-                    className="bg-white px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors w-48"
+                    className="bg-rf-surface-card px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors w-48"
                   />
                 )}
 
@@ -190,8 +190,8 @@ export function BoardDefaultValuesModal({
                       currentValue === true
                         ? "border-rf-blue bg-rf-blue-tint text-rf-blue"
                         : currentValue === false
-                        ? "border-gray-300 bg-gray-100 text-rf-text-muted"
-                        : "border-rf-border text-rf-text-muted hover:border-gray-400"
+                        ? "border-rf-ink-300 bg-rf-ink-100 text-rf-text-muted"
+                        : "border-rf-border text-rf-text-muted hover:border-rf-ink-300"
                     }`}
                   >
                     <span className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
@@ -214,7 +214,7 @@ export function BoardDefaultValuesModal({
                     value={currentValue ?? ""}
                     onChange={e => e.target.value ? setValue(col.id, e.target.value) : clearValue(col.id)}
                     placeholder={`Default ${col.name.toLowerCase()}...`}
-                    className="bg-white px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors"
+                    className="bg-rf-surface-card px-3 py-2 text-sm border border-rf-border rounded-lg outline-none focus:border-rf-blue transition-colors"
                   />
                 )}
               </div>

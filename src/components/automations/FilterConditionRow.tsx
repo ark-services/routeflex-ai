@@ -63,7 +63,7 @@ export function FilterConditionRow({
         <select
           value={condition.type}
           onChange={(e) => onChange({ type: e.target.value, value: "" })}
-          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
         >
           {availableConditions.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
@@ -96,7 +96,7 @@ export function FilterConditionRow({
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
           placeholder="value\u2026"
-          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card min-w-[100px] focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card min-w-[100px] focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
@@ -108,7 +108,7 @@ export function FilterConditionRow({
             onChange({ value: e.target.value === "" ? "" : parseFloat(e.target.value) })
           }
           placeholder="0"
-          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card w-20 focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card w-20 focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
@@ -117,14 +117,14 @@ export function FilterConditionRow({
           type="date"
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
-          className="text-xs border border-gray-300 rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
       {/* Remove button */}
       <button
         onClick={onRemove}
-        className="ml-auto p-1 hover:bg-rf-danger-bg rounded text-gray-400 hover:text-rf-danger transition-colors"
+        className="ml-auto p-1 hover:bg-rf-danger-bg rounded text-rf-text-muted hover:text-rf-danger transition-colors"
       >
         <X className="w-3.5 h-3.5" />
       </button>

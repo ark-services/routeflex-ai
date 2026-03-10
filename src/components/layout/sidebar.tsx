@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams, usePathname } from "next/navigation";
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, BookOpen, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings } from "lucide-react";
+import Link from "next/link";
+import { useTheme } from "next-themes";
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, BookOpen, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings, Sun, Moon, Monitor } from "lucide-react";
 import type { Job, Company } from "@/lib/types";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
 import { renameJob, duplicateJob, deleteJob } from "./job-actions";
 import { RenameModal } from "@/components/modals/rename-modal";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
+import { ConfirmationModal } from "@/components/modals/confirmation-modal";
 
 interface SidebarProps {
   companyId: string;
@@ -41,10 +44,17 @@ export function Sidebar({
   const [jobActionsMenuOpen, setJobActionsMenuOpen] = useState(false);
   const [renameJobModalOpen, setRenameJobModalOpen] = useState(false);
   const [deleteJobModalOpen, setDeleteJobModalOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [renameBoardModalOpen, setRenameBoardModalOpen] = useState(false);
+  const [duplicateBoardModalOpen, setDuplicateBoardModalOpen] = useState(false);
+  const [deleteBoardModalOpen, setDeleteBoardModalOpen] = useState(false);
+  const [duplicateJobModalOpen, setDuplicateJobModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+
+  useEffect(() => setMounted(true), []);
 
   // Get current job ID from URL params
   const currentJobId = (params?.jobId as string) || null;
@@ -72,47 +82,16 @@ export function Sidebar({
     router.push(`/dashboard/${companyId}/jobs/${jobId}/applicants`);
   };
 
-  const handleRenameBoard = () => {
-    const newName = prompt("Enter new name for the Applicants board:", "Applicants");
-    if (!newName || newName.trim() === "") return;
-
-    startTransition(async () => {
-      const result = await renameApplicantsBoard(companyId, newName.trim());
-      if (result.error) {
-        alert(result.error);
-      } else {
-        router.refresh();
-      }
-      setApplicantsMenuOpen(false);
-    });
+  const handleRenameBoardSubmit = async (newName: string) => {
+    return await renameApplicantsBoard(companyId, newName);
   };
 
-  const handleDuplicateBoard = () => {
-    if (!confirm("Duplicate the Applicants board configuration (groups and columns)?")) return;
-
-    startTransition(async () => {
-      const result = await duplicateApplicantsBoard(companyId);
-      if (result.error) {
-        alert(result.error);
-      } else {
-        router.refresh();
-      }
-      setApplicantsMenuOpen(false);
-    });
+  const handleDuplicateBoardSubmit = async () => {
+    return await duplicateApplicantsBoard(companyId);
   };
 
-  const handleDeleteBoard = () => {
-    if (!confirm("Delete the Applicants board? This will remove all board configuration (groups, columns, and cell data). This cannot be undone.")) return;
-
-    startTransition(async () => {
-      const result = await deleteApplicantsBoard(companyId);
-      if (result.error) {
-        alert(result.error);
-      } else {
-        router.refresh();
-      }
-      setApplicantsMenuOpen(false);
-    });
+  const handleDeleteBoardSubmit = async () => {
+    return await deleteApplicantsBoard(companyId);
   };
 
   // Job Actions Handlers
@@ -121,21 +100,13 @@ export function Sidebar({
     return await renameJob(companyId, currentJob.id, newTitle);
   };
 
-  const handleDuplicateJobClick = () => {
-    if (!currentJob) return;
-    if (!confirm(`Duplicate "${currentJob.title}"? This will copy the job structure (board and form) but NOT applicant data.`)) return;
-
-    startTransition(async () => {
-      const result = await duplicateJob(companyId, currentJob.id);
-      if (result.error) {
-        alert(result.error);
-      } else if (result.success && result.jobId) {
-        // Navigate to the new job
-        router.push(`/dashboard/${companyId}/jobs/${result.jobId}/applicants`);
-        router.refresh();
-      }
-      setJobActionsMenuOpen(false);
-    });
+  const handleDuplicateJobSubmit = async () => {
+    if (!currentJob) return { error: "No job selected" };
+    const result = await duplicateJob(companyId, currentJob.id);
+    if (result.success && result.jobId) {
+      router.push(`/dashboard/${companyId}/jobs/${result.jobId}/applicants`);
+    }
+    return result;
   };
 
   const handleDeleteJobSubmit = async () => {
@@ -159,7 +130,7 @@ export function Sidebar({
       {/* Collapse button — revealed on sidebar hover, floats top-right */}
       <button
         onClick={() => setCollapsed(true)}
-        className="absolute top-2 right-2 p-1 hover:bg-rf-surface-page rounded transition opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto z-10"
+        className="absolute top-2 right-2 p-1 hover:bg-rf-surface-page rounded transition opacity-100 md:opacity-0 md:group-hover:opacity-100 md:pointer-events-none md:group-hover:pointer-events-auto z-10"
         title="Collapse sidebar"
       >
         <ChevronLeft className="h-4 w-4 text-rf-text-muted" />
@@ -204,7 +175,7 @@ export function Sidebar({
                   e.stopPropagation();
                   setJobActionsMenuOpen(!jobActionsMenuOpen);
                 }}
-                className="absolute right-6 top-1/2 -translate-y-1/2 opacity-0 group-hover/job:opacity-100 p-1 hover:bg-rf-ink-100 rounded transition-opacity z-10"
+                className="absolute right-6 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover/job:opacity-100 focus-visible:opacity-100 p-1 hover:bg-rf-ink-100 rounded transition-opacity z-10"
                 title="Job actions"
               >
                 <MoreVertical className="h-3 w-3 text-rf-ink-500" />
@@ -251,15 +222,13 @@ export function Sidebar({
                         setRenameJobModalOpen(true);
                         setJobActionsMenuOpen(false);
                       }}
-                      disabled={isPending}
-                      className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors disabled:opacity-50"
+                      className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
                     >
                       Rename
                     </button>
                     <button
-                      onClick={handleDuplicateJobClick}
-                      disabled={isPending}
-                      className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors disabled:opacity-50"
+                      onClick={() => { setDuplicateJobModalOpen(true); setJobActionsMenuOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
                     >
                       Duplicate
                     </button>
@@ -269,8 +238,7 @@ export function Sidebar({
                         setDeleteJobModalOpen(true);
                         setJobActionsMenuOpen(false);
                       }}
-                      disabled={isPending}
-                      className="w-full text-left px-4 py-2 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors disabled:opacity-50"
+                      className="w-full text-left px-4 py-2 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors"
                     >
                       Delete
                     </button>
@@ -290,23 +258,9 @@ export function Sidebar({
           <div className="mt-2 space-y-0.5">
               {/* Applicants Board */}
               <div className="relative group/board">
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() =>
-                    router.push(
-                      `/dashboard/${companyId}/jobs/${currentJobId}/applicants`
-                    )
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      router.push(
-                        `/dashboard/${companyId}/jobs/${currentJobId}/applicants`
-                      );
-                    }
-                  }}
-                  className={`w-full text-left px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer select-none border-l-2 ${
+                <Link
+                  href={`/dashboard/${companyId}/jobs/${currentJobId}/applicants`}
+                  className={`w-full px-5 pr-8 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 select-none border-l-2 ${
                     isOnApplicants
                       ? "border-rf-blue bg-rf-blue-tint text-rf-blue"
                       : "border-transparent text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
@@ -314,20 +268,17 @@ export function Sidebar({
                 >
                   <LayoutDashboard className={`h-4 w-4 flex-shrink-0 ${isOnApplicants ? "text-rf-blue" : "text-rf-text-muted"}`} />
                   <span className="flex-1">Board</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setApplicantsMenuOpen(!applicantsMenuOpen);
-                    }}
-                    className="opacity-0 group-hover/board:opacity-100 p-1 hover:bg-rf-ink-100 rounded transition-opacity"
-                    title="More actions"
-                    aria-haspopup="menu"
-                    aria-expanded={applicantsMenuOpen}
-                  >
-                    <MoreVertical className="h-3 w-3 text-rf-ink-500" />
-                  </button>
-                </div>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setApplicantsMenuOpen(!applicantsMenuOpen)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover/board:opacity-100 focus-visible:opacity-100 p-1 hover:bg-rf-ink-100 rounded transition-opacity"
+                  title="More actions"
+                  aria-haspopup="menu"
+                  aria-expanded={applicantsMenuOpen}
+                >
+                  <MoreVertical className="h-3 w-3 text-rf-ink-500" />
+                </button>
 
                 {/* Kebab Menu Dropdown */}
                 {applicantsMenuOpen && (
@@ -339,24 +290,21 @@ export function Sidebar({
                     <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-rf-border bg-rf-surface-card shadow-rf-lg z-20">
                       <div className="py-1">
                         <button
-                          onClick={handleRenameBoard}
-                          disabled={isPending}
-                          className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors disabled:opacity-50"
+                          onClick={() => { setRenameBoardModalOpen(true); setApplicantsMenuOpen(false); }}
+                          className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
                         >
                           Rename
                         </button>
                         <button
-                          onClick={handleDuplicateBoard}
-                          disabled={isPending}
-                          className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors disabled:opacity-50"
+                          onClick={() => { setDuplicateBoardModalOpen(true); setApplicantsMenuOpen(false); }}
+                          className="w-full text-left px-4 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
                         >
                           Duplicate
                         </button>
                         <div className="my-1 border-t border-rf-ink-100" />
                         <button
-                          onClick={handleDeleteBoard}
-                          disabled={isPending}
-                          className="w-full text-left px-4 py-2 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors disabled:opacity-50"
+                          onClick={() => { setDeleteBoardModalOpen(true); setApplicantsMenuOpen(false); }}
+                          className="w-full text-left px-4 py-2 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors"
                         >
                           Delete
                         </button>
@@ -367,23 +315,9 @@ export function Sidebar({
               </div>
 
               {/* Application Form */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() =>
-                  router.push(
-                    `/dashboard/${companyId}/jobs/${currentJobId}/form`
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    router.push(
-                      `/dashboard/${companyId}/jobs/${currentJobId}/form`
-                    );
-                  }
-                }}
-                className={`w-full text-left px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer select-none border-l-2 ${
+              <Link
+                href={`/dashboard/${companyId}/jobs/${currentJobId}/form`}
+                className={`w-full px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 select-none border-l-2 ${
                   isOnForm
                     ? "border-rf-blue bg-rf-blue-tint text-rf-blue"
                     : "border-transparent text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
@@ -391,26 +325,12 @@ export function Sidebar({
               >
                 <FileText className={`h-4 w-4 flex-shrink-0 ${isOnForm ? "text-rf-blue" : "text-rf-text-muted"}`} />
                 <span className="flex-1">Form</span>
-              </div>
+              </Link>
 
               {/* Knowledge Base */}
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() =>
-                  router.push(
-                    `/dashboard/${companyId}/jobs/${currentJobId}/knowledge-base`
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    router.push(
-                      `/dashboard/${companyId}/jobs/${currentJobId}/knowledge-base`
-                    );
-                  }
-                }}
-                className={`w-full text-left px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer select-none border-l-2 ${
+              <Link
+                href={`/dashboard/${companyId}/jobs/${currentJobId}/knowledge-base`}
+                className={`w-full px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 select-none border-l-2 ${
                   isOnKnowledgeBase
                     ? "border-rf-blue bg-rf-blue-tint text-rf-blue"
                     : "border-transparent text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
@@ -418,7 +338,7 @@ export function Sidebar({
               >
                 <BookOpen className={`h-4 w-4 flex-shrink-0 ${isOnKnowledgeBase ? "text-rf-blue" : "text-rf-text-muted"}`} />
                 <span className="flex-1">Knowledge Base</span>
-              </div>
+              </Link>
             </div>
           )}
 
@@ -485,7 +405,59 @@ export function Sidebar({
           </div>
         </div>
 
+        {/* Divider */}
+        <div className="my-3 mx-5 border-t border-rf-border" />
+
+        {/* Theme Toggle */}
+        <div className="px-5 pb-3">
+          <button
+            onClick={() => {
+              if (theme === "light") setTheme("dark");
+              else if (theme === "dark") setTheme("system");
+              else setTheme("light");
+            }}
+            className="w-full text-left px-3 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 rounded-lg text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
+            title={`Theme: ${!mounted ? "System" : theme === "dark" ? "Dark" : theme === "light" ? "Light" : "System"}`}
+          >
+            {(!mounted || theme === "system") ? (
+              <Monitor className="h-4 w-4 flex-shrink-0 text-rf-text-muted" />
+            ) : theme === "dark" ? (
+              <Moon className="h-4 w-4 flex-shrink-0 text-rf-text-muted" />
+            ) : (
+              <Sun className="h-4 w-4 flex-shrink-0 text-rf-text-muted" />
+            )}
+            <span className="flex-1">{!mounted ? "System" : theme === "dark" ? "Dark" : theme === "light" ? "Light" : "System"}</span>
+          </button>
+        </div>
+
       </div>
+
+      {/* Board Action Modals */}
+      <RenameModal
+        open={renameBoardModalOpen}
+        onClose={() => setRenameBoardModalOpen(false)}
+        title="Rename Board"
+        currentName="Applicants"
+        onRename={handleRenameBoardSubmit}
+      />
+
+      <ConfirmationModal
+        open={duplicateBoardModalOpen}
+        onClose={() => setDuplicateBoardModalOpen(false)}
+        title="Duplicate Board"
+        description="Duplicate the Applicants board configuration (groups and columns)?"
+        confirmLabel="Duplicate"
+        onConfirm={handleDuplicateBoardSubmit}
+      />
+
+      <DeleteConfirmationModal
+        open={deleteBoardModalOpen}
+        onClose={() => setDeleteBoardModalOpen(false)}
+        title="Delete Board"
+        description="This will remove all board configuration (groups, columns, and cell data). This cannot be undone."
+        itemName="Applicants"
+        onDelete={handleDeleteBoardSubmit}
+      />
 
       {/* Job Action Modals */}
       {currentJob && (
@@ -496,6 +468,15 @@ export function Sidebar({
             title="Rename Job"
             currentName={currentJob.title}
             onRename={handleRenameJobSubmit}
+          />
+
+          <ConfirmationModal
+            open={duplicateJobModalOpen}
+            onClose={() => setDuplicateJobModalOpen(false)}
+            title="Duplicate Job"
+            description={`Duplicate "${currentJob.title}"? This will copy the job structure (board and form) but NOT applicant data.`}
+            confirmLabel="Duplicate"
+            onConfirm={handleDuplicateJobSubmit}
           />
 
           <DeleteConfirmationModal

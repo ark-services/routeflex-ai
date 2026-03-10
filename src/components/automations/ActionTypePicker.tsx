@@ -58,7 +58,7 @@ export function ActionTypePicker({ onSelect }: { onSelect: (type: string) => voi
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-green-400 hover:text-rf-success transition-colors flex items-center justify-center gap-1.5 text-sm"
+        className="w-full px-3 py-2 border border-dashed border-rf-border rounded-lg text-rf-text-muted hover:border-green-400 hover:text-rf-success transition-colors flex items-center justify-center gap-1.5 text-sm"
       >
         <Plus className="w-4 h-4" />
         Add action
@@ -67,17 +67,17 @@ export function ActionTypePicker({ onSelect }: { onSelect: (type: string) => voi
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => { setIsOpen(false); setSearch(""); }} />
-          <div className="absolute z-20 left-0 right-0 mt-2 bg-rf-surface-card border border-gray-200 rounded-lg shadow-xl max-h-80 overflow-hidden flex flex-col">
+          <div className="absolute z-20 left-0 right-0 mt-2 bg-rf-surface-card border border-rf-border rounded-lg shadow-xl max-h-80 overflow-hidden flex flex-col">
             {/* Search */}
-            <div className="p-2 border-b border-gray-100">
+            <div className="p-2 border-b border-rf-border">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-rf-text-muted" />
                 <input
                   type="text"
                   placeholder="Search actions..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-green-400"
+                  className="w-full pl-8 pr-3 py-1.5 text-sm border border-rf-border rounded-md focus:outline-none focus:ring-1 focus:ring-green-400"
                   autoFocus
                 />
               </div>
@@ -87,7 +87,7 @@ export function ActionTypePicker({ onSelect }: { onSelect: (type: string) => voi
             <div className="overflow-y-auto">
               {filtered.map((cat) => (
                 <div key={cat.label}>
-                  <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                  <div className="px-3 py-1.5 text-xs font-semibold text-rf-text-muted uppercase tracking-wider bg-rf-surface-page">
                     {cat.label}
                   </div>
                   {cat.actions.map((action) => {
@@ -102,15 +102,15 @@ export function ActionTypePicker({ onSelect }: { onSelect: (type: string) => voi
                         }}
                         className="w-full px-3 py-2 text-left hover:bg-rf-success-bg transition-colors flex items-center gap-2.5 text-sm"
                       >
-                        <Icon className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="text-gray-800">{action.label}</span>
+                        <Icon className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
+                        <span className="text-rf-ink-900">{action.label}</span>
                       </button>
                     );
                   })}
                 </div>
               ))}
               {filtered.length === 0 && (
-                <div className="px-3 py-4 text-sm text-gray-500 text-center">No matching actions</div>
+                <div className="px-3 py-4 text-sm text-rf-text-muted text-center">No matching actions</div>
               )}
             </div>
           </div>

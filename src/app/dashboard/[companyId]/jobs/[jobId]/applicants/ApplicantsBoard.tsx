@@ -1748,10 +1748,20 @@ export default function ApplicantsBoard({
 
                         // Identify key columns to surface at top of card
                         const nameCol = visibleColumns.find(c => c.is_system && c.name === "Name");
+                        const firstNameCol = visibleColumns.find(c => c.name.toLowerCase() === "first name");
+                        const lastNameCol = visibleColumns.find(c => c.name.toLowerCase() === "last name");
                         const statusCols = visibleColumns.filter(c => c.type === "status");
                         const emailCols = visibleColumns.filter(c => c.type === "email" || (c.is_system && c.name === "Email"));
                         const phoneCols = visibleColumns.filter(c => c.type === "phone" || (c.is_system && c.name === "Phone"));
                         const primaryStatusCol = statusCols[0];
+                        // Compose display name from First Name + Last Name columns when available
+                        const composedName = [
+                          firstNameCol ? getCellValue(a, firstNameCol) : null,
+                          lastNameCol ? getCellValue(a, lastNameCol) : null,
+                        ].filter(Boolean).join(" ") || null;
+                        const displayName = nameCol
+                          ? (getCellValue(a, nameCol) as string) || composedName || a.full_name
+                          : composedName || a.full_name;
                         // Remaining columns for the expanded section
                         const keyColIds = new Set([
                           nameCol?.id,
@@ -1776,7 +1786,7 @@ export default function ApplicantsBoard({
                                   className="h-4 w-4 rounded border-rf-ink-100 flex-shrink-0"
                                 />
                                 <span className="font-semibold text-rf-text-primary text-sm truncate">
-                                  {nameCol ? (getCellValue(a, nameCol) as string) || a.full_name : a.full_name}
+                                  {displayName}
                                 </span>
                                 {fadvReadyApplicantIds.has(a.id) && (
                                   <span className="ml-1 flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-rf-blue-tint text-rf-blue border border-rf-blue-tint">

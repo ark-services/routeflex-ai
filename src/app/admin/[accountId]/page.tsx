@@ -143,7 +143,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
                         className={`px-2 py-0.5 rounded ${
                           action.status === 'completed'
                             ? 'bg-rf-success-bg text-rf-success'
-                            : 'bg-gray-100 text-gray-600'
+                            : 'bg-rf-ink-100 text-rf-text-secondary'
                         }`}
                       >
                         {action.status}

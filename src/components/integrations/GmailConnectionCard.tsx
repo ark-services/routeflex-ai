@@ -45,14 +45,14 @@ export function GmailConnectionCard({
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors bg-rf-surface-card">
+    <div className="flex items-center justify-between p-4 border border-rf-border rounded-lg hover:border-rf-border transition-colors bg-rf-surface-card">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-rf-success-bg flex items-center justify-center">
           <Mail className="w-5 h-5 text-rf-success" />
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-900">{connection.email_address}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-medium text-rf-ink-900">{connection.email_address}</p>
+          <p className="text-xs text-rf-text-muted">
             Connected {new Date(connection.created_at).toLocaleDateString()}
           </p>
         </div>

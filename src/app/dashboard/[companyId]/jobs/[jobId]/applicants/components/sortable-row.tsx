@@ -296,7 +296,7 @@ export function SortableRow({
     <div
       ref={setNodeRef}
       style={{ ...style, display: "grid", gridTemplateColumns: gridTemplate }}
-      className={`group border-b border-rf-ink-100 relative ${selected ? "bg-rf-blue-tint" : "hover:bg-rf-surface-page/60"}`}
+      className={`group border-b border-rf-ink-100 relative ${selected ? "bg-rf-blue-tint" : "bg-rf-surface-card hover:bg-rf-surface-page/60"}`}
       {...attributes}
     >
       {cellEls}

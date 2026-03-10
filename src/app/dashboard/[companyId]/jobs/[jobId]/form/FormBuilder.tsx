@@ -314,25 +314,25 @@ export default function FormBuilder({
   return (
     <div className="h-full flex flex-col">
       {/* ── Top header bar ─────────────────────────────────────────────────── */}
-      <div className="bg-rf-surface-card border-b border-gray-200 px-6 py-3 flex items-center justify-between gap-4 flex-shrink-0">
+      <div className="bg-rf-surface-card border-b border-rf-border px-6 py-3 flex items-center justify-between gap-4 flex-shrink-0">
         {/* Left: breadcrumb-style label */}
         <div className="flex-shrink-0 min-w-0">
-          <h1 className="text-base font-semibold text-gray-900 truncate">
+          <h1 className="text-base font-semibold text-rf-ink-900 truncate">
             Application Form
           </h1>
-          <p className="text-xs text-gray-500 truncate">{jobTitle}</p>
+          <p className="text-xs text-rf-text-muted truncate">{jobTitle}</p>
         </div>
 
         {/* Center: tab switcher */}
-        <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-0.5 flex-shrink-0">
+        <div className="flex items-center bg-rf-ink-100 rounded-lg p-1 gap-0.5 flex-shrink-0">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-1.5 text-sm font-medium rounded-md transition-colors ${
                 activeTab === tab.id
-                  ? "bg-rf-surface-card text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-rf-surface-card text-rf-ink-900 shadow-sm"
+                  : "text-rf-text-muted hover:text-rf-ink-700"
               }`}
             >
               {tab.label}
@@ -345,7 +345,7 @@ export default function FormBuilder({
           <button
             onClick={() => publicUrl && window.open(publicUrl, "_blank")}
             disabled={!publicUrl}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-rf-ink-700 border border-rf-border rounded-md hover:bg-rf-surface-page disabled:opacity-40 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -543,7 +543,7 @@ export default function FormBuilder({
             {fields.length === 0 && addFieldAt === null && (
               <div className="text-center py-12">
                 <svg
-                  className="mx-auto h-16 w-16 text-gray-300 mb-4"
+                  className="mx-auto h-16 w-16 text-rf-border mb-4"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -555,10 +555,10 @@ export default function FormBuilder({
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-rf-ink-900 mb-2">
                   No questions yet
                 </h3>
-                <p className="text-sm text-gray-500 mb-6">
+                <p className="text-sm text-rf-text-muted mb-6">
                   Start building your form by adding questions
                 </p>
                 <button
@@ -604,18 +604,18 @@ export default function FormBuilder({
       {/* ── Share Modal ────────────────────────────────────────────────────── */}
       {showShareModal && (
         <div
-          className="fixed inset-0 bg-gray-900/20 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-rf-ink-900/20 flex items-center justify-center z-50"
           onClick={() => setShowShareModal(false)}
         >
           <div
             className="bg-rf-surface-card rounded-xl shadow-2xl max-w-lg w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-gray-900">Share Form</h3>
+            <div className="px-6 py-5 border-b border-rf-border flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-rf-ink-900">Share Form</h3>
               <button
                 onClick={() => setShowShareModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-rf-text-muted hover:text-rf-text-secondary transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -624,7 +624,7 @@ export default function FormBuilder({
             </div>
 
             <div className="px-6 py-5">
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-rf-text-secondary mb-4">
                 This form is public and available to anyone with the link.
               </p>
               <div className="flex gap-2">
@@ -633,7 +633,7 @@ export default function FormBuilder({
                   value={publicUrl}
                   readOnly
                   onChange={() => {}}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono text-gray-700 focus:outline-none"
+                  className="flex-1 px-4 py-2.5 border border-rf-border rounded-lg bg-rf-surface-page text-sm font-mono text-rf-ink-700 focus:outline-none"
                 />
                 <button
                   onClick={() => {

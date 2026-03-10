@@ -62,11 +62,11 @@ export default async function AutomationsPage({
     .in("board_id", boardIds);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-rf-surface-page p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Automations</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-rf-ink-900">Automations</h1>
+          <p className="text-rf-text-secondary mt-2">
             Create automations that run when triggers fire
           </p>
         </div>

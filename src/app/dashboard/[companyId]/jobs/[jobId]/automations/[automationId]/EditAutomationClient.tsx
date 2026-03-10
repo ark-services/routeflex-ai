@@ -104,9 +104,9 @@ export function EditAutomationClient({
       case 'failed':
         return <XCircle className="w-4 h-4 text-rf-danger" />;
       case 'skipped':
-        return <MinusCircle className="w-4 h-4 text-gray-400" />;
+        return <MinusCircle className="w-4 h-4 text-rf-text-muted" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-4 h-4 text-rf-text-muted" />;
     }
   }
 
@@ -117,9 +117,9 @@ export function EditAutomationClient({
       case 'failed':
         return 'bg-rf-danger-bg text-red-700 border-red-200';
       case 'skipped':
-        return 'bg-gray-50 text-gray-600 border-gray-200';
+        return 'bg-rf-surface-page text-rf-text-secondary border-rf-border';
       default:
-        return 'bg-gray-50 text-gray-600 border-gray-200';
+        return 'bg-rf-surface-page text-rf-text-secondary border-rf-border';
     }
   }
 
@@ -128,18 +128,18 @@ export function EditAutomationClient({
       {/* Main Content: Automation Editor (Left on desktop) */}
       <div className="flex-1 flex flex-col overflow-hidden order-2 lg:order-1">
         {/* Header */}
-        <div className="bg-rf-surface-card border-b border-gray-200 px-6 py-4">
+        <div className="bg-rf-surface-card border-b border-rf-border px-6 py-4">
           <button
             onClick={() => router.push(`/dashboard/${companyId}/jobs/${jobId}/applicants?automate=open`)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-3"
+            className="flex items-center gap-2 text-sm text-rf-text-secondary hover:text-rf-ink-900 mb-3"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-rf-ink-900">
             Edit Automation
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-rf-text-muted mt-1">
             {automation.name}
           </p>
         </div>
@@ -166,11 +166,11 @@ export function EditAutomationClient({
       </div>
 
       {/* Right Sidebar: Run History (Hidden on mobile by default) */}
-      <div className="w-full lg:w-96 bg-rf-surface-card border-l border-gray-200 flex flex-col order-1 lg:order-2 max-h-[50vh] lg:max-h-none">
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="w-full lg:w-96 bg-rf-surface-card border-l border-rf-border flex flex-col order-1 lg:order-2 max-h-[50vh] lg:max-h-none">
+        <div className="p-4 border-b border-rf-border flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Run History</h3>
-            <p className="text-xs text-gray-500 mt-1">
+            <h3 className="text-sm font-semibold text-rf-ink-900">Run History</h3>
+            <p className="text-xs text-rf-text-muted mt-1">
               Last {runHistory.length} runs
             </p>
           </div>
@@ -178,23 +178,23 @@ export function EditAutomationClient({
 
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-center text-sm text-gray-500">
+            <div className="p-4 text-center text-sm text-rf-text-muted">
               Loading...
             </div>
           ) : runHistory.length === 0 ? (
             <div className="p-4 text-center">
-              <Clock className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-              <p className="text-sm text-gray-500">No runs yet</p>
-              <p className="text-xs text-gray-400 mt-1">
+              <Clock className="w-8 h-8 mx-auto text-rf-border mb-2" />
+              <p className="text-sm text-rf-text-muted">No runs yet</p>
+              <p className="text-xs text-rf-text-muted mt-1">
                 This automation hasn't been triggered
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-rf-border">
               {runHistory.map((run) => {
                 const isExpanded = expandedRuns.has(run.id);
                 return (
-                  <div key={run.id} className="p-3 hover:bg-gray-50">
+                  <div key={run.id} className="p-3 hover:bg-rf-surface-page">
                     <button
                       onClick={() => toggleRunExpanded(run.id)}
                       className="w-full text-left"
@@ -212,25 +212,25 @@ export function EditAutomationClient({
                                 {run.status}
                               </span>
                               {run.duration_ms !== undefined && (
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-rf-text-muted">
                                   {run.duration_ms}ms
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-rf-text-muted mt-1">
                               {new Date(run.created_at).toLocaleString()}
                             </p>
                             {run.actions_attempted !== undefined && (
-                              <p className="text-xs text-gray-600 mt-1">
+                              <p className="text-xs text-rf-text-secondary mt-1">
                                 {run.actions_succeeded}/{run.actions_attempted} actions
                               </p>
                             )}
                           </div>
                         </div>
                         {isExpanded ? (
-                          <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <ChevronDown className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <ChevronRight className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                         )}
                       </div>
                     </button>
@@ -239,8 +239,8 @@ export function EditAutomationClient({
                       <div className="mt-3 pl-6 space-y-2">
                         {run.skip_reason && (
                           <div className="text-xs">
-                            <p className="font-medium text-gray-700">Skip Reason:</p>
-                            <p className="text-gray-600 mt-1 bg-gray-50 p-2 rounded">
+                            <p className="font-medium text-rf-ink-700">Skip Reason:</p>
+                            <p className="text-rf-text-secondary mt-1 bg-rf-surface-page p-2 rounded">
                               {run.skip_reason}
                             </p>
                           </div>
@@ -257,7 +257,7 @@ export function EditAutomationClient({
 
                         {run.action_results && run.action_results.length > 0 && (
                           <div className="text-xs">
-                            <p className="font-medium text-gray-700 mb-2">Actions:</p>
+                            <p className="font-medium text-rf-ink-700 mb-2">Actions:</p>
                             <div className="space-y-1">
                               {run.action_results.map((result: any, idx: number) => (
                                 <div
@@ -285,10 +285,10 @@ export function EditAutomationClient({
 
                         {run.payload && (
                           <details className="text-xs">
-                            <summary className="font-medium text-gray-700 cursor-pointer">
+                            <summary className="font-medium text-rf-ink-700 cursor-pointer">
                               Payload
                             </summary>
-                            <pre className="mt-1 bg-gray-50 p-2 rounded overflow-x-auto text-xs">
+                            <pre className="mt-1 bg-rf-surface-page p-2 rounded overflow-x-auto text-xs">
                               {JSON.stringify(run.payload, null, 2)}
                             </pre>
                           </details>

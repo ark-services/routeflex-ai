@@ -56,14 +56,14 @@ export function TriggerSelector({
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-left flex items-center justify-between hover:border-blue-400 transition-colors bg-rf-surface-card text-sm"
+          className="w-full px-4 py-2.5 border border-rf-border rounded-lg text-left flex items-center justify-between hover:border-rf-ink-300 transition-colors bg-rf-surface-card text-sm"
         >
-          <span className="text-gray-500">When this happens...</span>
-          <ChevronDown className="w-4 h-4 text-gray-400" />
+          <span className="text-rf-text-muted">When this happens...</span>
+          <ChevronDown className="w-4 h-4 text-rf-text-muted" />
         </button>
 
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-rf-surface-card border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg max-h-72 overflow-y-auto">
             {sortedTriggers.map((trigger) => (
               <button
                 key={trigger.id}
@@ -71,11 +71,11 @@ export function TriggerSelector({
                   onSelect(trigger);
                   setIsOpen(false);
                 }}
-                className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint transition-colors border-b border-gray-100 last:border-b-0"
+                className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0"
               >
-                <p className="text-sm font-medium text-gray-900">{trigger.name}</p>
+                <p className="text-sm font-medium text-rf-ink-900">{trigger.name}</p>
                 {trigger.description && (
-                  <p className="text-xs text-gray-500 mt-0.5">{trigger.description}</p>
+                  <p className="text-xs text-rf-text-muted mt-0.5">{trigger.description}</p>
                 )}
               </button>
             ))}
@@ -93,14 +93,14 @@ export function TriggerSelector({
           {/* Interactive Sentence */}
           {selectedTrigger.key === "board.status_changes_to" && (
             <>
-              <span className="text-gray-600">When</span>
+              <span className="text-rf-text-secondary">When</span>
               <ColumnPicker
                 columns={columns.filter((c) => c.type === "status")}
                 selectedId={triggerConfig.column_id}
                 onSelect={(id) => onConfigChange({ ...triggerConfig, column_id: id, changes_to: undefined })}
                 placeholder="status column"
               />
-              <span className="text-gray-600">changes to</span>
+              <span className="text-rf-text-secondary">changes to</span>
               {triggerConfig.column_id && (
                 <StatusLabelPicker
                   column={columns.find((c) => c.id === triggerConfig.column_id)}
@@ -114,7 +114,7 @@ export function TriggerSelector({
 
           {selectedTrigger.key === "applicant.moved_group" && (
             <>
-              <span className="text-gray-600">When applicant moved to</span>
+              <span className="text-rf-text-secondary">When applicant moved to</span>
               <GroupPicker
                 groups={groups}
                 selectedId={triggerConfig.to_group_id}
@@ -126,20 +126,20 @@ export function TriggerSelector({
           )}
 
           {selectedTrigger.key === "applicant.created" && (
-            <span className="text-gray-600">When applicant is created</span>
+            <span className="text-rf-text-secondary">When applicant is created</span>
           )}
 
           {selectedTrigger.key === "form.submitted" && (
-            <span className="text-gray-600">When application form is submitted</span>
+            <span className="text-rf-text-secondary">When application form is submitted</span>
           )}
 
           {selectedTrigger.key === "gmail.email_received" && (
-            <span className="text-gray-600">When a matching email is received in Gmail</span>
+            <span className="text-rf-text-secondary">When a matching email is received in Gmail</span>
           )}
 
           {/* Fallback for any trigger without a custom sentence */}
           {!["board.status_changes_to", "applicant.moved_group", "applicant.created", "form.submitted", "gmail.email_received"].includes(selectedTrigger.key) && (
-            <span className="text-gray-600">When {selectedTrigger.name.toLowerCase()}</span>
+            <span className="text-rf-text-secondary">When {selectedTrigger.name.toLowerCase()}</span>
           )}
         </div>
 
@@ -147,7 +147,7 @@ export function TriggerSelector({
           onClick={() => onSelect(null)}
           className="p-1 hover:bg-rf-blue-tint rounded ml-2 flex-shrink-0"
         >
-          <X className="w-3.5 h-3.5 text-gray-500" />
+          <X className="w-3.5 h-3.5 text-rf-text-muted" />
         </button>
       </div>
 
@@ -155,28 +155,28 @@ export function TriggerSelector({
       {selectedTrigger.key === "gmail.email_received" && (
         <div className="mt-3 pt-3 border-t border-rf-blue-tint space-y-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-28 shrink-0">Sender contains</span>
+            <span className="text-xs text-rf-text-muted w-28 shrink-0">Sender contains</span>
             <input
               type="text"
               value={triggerConfig.sender_contains ?? ""}
               onChange={(e) => onConfigChange({ ...triggerConfig, sender_contains: e.target.value })}
               placeholder="e.g. do_not_reply@fadv.com"
-              className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+              className="flex-1 px-2 py-1 text-xs border border-rf-border rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-28 shrink-0">Subject contains</span>
+            <span className="text-xs text-rf-text-muted w-28 shrink-0">Subject contains</span>
             <input
               type="text"
               value={triggerConfig.subject_contains ?? ""}
               onChange={(e) => onConfigChange({ ...triggerConfig, subject_contains: e.target.value })}
               placeholder="e.g. Application Completed"
-              className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+              className="flex-1 px-2 py-1 text-xs border border-rf-border rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
             />
           </div>
 
           <div className="pt-1.5 border-t border-rf-blue-tint/50">
-            <span className="text-xs font-medium text-gray-600">Match to applicant by:</span>
+            <span className="text-xs font-medium text-rf-text-secondary">Match to applicant by:</span>
             <div className="mt-1.5 space-y-1.5">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -186,7 +186,7 @@ export function TriggerSelector({
                   onChange={() => onConfigChange({ ...triggerConfig, match_applicant_by: "sender_email", body_extract_pattern: undefined, match_column_id: undefined })}
                   className="text-rf-blue"
                 />
-                <span className="text-xs text-gray-600">Sender email matches applicant&apos;s email</span>
+                <span className="text-xs text-rf-text-secondary">Sender email matches applicant&apos;s email</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -199,7 +199,7 @@ export function TriggerSelector({
                   }}
                   className="text-rf-blue"
                 />
-                <span className="text-xs text-gray-600">Extract value from email body</span>
+                <span className="text-xs text-rf-text-secondary">Extract value from email body</span>
               </label>
             </div>
 
@@ -208,13 +208,13 @@ export function TriggerSelector({
                 {bodyExtractAdvanced ? (
                   /* Advanced: raw regex input */
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 w-24 shrink-0">Body pattern</span>
+                    <span className="text-xs text-rf-text-muted w-24 shrink-0">Body pattern</span>
                     <input
                       type="text"
                       value={triggerConfig.body_extract_pattern ?? ""}
                       onChange={(e) => onConfigChange({ ...triggerConfig, body_extract_pattern: e.target.value })}
                       placeholder={String.raw`e.g. Applicant ID:\s*(\S+)`}
-                      className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded font-mono focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+                      className="flex-1 px-2 py-1 text-xs border border-rf-border rounded font-mono focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
                     />
                   </div>
                 ) : (
@@ -229,27 +229,27 @@ export function TriggerSelector({
                     return (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">Value comes after</span>
+                          <span className="text-xs text-rf-text-muted w-24 shrink-0">Value comes after</span>
                           <input
                             type="text"
                             value={prefix}
                             onChange={(e) => update(e.target.value, suffix)}
                             placeholder='e.g. "Applicant ID:" or "Status:"'
-                            className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+                            className="flex-1 px-2 py-1 text-xs border border-rf-border rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
                           />
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 w-24 shrink-0">Value ends before</span>
+                          <span className="text-xs text-rf-text-muted w-24 shrink-0">Value ends before</span>
                           <input
                             type="text"
                             value={suffix}
                             onChange={(e) => update(prefix, e.target.value)}
                             placeholder='optional \u2014 e.g. "|" or "." (blank = single word)'
-                            className="flex-1 px-2 py-1 text-xs border border-gray-200 rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
+                            className="flex-1 px-2 py-1 text-xs border border-rf-border rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none"
                           />
                         </div>
                         {triggerConfig.body_extract_pattern && (
-                          <p className="text-[10px] text-gray-400 font-mono pl-[104px]">
+                          <p className="text-[10px] text-rf-text-muted font-mono pl-[104px]">
                             \u21b3 {triggerConfig.body_extract_pattern}
                           </p>
                         )}
@@ -259,7 +259,7 @@ export function TriggerSelector({
                 )}
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 w-24 shrink-0">Match to column</span>
+                  <span className="text-xs text-rf-text-muted w-24 shrink-0">Match to column</span>
                   <ColumnPicker
                     columns={columns.filter(
                       (c) => TEXT_COL_TYPES.includes(c.type) || c.type.startsWith("fadv.")
@@ -271,7 +271,7 @@ export function TriggerSelector({
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-gray-400">
+                  <p className="text-[10px] text-rf-text-muted">
                     {bodyExtractAdvanced
                       ? "Use a capture group to extract the value. Also checks FADV Applicant IDs automatically."
                       : "Extracts the word after that label. Also checks FADV Applicant IDs automatically."}
