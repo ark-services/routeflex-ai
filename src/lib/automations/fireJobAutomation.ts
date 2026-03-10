@@ -379,7 +379,7 @@ async function matchesFilter(
     // convenience but are NOT filter conditions; they describe how to match the
     // email to an applicant, not whether the automation should run.
     if (['match_column_id', 'sender_contains', 'subject_contains',
-         'match_applicant_by', 'body_extract_pattern'].includes(key)) continue;
+         'match_applicant_by', 'body_extract_pattern', 'subject_name_pattern'].includes(key)) continue;
 
     // Special handling for column_id match (for board.status_changes_to trigger)
     if (key === 'column_id') {

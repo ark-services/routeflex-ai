@@ -108,8 +108,8 @@ export function ApplicantsBoardContainer({
         isSuperAdmin={isSuperAdmin}
       />
 
-      {/* Board */}
-      <div className="flex-1 overflow-hidden min-h-0">
+      {/* Board — pl-8 aligns groups with toolbar's px-8; pt-8 gives Monday-style breathing room */}
+      <div className="flex-1 overflow-hidden min-h-0 pl-8 pt-8">
         <ApplicantsBoard
           companyId={companyId}
           jobId={jobId}

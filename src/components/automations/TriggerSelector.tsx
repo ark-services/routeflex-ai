@@ -137,8 +137,12 @@ export function TriggerSelector({
             <span className="text-rf-text-secondary">When a matching email is received in Gmail</span>
           )}
 
+          {selectedTrigger.key === "system.notification_created" && (
+            <span className="text-rf-text-secondary">When a system notification is created</span>
+          )}
+
           {/* Fallback for any trigger without a custom sentence */}
-          {!["board.status_changes_to", "applicant.moved_group", "applicant.created", "form.submitted", "gmail.email_received"].includes(selectedTrigger.key) && (
+          {!["board.status_changes_to", "applicant.moved_group", "applicant.created", "form.submitted", "gmail.email_received", "system.notification_created"].includes(selectedTrigger.key) && (
             <span className="text-rf-text-secondary">When {selectedTrigger.name.toLowerCase()}</span>
           )}
         </div>
@@ -201,7 +205,27 @@ export function TriggerSelector({
                 />
                 <span className="text-xs text-rf-text-secondary">Extract value from email body</span>
               </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="match_applicant_by"
+                  checked={triggerConfig.match_applicant_by === "subject_name"}
+                  onChange={() => onConfigChange({ ...triggerConfig, match_applicant_by: "subject_name", body_extract_pattern: undefined, match_column_id: undefined })}
+                  className="text-rf-blue"
+                />
+                <span className="text-xs text-rf-text-secondary">Applicant name in subject (FADV emails)</span>
+              </label>
             </div>
+
+            {triggerConfig.match_applicant_by === "subject_name" && (
+              <div className="mt-2 ml-5 space-y-1.5">
+                <p className="text-[10px] text-rf-text-muted">
+                  Extracts the applicant name from the email subject (after &quot;Reported on&quot;) and matches
+                  to applicants with an active FADV submission. If no match or multiple matches, a system
+                  notification is created.
+                </p>
+              </div>
+            )}
 
             {triggerConfig.match_applicant_by === "body_extract" && (
               <div className="mt-2 ml-5 space-y-2">
@@ -298,6 +322,29 @@ export function TriggerSelector({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* System notification trigger config */}
+      {selectedTrigger.key === "system.notification_created" && (
+        <div className="mt-3 pt-3 border-t border-rf-blue-tint space-y-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-rf-text-muted w-28 shrink-0">Notification type</span>
+            <select
+              value={triggerConfig.notification_type ?? "any"}
+              onChange={(e) => onConfigChange({ ...triggerConfig, notification_type: e.target.value === "any" ? undefined : e.target.value })}
+              className="flex-1 px-2 py-1 text-xs border border-rf-border rounded focus:ring-1 focus:ring-rf-blue focus:border-rf-blue outline-none bg-white"
+            >
+              <option value="any">Any type</option>
+              <option value="error">Error</option>
+              <option value="alert">Alert</option>
+              <option value="info">Info</option>
+            </select>
+          </div>
+          <p className="text-[10px] text-rf-text-muted">
+            Fires when a system notification is created (e.g., unmatched FADV email, integration error).
+            Use actions like &quot;Send email&quot; or &quot;Send Slack&quot; to get notified.
+          </p>
         </div>
       )}
 

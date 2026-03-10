@@ -23,6 +23,7 @@ import { getGmailClientForCompany } from "@/lib/gmail-send";
 import { searchGmailMessages, getGmailMessage } from "@/lib/gmail-read";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
+import { createNotification } from "@/lib/notifications/createNotification";
 
 export const maxDuration = 60;
 
@@ -32,8 +33,9 @@ interface GmailTriggerConfig {
   sender_contains?: string;
   subject_contains?: string;
   body_extract_pattern?: string;
-  match_applicant_by: "sender_email" | "body_extract";
+  match_applicant_by: "sender_email" | "body_extract" | "subject_name";
   match_column_id?: string; // board column UUID for body_extract matching
+  subject_name_pattern?: string; // custom regex for subject_name matching (default: FADV format)
 }
 
 interface AutomationRow {
@@ -257,6 +259,43 @@ async function processCompany(
         }
       }
 
+      } else if (config.match_applicant_by === "subject_name") {
+        const result = await matchBySubjectName(
+          supabase,
+          companyId,
+          message.subject,
+          config.subject_name_pattern,
+        );
+        if (result?.match) {
+          applicantId = result.match.applicantId;
+          jobId = result.match.jobId;
+          extractedValue = result.extractedName;
+        } else if (result?.extractedName) {
+          // Name was extracted but couldn't match — fire a notification
+          const matchCount = result.candidateCount ?? 0;
+          const reason = matchCount === 0
+            ? `No applicant with an active FADV submission matches "${result.extractedName}"`
+            : `${matchCount} applicants with active FADV submissions match "${result.extractedName}" — ambiguous`;
+          await createNotification(supabase, {
+            companyId,
+            jobId: automation.job_id,
+            type: "alert",
+            title: `FADV email could not be matched: ${result.extractedName}`,
+            body: `${reason}. Email subject: "${message.subject}" from ${message.from}`,
+            metadata: {
+              source: "gmail.poll_inbox",
+              automation_id: automation.id,
+              gmail_message_id: messageId,
+              extracted_name: result.extractedName,
+              candidate_count: matchCount,
+              email_from: message.from,
+              email_subject: message.subject,
+            },
+          });
+          extractedValue = result.extractedName;
+        }
+      }
+
       // Insert dedup record regardless of match result
       await supabase.from("gmail_processed_messages").upsert(
         {
@@ -455,4 +494,91 @@ async function matchByExternalReference(
   if (!submission) return null;
 
   return { applicantId: submission.applicant_id, jobId: submission.job_id };
+}
+
+/**
+ * Match by applicant name in the email subject → applicants with a successful FADV submission.
+ *
+ * Default regex captures the name after "Reported on" (FADV's standard email subject format):
+ *   "First Advantage Screening Alerts Reported on SARAH CARTER:" → "SARAH CARTER"
+ *
+ * Returns the match, extracted name, and candidate count for fallback notification.
+ */
+interface SubjectNameResult {
+  match: ApplicantMatch | null;
+  extractedName: string | null;
+  candidateCount?: number;
+}
+
+// Default: capture everything after "Reported on" up to a colon or end of string
+const DEFAULT_SUBJECT_NAME_PATTERN = String.raw`Reported on\s+(.+?)(?:\s*:|\s*$)`;
+
+async function matchBySubjectName(
+  supabase: ReturnType<typeof createServiceClient>,
+  companyId: string,
+  subject: string,
+  customPattern?: string,
+): Promise<SubjectNameResult | null> {
+  const pattern = customPattern?.trim() || DEFAULT_SUBJECT_NAME_PATTERN;
+
+  // Regex safety
+  if (pattern.length > 500) {
+    console.warn(`[gmail/poll-inbox] subject_name pattern too long (${pattern.length} chars)`);
+    return null;
+  }
+
+  let extractedName: string;
+  try {
+    const regex = new RegExp(pattern, "i");
+    const m = subject.match(regex);
+    if (!m || !m[1]) return null;
+    extractedName = m[1].trim();
+  } catch {
+    console.warn("[gmail/poll-inbox] Invalid subject_name pattern:", pattern);
+    return null;
+  }
+
+  if (!extractedName) return null;
+
+  console.log(`[gmail/poll-inbox] subject_name extracted: "${extractedName}"`);
+
+  // Find applicants with a successful FADV submission in this company
+  const { data: submissions } = await supabase
+    .from("integration_submissions")
+    .select("applicant_id")
+    .eq("company_id", companyId)
+    .eq("provider", "fadv")
+    .eq("status", "success");
+
+  if (!submissions || submissions.length === 0) {
+    return { match: null, extractedName, candidateCount: 0 };
+  }
+
+  const applicantIds = [...new Set(submissions.map((s) => s.applicant_id))];
+
+  // Match by full_name (case-insensitive) among those with FADV submissions
+  const { data: candidates } = await supabase
+    .from("applicants")
+    .select("id, job_id")
+    .eq("company_id", companyId)
+    .in("id", applicantIds)
+    .ilike("full_name", extractedName)
+    .order("created_at", { ascending: false });
+
+  if (!candidates || candidates.length === 0) {
+    return { match: null, extractedName, candidateCount: 0 };
+  }
+
+  if (candidates.length > 1) {
+    console.warn(
+      `[gmail/poll-inbox] subject_name "${extractedName}" matched ${candidates.length} applicants — ambiguous`,
+    );
+    return { match: null, extractedName, candidateCount: candidates.length };
+  }
+
+  return {
+    match: { applicantId: candidates[0].id, jobId: candidates[0].job_id },
+    extractedName,
+    candidateCount: 1,
+  };
 }
