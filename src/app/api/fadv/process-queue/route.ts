@@ -312,9 +312,10 @@ async function processFadvSubmission(supabase: ReturnType<typeof createServiceCl
 
   // ── 8. Record outcome ─────────────────────────────────────────────────────
   console.log("[fadv/process-queue] FADV API result:", {
-    success: fadvResult.success,
-    subjectId: fadvResult.success ? fadvResult.subjectId : undefined,
-    error: !fadvResult.success ? fadvResult.error : undefined,
+    success:    fadvResult.success,
+    subjectId:  fadvResult.success ? fadvResult.subjectId : undefined,
+    dialogText: fadvResult.success ? fadvResult.dialogText : undefined,
+    error:      !fadvResult.success ? fadvResult.error : undefined,
   });
   if (fadvResult.success) {
     await supabase
@@ -327,17 +328,47 @@ async function processFadvSubmission(supabase: ReturnType<typeof createServiceCl
       })
       .eq("id", id);
 
-    const msg =
-      `FADV submitted ✅ (${ts})` +
-      (fadvResult.subjectId ? ` ref=${fadvResult.subjectId}` : "");
+    // Build output message — include dialog snippet when ID wasn't captured so
+    // the failure is visible in the RouteFlex board without needing server logs.
+    let msg = `FADV submitted ✅ (${ts})`;
+    if (fadvResult.subjectId) {
+      msg += ` ref=${fadvResult.subjectId}`;
+    } else {
+      const snippet = (fadvResult.dialogText ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+      msg += ` ⚠️ ID not captured — dialog: "${snippet}"`;
+      console.warn("[fadv/process-queue] subjectId missing after success — dialogText:", fadvResult.dialogText);
+    }
 
     if (output_column_id) {
       await writeOutputCell(supabase, applicant_id, output_column_id, msg);
     }
 
     // Write the FADV Applicant ID to its dedicated column (if configured)
+    console.log("[fadv/process-queue] subject_id_column_id:", subject_id_column_id, "subjectId:", fadvResult.subjectId);
     if (subject_id_column_id && fadvResult.subjectId) {
-      await writeOutputCell(supabase, applicant_id, subject_id_column_id, fadvResult.subjectId);
+      const { error: idWriteError } = await supabase
+        .from("board_cells")
+        .upsert(
+          {
+            applicant_id:          applicant_id,
+            column_id:             subject_id_column_id,
+            value_text:            fadvResult.subjectId,
+            value_number:          null,
+            value_date:            null,
+            value_status_label_id: null,
+            value_file_path:       null,
+          },
+          { onConflict: "applicant_id,column_id" }
+        );
+      if (idWriteError) {
+        console.error("[fadv/process-queue] Failed to write FADV Applicant ID to column:", idWriteError);
+      } else {
+        console.log("[fadv/process-queue] ✓ Wrote FADV Applicant ID", fadvResult.subjectId, "→ column", subject_id_column_id);
+      }
+    } else if (subject_id_column_id && !fadvResult.subjectId) {
+      console.warn("[fadv/process-queue] subject_id_column_id is set but subjectId is missing — skipping ID write");
+    } else if (!subject_id_column_id) {
+      console.log("[fadv/process-queue] No subject_id_column_id configured — skipping ID write");
     }
 
     await logActivityEvent(supabase, {

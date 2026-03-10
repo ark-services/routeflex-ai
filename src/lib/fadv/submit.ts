@@ -44,6 +44,8 @@ export interface FadvSubmissionResult {
   error?: string;
   /** FADV Subject ID returned on success */
   subjectId?: string;
+  /** Raw text of the FADV confirmation dialog — for debugging */
+  dialogText?: string;
 }
 
 // ── loadFadvConfig ────────────────────────────────────────────────────────────
@@ -371,7 +373,7 @@ export interface FadvApiCallParams {
 
 export async function runFadvApiCall(
   params: FadvApiCallParams
-): Promise<{ success: boolean; subjectId?: string; error?: string }> {
+): Promise<FadvSubmissionResult> {
   return callFadvCreateSubject({
     cspId:          params.cspId,
     companyIdValue: params.companyIdValue,
@@ -416,7 +418,7 @@ async function callFadvCreateSubject(params: {
   securityAnswer: string | null;
   /** Supabase company UUID — enables DB cookie persistence for cold-start resilience */
   companyId?: string;
-}): Promise<{ success: boolean; subjectId?: string; error?: string }> {
+}): Promise<FadvSubmissionResult> {
 
   if (
     !params.clientId ||
@@ -624,12 +626,20 @@ async function callFadvCreateSubject(params: {
     // simultaneously (e.g. a previously dismissed session-expired dialog). The
     // confirmation modal is always the most recently appended element so .last()
     // selects the right one and avoids Playwright strict-mode violations.
+
+    // Count visible OK buttons for diagnostics
+    const okBtnCount = await gwtOkBtn.count();
+    console.log("[callFadvCreateSubject] OK button count in DOM:", okBtnCount);
+
     const dialogMessage = await gwtOkBtn
       .locator("xpath=ancestor::table[1]")
       .last()
       .innerText()
-      .catch(() => "Submission confirmed");
-    console.log("[callFadvCreateSubject] Confirmation dialog text:", dialogMessage);
+      .catch((err) => {
+        console.error("[callFadvCreateSubject] innerText() failed:", err);
+        return "Submission confirmed";
+      });
+    console.log("[callFadvCreateSubject] Confirmation dialog text:", JSON.stringify(dialogMessage));
 
     await gwtOkBtn.last().click();
 
@@ -641,12 +651,13 @@ async function callFadvCreateSubject(params: {
     } else {
       // Dialog appeared but didn't contain a recognisable ID — still a success
       console.warn(
-        "[callFadvCreateSubject] Dialog message did not contain a Profile ID pattern.",
-        "Message:", dialogMessage
+        "[callFadvCreateSubject] Dialog did not contain a Profile ID pattern.",
+        "okBtnCount:", okBtnCount,
+        "dialogText:", JSON.stringify(dialogMessage)
       );
     }
 
-    return { success: true, subjectId: profileId };
+    return { success: true, subjectId: profileId, dialogText: dialogMessage };
 
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
