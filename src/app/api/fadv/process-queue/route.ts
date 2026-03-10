@@ -28,6 +28,7 @@ import { decrypt } from "@/lib/encryption";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 import { loadSafetyTrainerConfig } from "@/components/integrations/safety-trainer-actions";
 import { runSafetyTrainerSubmission } from "@/lib/safety-trainer/submit";
+import { broadcastCell } from "@/lib/automations/executors/helpers";
 
 // Max submissions processed per cron invocation
 const BATCH_SIZE = 5;
@@ -341,6 +342,7 @@ async function processFadvSubmission(supabase: ReturnType<typeof createServiceCl
 
     if (output_column_id) {
       await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+      if (job_id) await broadcastCell(job_id, { applicant_id, column_id: output_column_id, value_text: msg, value_number: null, value_date: null, value_bool: null, value_status_label_id: null, value_file_path: null });
     }
 
     // Write the FADV Applicant ID to its dedicated column (if configured)
@@ -364,6 +366,7 @@ async function processFadvSubmission(supabase: ReturnType<typeof createServiceCl
         console.error("[fadv/process-queue] Failed to write FADV Applicant ID to column:", idWriteError);
       } else {
         console.log("[fadv/process-queue] ✓ Wrote FADV Applicant ID", fadvResult.subjectId, "→ column", subject_id_column_id);
+        if (job_id) await broadcastCell(job_id, { applicant_id, column_id: subject_id_column_id, value_text: fadvResult.subjectId, value_number: null, value_date: null, value_bool: null, value_status_label_id: null, value_file_path: null });
       }
     } else if (subject_id_column_id && !fadvResult.subjectId) {
       console.warn("[fadv/process-queue] subject_id_column_id is set but subjectId is missing — skipping ID write");
@@ -673,9 +676,11 @@ async function processFadvApproveSubmission(
     const msg = `FADV approved ✅ (${ts})`;
     if (output_column_id) {
       await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+      if (job_id) await broadcastCell(job_id, { applicant_id, column_id: output_column_id, value_text: msg, value_number: null, value_date: null, value_bool: null, value_status_label_id: null, value_file_path: null });
     }
     if (status_column_id && approved_label_id) {
       await writeStatusLabelCell(supabase, applicant_id, status_column_id, approved_label_id);
+      if (job_id) await broadcastCell(job_id, { applicant_id, column_id: status_column_id, value_text: null, value_number: null, value_date: null, value_bool: null, value_status_label_id: approved_label_id, value_file_path: null });
     }
 
     await logActivityEvent(supabase, {
@@ -711,9 +716,11 @@ async function processFadvApproveSubmission(
     const msg = `FADV Approve failed ❌ ${errorCode}`;
     if (output_column_id) {
       await writeOutputCell(supabase, applicant_id, output_column_id, msg);
+      if (job_id) await broadcastCell(job_id, { applicant_id, column_id: output_column_id, value_text: msg, value_number: null, value_date: null, value_bool: null, value_status_label_id: null, value_file_path: null });
     }
     if (status_column_id && error_label_id) {
       await writeStatusLabelCell(supabase, applicant_id, status_column_id, error_label_id);
+      if (job_id) await broadcastCell(job_id, { applicant_id, column_id: status_column_id, value_text: null, value_number: null, value_date: null, value_bool: null, value_status_label_id: error_label_id, value_file_path: null });
     }
 
     await logActivityEvent(supabase, {
