@@ -619,13 +619,19 @@ async function callFadvCreateSubject(params: {
     // Read the dialog body text before dismissing.
     // GWT dialogs are table-based; walk up to the nearest enclosing table to
     // capture the full message. Fall back to a generic success string.
+    //
+    // Use .last() because multiple td.html-face OK buttons can exist in the DOM
+    // simultaneously (e.g. a previously dismissed session-expired dialog). The
+    // confirmation modal is always the most recently appended element so .last()
+    // selects the right one and avoids Playwright strict-mode violations.
     const dialogMessage = await gwtOkBtn
       .locator("xpath=ancestor::table[1]")
+      .last()
       .innerText()
       .catch(() => "Submission confirmed");
     console.log("[callFadvCreateSubject] Confirmation dialog text:", dialogMessage);
 
-    await gwtOkBtn.click();
+    await gwtOkBtn.last().click();
 
     // Extract Profile ID — 8–12 uppercase alphanumeric chars (e.g. "YQXIEB64ZM")
     const idMatch = dialogMessage.match(/\b([A-Z0-9]{8,12})\b/);
