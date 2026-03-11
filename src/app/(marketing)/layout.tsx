@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { MarketingNavbar } from "@/components/marketing/navbar";
 import { MarketingFooter } from "@/components/marketing/footer";
+import { WaitlistModal } from "@/components/marketing/WaitlistModal";
 
 export const metadata: Metadata = {
   title: "RouteFlex - Automated Recruiting for FedEx Contractors",
@@ -18,6 +19,7 @@ export default function MarketingLayout({
       <MarketingNavbar />
       <main className="flex-1">{children}</main>
       <MarketingFooter />
+      <WaitlistModal />
     </div>
   );
 }

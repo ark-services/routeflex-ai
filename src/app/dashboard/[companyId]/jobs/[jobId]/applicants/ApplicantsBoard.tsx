@@ -661,6 +661,7 @@ export default function ApplicantsBoard({
     gridTemplateByGroup,
     gridWidthByGroup,
     maxGridWidth,
+    activeGroupHeaderIdxRef,
   } = useVirtualBoard({
     localGroups,
     localColumns: localColumns.filter((col) => !col.is_hidden),
@@ -671,6 +672,90 @@ export default function ApplicantsBoard({
     columnWidths,
     draggingInGroupId,
   });
+
+  // ── Sticky header scroll handler ─────────────────────────────────────────
+  // Uses CSS custom property --y to decouple from React's transform ownership.
+  // React sets: transform: translateY(var(--y, {vi.start}px))
+  // Scroll handler sets: --y: {clampedValue}px  (on sticky items only)
+  // When --y is set, it overrides the fallback. When removed, the fallback
+  // (vi.start) kicks in. React never touches --y, so no jitter on re-render.
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    let prevGH: HTMLElement | null = null;
+    let prevCH: HTMLElement | null = null;
+
+    const applySticky = () => {
+      const scrollTop = container.scrollTop;
+      const ghEls = container.querySelectorAll<HTMLElement>(
+        '[data-kind="group-header"]'
+      );
+
+      // Find the active group-header (last one whose vstart ≤ scrollTop)
+      let activeGH: HTMLElement | null = null;
+      let ghStart = 0;
+      let nextGHStart = Infinity;
+      for (let i = 0; i < ghEls.length; i++) {
+        const s = parseFloat(ghEls[i].getAttribute("data-vstart") || "0");
+        if (s <= scrollTop) {
+          activeGH = ghEls[i];
+          ghStart = s;
+          nextGHStart =
+            i + 1 < ghEls.length
+              ? parseFloat(ghEls[i + 1].getAttribute("data-vstart") || "0")
+              : Infinity;
+        }
+      }
+
+      // Reset previous elements: remove --y so fallback (vi.start) takes over
+      if (prevGH && prevGH !== activeGH) {
+        prevGH.style.removeProperty("--y");
+        prevGH.style.zIndex = "";
+      }
+      if (prevCH && (!activeGH || prevCH.getAttribute("data-index") !== String(Number(activeGH.getAttribute("data-index")) + 1))) {
+        prevCH.style.removeProperty("--y");
+        prevCH.style.zIndex = "";
+        prevCH = null;
+      }
+
+      if (!activeGH) {
+        prevGH = null;
+        prevCH = null;
+        return;
+      }
+
+      // Clamp group-header Y: stick at scrollTop, push off when next group arrives
+      const stickyHeight = GROUP_HEADER_HEIGHT + 41; // group-header + column-headers
+      const ghUpperBound = nextGHStart - stickyHeight;
+      const ghY = Math.min(Math.max(ghStart, scrollTop), ghUpperBound);
+      activeGH.style.setProperty("--y", `${ghY}px`);
+      activeGH.style.zIndex = "15";
+      prevGH = activeGH;
+
+      // Clamp column-headers Y
+      const activeIdx = activeGH.getAttribute("data-index");
+      const chIdx = String(Number(activeIdx) + 1);
+      const chEl = container.querySelector<HTMLElement>(
+        `[data-index="${chIdx}"][data-kind="column-headers"]`
+      );
+      if (chEl) {
+        const chStart = parseFloat(chEl.getAttribute("data-vstart") || "0");
+        const chUpperBound = nextGHStart - 41;
+        const chY = Math.min(
+          Math.max(chStart, scrollTop + GROUP_HEADER_HEIGHT),
+          chUpperBound
+        );
+        chEl.style.setProperty("--y", `${chY}px`);
+        chEl.style.zIndex = "14";
+        prevCH = chEl;
+      }
+    };
+
+    container.addEventListener("scroll", applySticky, { passive: true });
+    applySticky();
+    return () => container.removeEventListener("scroll", applySticky);
+  }, [flatItems, scrollContainerRef]);
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
@@ -2044,7 +2129,7 @@ export default function ApplicantsBoard({
               height: virtualizer.getTotalSize(),
               position: "relative",
               minWidth: `${maxGridWidth}px`,
-              padding: "0 32px 28px",
+              padding: "28px 32px",
             }}
           >
             <SortableContext
@@ -2069,42 +2154,19 @@ export default function ApplicantsBoard({
                 >
                   {virtualizer.getVirtualItems().map((vi) => {
                     const item = flatItems[vi.index];
-                    const isGroupHeader = item.kind === "group-header";
-                    const isColumnHeaders = item.kind === "column-headers";
-
-                    // Group headers and column headers use position:sticky so they
-                    // remain visible while scrolling vertically. All other items use
-                    // the normal absolute+translateY virtualizer positioning.
-                    if (isGroupHeader || isColumnHeaders) {
-                      return (
-                        <div
-                          key={vi.key}
-                          ref={virtualizer.measureElement}
-                          data-index={vi.index}
-                          style={{
-                            position: "sticky",
-                            top: isGroupHeader ? 0 : GROUP_HEADER_HEIGHT,
-                            zIndex: isGroupHeader ? 15 : 14,
-                            left: 0,
-                            width: "100%",
-                          }}
-                        >
-                          {renderVirtualItem(item)}
-                        </div>
-                      );
-                    }
-
                     return (
                       <div
                         key={vi.key}
                         ref={virtualizer.measureElement}
                         data-index={vi.index}
+                        data-vstart={vi.start}
+                        data-kind={item.kind}
                         style={{
                           position: "absolute",
                           top: 0,
                           left: 0,
                           width: "100%",
-                          transform: `translateY(${vi.start}px)`,
+                          transform: `translateY(var(--y, ${vi.start}px))`,
                         }}
                       >
                         {renderVirtualItem(item)}

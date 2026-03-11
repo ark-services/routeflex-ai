@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
+import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 
 const navLinks = [
   { label: "Features", href: "/features" },
@@ -55,12 +56,9 @@ export function MarketingNavbar() {
           >
             Log in
           </Link>
-          <Link
-            href="/signup"
-            className="text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-5 py-2.5 rounded-rf-lg transition-all shadow-rf-sm hover:shadow-rf-md"
-          >
-            Get Started
-          </Link>
+          <WaitlistButton className="text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-5 py-2.5 rounded-rf-lg transition-all shadow-rf-sm hover:shadow-rf-md">
+            Get Early Access
+          </WaitlistButton>
         </div>
 
         {/* Mobile hamburger */}
@@ -98,13 +96,11 @@ export function MarketingNavbar() {
             >
               Log in
             </Link>
-            <Link
-              href="/signup"
-              onClick={() => setMobileOpen(false)}
-              className="block text-center text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark py-2.5 rounded-rf-md transition-colors"
+            <WaitlistButton
+              className="block w-full text-center text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark py-2.5 rounded-rf-md transition-colors"
             >
-              Get Started
-            </Link>
+              Get Early Access
+            </WaitlistButton>
           </div>
         </div>
       )}

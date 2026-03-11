@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 import {
   ArrowRight,
   ArrowDown,
@@ -554,10 +553,13 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-10 text-center">
-            <WaitlistButton className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-6 py-3 rounded-rf-lg transition-all shadow-rf-md hover:shadow-rf-lg">
-              Get Early Access
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-6 py-3 rounded-rf-lg transition-all shadow-rf-md hover:shadow-rf-lg"
+            >
+              Get Started Free
               <ArrowRight className="h-4 w-4" />
-            </WaitlistButton>
+            </Link>
           </div>
         </div>
       </section>
@@ -800,10 +802,13 @@ export default function LandingPage() {
             stays yours.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
-            <WaitlistButton className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg">
-              Get Early Access
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg"
+            >
+              Get Started Free
               <ArrowRight className="h-4 w-4" />
-            </WaitlistButton>
+            </Link>
             <Link
               href="/pricing"
               className="inline-flex items-center gap-2 text-sm font-semibold text-[#9BAABB] hover:text-white px-6 py-3.5 rounded-rf-lg transition-colors border border-[#2A3347] hover:border-[#4A5568]"

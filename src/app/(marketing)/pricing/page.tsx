@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ArrowRight, HelpCircle } from "lucide-react";
 import { CostCalculator } from "@/components/marketing/cost-calculator";
+import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 
 export const metadata: Metadata = {
   title: "Pricing - RouteFlex",
@@ -27,7 +28,7 @@ const tiers = [
     ],
     anchor:
       "Typical agency maintenance fee: $867/mo for 1-2 candidates. RouteFlex handles the same volume at ~80% less.",
-    cta: "Start Free Trial",
+    cta: "Join Waitlist",
   },
   {
     name: "Growth",
@@ -46,7 +47,7 @@ const tiers = [
     ],
     anchor:
       "Typical agency cost: $1,733\u2013$2,383/mo for a single location. RouteFlex covers multiple for a fraction.",
-    cta: "Start Free Trial",
+    cta: "Join Waitlist",
   },
   {
     name: "Pro",
@@ -65,7 +66,7 @@ const tiers = [
     ],
     anchor:
       "3 locations, 10+ drivers/mo with an agency: ~$17,400/mo. RouteFlex Pro: $599/mo.",
-    cta: "Start Free Trial",
+    cta: "Join Waitlist",
   },
 ];
 
@@ -200,16 +201,15 @@ export default function PricingPage() {
                     </p>
                   </div>
 
-                  <Link
-                    href="/signup"
-                    className={`mt-6 block text-center text-sm font-bold py-3 rounded-rf-lg transition-all ${
+                  <WaitlistButton
+                    className={`mt-6 block w-full text-center text-sm font-bold py-3 rounded-rf-lg transition-all ${
                       tier.popular
                         ? "text-white bg-rf-blue hover:bg-rf-blue-dark shadow-rf-sm hover:shadow-rf-md"
                         : "text-rf-blue bg-rf-blue-tint hover:bg-rf-blue/10"
                     }`}
                   >
                     {tier.cta}
-                  </Link>
+                  </WaitlistButton>
                 </div>
               </div>
             ))}
@@ -273,13 +273,10 @@ export default function PricingPage() {
             today.
           </p>
           <div className="mt-10">
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg"
-            >
-              Start Free Trial
+            <WaitlistButton className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg">
+              Get Early Access
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </WaitlistButton>
           </div>
         </div>
       </section>

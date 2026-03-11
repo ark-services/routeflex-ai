@@ -207,6 +207,10 @@ export function useVirtualBoard({
     return map;
   }, [localGroups, localColumns, columnWidths]);
 
+  // Track the active (sticky) group-header index via a ref so the render loop
+  // can read it without re-triggering the virtualizer. Updated inside rangeExtractor.
+  const activeGroupHeaderIdxRef = useRef(-1);
+
   // ── Virtualizer ────────────────────────────────────────────────────────────
   const virtualizer = useVirtualizer({
     count: flatItems.length,
@@ -224,6 +228,7 @@ export function useVirtualBoard({
           break;
         }
       }
+      activeGroupHeaderIdxRef.current = activeGroupHeaderIdx;
       let result = defaultRange;
       if (activeGroupHeaderIdx >= 0 && !result.includes(activeGroupHeaderIdx)) {
         result = [activeGroupHeaderIdx, ...result];
@@ -275,5 +280,6 @@ export function useVirtualBoard({
     gridTemplateByGroup,
     gridWidthByGroup,
     maxGridWidth,
+    activeGroupHeaderIdxRef,
   };
 }

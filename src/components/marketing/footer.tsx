@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
+import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 
 const footerLinks = {
   Product: [
@@ -8,7 +9,7 @@ const footerLinks = {
   ],
   Company: [
     { label: "Log in", href: "/login" },
-    { label: "Sign Up", href: "/signup" },
+    { label: "Join Waitlist", href: null as string | null },
   ],
   Legal: [
     { label: "Privacy Policy", href: "#" },
@@ -38,12 +39,18 @@ export function MarketingFooter() {
               <ul className="space-y-2.5">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-[#9BAABB] hover:text-white transition-colors"
-                    >
-                      {link.label}
-                    </Link>
+                    {link.href === null ? (
+                      <WaitlistButton className="text-sm text-[#9BAABB] hover:text-white transition-colors">
+                        {link.label}
+                      </WaitlistButton>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-sm text-[#9BAABB] hover:text-white transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
