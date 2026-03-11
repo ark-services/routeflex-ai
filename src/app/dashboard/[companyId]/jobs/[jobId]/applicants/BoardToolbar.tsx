@@ -16,6 +16,7 @@ import { FilterPanel } from "./FilterPanel";
 import { ViewTabs } from "./ViewTabs";
 import { AutomateButton } from "./AutomateButton";
 import { SaveAsTemplateModal } from "./SaveAsTemplateModal";
+import { PipelineSummary, type PipelineStage } from "./PipelineSummary";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,9 @@ export interface BoardToolbarProps {
   onOpenDefaultValues?: () => void;
   // Super admin
   isSuperAdmin?: boolean;
+  // Pipeline summary
+  pipelineStages?: PipelineStage[];
+  totalApplicants?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -68,6 +72,8 @@ export function BoardToolbar({
   onOpenActivityLog,
   onOpenDefaultValues,
   isSuperAdmin = false,
+  pipelineStages,
+  totalApplicants,
 }: BoardToolbarProps) {
   const toast = useToast();
   const [views, setViews] = useState<BoardView[]>(initialViews);
@@ -280,6 +286,14 @@ export function BoardToolbar({
         </div>
       </div>
 
+      {/* ── Pipeline summary — at-a-glance applicant counts per group ────── */}
+      {pipelineStages && pipelineStages.length > 0 && (
+        <PipelineSummary
+          stages={pipelineStages}
+          totalApplicants={totalApplicants ?? 0}
+        />
+      )}
+
       {/* ── Row 2: View tabs (secondary) ─────────────────────────────────────
            Tabs sit directly under the title — they feel grouped to it.
            No top border here; the spacing from Row 1's pb-3 provides the gap. */}
@@ -311,7 +325,7 @@ export function BoardToolbar({
 
         {/* Search */}
         <div
-          className="relative shrink-0 w-[220px] max-w-[55vw]"
+          className="relative shrink-0 w-[140px] focus-within:w-[220px] max-w-[55vw] transition-[width] duration-200"
         >
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rf-text-muted pointer-events-none" />
           <input
@@ -344,7 +358,7 @@ export function BoardToolbar({
           className={`flex items-center gap-1.5 h-8 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0 ${
             filterOpen || activeFilters.length > 0
               ? "border-blue-400 bg-rf-blue-tint text-rf-blue"
-              : "border-rf-border bg-rf-surface-page text-rf-ink-500 hover:bg-rf-surface-page"
+              : "border-rf-border bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:border-rf-ink-100"
           }`}
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />

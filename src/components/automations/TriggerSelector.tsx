@@ -56,14 +56,14 @@ export function TriggerSelector({
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-4 py-2.5 border border-rf-border rounded-lg text-left flex items-center justify-between hover:border-rf-ink-300 transition-colors bg-rf-surface-card text-sm"
+          className="w-full px-4 py-3 border-2 border-dashed border-rf-blue/25 rounded-rf-lg text-left flex items-center justify-between hover:border-rf-blue/40 hover:bg-rf-blue-tint/30 transition-all bg-rf-surface-card text-sm"
         >
           <span className="text-rf-text-muted">When this happens...</span>
           <ChevronDown className="w-4 h-4 text-rf-text-muted" />
         </button>
 
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-rf-surface-card border border-rf-border rounded-lg shadow-lg max-h-72 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1.5 bg-rf-surface-card border border-rf-border rounded-rf-lg shadow-rf-xl max-h-72 overflow-y-auto">
             {sortedTriggers.map((trigger) => (
               <button
                 key={trigger.id}
@@ -71,7 +71,7 @@ export function TriggerSelector({
                   onSelect(trigger);
                   setIsOpen(false);
                 }}
-                className="w-full px-3 py-2 text-left hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0"
+                className="w-full px-4 py-2.5 text-left hover:bg-rf-blue-tint transition-colors border-b border-rf-border last:border-b-0"
               >
                 <p className="text-sm font-medium text-rf-ink-900">{trigger.name}</p>
                 {trigger.description && (
@@ -87,7 +87,7 @@ export function TriggerSelector({
 
   // Render interactive sentence for selected trigger
   return (
-    <div className="border border-rf-blue-tint bg-rf-blue-tint/60 rounded-lg px-4 py-3">
+    <div className="border border-rf-blue/15 bg-rf-blue-tint/40 rounded-rf-lg px-4 py-3.5 shadow-rf-sm">
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-1.5 text-sm flex-1 min-w-0">
           {/* Interactive Sentence */}

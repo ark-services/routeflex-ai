@@ -73,8 +73,8 @@ export function ActionEditor({
   const portalMessageRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <div className="border border-green-200 bg-rf-success-bg/60 rounded-lg px-4 py-3">
-      <div className="flex items-center justify-between mb-1">
+    <div className="border border-emerald-200/80 bg-emerald-50/40 rounded-rf-lg px-4 py-3.5 shadow-rf-sm">
+      <div className="flex items-center justify-between mb-1.5">
         <ActionTypeLabel
           type={action.type}
           actionTypes={actionTypes}
@@ -82,9 +82,9 @@ export function ActionEditor({
         />
         <button
           onClick={onRemove}
-          className="p-1 hover:bg-rf-success-bg rounded flex-shrink-0"
+          className="p-1 hover:bg-emerald-100 rounded-rf-sm flex-shrink-0 transition-colors"
         >
-          <X className="w-3.5 h-3.5 text-rf-text-muted" />
+          <X className="w-3.5 h-3.5 text-rf-text-muted hover:text-rf-danger" />
         </button>
       </div>
 

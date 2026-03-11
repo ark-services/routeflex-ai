@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import ApplicantsBoard from "./ApplicantsBoard";
 import { BoardToolbar } from "./BoardToolbar";
 import type { ActiveFilter, BoardView } from "./view-actions";
 import type { BoardColumn, BoardStatusLabel, BoardCell } from "@/lib/types";
 import { ActivityLogDrawer } from "@/components/activity/ActivityLogDrawer";
+import type { PipelineStage } from "./PipelineSummary";
 
 type Group = {
   id: string;
@@ -13,6 +14,7 @@ type Group = {
   sort_order: number;
   color: string;
   is_collapsed: boolean;
+  show_in_pipeline?: boolean;
 };
 
 type ApplicantRow = {
@@ -73,6 +75,19 @@ export function ApplicantsBoardContainer({
   const [activityLogOpen, setActivityLogOpen] = useState(false);
   const [defaultValuesOpen, setDefaultValuesOpen] = useState(false);
 
+  // Pipeline summary: count applicants per visible group
+  const pipelineStages: PipelineStage[] = useMemo(() => {
+    return [...groups]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .filter((g) => g.show_in_pipeline !== false)
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        color: g.color,
+        count: applicants.filter((a) => a.group_id === g.id).length,
+      }));
+  }, [groups, applicants]);
+
   // Only trigger router.refresh() after status changes when there's an enabled
   // automation that listens for status changes AND has a move_group action.
   // Without such an automation, the RSC refetch is unnecessary overhead.
@@ -106,10 +121,12 @@ export function ApplicantsBoardContainer({
         onOpenActivityLog={() => setActivityLogOpen(true)}
         onOpenDefaultValues={() => setDefaultValuesOpen(true)}
         isSuperAdmin={isSuperAdmin}
+        pipelineStages={pipelineStages}
+        totalApplicants={applicants.length}
       />
 
-      {/* Board — pl-8 aligns groups with toolbar's px-8; pt-8 gives Monday-style breathing room */}
-      <div className="flex-1 overflow-hidden min-h-0 pl-8 pt-8">
+      {/* Board — pl-8 aligns groups with toolbar's px-8; pt-4 for breathing room */}
+      <div className="flex-1 overflow-hidden min-h-0 pl-8 pt-4">
         <ApplicantsBoard
           companyId={companyId}
           jobId={jobId}

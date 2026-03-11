@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   Pin,
+  BarChart3,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -42,6 +43,7 @@ export function SortableGroupHeader({
   onUpdatePortalVisibility,
   onUpdatePortalNote,
   onUpdatePortalChecklist,
+  onUpdatePipelineVisibility,
   columns,
   labelsByColumn,
   canDelete = true,
@@ -71,6 +73,7 @@ export function SortableGroupHeader({
   onUpdatePortalVisibility: (visible: boolean) => void;
   onUpdatePortalNote: (note: string) => void;
   onUpdatePortalChecklist: (checklist: PortalChecklistItem[]) => void;
+  onUpdatePipelineVisibility: (show: boolean) => void;
   columns: BoardColumn[];
   labelsByColumn: Map<string, StatusLabel[]>;
   canDelete?: boolean;
@@ -369,6 +372,21 @@ export function SortableGroupHeader({
                 <PencilLine className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 Rename
               </button>
+            </div>
+
+            {/* Pipeline visibility toggle */}
+            <div className="border-t border-rf-ink-100" />
+            <div className="py-2">
+              <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors cursor-pointer">
+                <BarChart3 className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
+                <span className="flex-1">Show in pipeline</span>
+                <input
+                  type="checkbox"
+                  checked={group.show_in_pipeline !== false}
+                  onChange={(e) => onUpdatePipelineVisibility(e.target.checked)}
+                  className="w-4 h-4 rounded border-rf-ink-100 text-rf-blue cursor-pointer"
+                />
+              </label>
             </div>
 
             {/* Section 3 -- applicant portal settings */}

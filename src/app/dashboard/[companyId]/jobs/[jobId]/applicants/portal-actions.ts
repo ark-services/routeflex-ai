@@ -29,6 +29,31 @@ export async function updateBoardGroupPortalSettings(
   return { success: true };
 }
 
+export async function updateBoardGroupPipelineVisibility(
+  companyId: string,
+  groupId: string,
+  showInPipeline: boolean
+) {
+  await assertCompanyAccess(companyId);
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { error } = await supabase
+    .from("board_groups")
+    .update({ show_in_pipeline: showInPipeline })
+    .eq("id", groupId)
+    .eq("company_id", companyId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/${companyId}`);
+  return { success: true };
+}
+
 export type PortalChecklistItem = {
   id: string;              // client-generated UUID (stable list key)
   column_id: string;       // status (or any) column

@@ -11,6 +11,7 @@ export type Group = {
   settings?: { collapsed_columns?: string[]; hidden_columns?: string[]; portal_checklist?: PortalChecklistItem[] };
   visible_to_applicants?: boolean;
   applicant_note?: string | null;
+  show_in_pipeline?: boolean;
 };
 
 export type ApplicantRow = {

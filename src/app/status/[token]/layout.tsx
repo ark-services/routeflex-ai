@@ -65,34 +65,40 @@ export default async function StatusPortalLayout({
 
   return (
     <div className="min-h-screen bg-rf-surface-page flex flex-col">
+      {/* Brand accent strip */}
+      <div className="h-[3px] bg-gradient-to-r from-[var(--rf-blue-dark)] via-[var(--rf-blue)] to-[var(--rf-blue-light)]" />
+
       {/* Header */}
-      <header className="bg-rf-surface-card border-b border-rf-border px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
+      <header className="bg-rf-surface-card border-b border-rf-border">
+        <div className="max-w-2xl mx-auto px-6 py-4 flex items-center gap-4">
           {company?.logo_url ? (
             <img
               src={company.logo_url}
               alt={company.name ?? "Company"}
-              className="h-8 w-auto object-contain"
+              className="h-9 w-auto object-contain"
             />
           ) : (
-            <div className="h-8 px-3 bg-rf-blue text-white text-sm font-semibold rounded flex items-center">
+            <span className="text-base font-bold text-rf-text-primary tracking-tight font-[family-name:var(--font-darker-grotesque)]">
               {company?.name ?? "Application Status"}
-            </div>
+            </span>
           )}
           {job?.title && (
-            <div className="text-sm text-rf-text-secondary">{job.title}</div>
+            <>
+              <div className="h-5 w-px bg-rf-ink-100" />
+              <span className="text-sm text-rf-text-secondary">{job.title}</span>
+            </>
           )}
         </div>
       </header>
 
       {/* Content */}
-      <main className="flex-1 px-4 py-8">
+      <main className="flex-1 px-4 py-10">
         <div className="max-w-2xl mx-auto">
           {children}
         </div>
       </main>
 
-      <footer className="border-t border-rf-border py-4 flex flex-col items-center gap-1.5">
+      <footer className="py-6 flex flex-col items-center gap-2">
         <RouteFlexLogo size="nav" />
         <span className="text-xs text-rf-text-muted">Powered by RouteFlex</span>
       </footer>

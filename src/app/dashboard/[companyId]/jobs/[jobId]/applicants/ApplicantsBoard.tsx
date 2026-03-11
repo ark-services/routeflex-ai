@@ -53,7 +53,7 @@ import {
   updateGroupCollapsedColumns,
   updateGroupHiddenColumns,
 } from "./actions";
-import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist } from "./portal-actions";
+import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist, updateBoardGroupPipelineVisibility } from "./portal-actions";
 import type { PortalChecklistItem } from "./portal-actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
 import type { BoardCell } from "@/lib/types";
@@ -1139,6 +1139,15 @@ export default function ApplicantsBoard({
     });
   }
 
+  function onUpdateGroupPipelineVisibility(groupId: string, show: boolean) {
+    setLocalGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, show_in_pipeline: show } : g))
+    );
+    startTransition(async () => {
+      await updateBoardGroupPipelineVisibility(companyId, groupId, show);
+    });
+  }
+
   function onColumnWidthChange(columnId: string, width: number) {
     setColumnWidths(prev => ({ ...prev, [columnId]: width }));
   }
@@ -1530,6 +1539,7 @@ export default function ApplicantsBoard({
               onUpdatePortalVisibility={(visible) => onUpdateGroupPortalVisibility(g.id, visible)}
               onUpdatePortalNote={(note) => onUpdateGroupPortalNote(g.id, note)}
               onUpdatePortalChecklist={(checklist) => onUpdateGroupPortalChecklist(g.id, checklist)}
+              onUpdatePipelineVisibility={(show) => onUpdateGroupPipelineVisibility(g.id, show)}
               columns={groupVisibleCols}
               labelsByColumn={labelsByColumn}
               frozenColumnsCount={frozenColumnsCount}
@@ -1583,7 +1593,7 @@ export default function ApplicantsBoard({
         const g = localGroups.find((gr) => gr.id === item.groupId);
         return (
           <div
-            className="px-4 py-8 text-sm text-rf-text-muted text-center bg-rf-surface-card"
+            className="px-4 py-8 text-sm text-rf-text-muted text-left bg-rf-surface-card"
             style={{
               borderLeft: g ? `4px solid ${g.color}` : undefined,
               boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
