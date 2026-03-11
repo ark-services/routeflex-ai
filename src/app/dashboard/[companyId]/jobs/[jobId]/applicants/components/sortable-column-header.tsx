@@ -159,7 +159,7 @@ export function SortableColumnHeader({
         zIndex: isFrozen ? 19 : undefined,
         boxShadow: isLastFrozen ? 'inset -2px 0 0 0 #c8cdd5' : (isFrozen ? 'inset -1px 0 0 0 rgb(228, 232, 240)' : undefined),
       }}
-      className={`group py-2 text-sm font-medium text-rf-ink-700 ${isFrozen ? "" : "border-r border-rf-border"} last:border-r-0 ${
+      className={`group flex items-center py-2 text-sm font-medium text-rf-ink-700 ${isFrozen ? "" : "border-r border-rf-border"} last:border-r-0 ${
         isFrozen ? "bg-rf-surface-card" : ""
       } ${isCollapsed ? "px-0 w-8" : "px-3"
       }${!isEditing && !isCollapsed && !column.is_system && !isFrozen ? " cursor-grab active:cursor-grabbing" : ""}`}

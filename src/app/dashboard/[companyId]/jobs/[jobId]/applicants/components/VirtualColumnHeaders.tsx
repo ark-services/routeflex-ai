@@ -64,7 +64,7 @@ export function VirtualColumnHeaders({
     >
       {/* Sticky checkbox cell */}
       <div
-        className="sticky left-0 z-20 bg-rf-surface-card px-4 py-2"
+        className="sticky left-0 z-20 flex items-center bg-rf-surface-card px-4 py-2"
         style={{ boxShadow: "inset -1px 0 0 0 rgb(228, 232, 240)" }}
       >
         <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export function VirtualColumnHeaders({
       </SortableContext>
 
       {/* Add column button */}
-      <div className="px-4 py-2">
+      <div className="flex items-center px-4 py-2">
         <button
           onClick={onShowAddColumnModal}
           className="flex h-8 w-8 items-center justify-center rounded-lg border border-rf-ink-100 bg-rf-surface-card text-rf-ink-500 hover:bg-rf-surface-page hover:text-rf-text-primary transition"

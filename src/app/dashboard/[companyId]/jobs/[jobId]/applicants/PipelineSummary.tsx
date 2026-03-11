@@ -28,7 +28,7 @@ export function PipelineSummary({ stages }: PipelineSummaryProps) {
     }
 
     const MIN_PCT = 6;
-    const ZERO_PCT = 6;
+    const ZERO_PCT = 2.5;
     const zeroCount = stages.filter((s) => s.count === 0).length;
     const zeroReserved = zeroCount * ZERO_PCT;
     const nonZero = stages.filter((s) => s.count > 0);
@@ -98,9 +98,11 @@ export function PipelineSummary({ stages }: PipelineSummaryProps) {
                   {seg.count}
                 </span>
               </span>
-              <span className="text-[8px] font-semibold text-rf-ink-500 uppercase tracking-wider truncate leading-none hidden sm:inline">
-                {seg.name}
-              </span>
+              {seg.count > 0 && (
+                <span className="text-[8px] font-semibold text-rf-ink-500 uppercase tracking-wider truncate leading-none hidden sm:inline">
+                  {seg.name}
+                </span>
+              )}
             </div>
           </div>
         ))}
