@@ -223,6 +223,7 @@ export interface TemplateColumn {
   type: string;
   sort_order: number;
   is_system: boolean;
+  is_hidden?: boolean;
   settings: Record<string, unknown>;
 }
 
@@ -236,6 +237,7 @@ export interface TemplateAutomation {
   type: string;       // trigger_key value
   name?: string;
   config: Record<string, unknown>;   // filter jsonb
+  trigger_config?: Record<string, unknown>; // trigger-specific config (e.g. Gmail matching rules)
   actions?: TemplateAutomationAction[];
 }
 
@@ -263,11 +265,27 @@ export interface TemplateForm {
   design: TemplateFormDesign;
 }
 
+export interface TemplateKnowledgeBaseEntry {
+  question: string;
+  answer: string;
+  sort_order: number;
+}
+
+export interface TemplateBoardView {
+  name: string;
+  query: Record<string, unknown>;
+  sort?: Record<string, unknown> | null;
+  position: number;
+  is_default: boolean;
+}
+
 export interface TemplatePayload {
   groups: TemplateGroup[];
   columns?: TemplateColumn[];
   automations?: TemplateAutomation[];
   form?: TemplateForm;  // Application Form definition (optional — older templates won't have it)
+  knowledgeBase?: TemplateKnowledgeBaseEntry[];  // Q&A entries for AI automations
+  boardViews?: TemplateBoardView[];              // Saved search/filter views
 }
 
 export interface Template {

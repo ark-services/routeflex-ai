@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateCourseTemplate, deleteCourseTemplate } from "../actions";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const CARRIER_OPTIONS = [
   { value: "", label: "— None —" },
@@ -24,6 +25,7 @@ interface Props {
 
 export function TemplateSettingsForm({ template }: Props) {
   const router = useRouter();
+  const confirm = useConfirmDialog();
   const [name, setName] = useState(template.name);
   const [description, setDescription] = useState(template.description ?? "");
   const [carrierType, setCarrierType] = useState(template.carrier_type ?? "");
@@ -55,7 +57,7 @@ export function TemplateSettingsForm({ template }: Props) {
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete template "${template.name}"? This cannot be undone.`)) return;
+    if (!await confirm({ title: "Delete Template", description: `This will permanently delete "${template.name}". This cannot be undone.`, confirmLabel: "Delete", variant: "destructive" })) return;
     setDeleting(true);
     try {
       await deleteCourseTemplate(template.id);

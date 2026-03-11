@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Mail, X, Trash2 } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 
 interface Connection {
   id: string;
@@ -19,9 +21,11 @@ export function GmailConnectionCard({
   accountId: string;
 }) {
   const [loading, setLoading] = useState(false);
+  const confirm = useConfirmDialog();
+  const toast = useToast();
 
   const handleDisconnect = async () => {
-    if (!confirm(`Disconnect ${connection.email_address}? Automations using this account will fail.`)) {
+    if (!await confirm({ title: "Disconnect Gmail", description: `Disconnect ${connection.email_address}? Automations using this account will fail.`, confirmLabel: "Disconnect", variant: "destructive" })) {
       return;
     }
 
@@ -39,7 +43,7 @@ export function GmailConnectionCard({
 
       window.location.reload();
     } catch (err: any) {
-      alert(`Failed to disconnect: ${err.message}`);
+      toast.error(`Failed to disconnect: ${err.message}`);
       setLoading(false);
     }
   };

@@ -9,6 +9,9 @@ import { getFadvConnection } from "@/components/integrations/fadv-actions";
 import { FadvCard } from "@/components/integrations/FadvCard";
 import { getSafetyTrainerConnection } from "@/components/integrations/safety-trainer-actions";
 import { SafetyTrainerCard } from "@/components/integrations/SafetyTrainerCard";
+// TODO (cleanup): Adobe Sign hidden pending provider decision — safe to remove
+// import { getAdobeSignConnection } from "@/components/integrations/adobe-sign-actions";
+// import { AdobeSignCard } from "@/components/integrations/AdobeSignCard";
 import { IntegrationsClient } from "./IntegrationsClient";
 
 export default async function CompanyIntegrationsPage({
@@ -32,6 +35,8 @@ export default async function CompanyIntegrationsPage({
       getTwilioConnection(companyId),
       getFadvConnection(companyId),
       getSafetyTrainerConnection(companyId),
+      // TODO (cleanup): Adobe Sign hidden pending provider decision — safe to remove
+      // getAdobeSignConnection(companyId),
     ]);
 
   return (
@@ -71,6 +76,13 @@ export default async function CompanyIntegrationsPage({
           accountId={accountId}
           initialConnection={safetyTrainerConnection}
         />
+
+        {/* TODO (cleanup): Adobe Sign hidden pending provider decision — safe to remove */}
+        {/* <AdobeSignCard
+          companyId={companyId}
+          accountId={accountId}
+          initialConnection={adobeSignConnection}
+        /> */}
       </div>
     </IntegrationsClient>
   );

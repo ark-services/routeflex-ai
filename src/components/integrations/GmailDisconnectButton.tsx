@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { disconnectGmail } from "./actions";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 
 interface Props {
   accountId: string;
@@ -10,12 +12,12 @@ interface Props {
 
 export function GmailDisconnectButton({ accountId, companyId }: Props) {
   const [loading, setLoading] = useState(false);
+  const confirm = useConfirmDialog();
+  const toast = useToast();
 
   const handleDisconnect = async () => {
     if (
-      !confirm(
-        "Disconnect Gmail? Automations using Gmail will stop working."
-      )
+      !await confirm({ title: "Disconnect Gmail", description: "Automations using Gmail will stop working.", confirmLabel: "Disconnect", variant: "destructive" })
     )
       return;
     setLoading(true);
@@ -23,7 +25,7 @@ export function GmailDisconnectButton({ accountId, companyId }: Props) {
       await disconnectGmail(companyId, accountId);
       window.location.reload();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
       setLoading(false);
     }
   };

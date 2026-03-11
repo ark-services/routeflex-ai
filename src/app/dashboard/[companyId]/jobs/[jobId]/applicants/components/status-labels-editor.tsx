@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { GripVertical } from "lucide-react";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DndContext,
   closestCenter,
@@ -195,6 +196,7 @@ export function StatusLabelsEditor({
   labels: StatusLabel[];
   onClose: () => void;
 }) {
+  const confirm = useConfirmDialog();
   const [isPending, startTransition] = useTransition();
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [localLabels, setLocalLabels] = useState<StatusLabel[]>(labels);
@@ -297,7 +299,7 @@ export function StatusLabelsEditor({
     });
   }
 
-  function onDeleteLabel(labelId: string) {
+  async function onDeleteLabel(labelId: string) {
     const labelToDelete = localLabels.find((l) => l.id === labelId);
     if (!labelToDelete) return;
 
@@ -314,7 +316,7 @@ export function StatusLabelsEditor({
     const confirmMsg = isLinkedToForm
       ? `"${labelToDelete.label}" is synced from a form dropdown. Deleting it here may cause it to be re-added automatically when the next applicant submits the form. Delete anyway?`
       : `Delete "${labelToDelete.label}"?`;
-    const ok = confirm(confirmMsg);
+    const ok = await confirm({ title: "Delete Label", description: confirmMsg, confirmLabel: "Delete", variant: "destructive" });
     if (!ok) return;
 
     // Immediately remove from local state

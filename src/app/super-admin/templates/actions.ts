@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
-import type { TemplatePayload, TemplateForm } from "@/lib/types";
+import type { TemplatePayload, TemplateForm, TemplateKnowledgeBaseEntry, TemplateBoardView } from "@/lib/types";
 
 // ─── Annotation helpers ───────────────────────────────────────────────────────
 //
@@ -270,7 +270,7 @@ export async function captureJobLayoutToTemplate(
   // ── 4. Fetch board columns ────────────────────────────────────────────────
   const { data: rawColumns } = await supabase
     .from("board_columns")
-    .select("id, name, type, sort_order, is_system, settings")
+    .select("id, name, type, sort_order, is_system, is_hidden, settings")
     .eq("board_id", boardId)
     .order("sort_order", { ascending: true });
 
@@ -345,6 +345,7 @@ export async function captureJobLayoutToTemplate(
       type: c.type,
       sort_order: c.sort_order,
       is_system: c.is_system ?? false,
+      is_hidden: c.is_hidden ?? false,
       settings,
     };
   });
@@ -362,6 +363,7 @@ export async function captureJobLayoutToTemplate(
       name,
       trigger_key,
       filter,
+      trigger_config,
       automation_actions (
         type,
         sort_order,
@@ -382,6 +384,10 @@ export async function captureJobLayoutToTemplate(
       labelIdToText,
       groupIdToName
     ),
+    // Preserve trigger-specific config (e.g. Gmail matching rules)
+    trigger_config: (a.trigger_config && Object.keys(a.trigger_config).length > 0)
+      ? a.trigger_config
+      : undefined,
     actions: (a.automation_actions ?? []).map((act: any) => ({
       type: act.type,
       sort_order: act.sort_order ?? 0,
@@ -414,12 +420,12 @@ export async function captureJobLayoutToTemplate(
         if (applicants && applicants.length > 0) {
           const applicantIds = applicants.map((a) => a.id);
 
-          // Fetch board cells — typed value columns so date/number/status
+          // Fetch board cells — typed value columns so date/number/status/bool
           // values are all captured (value_text alone misses them).
           const { data: cells } = await supabase
             .from("board_cells")
             .select(
-              "applicant_id, column_id, value_text, value_number, value_date, value_status_label_id"
+              "applicant_id, column_id, value_text, value_number, value_date, value_status_label_id, value_bool"
             )
             .in("applicant_id", applicantIds);
 
@@ -448,6 +454,13 @@ export async function captureJobLayoutToTemplate(
             ) {
               // Store as string; applyTemplate parses it back with parseFloat
               cellsByApplicant.get(cell.applicant_id)![colName] = String(cell.value_number);
+            } else if (
+              colType === "checkbox" &&
+              cell.value_bool !== null &&
+              cell.value_bool !== undefined
+            ) {
+              // Store as "true"/"false"; applyTemplate parses back to boolean
+              cellsByApplicant.get(cell.applicant_id)![colName] = String(cell.value_bool);
             } else if (cell.value_text) {
               cellsByApplicant.get(cell.applicant_id)![colName] = cell.value_text;
             }
@@ -541,14 +554,82 @@ export async function captureJobLayoutToTemplate(
     );
   }
 
+  // ── 8. Capture knowledge base entries ────────────────────────────────────
+  //
+  // Q&A entries used as context for AI-powered automations (email, SMS, phone).
+
+  let knowledgeBase: TemplateKnowledgeBaseEntry[] | undefined;
+
+  const { data: kbEntries } = await supabase
+    .from("job_knowledge_base")
+    .select("question, answer, sort_order")
+    .eq("job_id", jobId)
+    .order("sort_order", { ascending: true });
+
+  if (kbEntries && kbEntries.length > 0) {
+    knowledgeBase = kbEntries.map((e) => ({
+      question: e.question,
+      answer: e.answer,
+      sort_order: e.sort_order,
+    }));
+    console.log(
+      `[captureJobLayoutToTemplate] knowledge base captured: ${knowledgeBase.length} entry(ies)`
+    );
+  }
+
+  // ── 9. Capture board views (saved searches/filters) ────────────────────────
+
+  let boardViews: TemplateBoardView[] | undefined;
+
+  const { data: rawViews } = await supabase
+    .from("board_views")
+    .select("name, query, sort, position, is_default")
+    .eq("board_id", boardId)
+    .order("position", { ascending: true });
+
+  if (rawViews && rawViews.length > 0) {
+    // Annotate column UUIDs in view filters with names for portability
+    boardViews = rawViews.map((v) => {
+      const query = v.query as Record<string, unknown>;
+      if (Array.isArray(query.filters)) {
+        query.filters = (query.filters as Record<string, unknown>[]).map((f) => {
+          const annotated: Record<string, unknown> = { ...f };
+          if (typeof f.column_id === "string") {
+            const name = colIdToName.get(f.column_id);
+            if (name) annotated._column_name = name;
+          }
+          return annotated;
+        });
+      }
+      // Annotate sort column
+      const sort = v.sort as Record<string, unknown> | null;
+      if (sort && typeof sort.column_id === "string") {
+        const name = colIdToName.get(sort.column_id);
+        if (name) sort._column_name = name;
+      }
+      return {
+        name: v.name,
+        query,
+        sort: sort ?? null,
+        position: v.position,
+        is_default: v.is_default,
+      };
+    });
+    console.log(
+      `[captureJobLayoutToTemplate] board views captured: ${boardViews.length} view(s)`
+    );
+  }
+
   const payload: TemplatePayload = {
     groups: payloadGroups,
     columns,
     automations,
     form: templateForm,
+    knowledgeBase,
+    boardViews,
   };
 
-  // ── 8. Resolve templateId (create new or reuse existing) ─────────────────
+  // ── 10. Resolve templateId (create new or reuse existing) ────────────────
   let templateId: string;
 
   if ("templateId" in target) {
@@ -573,7 +654,7 @@ export async function captureJobLayoutToTemplate(
     return { success: true, templateId };
   }
 
-  // ── 9. Update existing template payload ────────────────────────────────────
+  // ── 11. Update existing template payload ───────────────────────────────────
   const { error: updateErr } = await supabase
     .from("templates")
     .update({ payload })

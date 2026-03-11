@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toast } from "@/components/ui/toast";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   upsertFadvConnection,
   deleteFadvConnection,
@@ -76,6 +77,7 @@ function PasswordInput({
 // ── component ─────────────────────────────────────────────────────────────────
 
 export function FadvCard({ companyId, accountId, initialConnection }: Props) {
+  const confirm = useConfirmDialog();
   const [connection, setConnection] = useState<FadvConnectionData | null>(
     initialConnection
   );
@@ -204,9 +206,7 @@ export function FadvCard({ companyId, accountId, initialConnection }: Props) {
 
   async function handleDisconnect() {
     if (
-      !confirm(
-        "Remove First Advantage configuration? All stored credentials will be deleted and submissions to FADV will stop working."
-      )
+      !await confirm({ title: "Remove First Advantage", description: "All stored credentials will be deleted and submissions to FADV will stop working.", confirmLabel: "Remove", variant: "destructive" })
     )
       return;
     setDisconnecting(true);

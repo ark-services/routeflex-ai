@@ -12,6 +12,8 @@ import {
   createTemplateQuestionsBulk,
 } from "../../../actions";
 import { GenerateWithAI } from "@/components/lms/GenerateWithAI";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 
 interface Question {
   id: string;
@@ -37,6 +39,8 @@ interface Props {
 const OPTION_IDS = ["a", "b", "c", "d"];
 
 export function ModuleEditor({ templateId, module: mod, questions: initialQuestions, templateContent }: Props) {
+  const confirm = useConfirmDialog();
+  const toast = useToast();
   const [title, setTitle] = useState(mod.title);
   const [content, setContent] = useState(mod.content);
   const [contentTab, setContentTab] = useState<"write" | "preview">("write");
@@ -76,17 +80,17 @@ export function ModuleEditor({ templateId, module: mod, questions: initialQuesti
         { id, sort_order: prev.length, ...newQ },
       ]);
     } catch (err: any) {
-      alert(err.message ?? "Failed to add question");
+      toast.error(err.message ?? "Failed to add question");
     }
   }
 
   async function handleDeleteQuestion(questionId: string) {
-    if (!confirm("Delete this question?")) return;
+    if (!await confirm({ title: "Delete Question", description: "This will permanently remove this question.", confirmLabel: "Delete", variant: "destructive" })) return;
     try {
       await deleteTemplateQuestion(questionId, mod.id, templateId);
       setQuestions((prev) => prev.filter((q) => q.id !== questionId));
     } catch (err: any) {
-      alert(err.message ?? "Failed to delete");
+      toast.error(err.message ?? "Failed to delete");
     }
   }
 
@@ -95,7 +99,7 @@ export function ModuleEditor({ templateId, module: mod, questions: initialQuesti
     // templateContent (all other modules in the course concatenated).
     const sourceContent = content.trim() || (mod.is_final_exam ? templateContent : undefined);
     if (!sourceContent) {
-      alert(
+      toast.warning(
         mod.is_final_exam
           ? "No module content found in this course yet. Add content to the training modules first."
           : "Add module content first, then generate questions."
@@ -103,9 +107,11 @@ export function ModuleEditor({ templateId, module: mod, questions: initialQuesti
       return;
     }
     if (questions.length > 0) {
-      const confirmed = confirm(
-        `Replace the existing ${questions.length} question${questions.length === 1 ? "" : "s"} with AI-generated ones?`
-      );
+      const confirmed = await confirm({
+        title: "Replace Questions",
+        description: `This will replace the existing ${questions.length} question${questions.length === 1 ? "" : "s"} with AI-generated ones.`,
+        confirmLabel: "Replace",
+      });
       if (!confirmed) return;
     }
     setGeneratingQuestions(true);
@@ -126,7 +132,7 @@ export function ModuleEditor({ templateId, module: mod, questions: initialQuesti
       const created = await createTemplateQuestionsBulk(templateId, mod.id, data.questions);
       setQuestions(created);
     } catch (err: any) {
-      alert(err.message ?? "Something went wrong.");
+      toast.error(err.message ?? "Something went wrong.");
     } finally {
       setGeneratingQuestions(false);
     }
@@ -327,6 +333,7 @@ function QuestionEditor({
   onDelete: () => void;
   onChange: (q: Question) => void;
 }) {
+  const toast = useToast();
   const [localQ, setLocalQ] = useState(question);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -353,7 +360,7 @@ function QuestionEditor({
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: any) {
-      alert(err.message ?? "Failed to save question");
+      toast.error(err.message ?? "Failed to save question");
     } finally {
       setSaving(false);
     }

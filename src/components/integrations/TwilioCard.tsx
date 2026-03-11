@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toast } from "@/components/ui/toast";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   upsertTwilioConnection,
   deleteTwilioConnection,
@@ -27,6 +28,7 @@ interface Props {
 // ── component ─────────────────────────────────────────────────────────────────
 
 export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
+  const confirm = useConfirmDialog();
   const [connection, setConnection] = useState<TwilioConnectionData | null>(
     initialConnection
   );
@@ -134,9 +136,7 @@ export function TwilioCard({ companyId, accountId, initialConnection }: Props) {
 
   async function handleDisconnect() {
     if (
-      !confirm(
-        "Disconnect Twilio? Any automations using Twilio SMS will stop working."
-      )
+      !await confirm({ title: "Disconnect Twilio", description: "Any automations using Twilio SMS will stop working.", confirmLabel: "Disconnect", variant: "destructive" })
     )
       return;
     setDisconnecting(true);

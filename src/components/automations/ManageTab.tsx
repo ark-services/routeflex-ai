@@ -8,6 +8,8 @@ import {
   duplicateJobAutomation,
 } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { createClient } from "@/lib/supabase/client";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 
 interface Automation {
   id: string;
@@ -165,6 +167,8 @@ function buildDynamicName(
         return "send status portal link to applicant";
       case "ai.score_resume":
         return "score applicant with AI";
+      case "esign.send_agreement":
+        return "send eSign agreement via Adobe Sign";
       default:
         return action.type;
     }
@@ -235,6 +239,8 @@ export function ManageTab({
   triggers,
   onEdit,
 }: ManageTabProps) {
+  const confirm = useConfirmDialog();
+  const toast = useToast();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -290,21 +296,27 @@ export function ManageTab({
       setActionLoading(automationId);
       await toggleJobAutomation(companyId, jobId, automationId, !currentEnabled);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleDelete = async (automationId: string) => {
-    if (!confirm("Delete this automation? This cannot be undone.")) return;
+    const ok = await confirm({
+      title: "Delete Automation",
+      description: "This will permanently delete this automation. This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
 
     try {
       setActionLoading(automationId);
       await deleteJobAutomation(companyId, jobId, automationId);
       setOpenMenuId(null);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setActionLoading(null);
     }
@@ -316,7 +328,7 @@ export function ManageTab({
       await duplicateJobAutomation(companyId, jobId, automationId);
       setOpenMenuId(null);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setActionLoading(null);
     }
@@ -364,6 +376,7 @@ export function ManageTab({
         'lms.send_training_link':   'send training link',
         'portal.send_link':         'send status portal link',
         'ai.score_resume':          'ai score resume',
+        'esign.send_agreement':     'send esign adobe sign',
       };
       return (labelMap[action.type] || action.type).includes(query);
     });

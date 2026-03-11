@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, useEffect } from "react";
 import { Search, SlidersHorizontal, X, Link2, Zap, BookTemplate, MoreHorizontal, ScrollText } from "lucide-react";
 import type { BoardColumn, BoardStatusLabel } from "@/lib/types";
+import { useToast } from "@/components/ui/toast-provider";
 import type { ActiveFilter, BoardView, BoardViewQuery } from "./view-actions";
 import {
   createBoardView,
@@ -68,6 +69,7 @@ export function BoardToolbar({
   onOpenDefaultValues,
   isSuperAdmin = false,
 }: BoardToolbarProps) {
+  const toast = useToast();
   const [views, setViews] = useState<BoardView[]>(initialViews);
   const [activeViewId, setActiveViewId] = useState<string>(
     initialViews.find((v) => v.is_default)?.id ?? initialViews[0]?.id ?? ""
@@ -124,7 +126,7 @@ export function BoardToolbar({
         name,
         query
       );
-      if (error) { alert(error); return; }
+      if (error) { toast.error(error); return; }
       if (data) {
         setViews((prev) => [...prev, data]);
         setActiveViewId(data.id);
@@ -153,7 +155,7 @@ export function BoardToolbar({
         boardId,
         viewId
       );
-      if (error) { alert(error); return; }
+      if (error) { toast.error(error); return; }
       if (data) {
         setViews((prev) => [...prev, data]);
         setActiveViewId(data.id);

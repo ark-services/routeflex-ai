@@ -7,6 +7,8 @@ import {
   createAutomation,
   testFireAutomation,
 } from "./actions";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 
 interface Automation {
   id: string;
@@ -50,22 +52,30 @@ export function AutomationsClient({
 }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const confirm = useConfirmDialog();
+  const toast = useToast();
 
   const handleToggle = async (automationId: string, isEnabled: boolean) => {
     try {
       await toggleAutomation(companyId, automationId, !isEnabled);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
   const handleDelete = async (automationId: string) => {
-    if (!confirm("Delete this automation?")) return;
+    const ok = await confirm({
+      title: "Delete Automation",
+      description: "This will permanently delete this automation.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
 
     try {
       await deleteAutomation(companyId, automationId);
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -191,6 +201,7 @@ function CreateAutomationModal({
   >("move_group");
   const [actionConfig, setActionConfig] = useState<any>({});
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,7 +221,7 @@ function CreateAutomationModal({
       });
       onClose();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }

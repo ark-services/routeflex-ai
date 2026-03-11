@@ -44,6 +44,8 @@ export const AUTOMATION_ACTION_TYPES = [
   "portal.send_link",
   // ── AI Actions ────────────────────────────────────────────────────────────
   "ai.score_resume",
+  // ── eSign Actions ───────────────────────────────────────────────────────
+  "esign.send_agreement",
 ] as const;
 
 /** TypeScript union of every allowed action type string. */

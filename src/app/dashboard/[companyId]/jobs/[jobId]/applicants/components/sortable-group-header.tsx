@@ -155,7 +155,6 @@ export function SortableGroupHeader({
       style={style}
       className={`group bg-rf-surface-card
         rounded-t-[14px] border-b border-rf-ink-100
-        sticky top-0 z-30
         ${isDragging ? "" : "shadow-[0_1px_0_0_rgb(0,0,0,0.04)]"}`}
       {...attributes}
     >

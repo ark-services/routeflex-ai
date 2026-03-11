@@ -195,11 +195,11 @@ export async function executeEmailGmail(
   }
 
   // Build variable context — basic fields + all board column values
-  const nameParts = (applicant.full_name || '').split(' ');
+  const nameParts = (applicant.full_name || '').trim().split(/\s+/);
   const context: Record<string, any> = {
-    applicant_name: applicant.full_name || 'N/A',
-    first_name: nameParts[0] || 'N/A',
-    last_name: nameParts.slice(1).join(' ') || 'N/A',
+    applicant_name: applicant.full_name?.trim() || 'N/A',
+    first_name: nameParts[0]?.trim() || 'N/A',
+    last_name: nameParts.slice(1).join(' ').trim() || 'N/A',
     applicant_email: applicant.email || 'N/A',
     company_name: company?.name || 'N/A',
     job_title: job?.title || 'N/A',
@@ -352,11 +352,11 @@ export async function executeSendEmailGmail(
   }
 
   // Build variable context — basic fields + all board column values
-  const nameParts = (applicant.full_name || '').split(' ');
+  const nameParts = (applicant.full_name || '').trim().split(/\s+/);
   const context: Record<string, any> = {
-    applicant_name: applicant.full_name || 'N/A',
-    first_name: nameParts[0] || 'N/A',
-    last_name: nameParts.slice(1).join(' ') || 'N/A',
+    applicant_name: applicant.full_name?.trim() || 'N/A',
+    first_name: nameParts[0]?.trim() || 'N/A',
+    last_name: nameParts.slice(1).join(' ').trim() || 'N/A',
     applicant_email: applicant.email || 'N/A',
     company_name: company?.name || 'N/A',
     job_title: job?.title || 'N/A',

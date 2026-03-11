@@ -8,6 +8,7 @@ import { executeTwilioSendSms, executeTwilioMakeCallSay } from './twilio';
 import { executeFadvAddSubject, executeFadvApproveOrder, executeSafetyTrainerSubmit } from './integrations';
 import { executeLmsSendTrainingLink, executePortalSendLink } from './lms';
 import { executeAiScoreResume } from './ai';
+import { executeEsignSendAgreement } from './esign';
 
 /**
  * Executes a single automation action by type.
@@ -83,6 +84,9 @@ export async function executeAction(
 
     case 'ai.score_resume':
       return executeAiScoreResume(supabase, companyId, jobId, config, payload);
+
+    case 'esign.send_agreement':
+      return executeEsignSendAgreement(supabase, companyId, jobId, config, payload);
 
     default:
       return { success: false, error: `Unknown action type: ${type}` };

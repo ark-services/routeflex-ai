@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { TemplatePayload, TemplateColumn, TemplateForm } from "@/lib/types";
+import type { TemplatePayload, TemplateColumn, TemplateForm, TemplateKnowledgeBaseEntry, TemplateBoardView } from "@/lib/types";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
 // ─── ID-remapping helper ──────────────────────────────────────────────────────
@@ -118,9 +118,10 @@ function normalizeDate(val: string): string | null {
 
 // ─── Column type normalizer ───────────────────────────────────────────────────
 // board_columns.type is always one of the schema-constrained values
-// ('text', 'number', 'date', 'status', 'file', 'email', 'phone', 'location').
-// Older template payloads or external captures may use synonym strings; collapse
-// them to canonical form before routing cell values to the right typed column.
+// ('text', 'number', 'date', 'status', 'file', 'email', 'phone', 'location',
+// 'checkbox', plus FADV types).  Older template payloads or external captures
+// may use synonym strings; collapse them to canonical form before routing cell
+// values to the right typed column.
 
 function normalizeColType(raw: string | undefined): string {
   switch ((raw ?? "").toLowerCase()) {
@@ -286,6 +287,7 @@ export async function applyTemplate(
         type: c.type || "text",
         sort_order: maxExistingSortOrder + i + 1,
         is_system: false,
+        is_hidden: c.is_hidden ?? false,
         settings: c.settings ?? {},
       }));
 
@@ -618,6 +620,15 @@ export async function applyTemplate(
               column_id: colId,
               value_number: num,
             });
+          } else if (colType === "checkbox") {
+            // "true"/"false" stored by capture → parse back to boolean
+            const boolVal = String(val).toLowerCase() === "true";
+            console.log(`[applyTemplate] → value_bool=${boolVal}`);
+            cellInserts.push({
+              applicant_id: applicant.id,
+              column_id: colId,
+              value_bool: boolVal,
+            });
           } else {
             // text, email, phone, location, file → value_text
             cellInserts.push({
@@ -686,6 +697,7 @@ export async function applyTemplate(
           name: auto.name ?? `${triggerKey} (from template)`,
           trigger_key: triggerKey,
           filter: remappedFilter,
+          trigger_config: auto.trigger_config ?? {},
           is_enabled: false, // user enables manually after reviewing
         })
         .select("id")
@@ -903,6 +915,110 @@ export async function applyTemplate(
   } else {
     console.log(
       "[applyTemplate] Template has no form payload — skipping application form apply"
+    );
+  }
+
+  // ─── Apply knowledge base entries ─────────────────────────────────────────
+  //
+  // Strategy: APPEND.  Template entries are inserted alongside any existing
+  // entries.  Sort orders are offset past the current max so they appear after
+  // existing Q&A items.
+
+  const templateKB = (payload as TemplatePayload).knowledgeBase as TemplateKnowledgeBaseEntry[] | undefined;
+
+  if (templateKB && templateKB.length > 0) {
+    // Find current max sort_order to offset new entries
+    const { data: existingKB } = await supabase
+      .from("job_knowledge_base")
+      .select("sort_order")
+      .eq("job_id", jobId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+
+    const kbOffset = (existingKB?.[0]?.sort_order ?? 0);
+
+    const kbInserts = templateKB.map((entry) => ({
+      job_id: jobId,
+      company_id: companyId,
+      question: entry.question,
+      answer: entry.answer,
+      sort_order: kbOffset + entry.sort_order + 1,
+    }));
+
+    const { error: kbErr } = await supabase
+      .from("job_knowledge_base")
+      .insert(kbInserts);
+
+    if (kbErr) {
+      console.warn(
+        "[applyTemplate] Could not insert knowledge base entries:",
+        kbErr.message
+      );
+    } else {
+      console.log(
+        `[applyTemplate] ✓ Knowledge base: inserted ${kbInserts.length} entry(ies)`
+      );
+    }
+  }
+
+  // ─── Apply board views (saved searches/filters) ──────────────────────────
+  //
+  // Strategy: CREATE.  Template views are inserted with column UUIDs remapped
+  // from name annotations.  Existing views are left untouched.
+
+  const templateViews = (payload as TemplatePayload).boardViews as TemplateBoardView[] | undefined;
+
+  if (templateViews && templateViews.length > 0) {
+    for (const tv of templateViews) {
+      try {
+        // Remap column UUIDs in filter conditions
+        const query = { ...(tv.query as Record<string, unknown>) };
+        if (Array.isArray(query.filters)) {
+          query.filters = (query.filters as Record<string, unknown>[]).map((f) => {
+            const remapped: Record<string, unknown> = { ...f };
+            if (typeof f._column_name === "string") {
+              const dstColId = colNameToId.get(f._column_name.toLowerCase());
+              if (dstColId) remapped.column_id = dstColId;
+            }
+            // Strip annotation field
+            delete remapped._column_name;
+            return remapped;
+          });
+        }
+
+        // Remap sort column
+        let sort = tv.sort ? { ...(tv.sort as Record<string, unknown>) } : null;
+        if (sort && typeof sort._column_name === "string") {
+          const dstColId = colNameToId.get((sort._column_name as string).toLowerCase());
+          if (dstColId) sort.column_id = dstColId;
+          delete sort._column_name;
+        }
+
+        const { error: viewErr } = await supabase
+          .from("board_views")
+          .insert({
+            company_id: companyId,
+            job_id: jobId,
+            board_id: boardId,
+            name: tv.name,
+            query,
+            sort,
+            position: tv.position,
+            is_default: tv.is_default,
+          });
+
+        if (viewErr) {
+          console.warn(
+            `[applyTemplate] Could not create board view "${tv.name}":`,
+            viewErr.message
+          );
+        }
+      } catch (viewCatchErr) {
+        console.warn("[applyTemplate] Skipping board view (insert failed):", viewCatchErr);
+      }
+    }
+    console.log(
+      `[applyTemplate] ✓ Board views: processed ${templateViews.length} view(s)`
     );
   }
 

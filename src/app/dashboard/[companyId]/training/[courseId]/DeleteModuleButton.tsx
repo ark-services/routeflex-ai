@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Trash2, Loader2 } from "lucide-react";
 import { deleteModule } from "../actions";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function DeleteModuleButton({
   companyId,
@@ -14,10 +15,11 @@ export function DeleteModuleButton({
   moduleId: string;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const confirm = useConfirmDialog();
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault();
-    if (!confirm("Delete this module and all its questions? This cannot be undone.")) return;
+    if (!await confirm({ title: "Delete Module", description: "This will delete the module and all its questions. This cannot be undone.", confirmLabel: "Delete", variant: "destructive" })) return;
     setDeleting(true);
     try {
       await deleteModule(companyId, courseId, moduleId);

@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, X, Building2 } from "lucide-react";
 import { uploadCompanyLogo, removeCompanyLogo, updateCompanyName } from "./actions";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const PLAN_COLORS: Record<string, string> = {
   free:       "bg-rf-ink-100 text-rf-ink-500",
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function SettingsClient({ companyId, company, planId, actionsUsed, actionsQuota }: Props) {
+  const confirm = useConfirmDialog();
   const [name, setName] = useState(company.name);
   const [logoUrl, setLogoUrl] = useState<string | null>(company.logo_url);
   const [savingName, setSavingName] = useState(false);
@@ -73,7 +75,7 @@ export function SettingsClient({ companyId, company, planId, actionsUsed, action
   }
 
   async function handleRemoveLogo() {
-    if (!confirm("Remove company logo?")) return;
+    if (!await confirm({ title: "Remove Logo", description: "Remove the company logo?", confirmLabel: "Remove", variant: "destructive" })) return;
     try {
       await removeCompanyLogo(companyId);
       setLogoUrl(null);

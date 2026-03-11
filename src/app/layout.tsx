@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Darker_Grotesque, DM_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { ConfirmDialogProvider } from "@/components/ui/confirm-dialog";
+import { ToastProvider } from "@/components/ui/toast-provider";
 import "./globals.css";
 
 const darkerGrotesque = Darker_Grotesque({
@@ -34,7 +36,11 @@ export default function RootLayout({
       <body
         className={`${darkerGrotesque.variable} ${dmMono.variable} antialiased bg-rf-surface-page min-h-screen`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ConfirmDialogProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </ConfirmDialogProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

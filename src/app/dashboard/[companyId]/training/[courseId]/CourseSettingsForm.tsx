@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateCourse, deleteCourse } from "../actions";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Props {
   companyId: string;
@@ -17,6 +18,7 @@ interface Props {
 
 export function CourseSettingsForm({ companyId, course }: Props) {
   const router = useRouter();
+  const confirm = useConfirmDialog();
   const [name, setName] = useState(course.name);
   const [description, setDescription] = useState(course.description ?? "");
   const [passingThreshold, setPassingThreshold] = useState(course.passing_threshold);
@@ -48,7 +50,7 @@ export function CourseSettingsForm({ companyId, course }: Props) {
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete course "${course.name}"? This cannot be undone.`)) return;
+    if (!await confirm({ title: "Delete Course", description: `This will permanently delete "${course.name}". This cannot be undone.`, confirmLabel: "Delete", variant: "destructive" })) return;
     setDeleting(true);
     try {
       await deleteCourse(companyId, course.id);

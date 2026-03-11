@@ -29,7 +29,7 @@ const ADD_GROUP_HEIGHT = 48;
 const NO_RESULTS_HEIGHT = 200;
 const ORPHANED_HEADER_HEIGHT = 56;
 
-export { ROW_HEIGHT, COLUMN_HEADER_HEIGHT };
+export { ROW_HEIGHT, COLUMN_HEADER_HEIGHT, GROUP_HEADER_HEIGHT };
 
 function estimateSize(item: VirtualItem): number {
   switch (item.kind) {
@@ -227,6 +227,16 @@ export function useVirtualBoard({
       let result = defaultRange;
       if (activeGroupHeaderIdx >= 0 && !result.includes(activeGroupHeaderIdx)) {
         result = [activeGroupHeaderIdx, ...result];
+      }
+      // Also keep the column-headers row (always immediately after the group-header)
+      const activeColHeaderIdx = activeGroupHeaderIdx + 1;
+      if (
+        activeGroupHeaderIdx >= 0 &&
+        activeColHeaderIdx < flatItems.length &&
+        flatItems[activeColHeaderIdx]?.kind === "column-headers" &&
+        !result.includes(activeColHeaderIdx)
+      ) {
+        result = [activeColHeaderIdx, ...result];
       }
       // During row drag, force ALL items for the dragging group into the render set
       if (draggingInGroupId) {

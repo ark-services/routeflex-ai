@@ -11,7 +11,7 @@ export { SortableGroupHeader } from "./sortable-group-header";
 export { ApplicantDetailPanel } from "./applicant-detail-panel";
 export { VirtualRow } from "./VirtualRow";
 export { VirtualColumnHeaders } from "./VirtualColumnHeaders";
-export { useVirtualBoard, buildGridTemplate, buildGridTotalWidth } from "./useVirtualBoard";
+export { useVirtualBoard, buildGridTemplate, buildGridTotalWidth, GROUP_HEADER_HEIGHT } from "./useVirtualBoard";
 export type { VirtualItem } from "./useVirtualBoard";
 
 export type {

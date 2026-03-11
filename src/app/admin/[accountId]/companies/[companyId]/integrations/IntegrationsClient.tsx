@@ -26,6 +26,17 @@ export function IntegrationsClient({ children }: { children: React.ReactNode }) 
       window.history.replaceState({}, "", url.toString());
     }
 
+    if (success === "adobe_sign_connected") {
+      setToast({
+        message: `Adobe Sign connected${email ? `: ${decodeURIComponent(email)}` : ""}`,
+        type: "success",
+      });
+      const url = new URL(window.location.href);
+      url.searchParams.delete("success");
+      url.searchParams.delete("email");
+      window.history.replaceState({}, "", url.toString());
+    }
+
     const error = searchParams.get("error");
     const details = searchParams.get("details");
 
@@ -42,7 +53,7 @@ export function IntegrationsClient({ children }: { children: React.ReactNode }) 
         callback_failed: "OAuth callback failed",
       };
 
-      const msg = errorMessages[error] ?? "Gmail connection failed";
+      const msg = errorMessages[error] ?? "Connection failed";
       setToast({
         message: details ? `${msg}: ${decodeURIComponent(details)}` : msg,
         type: "error",

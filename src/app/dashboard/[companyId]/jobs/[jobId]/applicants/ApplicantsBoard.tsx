@@ -10,6 +10,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 import {
   DndContext,
   closestCenter,
@@ -78,6 +80,7 @@ import {
   VirtualRow,
   VirtualColumnHeaders,
   useVirtualBoard,
+  GROUP_HEADER_HEIGHT,
 } from "./components";
 
 const VERBOSE = false; // set to true to re-enable verbose board logs
@@ -133,6 +136,8 @@ export default function ApplicantsBoard({
   });
 
   const router = useRouter();
+  const confirm = useConfirmDialog();
+  const toast = useToast();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [isPending, startTransition] = useTransition();
   // Add column modal
@@ -829,14 +834,19 @@ export default function ApplicantsBoard({
     setSelected({});
   }
 
-  function onBulkDelete() {
+  async function onBulkDelete() {
     if (selectedIds.length === 0) return;
-    const ok = confirm(`Delete ${selectedIds.length} applicant(s)? This cannot be undone.`);
+    const ok = await confirm({
+      title: "Delete Applicants",
+      description: `This will permanently delete ${selectedIds.length} applicant(s). This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
     if (!ok) return;
 
     startTransition(async () => {
       await bulkDeleteApplicants(companyId, jobId, selectedIds);
-      clearSelection(); // Clear selection since deleted rows no longer exist
+      clearSelection();
     });
   }
 
@@ -904,7 +914,7 @@ export default function ApplicantsBoard({
     startTransition(async () => {
       const result = await deleteGroup(companyId, jobId, boardId, groupToDelete.id);
       if (result?.error) {
-        alert(result.error);
+        toast.error(result.error);
         return;
       }
       setDeleteGroupModalOpen(false);
@@ -946,8 +956,13 @@ export default function ApplicantsBoard({
     });
   }
 
-  function onDeleteColumn(columnId: string) {
-    const ok = confirm("Delete this column? All data in this column will be lost.");
+  async function onDeleteColumn(columnId: string) {
+    const ok = await confirm({
+      title: "Delete Column",
+      description: "All data in this column will be permanently lost.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
     if (!ok) return;
 
     startTransition(async () => {
@@ -1106,13 +1121,18 @@ export default function ApplicantsBoard({
         // Revert optimistic update on failure
         setLocalApplicants(snapshot);
         console.error("[onMoveApplicant] Error:", error);
-        alert("Failed to move applicant. Please try again.");
+        toast.error("Failed to move applicant. Please try again.");
       }
     });
   }
 
-  function onDeleteApplicant(applicantId: string) {
-    const ok = confirm("Delete this applicant? This cannot be undone.");
+  async function onDeleteApplicant(applicantId: string) {
+    const ok = await confirm({
+      title: "Delete Applicant",
+      description: "This will permanently remove this applicant and all their data. This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
     if (!ok) return;
 
     startTransition(async () => {
@@ -1243,7 +1263,7 @@ export default function ApplicantsBoard({
         }
       } catch (error) {
         console.error("[onQuickCreateApplicant] Error:", error);
-        alert("Failed to create applicant. Please try again.");
+        toast.error("Failed to create applicant. Please try again.");
       }
     });
   }
@@ -1276,7 +1296,7 @@ export default function ApplicantsBoard({
               for (const id of selectedIds) next.delete(`${id}::${columnId}`);
               return next;
             });
-            alert(`Updated ${result.successful} of ${selectedIds.length} applicants. ${result.failed} failed.`);
+            toast.warning(`Updated ${result.successful} of ${selectedIds.length} applicants. ${result.failed} failed.`);
           } else if (hasStatusMoveAutomations) {
             // Only refresh if there's an enabled move_group automation that may
             // have repositioned applicants in the after() callback.
@@ -1289,7 +1309,7 @@ export default function ApplicantsBoard({
             for (const id of selectedIds) next.delete(`${id}::${columnId}`);
             return next;
           });
-          alert('Failed to update selected applicants. Please try again.');
+          toast.error('Failed to update selected applicants. Please try again.');
         }
       });
     } else if (isBulk) {
@@ -1528,8 +1548,8 @@ export default function ApplicantsBoard({
                 fadvReady={fadvReadyApplicantIds.has(a.id)}
                 onSendToFadv={async () => {
                   const r = await sendToFadv(companyId, jobId, a.id);
-                  if (!r.success) alert(`FADV: ${r.error}`);
-                  else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                  if (!r.success) toast.error(`FADV: ${r.error}`);
+                  else toast.success(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
                 }}
                 collapsedColumnIds={collapsedColIds}
                 frozenColumnsCount={frozenColumnsCount}
@@ -1568,8 +1588,8 @@ export default function ApplicantsBoard({
               fadvReady={fadvReadyApplicantIds.has(a.id)}
               onSendToFadv={async () => {
                 const r = await sendToFadv(companyId, jobId, a.id);
-                if (!r.success) alert(`FADV: ${r.error}`);
-                else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                if (!r.success) toast.error(`FADV: ${r.error}`);
+                else toast.success(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
               }}
               collapsedColumnIds={collapsedColIds}
               frozenColumnsCount={frozenColumnsCount}
@@ -1646,8 +1666,8 @@ export default function ApplicantsBoard({
               fadvReady={fadvReadyApplicantIds.has(a.id)}
               onSendToFadv={async () => {
                 const r = await sendToFadv(companyId, jobId, a.id);
-                if (!r.success) alert(`FADV: ${r.error}`);
-                else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                if (!r.success) toast.error(`FADV: ${r.error}`);
+                else toast.success(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
               }}
               gridTemplate={gridTemplate}
             />
@@ -1850,8 +1870,8 @@ export default function ApplicantsBoard({
                                           onClick={async () => {
                                             setRowMenuOpen(null);
                                             const r = await sendToFadv(companyId, jobId, a.id);
-                                            if (!r.success) alert(`FADV: ${r.error}`);
-                                            else alert(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
+                                            if (!r.success) toast.error(`FADV: ${r.error}`);
+                                            else toast.success(`Sent to First Advantage${r.subjectId ? ` (ID: ${r.subjectId})` : ""}`);
                                           }}
                                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-blue hover:bg-rf-blue-tint transition-colors text-left"
                                         >
@@ -2024,7 +2044,7 @@ export default function ApplicantsBoard({
               height: virtualizer.getTotalSize(),
               position: "relative",
               minWidth: `${maxGridWidth}px`,
-              padding: "28px 32px",
+              padding: "0 32px 28px",
             }}
           >
             <SortableContext
@@ -2049,6 +2069,31 @@ export default function ApplicantsBoard({
                 >
                   {virtualizer.getVirtualItems().map((vi) => {
                     const item = flatItems[vi.index];
+                    const isGroupHeader = item.kind === "group-header";
+                    const isColumnHeaders = item.kind === "column-headers";
+
+                    // Group headers and column headers use position:sticky so they
+                    // remain visible while scrolling vertically. All other items use
+                    // the normal absolute+translateY virtualizer positioning.
+                    if (isGroupHeader || isColumnHeaders) {
+                      return (
+                        <div
+                          key={vi.key}
+                          ref={virtualizer.measureElement}
+                          data-index={vi.index}
+                          style={{
+                            position: "sticky",
+                            top: isGroupHeader ? 0 : GROUP_HEADER_HEIGHT,
+                            zIndex: isGroupHeader ? 15 : 14,
+                            left: 0,
+                            width: "100%",
+                          }}
+                        >
+                          {renderVirtualItem(item)}
+                        </div>
+                      );
+                    }
+
                     return (
                       <div
                         key={vi.key}

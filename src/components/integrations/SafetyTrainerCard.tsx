@@ -18,6 +18,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Toast } from "@/components/ui/toast";
 import {
   upsertSafetyTrainerConnection,
@@ -217,6 +218,7 @@ export function SafetyTrainerCard({
   accountId,
   initialConnection,
 }: Props) {
+  const confirm = useConfirmDialog();
   const [connection, setConnection] = useState<SafetyTrainerConnectionData | null>(
     initialConnection
   );
@@ -324,9 +326,7 @@ export function SafetyTrainerCard({
   // ── disconnect ───────────────────────────────────────────────────────────────
   async function handleDisconnect() {
     if (
-      !confirm(
-        "Remove Impact Solutions Safety Trainer Hub configuration? All stored trainer data and signature will be deleted and automations using this integration will stop working."
-      )
+      !await confirm({ title: "Remove Safety Trainer Hub", description: "All stored trainer data and signature will be deleted and automations using this integration will stop working.", confirmLabel: "Remove", variant: "destructive" })
     )
       return;
     setDisconnecting(true);

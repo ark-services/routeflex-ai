@@ -10,6 +10,7 @@ import { EmailGmailEditor } from "./EmailGmailEditor";
 import { SendEmailGmailAction } from "./SendEmailGmailAction";
 import { TwilioSmsAction } from "./TwilioSmsAction";
 import { TwilioCallAction } from "./TwilioCallAction";
+import { EsignAgreementAction } from "./EsignAgreementAction";
 
 export function ActionEditor({
   action,
@@ -55,6 +56,7 @@ export function ActionEditor({
     { value: "safety_trainer.submit", label: "Submit Impact Solutions Safety Cert" },
     { value: "lms.send_training_link", label: "Send Training Link (LMS)" },
     { value: "portal.send_link", label: "Send Applicant Status Portal Link" },
+    { value: "esign.send_agreement", label: "Send eSign Agreement (Adobe Sign)" },
   ];
 
   const FADV_FIELD_OPTIONS = [
@@ -782,6 +784,15 @@ export function ActionEditor({
               />
             </div>
           </div>
+        )}
+
+        {action.type === "esign.send_agreement" && (
+          <EsignAgreementAction
+            companyId={companyId}
+            action={action}
+            columns={columns}
+            onChange={onChange}
+          />
         )}
 
         {action.type === "ai.score_resume" && (
