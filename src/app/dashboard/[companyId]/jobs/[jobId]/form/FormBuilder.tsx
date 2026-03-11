@@ -1,6 +1,308 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, type ReactNode } from "react";
+import { Bold, Italic, List, Heading2 } from "lucide-react";
+
+// ── Inline format renderer ───────────────────────────────────────────────────
+// Renders **bold** and _italic_ markdown tokens as <strong> / <em>.
+function renderFormattedText(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*.*?\*\*|_.*?_)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("_") && part.endsWith("_") && part.length > 2) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    return part;
+  });
+}
+
+// ── Description parser (mirrors PublicApplicationForm) ────────────────────────
+// Handles both inline ("TITLE: * a * b") and multiline ("* a\n* b") bullet formats.
+// Also handles ## heading lines.
+function parseDescription(text: string): {
+  title: string;
+  bullets: string[];
+  footer: string;
+} | null {
+  let normalized = text;
+  if (!text.includes("\n") && text.includes(" * ")) {
+    normalized = text.replace(/ \* /g, "\n* ");
+  }
+  const lines = normalized.split("\n");
+  const titleParts: string[] = [];
+  const bullets: string[] = [];
+  const footerParts: string[] = [];
+  let seenBullet = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (/^##\s/.test(line)) {
+      const headingText = line.replace(/^##\s+/, "");
+      if (!seenBullet) {
+        titleParts.push(headingText);
+      } else {
+        footerParts.push(headingText);
+      }
+    } else if (/^[*-]\s/.test(line)) {
+      seenBullet = true;
+      bullets.push(line.replace(/^[*-]\s+/, ""));
+    } else if (!seenBullet) {
+      titleParts.push(line);
+    } else {
+      footerParts.push(line);
+    }
+  }
+  if (bullets.length === 0) return null;
+  return {
+    title: titleParts.join(" ").replace(/:$/, "").trim(),
+    bullets,
+    footer: footerParts.join(" ").trim(),
+  };
+}
+
+function DescriptionPreview({ text }: { text: string }) {
+  const parsed = parseDescription(text);
+
+  if (!parsed) {
+    return (
+      <div className="rounded-xl border border-rf-ink-100 bg-rf-surface-page px-5 py-4">
+        <p className="text-sm text-rf-text-secondary leading-relaxed whitespace-pre-line">{renderFormattedText(text)}</p>
+      </div>
+    );
+  }
+
+  const { title, bullets, footer } = parsed;
+  return (
+    <div className="rounded-xl border border-rf-ink-100 bg-rf-surface-page overflow-hidden">
+      {title && (title.length <= 60 ? (
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-rf-ink-100">
+          <svg
+            className="w-4 h-4 text-rf-ink-500 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span className="text-xs font-bold uppercase tracking-wider text-rf-ink-500">
+            {renderFormattedText(title)}
+          </span>
+        </div>
+      ) : (
+        <div className="px-5 pt-4 pb-1">
+          <p className="text-sm text-rf-text-secondary leading-relaxed">{renderFormattedText(title)}</p>
+        </div>
+      ))}
+      <ul className="px-5 py-4 space-y-3">
+        {bullets.map((bullet, i) => (
+          <li key={i} className="flex items-start gap-3 text-sm text-rf-ink-700 leading-relaxed">
+            <span className="mt-[5px] w-2 h-2 rounded-full bg-rf-blue/50 flex-shrink-0" />
+            <span>{renderFormattedText(bullet)}</span>
+          </li>
+        ))}
+      </ul>
+      {footer && (
+        <div className="px-5 pb-4 -mt-1">
+          <p className="text-sm text-rf-text-secondary leading-relaxed">{renderFormattedText(footer)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Selection Toolbar ────────────────────────────────────────────────────────
+// Floating toolbar that appears when text is selected in the description textarea.
+function SelectionToolbar({
+  textareaRef,
+  value,
+  onChange,
+}: {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  value: string;
+  onChange: (newValue: string) => void;
+}) {
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  const measurePosition = useCallback(() => {
+    const ta = textareaRef.current;
+    const mirror = mirrorRef.current;
+    if (!ta || !mirror) return;
+
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    if (start === end) {
+      setShow(false);
+      return;
+    }
+
+    // Build mirror content up to selection start using safe DOM methods
+    const style = window.getComputedStyle(ta);
+    mirror.style.font = style.font;
+    mirror.style.letterSpacing = style.letterSpacing;
+    mirror.style.wordSpacing = style.wordSpacing;
+    mirror.style.padding = style.padding;
+    mirror.style.width = ta.clientWidth + "px";
+    mirror.style.whiteSpace = "pre-wrap";
+    mirror.style.wordWrap = "break-word";
+    mirror.style.overflowWrap = "break-word";
+    mirror.style.lineHeight = style.lineHeight;
+
+    const textBefore = value.slice(0, start);
+    const selectedText = value.slice(start, end);
+    // Clear mirror and rebuild with safe DOM methods
+    while (mirror.firstChild) mirror.removeChild(mirror.firstChild);
+    mirror.appendChild(document.createTextNode(textBefore));
+    const marker = document.createElement("span");
+    marker.textContent = selectedText || "\u200b";
+    mirror.appendChild(marker);
+
+    const markerRect = marker.getBoundingClientRect();
+    const mirrorRect = mirror.getBoundingClientRect();
+
+    // Position above the selection, centered
+    const top = markerRect.top - mirrorRect.top - 44 - ta.scrollTop;
+    const left = Math.max(
+      8,
+      Math.min(
+        markerRect.left - mirrorRect.left + markerRect.width / 2 - 80,
+        ta.clientWidth - 168
+      )
+    );
+
+    setPos({ top, left });
+    setShow(true);
+  }, [textareaRef, value]);
+
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const handleSelect = () => measurePosition();
+    const handleBlur = (e: FocusEvent) => {
+      if (toolbarRef.current?.contains(e.relatedTarget as Node)) return;
+      setShow(false);
+    };
+    ta.addEventListener("select", handleSelect);
+    ta.addEventListener("mouseup", handleSelect);
+    ta.addEventListener("keyup", handleSelect);
+    ta.addEventListener("blur", handleBlur);
+    return () => {
+      ta.removeEventListener("select", handleSelect);
+      ta.removeEventListener("mouseup", handleSelect);
+      ta.removeEventListener("keyup", handleSelect);
+      ta.removeEventListener("blur", handleBlur);
+    };
+  }, [textareaRef, measurePosition]);
+
+  const applyFormat = (type: "bold" | "italic" | "bullet" | "heading") => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const text = value;
+    let newText = text;
+    let cursorPos = end;
+
+    if (type === "bold") {
+      if (start === end) {
+        newText = text.slice(0, start) + "****" + text.slice(end);
+        cursorPos = start + 2;
+      } else {
+        newText = text.slice(0, start) + "**" + text.slice(start, end) + "**" + text.slice(end);
+        cursorPos = end + 4;
+      }
+    } else if (type === "italic") {
+      if (start === end) {
+        newText = text.slice(0, start) + "__" + text.slice(end);
+        cursorPos = start + 1;
+      } else {
+        newText = text.slice(0, start) + "_" + text.slice(start, end) + "_" + text.slice(end);
+        cursorPos = end + 2;
+      }
+    } else if (type === "bullet" || type === "heading") {
+      const prefix = type === "bullet" ? "* " : "## ";
+      const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+      const linePrefix = text.slice(lineStart, lineStart + prefix.length);
+      if (linePrefix === prefix) {
+        newText = text.slice(0, lineStart) + text.slice(lineStart + prefix.length);
+        cursorPos = Math.max(start - prefix.length, lineStart);
+      } else {
+        newText = text.slice(0, lineStart) + prefix + text.slice(lineStart);
+        cursorPos = start + prefix.length;
+      }
+    }
+
+    onChange(newText);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(cursorPos, cursorPos);
+    });
+  };
+
+  const btnCls =
+    "p-1.5 rounded-md hover:bg-white/20 transition-colors text-white/90 hover:text-white";
+
+  return (
+    <>
+      {/* Hidden mirror div for position measurement */}
+      <div
+        ref={mirrorRef}
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          visibility: "hidden",
+          pointerEvents: "none",
+          zIndex: -1,
+        }}
+      />
+      {show && (
+        <div
+          ref={toolbarRef}
+          className="absolute z-50 flex items-center gap-0.5 px-1.5 py-1 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.3)]"
+          style={{ top: pos.top, left: pos.left, backgroundColor: "#1e293b", border: "1px solid rgba(255,255,255,0.15)" }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <button
+            className={btnCls}
+            title="Bold (**text**)"
+            onClick={() => applyFormat("bold")}
+          >
+            <Bold className="w-4 h-4" />
+          </button>
+          <button
+            className={btnCls}
+            title="Italic (_text_)"
+            onClick={() => applyFormat("italic")}
+          >
+            <Italic className="w-4 h-4" />
+          </button>
+          <div className="w-px h-4 bg-white/20 mx-0.5" />
+          <button
+            className={btnCls}
+            title="Bullet list (* item)"
+            onClick={() => applyFormat("bullet")}
+          >
+            <List className="w-4 h-4" />
+          </button>
+          <button
+            className={btnCls}
+            title="Heading (## text)"
+            onClick={() => applyFormat("heading")}
+          >
+            <Heading2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
 import {
   createFormField,
   updateFormField,
@@ -11,6 +313,8 @@ import {
 } from "./actions";
 import FieldCard from "./FieldCard";
 import FieldTypePicker from "./FieldTypePicker";
+import { useConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast-provider";
 import QuestionSettingsPanel from "./QuestionSettingsPanel";
 import FormBuilderSidebar from "./FormBuilderSidebar";
 import DesignPanel, { DesignSettings } from "./DesignPanel";
@@ -59,6 +363,9 @@ export default function FormBuilder({
   /** Fresh 1-hour signed URL generated server-side from the stored logoPath. */
   logoSignedUrl?: string;
 }) {
+  const confirm = useConfirmDialog();
+  const toast = useToast();
+
   // ─── Tab state ────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<ActiveTab>("edit");
 
@@ -133,7 +440,12 @@ export default function FormBuilder({
   }, [isEditingTitle]);
 
   useEffect(() => {
-    if (isEditingDescription) descriptionRef.current?.focus();
+    if (isEditingDescription && descriptionRef.current) {
+      const el = descriptionRef.current;
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+      el.focus();
+    }
   }, [isEditingDescription]);
 
   const handleTitleSave = async () => {
@@ -238,7 +550,7 @@ export default function FormBuilder({
       setAddFieldAt(null);
       setSelectedFieldId(newField.id);
     } catch {
-      alert("Failed to create field");
+      toast.error("Failed to create field");
     }
   };
 
@@ -256,15 +568,18 @@ export default function FormBuilder({
       );
       setFields(fields.map((f) => (f.id === fieldId ? { ...f, ...updates } : f)));
     } catch {
-      alert("Failed to update field");
+      toast.error("Failed to update field");
     }
   };
 
   const handleDeleteField = async (fieldId: string) => {
     if (
-      !confirm(
-        "Are you sure? This will hide the field but preserve existing applicant data."
-      )
+      !await confirm({
+        title: "Delete Field",
+        description: "This will hide the field but preserve existing applicant data.",
+        confirmLabel: "Delete",
+        variant: "destructive",
+      })
     )
       return;
     try {
@@ -275,7 +590,7 @@ export default function FormBuilder({
         setShowSettingsPanel(false);
       }
     } catch {
-      alert("Failed to delete field");
+      toast.error("Failed to delete field");
     }
   };
 
@@ -293,7 +608,7 @@ export default function FormBuilder({
       setFields([...fields, newField]);
       setSelectedFieldId(newField.id);
     } catch {
-      alert("Failed to duplicate field");
+      toast.error("Failed to duplicate field");
     }
   };
 
@@ -441,53 +756,101 @@ export default function FormBuilder({
                 )}
               </div>
 
-              {/* Description section — mirrors where description sits in the live form body */}
-              <div className="px-8 py-6">
-                <div className="group/desc">
-                  {isEditingDescription ? (
-                    <textarea
-                      ref={descriptionRef}
-                      value={formDescription}
-                      onChange={(e) => setFormDescription(e.target.value)}
-                      onBlur={handleDescriptionSave}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") {
-                          setFormDescription(form.description || "");
-                          setIsEditingDescription(false);
-                        }
-                      }}
-                      placeholder="Add a form description…"
-                      rows={2}
-                      className="w-full text-sm text-rf-text-secondary leading-relaxed border-b border-rf-blue focus:outline-none bg-transparent resize-none"
-                    />
-                  ) : (
-                    <div
-                      className="flex items-start gap-2 cursor-text"
-                      onClick={() => setIsEditingDescription(true)}
-                    >
-                      <p className="text-sm text-rf-text-secondary leading-relaxed flex-1 min-h-[20px]">
-                        {formDescription || (
-                          <span className="text-rf-text-muted italic">
-                            Click to add a form description…
-                          </span>
-                        )}
-                      </p>
-                      <svg
-                        className="w-4 h-4 text-rf-text-muted opacity-0 group-hover/desc:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
-                      </svg>
+              {/* Description section — styled preview + auto-growing editor */}
+              <div className="px-8 pb-7">
+                {isEditingDescription ? (
+                  <div className="rounded-xl border border-rf-blue/40 bg-rf-blue-tint/30 overflow-hidden ring-2 ring-rf-blue/15">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-rf-blue-tint border-b border-rf-blue/20">
+                      <div className="flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5 text-rf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h4.5" />
+                        </svg>
+                        <span className="text-xs font-semibold text-rf-blue">Description</span>
+                      </div>
+                      <span className="text-xs text-rf-text-muted">Esc to cancel · click outside to save</span>
                     </div>
-                  )}
-                </div>
+                    <div className="relative">
+                      <SelectionToolbar
+                        textareaRef={descriptionRef}
+                        value={formDescription}
+                        onChange={(v) => {
+                          setFormDescription(v);
+                          requestAnimationFrame(() => {
+                            const el = descriptionRef.current;
+                            if (el) {
+                              el.style.height = "auto";
+                              el.style.height = el.scrollHeight + "px";
+                            }
+                          });
+                        }}
+                      />
+                      <textarea
+                        ref={descriptionRef}
+                        value={formDescription}
+                        onChange={(e) => {
+                          setFormDescription(e.target.value);
+                          e.currentTarget.style.height = "auto";
+                          e.currentTarget.style.height = e.currentTarget.scrollHeight + "px";
+                        }}
+                        onBlur={handleDescriptionSave}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setFormDescription(form.description || "");
+                            setIsEditingDescription(false);
+                          }
+                        }}
+                        placeholder={"Add requirements or a description for applicants…\n\nTip: use * to create bullets:\nVEHICLE REQUIREMENTS: * Must be 18+ * Valid driver's license"}
+                        className="w-full text-sm text-rf-text-secondary leading-relaxed px-4 py-3.5 focus:outline-none bg-transparent resize-none min-h-[100px] placeholder:text-rf-text-muted/60"
+                        style={{ height: "auto" }}
+                      />
+                    </div>
+                    <div className="px-4 py-2.5 border-t border-rf-blue/15 flex items-center justify-between">
+                      <span className="text-xs text-rf-text-muted">
+                        Select text for formatting · <code className="font-mono bg-rf-blue-tint px-1.5 py-0.5 rounded text-rf-blue">* bullet</code> · <code className="font-mono bg-rf-blue-tint px-1.5 py-0.5 rounded text-rf-blue">**bold**</code>
+                      </span>
+                      <button
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleDescriptionSave();
+                        }}
+                        className="text-xs font-semibold text-rf-blue hover:text-rf-blue-dark transition-colors"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : formDescription ? (
+                  <div
+                    className="group/desc relative cursor-text"
+                    onClick={() => setIsEditingDescription(true)}
+                  >
+                    <DescriptionPreview text={formDescription} />
+                    <div className="absolute inset-0 rounded-xl ring-0 group-hover/desc:ring-2 group-hover/desc:ring-rf-blue/25 transition-all pointer-events-none" />
+                    <div className="absolute top-2 right-2 opacity-0 group-hover/desc:opacity-100 transition-opacity">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-rf-surface-card border border-rf-border rounded-md text-xs font-medium text-rf-text-secondary shadow-sm">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        Edit
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingDescription(true)}
+                    className="w-full text-left group/desc px-5 py-4 rounded-xl border-2 border-dashed border-rf-ink-100 hover:border-rf-blue/40 hover:bg-rf-blue-tint/20 transition-all"
+                  >
+                    <div className="flex items-center gap-2 text-rf-text-muted group-hover/desc:text-rf-blue transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span className="text-sm font-medium">Add description or requirements</span>
+                    </div>
+                    <p className="text-xs text-rf-text-muted mt-1.5 ml-6">
+                      Supports bullet points. Shown to applicants above the form fields.
+                    </p>
+                  </button>
+                )}
               </div>
 
             </div>

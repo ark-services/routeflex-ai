@@ -1,8 +1,119 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { submitApplication } from "./actions";
 import { validateEmail, validatePhone } from "@/lib/validation/columnValidation";
+
+// ── Inline format renderer ───────────────────────────────────────────────────
+// Renders **bold** and _italic_ markdown tokens as <strong> / <em>.
+function renderFormattedText(text: string): ReactNode[] {
+  const parts = text.split(/(\*\*.*?\*\*|_.*?_)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("_") && part.endsWith("_") && part.length > 2) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    return part;
+  });
+}
+
+// ── Description parser ─────────────────────────────────────────────────────────
+// Handles both inline ("TITLE: * a * b") and multiline ("* a\n* b") bullet formats.
+// Also handles ## heading lines.
+function parseDescription(text: string): {
+  title: string;
+  bullets: string[];
+  footer: string;
+} | null {
+  let normalized = text;
+  // Inline bullet format → convert to newline format for uniform parsing
+  if (!text.includes("\n") && text.includes(" * ")) {
+    normalized = text.replace(/ \* /g, "\n* ");
+  }
+  const lines = normalized.split("\n");
+  const titleParts: string[] = [];
+  const bullets: string[] = [];
+  const footerParts: string[] = [];
+  let seenBullet = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (/^##\s/.test(line)) {
+      const headingText = line.replace(/^##\s+/, "");
+      if (!seenBullet) {
+        titleParts.push(headingText);
+      } else {
+        footerParts.push(headingText);
+      }
+    } else if (/^[*-]\s/.test(line)) {
+      seenBullet = true;
+      bullets.push(line.replace(/^[*-]\s+/, ""));
+    } else if (!seenBullet) {
+      titleParts.push(line);
+    } else {
+      footerParts.push(line);
+    }
+  }
+  if (bullets.length === 0) return null;
+  return {
+    title: titleParts.join(" ").replace(/:$/, "").trim(),
+    bullets,
+    footer: footerParts.join(" ").trim(),
+  };
+}
+
+function DescriptionCallout({ text }: { text: string }) {
+  const parsed = parseDescription(text);
+
+  if (!parsed) {
+    return (
+      <div className="rounded-xl border border-rf-ink-100 bg-rf-surface-page px-5 py-4">
+        <p className="text-sm text-rf-text-secondary leading-relaxed whitespace-pre-line">{renderFormattedText(text)}</p>
+      </div>
+    );
+  }
+
+  const { title, bullets, footer } = parsed;
+  return (
+    <div className="rounded-xl border border-rf-ink-100 bg-rf-surface-page overflow-hidden">
+      {title && (title.length <= 60 ? (
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-rf-ink-100">
+          <svg
+            className="w-4 h-4 text-rf-ink-500 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span className="text-xs font-bold uppercase tracking-wider text-rf-ink-500">
+            {renderFormattedText(title)}
+          </span>
+        </div>
+      ) : (
+        <div className="px-5 pt-4 pb-1">
+          <p className="text-sm text-rf-text-secondary leading-relaxed">{renderFormattedText(title)}</p>
+        </div>
+      ))}
+      <ul className="px-5 py-4 space-y-3">
+        {bullets.map((bullet, i) => (
+          <li key={i} className="flex items-start gap-3 text-sm text-rf-ink-700 leading-relaxed">
+            <span className="mt-[5px] w-2 h-2 rounded-full bg-rf-blue/50 flex-shrink-0" />
+            <span>{renderFormattedText(bullet)}</span>
+          </li>
+        ))}
+      </ul>
+      {footer && (
+        <div className="px-5 pb-4 -mt-1">
+          <p className="text-sm text-rf-text-secondary leading-relaxed">{renderFormattedText(footer)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type FormField = {
   field_id: string;
@@ -217,11 +328,11 @@ export default function PublicApplicationForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
 
-      {/* Form description — muted, sits naturally above fields */}
+      {/* Form description — styled callout with optional bullet parsing */}
       {form.description && (
-        <p className="text-sm text-rf-text-secondary leading-relaxed -mt-1 mb-2">
-          {form.description}
-        </p>
+        <div className="-mt-2 mb-2">
+          <DescriptionCallout text={form.description} />
+        </div>
       )}
 
       {error && (
