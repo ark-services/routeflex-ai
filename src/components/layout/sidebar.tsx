@@ -5,7 +5,6 @@ import { useRouter, useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, BookOpen, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings, Sun, Moon, Monitor } from "lucide-react";
-import { NotificationBell } from "@/components/notifications/NotificationBell";
 import type { Job, Company } from "@/lib/types";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
@@ -380,11 +379,6 @@ export function Sidebar({
                 <GraduationCap className={`h-4 w-4 flex-shrink-0 ${isOnTraining ? "text-rf-blue" : "text-rf-text-muted"}`} />
                 Training
               </button>
-            )}
-
-            {/* Notifications */}
-            {accountId && (
-              <NotificationBell companyId={companyId} accountId={accountId} />
             )}
 
             {/* Settings */}

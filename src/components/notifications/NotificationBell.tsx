@@ -41,8 +41,7 @@ export function NotificationBell({ companyId, accountId }: Props) {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(async () => {
     const result = await getNotifications(companyId);
@@ -51,7 +50,6 @@ export function NotificationBell({ companyId, accountId }: Props) {
     setLoading(false);
   }, [companyId]);
 
-  // Initial load
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
@@ -60,11 +58,7 @@ export function NotificationBell({ companyId, accountId }: Props) {
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(e.target as Node) &&
-        !buttonRef.current?.contains(e.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
@@ -76,36 +70,25 @@ export function NotificationBell({ companyId, accountId }: Props) {
     const next = !open;
     setOpen(next);
     if (next && unreadCount > 0) {
-      // Optimistically mark as read in UI
       setUnreadCount(0);
-      setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })));
+      setItems((prev) =>
+        prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
+      );
       await markAllRead(companyId);
     }
   };
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       {/* Bell button */}
       <button
-        ref={buttonRef}
         onClick={handleOpen}
-        className={`w-full text-left px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 border-l-2 ${
-          open
-            ? "border-rf-blue bg-rf-blue-tint text-rf-blue"
-            : "border-transparent text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
-        }`}
+        className="relative p-2 rounded-lg text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page transition-colors"
+        aria-label="Notifications"
       >
-        <div className="relative flex-shrink-0">
-          <Bell className={`h-4 w-4 ${open ? "text-rf-blue" : "text-rf-text-muted"}`} />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center bg-rf-danger text-white text-[9px] font-bold rounded-full leading-none">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </div>
-        <span className="flex-1">Notifications</span>
+        <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="text-xs bg-rf-danger text-white font-bold rounded-full px-1.5 py-0.5 leading-none">
+          <span className="absolute top-1 right-1 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center bg-rf-danger text-white text-[9px] font-bold rounded-full leading-none">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -113,10 +96,7 @@ export function NotificationBell({ companyId, accountId }: Props) {
 
       {/* Dropdown panel */}
       {open && (
-        <div
-          ref={panelRef}
-          className="absolute left-full top-0 ml-2 z-50 w-80 bg-rf-surface-card rounded-xl shadow-rf-xl border border-rf-border overflow-hidden"
-        >
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-80 bg-rf-surface-card rounded-xl shadow-rf-xl border border-rf-border overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-rf-border">
             <span className="text-sm font-semibold text-rf-text-primary">Notifications</span>

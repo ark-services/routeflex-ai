@@ -3,6 +3,7 @@ import { Menu } from "lucide-react";
 import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
 import { CompanySelect } from "./company-select";
 import { UserMenu } from "./user-menu";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import type { Company } from "@/lib/types";
 
 interface TopBarProps {
@@ -46,7 +47,10 @@ export function TopBar({
         </Link>
       </div>
 
-      <div className="flex items-center gap-2 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-3">
+        {accountId && (
+          <NotificationBell companyId={currentCompanyId} accountId={accountId} />
+        )}
         <CompanySelect
           companies={companies}
           currentCompanyId={currentCompanyId}
