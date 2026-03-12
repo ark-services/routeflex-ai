@@ -8,18 +8,21 @@ import {
   Link2,
   ExternalLink,
   Trash2,
+  Archive,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast-provider";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
+  DragOverEvent,
   DragStartEvent,
 } from "@dnd-kit/core";
 import {
@@ -30,6 +33,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
+  archiveApplicants,
   bulkDeleteApplicants,
   bulkMoveApplicants,
   bulkUpdateStatusCells,
@@ -43,6 +47,7 @@ import {
   moveApplicant,
   deleteApplicant,
   duplicateApplicant,
+  duplicateBoardColumn,
   reorderApplicants,
   reorderColumns,
   renameGroup,
@@ -56,6 +61,7 @@ import {
 import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist, updateBoardGroupPipelineVisibility } from "./portal-actions";
 import type { PortalChecklistItem } from "./portal-actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
+import { ArchiveDrawer } from "./components/ArchiveDrawer";
 import type { BoardCell } from "@/lib/types";
 import type { ActiveFilter } from "./view-actions";
 import { createClient } from "@/lib/supabase/client";
@@ -99,6 +105,8 @@ export default function ApplicantsBoard({
   hasStatusMoveAutomations = false,
   showDefaultValues = false,
   onCloseDefaultValues,
+  showArchiveDrawer = false,
+  onCloseArchiveDrawer,
 }: {
   companyId: string;
   jobId: string;
@@ -117,6 +125,9 @@ export default function ApplicantsBoard({
   /** When true, the Default Values modal is open (controlled by parent). */
   showDefaultValues?: boolean;
   onCloseDefaultValues?: () => void;
+  /** When true, the Archive drawer is open (controlled by parent). */
+  showArchiveDrawer?: boolean;
+  onCloseArchiveDrawer?: () => void;
 }) {
   // CRITICAL: Log props received to debug filtering
   if (VERBOSE) console.log('[ApplicantsBoard] Component rendered with props:', {
@@ -275,6 +286,7 @@ export default function ApplicantsBoard({
   // Drag state
   const [isDraggingGroup, setIsDraggingGroup] = useState(false);
   const [groupsBeforeDrag, setGroupsBeforeDrag] = useState<Group[]>([]);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
   // Row drag: when set, bypass virtualization for this group so dnd-kit can see all rows
   const [draggingInGroupId, setDraggingInGroupId] = useState<string | null>(null);
 
@@ -759,20 +771,16 @@ export default function ApplicantsBoard({
 
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
+    setActiveDragId(active.id.toString());
 
     // Detect group dragging and collapse groups
     if (active.id.toString().startsWith("group-")) {
       setIsDraggingGroup(true);
       setGroupsBeforeDrag(localGroups);
 
-      // Collapse all groups for better UX during drag
-      startTransition(async () => {
-        for (const g of localGroups) {
-          if (!g.is_collapsed) {
-            await toggleGroupCollapse(companyId, jobId, boardId, g.id, true);
-          }
-        }
-      });
+      // Collapse all groups optimistically (no server round-trips) so the drag
+      // list is compact and the overlay can render immediately.
+      setLocalGroups((prev) => prev.map((g) => ({ ...g, is_collapsed: true })));
     }
 
     // Detect row dragging — bypass virtualization for this group so dnd-kit can see all rows
@@ -785,42 +793,48 @@ export default function ApplicantsBoard({
     }
   }
 
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // Live-reorder groups while dragging
+    if (active.id.toString().startsWith("group-") && over.id.toString().startsWith("group-")) {
+      const oldIndex = localGroups.findIndex((g) => `group-${g.id}` === active.id);
+      const newIndex = localGroups.findIndex((g) => `group-${g.id}` === over.id);
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        setLocalGroups(arrayMove(localGroups, oldIndex, newIndex));
+      }
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
-    // Always clear row drag bypass
+    // Always clear drag overlay + row drag bypass
+    setActiveDragId(null);
     setDraggingInGroupId(null);
 
-    if (!over || active.id === over.id) {
-      // Reset drag state
-      if (isDraggingGroup) {
-        setIsDraggingGroup(false);
-      }
-      return;
-    }
-
-    // Handle group reordering
+    // Handle group reordering before the early-return check. With live
+    // onDragOver reordering, active.id === over.id is expected when the item
+    // has already been moved to its target slot — that is a valid drop, not a
+    // no-op. Only revert if there's no over target at all (true cancel).
     if (active.id.toString().startsWith("group-")) {
-      const oldIndex = localGroups.findIndex((g) => `group-${g.id}` === active.id);
-      const newIndex = localGroups.findIndex((g) => `group-${g.id}` === over.id);
+      if (!over) {
+        // No drop target — revert to original order
+        setLocalGroups(groupsBeforeDrag);
+      } else {
+        // localGroups already has the correct order from onDragOver; restore collapse state and persist
+        const collapseById = new Map(groupsBeforeDrag.map((g) => [g.id, g.is_collapsed]));
+        const finalOrder = localGroups.map((g) => ({
+          ...g,
+          is_collapsed: collapseById.get(g.id) ?? g.is_collapsed,
+        }));
+        setLocalGroups(finalOrder);
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const newOrder = arrayMove(localGroups, oldIndex, newIndex);
-        setLocalGroups(newOrder);
-
-        // Persist to DB and restore collapse state
         startTransition(async () => {
-          await reorderGroups(
-            companyId,
-            jobId,
-            boardId,
-            newOrder.map((g) => g.id)
-          );
-
-          // Restore pre-drag collapse state for each group
+          await reorderGroups(companyId, jobId, boardId, finalOrder.map((g) => g.id));
           for (const beforeGroup of groupsBeforeDrag) {
             if (!beforeGroup.is_collapsed) {
-              // Group was expanded before drag, restore it
               await toggleGroupCollapse(companyId, jobId, boardId, beforeGroup.id, false);
             }
           }
@@ -830,6 +844,8 @@ export default function ApplicantsBoard({
       setIsDraggingGroup(false);
       return;
     }
+
+    if (!over || active.id === over.id) return;
 
     // Handle column reordering
     if (active.id.toString().startsWith("col-")) {
@@ -883,19 +899,19 @@ export default function ApplicantsBoard({
   }
 
   function handleDragCancel() {
-    // Clear row drag bypass
+    // Clear drag overlay + row drag bypass
+    setActiveDragId(null);
     setDraggingInGroupId(null);
 
-    // Restore pre-drag collapse state
+    // Restore pre-drag collapse state optimistically, then sync to server
     if (isDraggingGroup) {
       setIsDraggingGroup(false);
+      setLocalGroups(groupsBeforeDrag);
 
-      // Restore collapse state for each group
       startTransition(async () => {
         for (const beforeGroup of groupsBeforeDrag) {
-          const currentGroup = localGroups.find((g) => g.id === beforeGroup.id);
-          if (currentGroup && currentGroup.is_collapsed !== beforeGroup.is_collapsed) {
-            await toggleGroupCollapse(companyId, jobId, boardId, beforeGroup.id, beforeGroup.is_collapsed);
+          if (!beforeGroup.is_collapsed) {
+            await toggleGroupCollapse(companyId, jobId, boardId, beforeGroup.id, false);
           }
         }
       });
@@ -1201,6 +1217,12 @@ export default function ApplicantsBoard({
     setShowAddColumnModal(true);
   }
 
+  function onDuplicateColumn(columnId: string, withValues: boolean) {
+    startTransition(async () => {
+      await duplicateBoardColumn(companyId, jobId, columnId, withValues);
+    });
+  }
+
   function onMoveApplicant(applicantId: string, groupId: string) {
     // Optimistically update group_id before the server action completes
     const snapshot = localApplicants;
@@ -1217,6 +1239,28 @@ export default function ApplicantsBoard({
         console.error("[onMoveApplicant] Error:", error);
         toast.error("Failed to move applicant. Please try again.");
       }
+    });
+  }
+
+  async function onArchiveApplicant(applicantId: string) {
+    startTransition(async () => {
+      await archiveApplicants(companyId, jobId, [applicantId]);
+      setRowMenuOpen(null);
+    });
+  }
+
+  async function onBulkArchive() {
+    if (selectedIds.length === 0) return;
+    const ok = await confirm({
+      title: "Archive Applicants",
+      description: `This will archive ${selectedIds.length} applicant${selectedIds.length !== 1 ? "s" : ""}. They can be restored later from the archive.`,
+      confirmLabel: "Archive",
+    });
+    if (!ok) return;
+
+    startTransition(async () => {
+      await archiveApplicants(companyId, jobId, selectedIds);
+      clearSelection();
     });
   }
 
@@ -1574,6 +1618,7 @@ export default function ApplicantsBoard({
               onColumnWidthReset={onColumnWidthReset}
               onSaveColumnName={onSaveColumnName}
               onDeleteColumn={onDeleteColumn}
+              onDuplicateColumn={onDuplicateColumn}
               onToggleMinimizeColumn={onToggleMinimizeColumn}
               onAddColumnRight={onAddColumnRight}
               onShowAddColumnModal={() => setShowAddColumnModal(true)}
@@ -1638,6 +1683,7 @@ export default function ApplicantsBoard({
                 onOpen={() => setDetailApplicantId(a.id)}
                 onMove={(groupId) => onMoveApplicant(a.id, groupId)}
                 onDuplicate={() => onDuplicateApplicant(a.id)}
+                onArchive={() => onArchiveApplicant(a.id)}
                 onDelete={() => onDeleteApplicant(a.id)}
                 companyId={companyId}
                 boardId={boardId}
@@ -1678,6 +1724,7 @@ export default function ApplicantsBoard({
               onOpen={() => setDetailApplicantId(a.id)}
               onMove={(groupId) => onMoveApplicant(a.id, groupId)}
               onDuplicate={() => onDuplicateApplicant(a.id)}
+              onArchive={() => onArchiveApplicant(a.id)}
               onDelete={() => onDeleteApplicant(a.id)}
               companyId={companyId}
               boardId={boardId}
@@ -1700,17 +1747,19 @@ export default function ApplicantsBoard({
         const g = localGroups.find((gr) => gr.id === item.groupId);
         return (
           <div
-            onClick={() => onQuickCreateApplicant(item.groupId)}
-            className="border-t border-rf-border hover:bg-rf-blue-tint/30 cursor-pointer transition-colors group/addrow bg-rf-surface-card rounded-b-[14px]"
+            className="bg-rf-surface-card rounded-b-[14px] group/addrow"
             style={{
               borderLeft: g ? `4px solid ${g.color}` : undefined,
               boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
             }}
           >
-            <div className="px-4 py-3 flex items-center gap-2 text-rf-text-muted group-hover/addrow:text-rf-blue transition-colors">
-              <span className="text-sm font-semibold">+</span>
+            <button
+              onClick={() => onQuickCreateApplicant(item.groupId)}
+              className="flex items-center gap-1.5 px-4 py-2 text-rf-text-muted opacity-0 group-hover/addrow:opacity-100 hover:text-rf-blue transition-all duration-150 focus:opacity-100 cursor-pointer"
+            >
+              <span className="text-sm font-semibold leading-none">+</span>
               <span className="text-sm font-medium">Add item</span>
-            </div>
+            </button>
           </div>
         );
       }
@@ -1756,6 +1805,7 @@ export default function ApplicantsBoard({
               onOpen={() => setDetailApplicantId(a.id)}
               onMove={(groupId) => onMoveApplicant(a.id, groupId)}
               onDuplicate={() => onDuplicateApplicant(a.id)}
+              onArchive={() => onArchiveApplicant(a.id)}
               onDelete={() => onDeleteApplicant(a.id)}
               companyId={companyId}
               boardId={boardId}
@@ -1807,9 +1857,30 @@ export default function ApplicantsBoard({
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
+      {/* Floating overlay shown while dragging a group header */}
+      <DragOverlay dropAnimation={null}>
+        {activeDragId?.startsWith("group-") ? (() => {
+          const g = localGroups.find((gr) => `group-${gr.id}` === activeDragId);
+          if (!g) return null;
+          return (
+            <div
+              className="flex items-center gap-3 px-5 py-3.5 rounded-[14px] bg-rf-surface-card shadow-2xl border border-rf-border"
+              style={{ borderLeft: `4px solid ${g.color}`, opacity: 0.95, cursor: "grabbing" }}
+            >
+              <span className="text-sm text-rf-text-muted">⋮⋮</span>
+              <span className="text-base font-semibold" style={{ color: g.color }}>{g.name}</span>
+              <span className="text-sm text-rf-text-muted">
+                ({(sortedApplicantsByGroup.get(g.id) ?? []).length})
+              </span>
+            </div>
+          );
+        })() : null}
+      </DragOverlay>
+
       {/* Cell validation / server error toast */}
       {cellErrorMsg && (
         <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-red-200 bg-rf-surface-card px-4 py-3 shadow-lg max-w-sm">
@@ -2000,8 +2071,15 @@ export default function ApplicantsBoard({
                                         )}
                                       </div>
                                       <div className="border-t border-rf-ink-100" />
-                                      {/* Danger */}
+                                      {/* Archive & Danger */}
                                       <div className="py-2">
+                                        <button
+                                          onClick={() => { setRowMenuOpen(null); onArchiveApplicant(a.id); }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
+                                        >
+                                          <Archive className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
+                                          Archive
+                                        </button>
                                         <button
                                           onClick={() => { setRowMenuOpen(null); onDeleteApplicant(a.id); }}
                                           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-danger hover:bg-rf-danger-bg transition-colors text-left"
@@ -2328,6 +2406,15 @@ export default function ApplicantsBoard({
                 </select>
 
                 <button
+                  onClick={onBulkArchive}
+                  disabled={isPending}
+                  className="h-10 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page disabled:opacity-60 flex items-center gap-2"
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive
+                </button>
+
+                <button
                   onClick={onBulkDelete}
                   disabled={isPending}
                   className="h-10 rounded-lg bg-rf-danger px-4 text-sm font-medium text-white hover:bg-rf-danger disabled:opacity-60"
@@ -2346,6 +2433,14 @@ export default function ApplicantsBoard({
             </div>
           </div>
         )}
+
+          {/* Archive drawer */}
+        <ArchiveDrawer
+          open={showArchiveDrawer}
+          onClose={() => onCloseArchiveDrawer?.()}
+          companyId={companyId}
+          jobId={jobId}
+        />
 
         {/* Delete Group Modal */}
         {groupToDelete && (
