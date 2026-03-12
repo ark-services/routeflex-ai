@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
  */
 export async function getGmailConnection(
   companyId: string
-): Promise<{ id: string; email: string } | null> {
+): Promise<{ id: string; email: string; needsReconnect: boolean } | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,7 +22,7 @@ export async function getGmailConnection(
   // Company-scoped lookup (new path)
   const { data: connection, error: connError } = await supabase
     .from("gmail_connections")
-    .select("id, email_address")
+    .select("id, email_address, scope")
     .eq("company_id", companyId)
     .is("revoked_at", null)
     .maybeSingle();
@@ -35,7 +35,8 @@ export async function getGmailConnection(
   }
 
   if (connection) {
-    return { id: connection.id, email: connection.email_address };
+    const needsReconnect = !connection.scope?.includes("gmail.readonly");
+    return { id: connection.id, email: connection.email_address, needsReconnect };
   }
 
   return null;

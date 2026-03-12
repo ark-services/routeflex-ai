@@ -152,6 +152,28 @@ async function processCompany(
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("403") || msg.includes("Insufficient Permission") || msg.includes("insufficientPermissions")) {
       console.warn(`[gmail/poll-inbox] Company ${companyId}: Gmail lacks read scope — user must reconnect`);
+
+      // Fire a notification (deduplicated — only once per 24 h per company)
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: existing } = await supabase
+        .from("system_notifications")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("metadata->>source", "gmail.missing_read_scope")
+        .gte("created_at", oneDayAgo)
+        .limit(1)
+        .maybeSingle();
+
+      if (!existing) {
+        await createNotification(supabase, {
+          companyId,
+          type: "alert",
+          title: "Gmail needs to be reconnected",
+          body: "The Gmail inbox read permission is missing. Email monitoring automations won't run until you reconnect Gmail in Integrations.",
+          metadata: { source: "gmail.missing_read_scope" },
+        });
+      }
+
       return { messagesProcessed: 0, triggersFireed: 0 };
     }
     throw err;
