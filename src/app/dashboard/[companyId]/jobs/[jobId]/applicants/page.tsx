@@ -138,6 +138,7 @@ export default async function ApplicantsPage({
       )
       .eq("company_id", companyId)
       .eq("job_id", jobId)
+      .is("archived_at", null)
       .order("position", { ascending: true }),
     supabase
       .from("board_columns")

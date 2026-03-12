@@ -74,6 +74,7 @@ export function ApplicantsBoardContainer({
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
   const [activityLogOpen, setActivityLogOpen] = useState(false);
   const [defaultValuesOpen, setDefaultValuesOpen] = useState(false);
+  const [archiveDrawerOpen, setArchiveDrawerOpen] = useState(false);
 
   // Pipeline summary: count applicants per visible group
   const pipelineStages: PipelineStage[] = useMemo(() => {
@@ -119,6 +120,7 @@ export function ApplicantsBoardContainer({
         triggers={triggers}
         groups={boardGroups}
         onOpenActivityLog={() => setActivityLogOpen(true)}
+        onOpenArchive={() => setArchiveDrawerOpen(true)}
         onOpenDefaultValues={() => setDefaultValuesOpen(true)}
         isSuperAdmin={isSuperAdmin}
         pipelineStages={pipelineStages}
@@ -141,6 +143,8 @@ export function ApplicantsBoardContainer({
           hasStatusMoveAutomations={hasStatusMoveAutomations}
           showDefaultValues={defaultValuesOpen}
           onCloseDefaultValues={() => setDefaultValuesOpen(false)}
+          showArchiveDrawer={archiveDrawerOpen}
+          onCloseArchiveDrawer={() => setArchiveDrawerOpen(false)}
         />
       </div>
 

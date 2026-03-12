@@ -9,6 +9,8 @@ import {
   RotateCcw,
   ChevronUp,
   ChevronDown,
+  Copy,
+  ChevronRight,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import type React from "react";
@@ -24,6 +26,7 @@ export function SortableColumnHeader({
   onWidthCommit,
   onWidthReset,
   onDelete,
+  onDuplicate,
   onToggleMinimize,
   onAddRight,
   onSaveEdit,
@@ -40,6 +43,7 @@ export function SortableColumnHeader({
   onWidthCommit: (w: number) => void;
   onWidthReset: () => void;
   onDelete: () => void;
+  onDuplicate: (withValues: boolean) => void;
   onToggleMinimize: () => void;
   onAddRight: () => void;
   onSaveEdit: (newName: string) => void;
@@ -72,6 +76,9 @@ export function SortableColumnHeader({
   };
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [duplicateSubmenuOpen, setDuplicateSubmenuOpen] = useState(false);
+  const [submenuPosition, setSubmenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const duplicateRowRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top?: number; bottom?: number; left: number; maxHeight: number } | null>(null);
   const resizeStartX = useRef(0);
@@ -262,7 +269,7 @@ export function SortableColumnHeader({
           {/* Backdrop to close menu when clicking outside */}
           <div
             className="fixed inset-0 z-[998]"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => { setMenuOpen(false); setDuplicateSubmenuOpen(false); }}
           />
           <div
             className="fixed z-[999] w-64 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-y-auto"
@@ -294,6 +301,26 @@ export function SortableColumnHeader({
                 <Plus className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
                 Add column to right
               </button>
+              {/* Duplicate column with submenu */}
+              <div
+                ref={duplicateRowRef}
+                onMouseEnter={() => {
+                  if (duplicateRowRef.current) {
+                    const rect = duplicateRowRef.current.getBoundingClientRect();
+                    setSubmenuPosition({ top: rect.top, left: rect.right + 4 });
+                  }
+                  setDuplicateSubmenuOpen(true);
+                }}
+                onMouseLeave={() => setDuplicateSubmenuOpen(false)}
+              >
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
+                >
+                  <Copy className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
+                  <span className="flex-1">Duplicate column</span>
+                  <ChevronRight className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
+                </button>
+              </div>
             </div>
 
             <div className="border-t border-rf-ink-100" />
@@ -330,6 +357,30 @@ export function SortableColumnHeader({
             </div>
           </div>
         </>,
+        document.body
+      )}
+
+      {/* Duplicate submenu portal */}
+      {duplicateSubmenuOpen && submenuPosition && typeof window !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[1000] w-52 rounded-xl border border-rf-border bg-rf-surface-card shadow-2xl overflow-hidden"
+          style={{ top: submenuPosition.top, left: submenuPosition.left }}
+          onMouseEnter={() => setDuplicateSubmenuOpen(true)}
+          onMouseLeave={() => setDuplicateSubmenuOpen(false)}
+        >
+          <button
+            onClick={() => { onDuplicate(false); setMenuOpen(false); setDuplicateSubmenuOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
+          >
+            Column only
+          </button>
+          <button
+            onClick={() => { onDuplicate(true); setMenuOpen(false); setDuplicateSubmenuOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
+          >
+            Column and cell values
+          </button>
+        </div>,
         document.body
       )}
 

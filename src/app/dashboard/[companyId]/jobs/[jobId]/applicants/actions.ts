@@ -790,7 +790,8 @@ export async function createBoardColumn(
 export async function duplicateBoardColumn(
   companyId: string,
   jobId: string,
-  columnId: string
+  columnId: string,
+  withValues = false
 ) {
   const supabase = await createClient();
 
@@ -841,15 +842,17 @@ export async function duplicateBoardColumn(
     throw new Error(error.message);
   }
 
-  // If it's a status column, duplicate the labels
+  // For status columns: duplicate the labels (always needed so cells can reference them)
+  const labelIdMap = new Map<string, string>(); // old label id → new label id
   if (sourceColumn.type === "status" && newColumn) {
     const { data: labels } = await supabase
       .from("board_status_labels")
       .select("*")
-      .eq("column_id", columnId);
+      .eq("column_id", columnId)
+      .order("sort_order", { ascending: true });
 
     if (labels && labels.length > 0) {
-      const { error: labelError } = await supabase
+      const { data: newLabels, error: labelError } = await supabase
         .from("board_status_labels")
         .insert(
           labels.map((label) => ({
@@ -858,10 +861,47 @@ export async function duplicateBoardColumn(
             color: label.color,
             sort_order: label.sort_order,
           }))
-        );
+        )
+        .select();
 
       if (labelError) {
         console.error("[duplicateBoardColumn] Error duplicating status labels:", labelError);
+      } else if (newLabels) {
+        // Build mapping from old label id → new label id (by sort_order position)
+        labels.forEach((oldLabel, i) => {
+          if (newLabels[i]) labelIdMap.set(oldLabel.id, newLabels[i].id);
+        });
+      }
+    }
+  }
+
+  // Copy cell values if requested
+  if (withValues && newColumn) {
+    const { data: cells } = await supabase
+      .from("board_cells")
+      .select("*")
+      .eq("column_id", columnId);
+
+    if (cells && cells.length > 0) {
+      const { error: cellError } = await supabase
+        .from("board_cells")
+        .insert(
+          cells.map((cell) => ({
+            applicant_id: cell.applicant_id,
+            column_id: newColumn.id,
+            value_text: cell.value_text,
+            value_number: cell.value_number,
+            value_date: cell.value_date,
+            value_bool: cell.value_bool,
+            value_file_path: cell.value_file_path,
+            value_status_label_id: cell.value_status_label_id
+              ? (labelIdMap.get(cell.value_status_label_id) ?? null)
+              : null,
+          }))
+        );
+
+      if (cellError) {
+        console.error("[duplicateBoardColumn] Error copying cell values:", cellError);
       }
     }
   }
@@ -2442,6 +2482,122 @@ export async function setApplicantIntegrationField(
     console.error("[setApplicantIntegrationField] Error:", err);
     return { success: false, error: err.message ?? "Unknown error" };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Archive / Restore
+// ---------------------------------------------------------------------------
+
+export async function archiveApplicants(
+  companyId: string,
+  jobId: string,
+  applicantIds: string[]
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error, count } = await supabase
+    .from("applicants")
+    .update({ archived_at: new Date().toISOString(), archived_by: user?.id ?? null }, { count: "exact" })
+    .in("id", applicantIds)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (error) throw new Error(`Archive failed: ${error.message}`);
+  if (count === 0) throw new Error("Failed to archive applicants. You may not have permissions.");
+
+  const n = count ?? applicantIds.length;
+  const actor = actorName(user);
+
+  after(async () => {
+    try {
+      await logActivityEvent(supabase, {
+        companyId,
+        jobId,
+        actorUserId: user?.id ?? null,
+        actorType: "user",
+        eventType: "applicant.archived",
+        entityType: "applicant",
+        summary: `${actor} archived ${n} applicant${n !== 1 ? "s" : ""}`,
+        data: { actor_name: actor, count: n, applicant_ids: applicantIds },
+      });
+    } catch {}
+  });
+
+  revalidatePath(dashPath(companyId, jobId));
+}
+
+export async function restoreApplicants(
+  companyId: string,
+  jobId: string,
+  applicantIds: string[]
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error, count } = await supabase
+    .from("applicants")
+    .update({ archived_at: null, archived_by: null }, { count: "exact" })
+    .in("id", applicantIds)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (error) throw new Error(`Restore failed: ${error.message}`);
+  if (count === 0) throw new Error("Failed to restore applicants. You may not have permissions.");
+
+  const n = count ?? applicantIds.length;
+  const actor = actorName(user);
+
+  after(async () => {
+    try {
+      await logActivityEvent(supabase, {
+        companyId,
+        jobId,
+        actorUserId: user?.id ?? null,
+        actorType: "user",
+        eventType: "applicant.restored",
+        entityType: "applicant",
+        summary: `${actor} restored ${n} applicant${n !== 1 ? "s" : ""}`,
+        data: { actor_name: actor, count: n, applicant_ids: applicantIds },
+      });
+    } catch {}
+  });
+
+  revalidatePath(dashPath(companyId, jobId));
+}
+
+export async function getArchivedApplicants(companyId: string, jobId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("applicants")
+    .select("id, full_name, email, group_id, archived_at, archived_by")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .not("archived_at", "is", null)
+    .order("archived_at", { ascending: false });
+
+  if (error) throw new Error(`Failed to fetch archived applicants: ${error.message}`);
+
+  // Fetch archiver display names
+  if (data && data.length > 0) {
+    const archiverIds = [...new Set(data.map((a) => a.archived_by).filter(Boolean))] as string[];
+    if (archiverIds.length > 0) {
+      const svc = createServiceClient();
+      const { data: profiles } = await svc
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", archiverIds);
+
+      const nameMap = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
+      return data.map((a) => ({
+        ...a,
+        archived_by_name: a.archived_by ? nameMap.get(a.archived_by) ?? "Unknown" : "Unknown",
+      }));
+    }
+  }
+
+  return (data ?? []).map((a) => ({ ...a, archived_by_name: "Unknown" }));
 }
 
 

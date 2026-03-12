@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition, useEffect } from "react";
-import { Search, SlidersHorizontal, X, Link2, Zap, BookTemplate, MoreHorizontal, ScrollText } from "lucide-react";
+import { Search, SlidersHorizontal, X, Link2, Zap, BookTemplate, MoreHorizontal, ScrollText, Archive } from "lucide-react";
 import type { BoardColumn, BoardStatusLabel } from "@/lib/types";
 import { useToast } from "@/components/ui/toast-provider";
 import type { ActiveFilter, BoardView, BoardViewQuery } from "./view-actions";
@@ -41,6 +41,8 @@ export interface BoardToolbarProps {
   groups: any[];
   // Activity log
   onOpenActivityLog: () => void;
+  // Archive drawer
+  onOpenArchive: () => void;
   // Default values modal
   onOpenDefaultValues?: () => void;
   // Super admin
@@ -70,6 +72,7 @@ export function BoardToolbar({
   triggers,
   groups,
   onOpenActivityLog,
+  onOpenArchive,
   onOpenDefaultValues,
   isSuperAdmin = false,
   pipelineStages,
@@ -272,6 +275,13 @@ export function BoardToolbar({
                     Default values
                   </button>
                 )}
+                <button
+                  onClick={() => { setMoreOpen(false); onOpenArchive(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"
+                >
+                  <Archive className="h-4 w-4 text-rf-text-secondary" />
+                  View archive
+                </button>
                 <button
                   onClick={() => { setMoreOpen(false); onOpenActivityLog(); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors"

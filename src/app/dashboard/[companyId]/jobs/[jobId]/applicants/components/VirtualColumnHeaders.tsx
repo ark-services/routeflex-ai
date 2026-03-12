@@ -20,6 +20,7 @@ interface VirtualColumnHeadersProps {
   onColumnWidthReset: (colId: string, colType: string) => void;
   onSaveColumnName: (colId: string, name: string) => void;
   onDeleteColumn: (colId: string) => void;
+  onDuplicateColumn: (colId: string, withValues: boolean) => void;
   onToggleMinimizeColumn: (colId: string, groupId: string) => void;
   onAddColumnRight: (colId: string) => void;
   onShowAddColumnModal: () => void;
@@ -43,6 +44,7 @@ export function VirtualColumnHeaders({
   onColumnWidthReset,
   onSaveColumnName,
   onDeleteColumn,
+  onDuplicateColumn,
   onToggleMinimizeColumn,
   onAddColumnRight,
   onShowAddColumnModal,
@@ -99,6 +101,7 @@ export function VirtualColumnHeaders({
             onWidthReset={() => onColumnWidthReset(col.id, col.type)}
             onSaveEdit={(newName) => onSaveColumnName(col.id, newName)}
             onDelete={() => onDeleteColumn(col.id)}
+            onDuplicate={(withValues) => onDuplicateColumn(col.id, withValues)}
             onToggleMinimize={() => onToggleMinimizeColumn(col.id, groupId)}
             onAddRight={() => onAddColumnRight(col.id)}
             isCollapsed={collapsedColIds.has(col.id)}

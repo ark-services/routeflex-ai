@@ -8,6 +8,7 @@ import {
   GraduationCap,
   Link2,
   ExternalLink,
+  Archive,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import type { ApplicantRow, BoardColumn, StatusLabel, Group, CellColumnType } from "./types";
@@ -28,6 +29,7 @@ export function VirtualRow({
   onOpen,
   onMove,
   onDuplicate,
+  onArchive,
   onDelete,
   companyId,
   boardId,
@@ -54,6 +56,7 @@ export function VirtualRow({
   onOpen: () => void;
   onMove: (groupId: string) => void;
   onDuplicate: () => void;
+  onArchive: () => void;
   onDelete: () => void;
   companyId: string;
   boardId: string;
@@ -246,6 +249,16 @@ export function VirtualRow({
                     </div>
                     <div className="border-t border-rf-ink-100" />
                     <div className="py-2">
+                      <button
+                        onClick={() => {
+                          setRowMenuOpen(false);
+                          onArchive();
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rf-ink-700 hover:bg-rf-surface-page transition-colors text-left"
+                      >
+                        <Archive className="w-4 h-4 text-rf-text-muted flex-shrink-0" />
+                        Archive
+                      </button>
                       <button
                         onClick={() => {
                           setRowMenuOpen(false);
