@@ -1593,7 +1593,8 @@ export default function ApplicantsBoard({
         const g = localGroups.find((gr) => gr.id === item.groupId);
         return (
           <div
-            className="px-4 py-8 text-sm text-rf-text-muted text-left bg-rf-surface-card"
+            className="py-8 pr-4 text-sm text-rf-text-muted text-left bg-rf-surface-card"
+            style={{ paddingLeft: 68 }}
             style={{
               borderLeft: g ? `4px solid ${g.color}` : undefined,
               boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",

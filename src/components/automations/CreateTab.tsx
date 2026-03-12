@@ -525,12 +525,12 @@ export function CreateTab({
   };
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="space-y-4">
+    <div className="p-5 sm:p-8">
+      <div className="space-y-6">
         {/* Trigger Section */}
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-rf-blue">When</span>
+          <div className="flex items-center gap-2.5 mb-3">
+            <span className="text-xs font-bold uppercase tracking-widest text-rf-blue">When</span>
             <div className="flex-1 h-px bg-rf-blue/15" />
           </div>
         <TriggerSelector
@@ -558,20 +558,20 @@ export function CreateTab({
 
         {/* Connector */}
         {selectedTrigger && (
-          <div className="flex justify-center py-1">
+          <div className="flex justify-center py-2">
             <div className="flex flex-col items-center gap-0.5">
-              <div className="w-px h-3 bg-rf-ink-300/40" />
+              <div className="w-px h-4 bg-rf-ink-300/40" />
               <div className="w-1.5 h-1.5 rounded-full bg-rf-ink-300/40" />
-              <div className="w-px h-3 bg-rf-ink-300/40" />
+              <div className="w-px h-4 bg-rf-ink-300/40" />
             </div>
           </div>
         )}
 
         {/* Actions Section */}
         {selectedTrigger && (
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-2 mb-0">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-600">Then</span>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">Then</span>
               <div className="flex-1 h-px bg-emerald-500/15" />
             </div>
             {actions.map((action, index) => (
@@ -604,12 +604,12 @@ export function CreateTab({
 
         {/* Create/Update Buttons */}
         {selectedTrigger && actions.length > 0 && (
-          <div className="flex justify-center gap-3 pt-5 border-t border-rf-border mt-2">
+          <div className="flex justify-center gap-3 pt-6 border-t border-rf-border mt-4">
             {isEditing && onCancelEdit && (
               <button
                 onClick={onCancelEdit}
                 disabled={loading}
-                className="px-5 py-2.5 text-sm bg-rf-surface-card text-rf-ink-700 border-2 border-rf-ink-100 rounded-rf-md hover:bg-rf-surface-page transition-colors disabled:opacity-50 font-medium"
+                className="px-6 py-3 text-[15px] bg-rf-surface-card text-rf-ink-700 border-2 border-rf-ink-100 rounded-rf-md hover:bg-rf-surface-page transition-colors disabled:opacity-50 font-medium"
               >
                 Cancel
               </button>
@@ -617,7 +617,7 @@ export function CreateTab({
             <button
               onClick={handleCreate}
               disabled={loading}
-              className="px-6 py-2.5 text-sm bg-rf-blue text-white rounded-rf-md hover:bg-rf-blue-dark transition-all disabled:opacity-50 font-medium shadow-rf-sm hover:shadow-rf-md"
+              className="px-8 py-3 text-[15px] bg-rf-blue text-white rounded-rf-md hover:bg-rf-blue-dark transition-all disabled:opacity-50 font-medium shadow-rf-sm hover:shadow-rf-md"
             >
               {loading
                 ? isEditing

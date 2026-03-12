@@ -56,10 +56,10 @@ export function ColumnPicker({
 
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
+        className="px-2.5 py-1 border border-rf-blue-tint bg-rf-blue-tint/70 rounded-md text-rf-blue font-medium text-[15px] hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-1"
       >
         {selected ? selected.name : placeholder}
-        <ChevronDown className="w-3 h-3" />
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
       {isOpen && (
@@ -136,7 +136,7 @@ export function LabelPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-1"
+        className="px-2.5 py-1 border border-rf-blue-tint bg-rf-blue-tint/70 rounded-md text-rf-blue font-medium text-[15px] hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-1.5"
       >
         {selected ? (
           <>
@@ -147,7 +147,7 @@ export function LabelPicker({
             {selected.label}
           </>
         ) : placeholder}
-        <ChevronDown className="w-3 h-3" />
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
       {isOpen && (
@@ -194,10 +194,10 @@ export function CoursePicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
+        className="px-2.5 py-1 border border-rf-blue-tint bg-rf-blue-tint/70 rounded-md text-rf-blue font-medium text-[15px] hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-1"
       >
         {selected ? selected.name : "choose course"}
-        <ChevronDown className="w-3 h-3" />
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
       {isOpen && (
@@ -330,10 +330,10 @@ export function StatusLabelPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
+        className="px-2.5 py-1 border border-rf-blue-tint bg-rf-blue-tint/70 rounded-md text-rf-blue font-medium text-[15px] hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-1"
       >
         {selected ? selected.label : placeholder}
-        <ChevronDown className="w-3 h-3" />
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
       {isOpen && (
@@ -387,10 +387,10 @@ export function GroupPicker({
     <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="px-2 py-0.5 border border-rf-blue-tint bg-rf-blue-tint/70 rounded text-rf-blue font-medium text-sm hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-0.5"
+        className="px-2.5 py-1 border border-rf-blue-tint bg-rf-blue-tint/70 rounded-md text-rf-blue font-medium text-[15px] hover:bg-rf-blue-tint transition-colors inline-flex items-center gap-1"
       >
         {selected ? selected.name : selectedId === undefined && allowAny ? "any group" : placeholder}
-        <ChevronDown className="w-3 h-3" />
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
       {isOpen && (

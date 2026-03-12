@@ -28,10 +28,10 @@ export function ActionTypeLabel({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="text-xs font-medium text-rf-success hover:text-green-900 hover:bg-rf-success-bg px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+        className="text-sm font-medium text-rf-success hover:text-green-900 hover:bg-rf-success-bg px-2.5 py-1 rounded transition-colors flex items-center gap-1"
       >
         {current?.label || type}
-        <ChevronDown className="w-3 h-3" />
+        <ChevronDown className="w-3.5 h-3.5" />
       </button>
 
       {isOpen && (

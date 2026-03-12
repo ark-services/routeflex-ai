@@ -73,8 +73,8 @@ export function ActionEditor({
   const portalMessageRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-    <div className="border border-emerald-200/80 bg-emerald-50/40 rounded-rf-lg px-4 py-3.5 shadow-rf-sm">
-      <div className="flex items-center justify-between mb-1.5">
+    <div className="border border-emerald-200/80 bg-emerald-50/40 rounded-rf-lg px-5 py-5 shadow-rf-sm">
+      <div className="flex items-center justify-between mb-2">
         <ActionTypeLabel
           type={action.type}
           actionTypes={actionTypes}
@@ -82,14 +82,14 @@ export function ActionEditor({
         />
         <button
           onClick={onRemove}
-          className="p-1 hover:bg-emerald-100 rounded-rf-sm flex-shrink-0 transition-colors"
+          className="p-1.5 hover:bg-emerald-100 rounded-rf-sm flex-shrink-0 transition-colors"
         >
-          <X className="w-3.5 h-3.5 text-rf-text-muted hover:text-rf-danger" />
+          <X className="w-4 h-4 text-rf-text-muted hover:text-rf-danger" />
         </button>
       </div>
 
       {/* Interactive Sentence for Action Config */}
-      <div className="flex flex-wrap items-center gap-1.5 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-lg">
         {action.type === "move_group" && (
           <>
             <span>move item to</span>

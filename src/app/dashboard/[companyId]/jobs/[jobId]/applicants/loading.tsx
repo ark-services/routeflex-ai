@@ -4,10 +4,12 @@
  */
 
 const SKELETON_GROUPS = [
-  { color: "#00c875", rows: 4 },
-  { color: "#fdab3d", rows: 3 },
-  { color: "#e2445c", rows: 2 },
+  { rows: 4 },
+  { rows: 3 },
+  { rows: 2 },
 ];
+
+const GRAY = "#9ca3af";
 
 const COLUMN_WIDTHS = [170, 140, 120, 150, 120, 100];
 
@@ -49,7 +51,7 @@ export default function BoardLoading() {
               key={gi}
               className="rounded-t-[14px]"
               style={{
-                borderLeft: `4px solid ${group.color}`,
+                borderLeft: `4px solid ${GRAY}`,
                 boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
               }}
             >
@@ -57,7 +59,7 @@ export default function BoardLoading() {
               <div className="flex items-center gap-2 px-4 h-[48px]">
                 <div
                   className="h-3 w-3 rounded-sm"
-                  style={{ backgroundColor: group.color }}
+                  style={{ backgroundColor: GRAY }}
                 />
                 <Bone className="h-4 w-28" />
                 <Bone className="h-4 w-8 rounded-full" />

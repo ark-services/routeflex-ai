@@ -47,7 +47,7 @@ export function FilterConditionRow({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 bg-rf-surface-card border border-rf-blue-tint rounded px-2 py-1.5">
+    <div className="flex flex-wrap items-center gap-2 bg-rf-surface-card border border-rf-blue-tint rounded-lg px-3 py-2.5">
 
       {/* 1. Column picker — all columns + "Group membership" sentinel */}
       <ColumnPicker
@@ -63,7 +63,7 @@ export function FilterConditionRow({
         <select
           value={condition.type}
           onChange={(e) => onChange({ type: e.target.value, value: "" })}
-          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-sm border border-rf-border rounded-lg px-2 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
         >
           {availableConditions.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
@@ -96,7 +96,7 @@ export function FilterConditionRow({
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
           placeholder="value\u2026"
-          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card min-w-[100px] focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-sm border border-rf-border rounded-lg px-2.5 py-1.5 bg-rf-surface-card min-w-[120px] focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
@@ -108,7 +108,7 @@ export function FilterConditionRow({
             onChange({ value: e.target.value === "" ? "" : parseFloat(e.target.value) })
           }
           placeholder="0"
-          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card w-20 focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-sm border border-rf-border rounded-lg px-2.5 py-1.5 bg-rf-surface-card w-24 focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
@@ -117,16 +117,16 @@ export function FilterConditionRow({
           type="date"
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
-          className="text-xs border border-rf-border rounded px-1.5 py-1 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
+          className="text-sm border border-rf-border rounded-lg px-2.5 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
 
       {/* Remove button */}
       <button
         onClick={onRemove}
-        className="ml-auto p-1 hover:bg-rf-danger-bg rounded text-rf-text-muted hover:text-rf-danger transition-colors"
+        className="ml-auto p-1.5 hover:bg-rf-danger-bg rounded text-rf-text-muted hover:text-rf-danger transition-colors"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-4 h-4" />
       </button>
     </div>
   );
