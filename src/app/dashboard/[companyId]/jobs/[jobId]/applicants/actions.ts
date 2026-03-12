@@ -8,6 +8,8 @@ import { validateEmail, validatePhone, validateLocation } from "@/lib/validation
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 import { getOrCreateApplicantsBoard as getOrCreateBoardLib } from "@/lib/boards/getOrCreateApplicantsBoard";
 import { actorName } from "@/lib/helpers/actorName";
+import { getGmailClientForCompany, sendEmail } from "@/lib/gmail-send";
+import { resolveVariables, plainTextToHtml } from "@/lib/automations/executors/helpers";
 
 const VERBOSE = false; // set to true to re-enable verbose action logs
 
@@ -1377,6 +1379,18 @@ export async function updateBoardCell(
     oldStatusLabelId = existingCell?.value_status_label_id ?? null;
   }
 
+  // For non-status/non-file columns, capture old value before update (for activity logging + undo)
+  let oldNonStatusCell: { value_text: string | null; value_number: number | null; value_date: string | null; value_bool: boolean | null } | null = null;
+  if (columnType !== "status" && columnType !== "file") {
+    const { data: existingNonStatusCell } = await supabase
+      .from("board_cells")
+      .select("value_text, value_number, value_date, value_bool")
+      .eq("applicant_id", applicantId)
+      .eq("column_id", columnId)
+      .maybeSingle();
+    oldNonStatusCell = existingNonStatusCell ?? null;
+  }
+
   // Map value to appropriate column based on type
   const cellData: any = {
     applicant_id: applicantId,
@@ -1560,13 +1574,12 @@ export async function updateBoardCell(
     }
   }
 
+  // Pre-capture user before after() — cookie context is unavailable post-response
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
   // TRIGGER AUTOMATION: Detect status change and fire Monday.com-style trigger.
   // Wrapped in after() so automations run after the response is sent — doesn't block the client.
-  // IMPORTANT: The cookie-based supabase client is NOT safe inside after() because the request
-  // context (cookies) is gone by the time after() runs. We pre-capture the user here (during the
-  // main request) and create a service role client inside after() for all DB operations.
   if (columnType === "status" && oldStatusLabelId !== value) {
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
     after(async () => {
       try {
         // Service role client — no cookies needed, safe to use inside after()
@@ -1632,32 +1645,91 @@ export async function updateBoardCell(
           newLabel,
         });
 
-        // Log cell.updated activity using pre-captured user (cookies unavailable in after())
+        // Log cell.updated activity
         try {
           const actor = actorName(currentUser);
-          if (newLabel) {
-            // Fetch applicant name for richer log entry
-            const { data: applicantRow } = await svc
-              .from("applicants")
-              .select("full_name")
-              .eq("id", applicantId)
-              .maybeSingle();
-            const applicantName = applicantRow?.full_name ?? "an applicant";
-            await logActivityEvent(svc, {
-              companyId,
-              jobId,
-              actorUserId: currentUser?.id ?? null,
-              actorType: "user",
-              eventType: "cell.updated",
-              entityType: "applicant",
-              entityId: applicantId,
-              summary: `${actor} changed ${applicantName}'s ${column?.name ?? "status"} → ${newLabel}`,
-              data: { actor_name: actor, applicant_name: applicantName, column_name: column?.name, old_label: oldLabel, new_label: newLabel },
-            });
-          }
+          const { data: applicantRow } = await svc
+            .from("applicants")
+            .select("full_name")
+            .eq("id", applicantId)
+            .maybeSingle();
+          const applicantName = applicantRow?.full_name ?? "an applicant";
+          await logActivityEvent(svc, {
+            companyId,
+            jobId,
+            actorUserId: currentUser?.id ?? null,
+            actorType: "user",
+            eventType: "cell.updated",
+            entityType: "applicant",
+            entityId: applicantId,
+            summary: `${actor} changed ${applicantName}'s ${column?.name ?? "status"}`,
+            data: {
+              actor_name: actor,
+              applicant_name: applicantName,
+              applicant_id: applicantId,
+              column_id: columnId,
+              column_name: column?.name,
+              column_type: "status",
+              old_value: oldStatusLabelId,
+              new_value: value,
+              old_label: oldLabel,
+              new_label: newLabel,
+            },
+          });
         } catch {}
       } catch (automationError) {
         console.error('[updateBoardCell] Error firing automation:', automationError);
+      }
+    });
+  }
+
+  // LOG CELL CHANGE: For non-status, non-file columns log cell.updated with old/new values
+  if (columnType !== "status" && columnType !== "file") {
+    after(async () => {
+      try {
+        const svc = createServiceClient();
+        const actor = actorName(currentUser);
+        const [{ data: column }, { data: applicantRow }] = await Promise.all([
+          svc.from("board_columns").select("name").eq("id", columnId).maybeSingle(),
+          svc.from("applicants").select("full_name").eq("id", applicantId).maybeSingle(),
+        ]);
+        const colName = column?.name ?? "a field";
+        const applicantName = applicantRow?.full_name ?? "an applicant";
+
+        const oldValue = columnType === "number" ? (oldNonStatusCell?.value_number ?? null)
+          : columnType === "date" ? (oldNonStatusCell?.value_date ?? null)
+          : columnType === "checkbox" ? (oldNonStatusCell?.value_bool ?? null)
+          : (oldNonStatusCell?.value_text ?? null);
+        const newValue = columnType === "number" ? cellData.value_number
+          : columnType === "date" ? cellData.value_date
+          : columnType === "checkbox" ? cellData.value_bool
+          : cellData.value_text;
+
+        // Skip logging if nothing actually changed
+        if (String(oldValue ?? "") === String(newValue ?? "")) return;
+
+        await logActivityEvent(svc, {
+          companyId,
+          jobId,
+          actorUserId: currentUser?.id ?? null,
+          actorType: "user",
+          eventType: "cell.updated",
+          entityType: "applicant",
+          entityId: applicantId,
+          summary: `${actor} changed ${applicantName}'s ${colName}`,
+          data: {
+            actor_name: actor,
+            applicant_name: applicantName,
+            applicant_id: applicantId,
+            column_id: columnId,
+            column_name: colName,
+            column_type: columnType,
+            old_value: oldValue,
+            new_value: newValue,
+          },
+        });
+      } catch (err) {
+        console.error('[updateBoardCell] Failed to log cell.updated activity:', err);
       }
     });
   }
@@ -1720,12 +1792,15 @@ export async function bulkUpdateStatusCells(
     newLabel,
   });
 
+  // Pre-capture user for activity logging
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
   // Process each applicant individually to:
   // 1. Get the old status value
   // 2. Update the cell
   // 3. Fire automation trigger
-  const results = [];
-  const errors = [];
+  const results: { applicantId: string; success: true; oldValue: string | null }[] = [];
+  const errors: { applicantId: string; error: string }[] = [];
 
   for (const applicantId of applicantIds) {
     try {
@@ -1816,7 +1891,7 @@ export async function bulkUpdateStatusCells(
         });
       }
 
-      results.push({ applicantId, success: true });
+      results.push({ applicantId, success: true, oldValue: oldStatusLabelId });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       errors.push({ applicantId, error: errorMsg });
@@ -1835,6 +1910,56 @@ export async function bulkUpdateStatusCells(
     throw new Error("All bulk updates failed");
   }
 
+  // Log ONE grouped cells.bulk_updated activity event after successful updates
+  if (results.length > 0) {
+    after(async () => {
+      try {
+        const svc = createServiceClient();
+        const actor = actorName(currentUser);
+
+        // Batch fetch applicant names
+        const { data: applicantRows } = await svc
+          .from("applicants")
+          .select("id, full_name")
+          .in("id", results.map(r => r.applicantId));
+        const nameMap = new Map(applicantRows?.map(a => [a.id, a.full_name]) ?? []);
+
+        // Build changes array
+        const changes = results.map(r => ({
+          applicant_id: r.applicantId,
+          applicant_name: nameMap.get(r.applicantId) ?? "Unknown",
+          old_value: r.oldValue,
+        }));
+
+        const summary = results.length === 1
+          ? `${actor} changed ${changes[0].applicant_name}'s ${column.name}`
+          : `${actor} updated ${column.name} for ${results.length} applicants`;
+
+        await logActivityEvent(svc, {
+          companyId,
+          jobId,
+          actorUserId: currentUser?.id ?? null,
+          actorType: "user",
+          eventType: "cells.bulk_updated",
+          entityType: "applicant",
+          entityId: null,
+          summary,
+          data: {
+            actor_name: actor,
+            column_id: columnId,
+            column_name: column.name,
+            column_type: "status",
+            new_value: statusLabelId,
+            new_label: newLabel,
+            changes,
+          },
+        });
+      } catch (err) {
+        console.error('[bulkUpdateStatusCells] Failed to log activity:', err);
+      }
+    });
+  }
+
   // NOTE: revalidatePath intentionally omitted — see updateBoardCell comment above.
 
   return {
@@ -1842,6 +1967,258 @@ export async function bulkUpdateStatusCells(
     failed: errors.length,
     errors,
   };
+}
+
+// ===== Bulk Text Cell Update =====
+
+/**
+ * Bulk update non-status cells for multiple applicants.
+ * Logs ONE grouped cells.bulk_updated activity event (instead of N separate events).
+ */
+export async function bulkUpdateTextCells(
+  companyId: string,
+  jobId: string,
+  applicantIds: string[],
+  columnId: string,
+  columnType: "text" | "number" | "date" | "checkbox" | "email" | "phone" | "location" | "fadv.package" | "fadv.location" | "fadv.facility_id" | "fadv.position_type",
+  value: any
+): Promise<{ successful: number; failed: number; errors: { applicantId: string; error: string }[] }> {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+  // Get column info
+  const { data: column } = await supabase
+    .from("board_columns")
+    .select("name, type")
+    .eq("id", columnId)
+    .single();
+
+  if (!column) throw new Error("Column not found");
+
+  // Batch fetch old cell values for all applicants
+  const { data: existingCells } = await supabase
+    .from("board_cells")
+    .select("applicant_id, value_text, value_number, value_date, value_bool")
+    .in("applicant_id", applicantIds)
+    .eq("column_id", columnId);
+  const oldCellMap = new Map(existingCells?.map(c => [c.applicant_id, c]) ?? []);
+
+  // Build the new cell data (same for all rows)
+  function buildCellData(applicantId: string) {
+    const base: any = {
+      applicant_id: applicantId,
+      column_id: columnId,
+      value_text: null,
+      value_number: null,
+      value_date: null,
+      value_bool: null,
+      value_status_label_id: null,
+    };
+    if (columnType === "checkbox") base.value_bool = Boolean(value);
+    else if (columnType === "number") base.value_number = value;
+    else if (columnType === "date") base.value_date = value;
+    else base.value_text = value !== null && value !== undefined ? String(value).trim() || null : null;
+    return base;
+  }
+
+  const results: { applicantId: string; success: true; oldValue: any }[] = [];
+  const errors: { applicantId: string; error: string }[] = [];
+
+  for (const applicantId of applicantIds) {
+    try {
+      const cellData = buildCellData(applicantId);
+      const { error: updateError } = await supabase
+        .from("board_cells")
+        .upsert(cellData, { onConflict: "applicant_id,column_id" });
+
+      if (updateError) {
+        errors.push({ applicantId, error: updateError.message });
+        continue;
+      }
+
+      const oldCell = oldCellMap.get(applicantId);
+      const oldValue = columnType === "number" ? (oldCell?.value_number ?? null)
+        : columnType === "date" ? (oldCell?.value_date ?? null)
+        : columnType === "checkbox" ? (oldCell?.value_bool ?? null)
+        : (oldCell?.value_text ?? null);
+
+      results.push({ applicantId, success: true, oldValue });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      errors.push({ applicantId, error: errorMsg });
+    }
+  }
+
+  if (errors.length === applicantIds.length) throw new Error("All bulk updates failed");
+
+  // Log ONE grouped activity event
+  if (results.length > 0) {
+    after(async () => {
+      try {
+        const svc = createServiceClient();
+        const actor = actorName(currentUser);
+
+        const { data: applicantRows } = await svc
+          .from("applicants")
+          .select("id, full_name")
+          .in("id", results.map(r => r.applicantId));
+        const nameMap = new Map(applicantRows?.map(a => [a.id, a.full_name]) ?? []);
+
+        const changes = results.map(r => ({
+          applicant_id: r.applicantId,
+          applicant_name: nameMap.get(r.applicantId) ?? "Unknown",
+          old_value: r.oldValue,
+        }));
+
+        const newValue = columnType === "number" ? value
+          : columnType === "date" ? value
+          : columnType === "checkbox" ? Boolean(value)
+          : (value !== null && value !== undefined ? String(value).trim() || null : null);
+
+        const summary = results.length === 1
+          ? `${actor} changed ${changes[0].applicant_name}'s ${column.name}`
+          : `${actor} updated ${column.name} for ${results.length} applicants`;
+
+        await logActivityEvent(svc, {
+          companyId,
+          jobId,
+          actorUserId: currentUser?.id ?? null,
+          actorType: "user",
+          eventType: "cells.bulk_updated",
+          entityType: "applicant",
+          entityId: null,
+          summary,
+          data: {
+            actor_name: actor,
+            column_id: columnId,
+            column_name: column.name,
+            column_type: columnType,
+            new_value: newValue,
+            changes,
+          },
+        });
+      } catch (err) {
+        console.error('[bulkUpdateTextCells] Failed to log activity:', err);
+      }
+    });
+  }
+
+  return { successful: results.length, failed: errors.length, errors };
+}
+
+// ===== Revert Cell Change =====
+
+/**
+ * Reverts a cell.updated or cells.bulk_updated activity event back to old values.
+ * Called from the Activity Log drawer's Undo button.
+ */
+export async function revertCellChange(
+  companyId: string,
+  jobId: string,
+  activityEventId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user: currentUser } } = await supabase.auth.getUser();
+  if (!currentUser) return { ok: false, error: "Not authenticated" };
+
+  // Fetch the activity event using service role (bypasses RLS on activity_events)
+  const svc = createServiceClient();
+  const { data: event, error: fetchError } = await svc
+    .from("activity_events")
+    .select("*")
+    .eq("id", activityEventId)
+    .eq("company_id", companyId)  // security: ensure company matches
+    .eq("job_id", jobId)
+    .single();
+
+  if (fetchError || !event) {
+    return { ok: false, error: "Activity event not found" };
+  }
+
+  if (event.event_type !== "cell.updated" && event.event_type !== "cells.bulk_updated") {
+    return { ok: false, error: "This event type cannot be reverted" };
+  }
+
+  const { column_id: columnId, column_type: columnType } = event.data;
+
+  function buildRevertCellData(applicantId: string, oldValue: any) {
+    const base: any = {
+      applicant_id: applicantId,
+      column_id: columnId,
+      value_text: null,
+      value_number: null,
+      value_date: null,
+      value_bool: null,
+      value_status_label_id: null,
+    };
+    if (columnType === "status") base.value_status_label_id = oldValue;
+    else if (columnType === "number") base.value_number = oldValue;
+    else if (columnType === "date") base.value_date = oldValue;
+    else if (columnType === "checkbox") base.value_bool = oldValue;
+    else base.value_text = oldValue;
+    return base;
+  }
+
+  const actor = actorName(currentUser);
+
+  if (event.event_type === "cell.updated") {
+    const { applicant_id: applicantId, old_value: oldValue, applicant_name: applicantName, column_name: columnName } = event.data;
+
+    const { error: upsertError } = await svc
+      .from("board_cells")
+      .upsert(buildRevertCellData(applicantId, oldValue), { onConflict: "applicant_id,column_id" });
+
+    if (upsertError) return { ok: false, error: upsertError.message };
+
+    // Sync full_name if this was a name column
+    if (columnType === "text") {
+      const cn = (columnName ?? "").toLowerCase().trim();
+      if (cn === "first name" || cn === "firstname" || cn === "last name" || cn === "lastname") {
+        const { data: nameCells } = await svc
+          .from("board_cells")
+          .select("value_text, board_columns!inner(name)")
+          .eq("applicant_id", applicantId);
+        let firstName = "", lastName = "";
+        for (const cell of nameCells ?? []) {
+          const ccn = (cell as any).board_columns?.name?.toLowerCase().trim() ?? "";
+          if (ccn === "first name" || ccn === "firstname") firstName = (cell as any).value_text ?? "";
+          else if (ccn === "last name" || ccn === "lastname") lastName = (cell as any).value_text ?? "";
+        }
+        const fullName = [firstName, lastName].filter(Boolean).join(" ");
+        if (fullName) await svc.from("applicants").update({ full_name: fullName }).eq("id", applicantId);
+      }
+    }
+
+    await logActivityEvent(svc, {
+      companyId, jobId, actorUserId: currentUser.id, actorType: "user",
+      eventType: "cell.reverted", entityType: "applicant", entityId: applicantId,
+      summary: `${actor} reverted ${applicantName ?? "an applicant"}'s ${columnName}`,
+      data: { actor_name: actor, reverted_event_id: activityEventId, column_name: columnName, column_type: columnType },
+    });
+
+  } else {
+    // cells.bulk_updated — revert each change in the changes array
+    const { changes, column_name: columnName } = event.data as {
+      changes: { applicant_id: string; applicant_name: string; old_value: any }[];
+      column_name: string;
+    };
+
+    const upserts = changes.map(c => buildRevertCellData(c.applicant_id, c.old_value));
+    const { error: upsertError } = await svc
+      .from("board_cells")
+      .upsert(upserts, { onConflict: "applicant_id,column_id" });
+
+    if (upsertError) return { ok: false, error: upsertError.message };
+
+    await logActivityEvent(svc, {
+      companyId, jobId, actorUserId: currentUser.id, actorType: "user",
+      eventType: "cells.bulk_reverted", entityType: "applicant", entityId: null,
+      summary: `${actor} reverted ${columnName} for ${changes.length} applicant${changes.length !== 1 ? "s" : ""}`,
+      data: { actor_name: actor, reverted_event_id: activityEventId, column_name: columnName, column_type: columnType, count: changes.length },
+    });
+  }
+
+  return { ok: true };
 }
 
 // ===== Row (Applicant) Actions =====
@@ -2273,6 +2650,11 @@ function buildDefaultCell(
       return { ...base, value_date: String(defaultValue) };
     case "checkbox":
       return { ...base, value_bool: Boolean(defaultValue) };
+    case "fadv.package":
+    case "fadv.location":
+    case "fadv.facility_id":
+    case "fadv.position_type":
+      return { ...base, value_text: String(defaultValue) };
     default:
       return null;
   }
@@ -2564,6 +2946,114 @@ export async function restoreApplicants(
   });
 
   revalidatePath(dashPath(companyId, jobId));
+}
+
+export async function bulkSendEmail(
+  companyId: string,
+  jobId: string,
+  applicantIds: string[],
+  subject: string,
+  body: string
+): Promise<{ sent: number; failed: number; noEmail: number }> {
+  const supabase = await createClient();
+
+  // Get Gmail client for company
+  const gmailClient = await getGmailClientForCompany(supabase, companyId);
+  if (!gmailClient) {
+    throw new Error("No Gmail connection found for this company. Connect Gmail in Settings first.");
+  }
+
+  // Fetch applicant details (name + email) for all selected IDs
+  const { data: applicants, error } = await supabase
+    .from("applicants")
+    .select("id, full_name, email")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .in("id", applicantIds);
+
+  if (error) throw new Error(`Failed to fetch applicants: ${error.message}`);
+
+  // Fetch email-type board columns so we can fall back to board cell values
+  const { data: emailColumns } = await supabase
+    .from("board_columns")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .eq("type", "email");
+
+  const emailColumnIds = (emailColumns ?? []).map((c) => c.id);
+
+  // Fetch board cells for email columns for these applicants
+  const emailCellMap = new Map<string, string>(); // applicant_id → email
+  if (emailColumnIds.length > 0) {
+    const { data: emailCells } = await supabase
+      .from("board_cells")
+      .select("applicant_id, value_text")
+      .in("applicant_id", applicantIds)
+      .in("column_id", emailColumnIds)
+      .not("value_text", "is", null);
+
+    for (const cell of emailCells ?? []) {
+      if (cell.value_text?.trim() && !emailCellMap.has(cell.applicant_id)) {
+        emailCellMap.set(cell.applicant_id, cell.value_text.trim());
+      }
+    }
+  }
+
+  // Fetch company name for template variables
+  const { data: company } = await supabase
+    .from("companies")
+    .select("name")
+    .eq("id", companyId)
+    .single();
+
+  // Fetch job title for template variables
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("title")
+    .eq("id", jobId)
+    .single();
+
+  let sent = 0;
+  let failed = 0;
+  let noEmail = 0;
+
+  for (const applicant of applicants ?? []) {
+    // Prefer applicants.email, fall back to board cell value
+    const emailAddress = applicant.email?.trim() || emailCellMap.get(applicant.id) || "";
+
+    if (!emailAddress) {
+      noEmail++;
+      continue;
+    }
+
+    const nameParts = (applicant.full_name ?? "").trim().split(/\s+/);
+    const context: Record<string, string> = {
+      applicant_name: applicant.full_name ?? "",
+      first_name: nameParts[0] ?? "",
+      last_name: nameParts.slice(1).join(" "),
+      applicant_email: emailAddress,
+      company_name: company?.name ?? "",
+      job_title: job?.title ?? "",
+    };
+
+    const resolvedSubject = resolveVariables(subject, context);
+    const resolvedBody = plainTextToHtml(resolveVariables(body, context));
+
+    const result = await sendEmail(gmailClient.gmail, {
+      to: emailAddress,
+      subject: resolvedSubject,
+      body: resolvedBody,
+    });
+
+    if (result.success) {
+      sent++;
+    } else {
+      failed++;
+    }
+  }
+
+  return { sent, failed, noEmail };
 }
 
 export async function getArchivedApplicants(companyId: string, jobId: string) {

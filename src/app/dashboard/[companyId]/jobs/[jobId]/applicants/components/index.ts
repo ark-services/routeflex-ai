@@ -1,4 +1,5 @@
 export { StatusLabelsEditor } from "./status-labels-editor";
+export { MassEmailDialog } from "./MassEmailDialog";
 export { BoardDefaultValuesModal } from "./board-default-values-modal";
 export { FileViewer, FileSvgIcon } from "./file-viewer";
 export { FileCell } from "./file-cell";

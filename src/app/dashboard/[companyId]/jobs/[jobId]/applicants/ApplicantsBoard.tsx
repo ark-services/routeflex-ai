@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Trash2,
   Archive,
+  Mail,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -37,6 +38,7 @@ import {
   bulkDeleteApplicants,
   bulkMoveApplicants,
   bulkUpdateStatusCells,
+  bulkUpdateTextCells,
   createBoardColumn,
   createGroup,
   deleteBoardColumn,
@@ -57,7 +59,9 @@ import {
   sendToFadv,
   updateGroupCollapsedColumns,
   updateGroupHiddenColumns,
+  bulkSendEmail,
 } from "./actions";
+import { MassEmailDialog } from "./components/MassEmailDialog";
 import { updateBoardGroupPortalSettings, updateBoardGroupPortalChecklist, updateBoardGroupPipelineVisibility } from "./portal-actions";
 import type { PortalChecklistItem } from "./portal-actions";
 import { DeleteConfirmationModal } from "@/components/modals/delete-confirmation-modal";
@@ -150,6 +154,7 @@ export default function ApplicantsBoard({
   const confirm = useConfirmDialog();
   const toast = useToast();
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [showMassEmail, setShowMassEmail] = useState(false);
   const [isPending, startTransition] = useTransition();
   // Add column modal
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
@@ -1461,18 +1466,15 @@ export default function ApplicantsBoard({
 
       startTransition(async () => {
         try {
-          const results = await Promise.all(
-            selectedIds.map(id => updateBoardCell(companyId, jobId, id, columnId, columnType, value))
-          );
-          const failedCount = results.filter(r => !r.ok).length;
-          if (failedCount > 0) {
+          const result = await bulkUpdateTextCells(companyId, jobId, selectedIds, columnId, columnType as any, value);
+          if (result.failed > 0) {
             // Roll back all overrides for this column
             setCellOverrides(prev => {
               const next = new Map(prev);
               for (const id of selectedIds) next.delete(`${id}::${columnId}`);
               return next;
             });
-            showCellError(`Failed to update ${failedCount} of ${selectedIds.length} applicants.`);
+            toast.warning(`Updated ${result.successful} of ${selectedIds.length} applicants. ${result.failed} failed.`);
           }
         } catch (error) {
           console.error('[onUpdateCell] Bulk non-status update failed:', error);
@@ -1481,7 +1483,7 @@ export default function ApplicantsBoard({
             for (const id of selectedIds) next.delete(`${id}::${columnId}`);
             return next;
           });
-          showCellError('Failed to update selected applicants. Please try again.');
+          toast.error('Failed to update selected applicants. Please try again.');
         }
       });
     } else {
@@ -2218,7 +2220,8 @@ export default function ApplicantsBoard({
               height: virtualizer.getTotalSize(),
               position: "relative",
               minWidth: `${maxGridWidth}px`,
-              padding: "28px 32px",
+              paddingLeft: "32px",
+              paddingRight: "32px",
             }}
           >
             <SortableContext
@@ -2246,7 +2249,6 @@ export default function ApplicantsBoard({
                     return (
                       <div
                         key={vi.key}
-                        ref={virtualizer.measureElement}
                         data-index={vi.index}
                         data-vstart={vi.start}
                         data-kind={item.kind}
@@ -2255,6 +2257,7 @@ export default function ApplicantsBoard({
                           top: 0,
                           left: 0,
                           width: "100%",
+                          height: `${vi.size}px`,
                           transform: `translateY(var(--y, ${vi.start}px))`,
                         }}
                       >
@@ -2406,6 +2409,15 @@ export default function ApplicantsBoard({
                 </select>
 
                 <button
+                  onClick={() => setShowMassEmail(true)}
+                  disabled={isPending}
+                  className="h-10 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page disabled:opacity-60 flex items-center gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  Mass email
+                </button>
+
+                <button
                   onClick={onBulkArchive}
                   disabled={isPending}
                   className="h-10 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page disabled:opacity-60 flex items-center gap-2"
@@ -2433,6 +2445,41 @@ export default function ApplicantsBoard({
             </div>
           </div>
         )}
+
+        {/* Mass Email dialog */}
+        <MassEmailDialog
+          open={showMassEmail}
+          onClose={() => setShowMassEmail(false)}
+          recipients={(() => {
+            // Collect all email-type column ids
+            const emailColumnIds = new Set(
+              columns.filter((c) => c.type === "email").map((c) => c.id)
+            );
+            // Build lookup: applicant_id → first non-empty email cell value
+            const emailFromCells = new Map<string, string>();
+            for (const cell of cells) {
+              if (emailColumnIds.has(cell.column_id) && cell.value_text?.trim()) {
+                if (!emailFromCells.has(cell.applicant_id)) {
+                  emailFromCells.set(cell.applicant_id, cell.value_text.trim());
+                }
+              }
+            }
+            return applicants
+              .filter((a) => selectedIds.includes(a.id))
+              .map((a) => ({
+                id: a.id,
+                full_name: a.full_name,
+                email: a.email?.trim() || emailFromCells.get(a.id) || "",
+              }));
+          })()}
+          companyId={companyId}
+          jobId={jobId}
+          columns={columns}
+          onSend={async (subject, body) => {
+            const result = await bulkSendEmail(companyId, jobId, selectedIds, subject, body);
+            return result;
+          }}
+        />
 
           {/* Archive drawer */}
         <ArchiveDrawer
