@@ -22,7 +22,7 @@ export async function getNotifications(
     .select("id, type, title, body, created_at, read_at, metadata")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(50);
 
   if (error || !data) return { items: [], unreadCount: 0 };
 
@@ -38,6 +38,26 @@ export async function markAllRead(companyId: string): Promise<void> {
   await supabase
     .from("system_notifications")
     .update({ read_at: new Date().toISOString() })
+    .eq("company_id", companyId)
+    .is("read_at", null);
+}
+
+export async function deleteAllNotifications(companyId: string): Promise<void> {
+  const supabase = await createClient();
+
+  await supabase
+    .from("system_notifications")
+    .delete()
+    .eq("company_id", companyId);
+}
+
+export async function markNotificationRead(id: string, companyId: string): Promise<void> {
+  const supabase = await createClient();
+
+  await supabase
+    .from("system_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("id", id)
     .eq("company_id", companyId)
     .is("read_at", null);
 }
