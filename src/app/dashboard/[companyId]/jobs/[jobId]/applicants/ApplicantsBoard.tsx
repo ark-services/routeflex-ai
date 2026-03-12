@@ -1594,8 +1594,8 @@ export default function ApplicantsBoard({
         return (
           <div
             className="py-8 pr-4 text-sm text-rf-text-muted text-left bg-rf-surface-card"
-            style={{ paddingLeft: 68 }}
             style={{
+              paddingLeft: 68,
               borderLeft: g ? `4px solid ${g.color}` : undefined,
               boxShadow: "0 0 0 1px rgba(15,22,35,0.08)",
             }}
