@@ -91,6 +91,7 @@ import {
   VirtualColumnHeaders,
   useVirtualBoard,
   GROUP_HEADER_HEIGHT,
+  COLUMN_HEADER_HEIGHT,
 } from "./components";
 
 const VERBOSE = false; // set to true to re-enable verbose board logs
@@ -700,14 +701,25 @@ export default function ApplicantsBoard({
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    let prevGH: HTMLElement | null = null;
-    let prevCH: HTMLElement | null = null;
-
     const applySticky = () => {
       const scrollTop = container.scrollTop;
       const ghEls = container.querySelectorAll<HTMLElement>(
         '[data-kind="group-header"]'
       );
+      const chEls = container.querySelectorAll<HTMLElement>(
+        '[data-kind="column-headers"]'
+      );
+
+      // Clear ALL --y overrides first — prevents stale overrides when the
+      // active group changes or when the useEffect re-runs with a new closure.
+      for (const el of ghEls) {
+        el.style.removeProperty("--y");
+        el.style.zIndex = "";
+      }
+      for (const el of chEls) {
+        el.style.removeProperty("--y");
+        el.style.zIndex = "";
+      }
 
       // Find the active group-header (last one whose vstart ≤ scrollTop)
       let activeGH: HTMLElement | null = null;
@@ -725,30 +737,14 @@ export default function ApplicantsBoard({
         }
       }
 
-      // Reset previous elements: remove --y so fallback (vi.start) takes over
-      if (prevGH && prevGH !== activeGH) {
-        prevGH.style.removeProperty("--y");
-        prevGH.style.zIndex = "";
-      }
-      if (prevCH && (!activeGH || prevCH.getAttribute("data-index") !== String(Number(activeGH.getAttribute("data-index")) + 1))) {
-        prevCH.style.removeProperty("--y");
-        prevCH.style.zIndex = "";
-        prevCH = null;
-      }
-
-      if (!activeGH) {
-        prevGH = null;
-        prevCH = null;
-        return;
-      }
+      if (!activeGH) return;
 
       // Clamp group-header Y: stick at scrollTop, push off when next group arrives
-      const stickyHeight = GROUP_HEADER_HEIGHT + 41; // group-header + column-headers
+      const stickyHeight = GROUP_HEADER_HEIGHT + COLUMN_HEADER_HEIGHT; // group-header + column-headers
       const ghUpperBound = nextGHStart - stickyHeight;
       const ghY = Math.min(Math.max(ghStart, scrollTop), ghUpperBound);
       activeGH.style.setProperty("--y", `${ghY}px`);
       activeGH.style.zIndex = "15";
-      prevGH = activeGH;
 
       // Clamp column-headers Y
       const activeIdx = activeGH.getAttribute("data-index");
@@ -758,14 +754,13 @@ export default function ApplicantsBoard({
       );
       if (chEl) {
         const chStart = parseFloat(chEl.getAttribute("data-vstart") || "0");
-        const chUpperBound = nextGHStart - 41;
+        const chUpperBound = nextGHStart - COLUMN_HEADER_HEIGHT;
         const chY = Math.min(
           Math.max(chStart, scrollTop + GROUP_HEADER_HEIGHT),
           chUpperBound
         );
         chEl.style.setProperty("--y", `${chY}px`);
         chEl.style.zIndex = "14";
-        prevCH = chEl;
       }
     };
 

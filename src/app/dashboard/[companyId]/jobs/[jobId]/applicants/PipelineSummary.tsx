@@ -98,11 +98,11 @@ export function PipelineSummary({ stages }: PipelineSummaryProps) {
                   {seg.count}
                 </span>
               </span>
-              {seg.count > 0 && (
-                <span className="text-[8px] font-semibold text-rf-ink-500 uppercase tracking-wider truncate leading-none hidden sm:inline">
-                  {seg.name}
-                </span>
-              )}
+              <span
+                className={`text-[8px] font-semibold uppercase tracking-wider leading-none hidden sm:inline ${seg.count === 0 ? "text-rf-ink-300 overflow-visible whitespace-nowrap" : "text-rf-ink-500 truncate"}`}
+              >
+                {seg.count === 0 ? `${seg.name.slice(0, 3)}…` : seg.name}
+              </span>
             </div>
           </div>
         ))}

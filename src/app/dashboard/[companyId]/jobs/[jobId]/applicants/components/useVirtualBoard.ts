@@ -20,8 +20,8 @@ export type VirtualItem =
 // ── Row height constants ──────────────────────────────────────────────────────
 
 const GROUP_HEADER_HEIGHT = 53;
-const COLUMN_HEADER_HEIGHT = 41;
-const ROW_HEIGHT = 44;
+const COLUMN_HEADER_HEIGHT = 49;
+const ROW_HEIGHT = 49;
 const ADD_ITEM_HEIGHT = 48;
 const EMPTY_ROW_HEIGHT = 64;
 const GROUP_SPACER_HEIGHT = 32;
@@ -217,7 +217,7 @@ export function useVirtualBoard({
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: (index) => estimateSize(flatItems[index]),
     overscan: 20,
-    paddingStart: 28,
+    paddingStart: 12,
     paddingEnd: 28,
     // Always keep the active group header + force all rows for the dragging group
     rangeExtractor: (range) => {
