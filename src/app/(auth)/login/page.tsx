@@ -57,7 +57,12 @@ export default async function LoginPage({
             Log in
           </Button>
         </form>
-        <p className="text-sm text-rf-text-secondary text-center mt-6">
+        <p className="text-sm text-rf-text-secondary text-center mt-4">
+          <Link href="/forgot-password" className="text-rf-text-primary hover:text-rf-ink-700 font-medium">
+            Forgot password?
+          </Link>
+        </p>
+        <p className="text-sm text-rf-text-secondary text-center mt-2">
           Don&apos;t have an account?{" "}
           <Link
             href={redirectTo ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}` : "/signup"}

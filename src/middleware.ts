@@ -28,7 +28,8 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAuthRoute = path === "/login" || path === "/signup";
+  const isAuthRoute = path === "/login" || path === "/signup" || path === "/forgot-password";
+  const isResetPasswordRoute = path === "/reset-password";
   const isCallbackRoute = path.startsWith("/auth/callback");
   const isApiRoute = path.startsWith("/api/");
   const isLearnRoute = path.startsWith("/learn/");
@@ -37,7 +38,7 @@ export async function middleware(request: NextRequest) {
   const isApplyRoute = path.startsWith("/apply/");
   const isMarketingRoute = path === "/" || path === "/features" || path === "/pricing";
 
-  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute && !isInviteRoute && !isStatusRoute && !isApplyRoute && !isMarketingRoute) {
+  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute && !isLearnRoute && !isInviteRoute && !isStatusRoute && !isApplyRoute && !isMarketingRoute && !isResetPasswordRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const redirectResponse = NextResponse.redirect(url);

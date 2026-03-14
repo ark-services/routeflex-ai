@@ -7,10 +7,15 @@ export async function GET(request: Request) {
   // Preserve any redirectTo that was embedded in the emailRedirectTo URL
   const redirectTo = searchParams.get("redirectTo") || "/dashboard";
 
+  const type = searchParams.get("type");
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      if (type === "recovery") {
+        return NextResponse.redirect(`${origin}/reset-password`);
+      }
       return NextResponse.redirect(`${origin}${redirectTo}`);
     }
   }
