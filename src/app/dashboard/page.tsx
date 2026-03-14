@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/app/(auth)/actions";
+import { reactivateAccount } from "@/app/profile/actions";
 
 export default async function DashboardHome() {
   const supabase = await createClient();
@@ -26,6 +28,63 @@ export default async function DashboardHome() {
   }
 
   const accountIds = (accountMemberships ?? []).map((m) => m.account_id);
+
+  // Check if any account needs onboarding
+  if (accountIds.length > 0) {
+    const adminAccountIds = (accountMemberships ?? [])
+      .filter((m) => m.role === "admin" || m.role === "owner")
+      .map((m) => m.account_id);
+
+    if (adminAccountIds.length > 0) {
+      const { data: needsOnboarding } = await supabase
+        .from("accounts")
+        .select("id")
+        .in("id", adminAccountIds)
+        .eq("onboarding_completed", false)
+        .limit(1);
+
+      if (needsOnboarding && needsOnboarding.length > 0) {
+        redirect("/onboard");
+      }
+    }
+
+    // Check if any account is deactivated
+    const serviceSupabase = createServiceClient();
+    const { data: deactivatedAccounts } = await serviceSupabase
+      .from("accounts")
+      .select("id")
+      .in("id", accountIds)
+      .not("deactivated_at", "is", null)
+      .limit(1);
+
+    if (deactivatedAccounts && deactivatedAccounts.length > 0) {
+      return (
+        <div className="mx-auto max-w-5xl px-6 sm:px-8">
+          <Header />
+          <section className="py-16 sm:py-24">
+            <div className="mx-auto max-w-md text-center space-y-4">
+              <h1 className="text-3xl font-semibold tracking-tight text-rf-text-primary">
+                Account Deactivated
+              </h1>
+              <p className="text-rf-text-secondary leading-relaxed">
+                Your account has been deactivated. You can reactivate it to
+                regain access to your dashboard and data.
+              </p>
+              <p className="text-sm text-rf-text-muted">Signed in as {user.email}</p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <form action={reactivateAccount}>
+                  <Button variant="secondary">Reactivate Account</Button>
+                </form>
+                <form action={logout}>
+                  <Button variant="tertiary">Log out</Button>
+                </form>
+              </div>
+            </div>
+          </section>
+        </div>
+      );
+    }
+  }
 
   // If the user has no account memberships, they cannot access any companies.
   // Avoid querying `companies` with a dummy UUID, which can interact poorly with RLS.

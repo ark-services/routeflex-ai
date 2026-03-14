@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { fireJobTrigger } from "@/lib/automations/fireJobAutomation";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 import { AutomationActionType } from "@/lib/automations/actionTypes";
@@ -574,4 +575,289 @@ export async function duplicateJobAutomation(
 
   revalidatePath(jobPath(companyId, jobId));
   return newAutomation;
+}
+
+/**
+ * One-click setup: create an AI resume screening automation with all required columns.
+ * Finds or creates Resume/CV (file), AI Score (number), AI Feedback (text) columns,
+ * then creates the automation: form.submitted + resume not empty → ai.score_resume.
+ */
+export async function setupAiScreeningAutomation(
+  companyId: string,
+  jobId: string
+): Promise<{ success: boolean; alreadyExists?: boolean }> {
+  const supabase = await createClient();
+  const service = createServiceClient();
+
+  // 1. Get the board for this job
+  const { data: board } = await service
+    .from("boards")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .single();
+
+  if (!board) throw new Error("No board found for this job");
+
+  // 2. Fetch existing columns
+  const { data: existingColumns } = await service
+    .from("board_columns")
+    .select("id, name, type, sort_order")
+    .eq("board_id", board.id)
+    .order("sort_order", { ascending: true });
+
+  const columns = existingColumns || [];
+  let maxSortOrder = columns.reduce(
+    (max, c) => Math.max(max, c.sort_order ?? 0),
+    0
+  );
+
+  // 3. Find or create required columns
+
+  // Resume/CV — first file column, or create one
+  let fileCol = columns.find((c) => c.type === "file");
+  if (!fileCol) {
+    maxSortOrder += 1;
+    const { data, error } = await service
+      .from("board_columns")
+      .insert({
+        board_id: board.id,
+        company_id: companyId,
+        name: "Resume/CV",
+        type: "file",
+        sort_order: maxSortOrder,
+      })
+      .select("id, name, type, sort_order")
+      .single();
+    if (error || !data) throw new Error(`Failed to create Resume/CV column: ${error?.message}`);
+    fileCol = data;
+  }
+
+  // AI Score — match by name + type
+  let scoreCol = columns.find(
+    (c) => c.name === "AI Score" && c.type === "number"
+  );
+  if (!scoreCol) {
+    maxSortOrder += 1;
+    const { data, error } = await service
+      .from("board_columns")
+      .insert({
+        board_id: board.id,
+        company_id: companyId,
+        name: "AI Score",
+        type: "number",
+        sort_order: maxSortOrder,
+      })
+      .select("id, name, type, sort_order")
+      .single();
+    if (error || !data) throw new Error(`Failed to create AI Score column: ${error?.message}`);
+    scoreCol = data;
+  }
+
+  // AI Feedback — match by name + type
+  let feedbackCol = columns.find(
+    (c) => c.name === "AI Feedback" && c.type === "text"
+  );
+  if (!feedbackCol) {
+    maxSortOrder += 1;
+    const { data, error } = await service
+      .from("board_columns")
+      .insert({
+        board_id: board.id,
+        company_id: companyId,
+        name: "AI Feedback",
+        type: "text",
+        sort_order: maxSortOrder,
+      })
+      .select("id, name, type, sort_order")
+      .single();
+    if (error || !data) throw new Error(`Failed to create AI Feedback column: ${error?.message}`);
+    feedbackCol = data;
+  }
+
+  // 4. Check if an ai.score_resume automation already exists for this job
+  const { data: existingActions } = await service
+    .from("automation_actions")
+    .select("id, automation_id, automations!inner(id, job_id)")
+    .eq("type", "ai.score_resume")
+    .eq("automations.job_id", jobId);
+
+  if (existingActions && existingActions.length > 0) {
+    return { success: true, alreadyExists: true };
+  }
+
+  // 5. Create the automation via the existing helper (uses user context for created_by)
+  await createJobAutomation(companyId, jobId, {
+    name: "Pre-screen applicants with AI",
+    trigger_key: "form.submitted",
+    filter: {
+      conditions: [
+        { type: "is_not_empty", column_id: fileCol.id },
+      ],
+    },
+    actions: [
+      {
+        type: "ai.score_resume" as AutomationActionType,
+        config: {
+          file_column_id: fileCol.id,
+          score_column_id: scoreCol.id,
+          feedback_column_id: feedbackCol.id,
+          criteria:
+            "Score this applicant 1-10 based on their resume quality, relevant experience, and qualifications. Consider driving experience, reliability indicators, and professional presentation.",
+        },
+        sort_order: 0,
+      },
+    ],
+  });
+
+  return { success: true };
+}
+
+/**
+ * One-click setup: create a FADV submission automation with all required columns.
+ * Finds or creates FADV Package, Facility ID, Position Type (text) and FADV Status
+ * (status column with Pending/Submit/Submitted labels). Trigger fires when FADV Status
+ * changes to "Submit".
+ */
+export async function setupFadvAutomation(
+  companyId: string,
+  jobId: string
+): Promise<{ success: boolean; alreadyExists?: boolean }> {
+  const service = createServiceClient();
+
+  // 1. Get the board for this job
+  const { data: board } = await service
+    .from("boards")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .single();
+
+  if (!board) throw new Error("No board found for this job");
+
+  // 2. Fetch existing columns
+  const { data: existingColumns } = await service
+    .from("board_columns")
+    .select("id, name, type, sort_order")
+    .eq("board_id", board.id)
+    .order("sort_order", { ascending: true });
+
+  const columns = existingColumns || [];
+  let maxSortOrder = columns.reduce(
+    (max, c) => Math.max(max, c.sort_order ?? 0),
+    0
+  );
+
+  // 3. Check if a fadv.add_subject automation already exists for this job
+  const { data: existingActions } = await service
+    .from("automation_actions")
+    .select("id, automation_id, automations!inner(id, job_id)")
+    .eq("type", "fadv.add_subject")
+    .eq("automations.job_id", jobId);
+
+  if (existingActions && existingActions.length > 0) {
+    return { success: true, alreadyExists: true };
+  }
+
+  const boardId = board.id;
+
+  // Helper: find or create a text column by name
+  async function findOrCreateTextCol(name: string): Promise<{ id: string }> {
+    const existing = columns.find((c) => c.name === name && c.type === "text");
+    if (existing) return existing;
+    maxSortOrder += 1;
+    const { data, error } = await service
+      .from("board_columns")
+      .insert({ board_id: boardId, company_id: companyId, name, type: "text", sort_order: maxSortOrder })
+      .select("id")
+      .single();
+    if (error || !data) throw new Error(`Failed to create column "${name}": ${error?.message}`);
+    return data;
+  }
+
+  // 4. Find or create required text columns
+  const packageCol = await findOrCreateTextCol("FADV Package");
+  const facilityCol = await findOrCreateTextCol("FADV Facility ID");
+  const positionCol = await findOrCreateTextCol("FADV Position Type");
+  const outputCol = await findOrCreateTextCol("FADV Output");
+  const subjectIdCol = await findOrCreateTextCol("FADV Subject ID");
+
+  // 5. Find or create FADV Status (status column)
+  const existingStatusCol = columns.find((c) => c.name === "FADV Status" && c.type === "status");
+  let statusColId: string;
+  let submittedLabelId: string;
+
+  if (!existingStatusCol) {
+    maxSortOrder += 1;
+    const { data, error } = await service
+      .from("board_columns")
+      .insert({ board_id: boardId, company_id: companyId, name: "FADV Status", type: "status", sort_order: maxSortOrder })
+      .select("id")
+      .single();
+    if (error || !data) throw new Error(`Failed to create FADV Status column: ${error?.message}`);
+    statusColId = data.id;
+
+    // Create status labels: Submitted → Pending Approval → Approved
+    const { data: labels, error: labelErr } = await service
+      .from("board_status_labels")
+      .insert([
+        { column_id: statusColId, label: "Submitted",        color: "#3B82F6", sort_order: 0 },
+        { column_id: statusColId, label: "Pending Approval", color: "#F59E0B", sort_order: 1 },
+        { column_id: statusColId, label: "Approved",         color: "#10B981", sort_order: 2 },
+      ])
+      .select("id, label");
+    if (labelErr || !labels) throw new Error(`Failed to create FADV Status labels: ${labelErr?.message}`);
+    submittedLabelId = labels.find((l) => l.label === "Submitted")!.id;
+  } else {
+    statusColId = existingStatusCol.id;
+    // Column already exists — find the "Submitted" label
+    const { data: labels } = await service
+      .from("board_status_labels")
+      .select("id, label")
+      .eq("column_id", statusColId);
+    const submittedLabel = (labels || []).find((l) => l.label === "Submitted");
+    if (!submittedLabel) throw new Error("FADV Status column exists but has no 'Submitted' label");
+    submittedLabelId = submittedLabel.id;
+  }
+
+  // 6. Find first/last name columns by pattern; find or create email column
+  const firstNameCol = columns.find((c) =>
+    /first.?name/i.test(c.name) && c.type === "text"
+  );
+  const lastNameCol = columns.find((c) =>
+    /last.?name/i.test(c.name) && c.type === "text"
+  );
+  // Email: match existing by name/type, or create one
+  const emailColExisting = columns.find((c) =>
+    /email/i.test(c.name) && (c.type === "text" || c.type === "email")
+  );
+  const emailCol = emailColExisting ?? (await findOrCreateTextCol("Email Address"));
+
+  // 7. Create the automation
+  await createJobAutomation(companyId, jobId, {
+    name: "Submit to First Advantage",
+    trigger_key: "board.status_changes_to",
+    filter: {
+      column_id: statusColId,
+      changes_to: submittedLabelId,
+    },
+    actions: [
+      {
+        type: "fadv.add_subject" as AutomationActionType,
+        config: {
+          package_column_id: packageCol.id,
+          facility_id_column_id: facilityCol.id,
+          position_type_column_id: positionCol.id,
+          output_column_id: outputCol.id,
+          email_column_id: emailCol.id,
+          subject_id_column_id: subjectIdCol.id,
+          ...(firstNameCol ? { first_name_column_id: firstNameCol.id } : {}),
+          ...(lastNameCol ? { last_name_column_id: lastNameCol.id } : {}),
+        },
+        sort_order: 0,
+      },
+    ],
+  });
+
+  return { success: true };
 }

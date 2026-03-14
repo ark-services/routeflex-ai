@@ -1,7 +1,8 @@
 import { requireAdmin } from "@/lib/rbac";
 import { createClient } from "@/lib/supabase/server";
-import { AdminHeader } from "@/components/admin/admin-header";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { StandaloneShell } from "@/components/layout/standalone-shell";
+import type { Company } from "@/lib/types";
 
 export default async function AdminLayout({
   children,
@@ -11,37 +12,54 @@ export default async function AdminLayout({
   params: Promise<{ accountId: string }>;
 }) {
   const { accountId } = await params;
-  const membership = await requireAdmin(accountId);
+  await requireAdmin(accountId);
 
-  // Get user email for avatar (requireAdmin already validated the session)
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Resolve the first company for this account so Back → Job Board
-  const { data: companies } = await supabase
+  // Get all companies user has access to (same query as dashboard layout)
+  const { data: accountMemberships } = await supabase
+    .from("account_memberships")
+    .select("account_id, role")
+    .eq("user_id", user!.id);
+
+  const accountIds = (accountMemberships ?? []).map((m) => m.account_id);
+
+  const { data: companiesData } = await supabase
     .from("companies")
-    .select("id")
-    .eq("account_id", accountId)
-    .limit(1);
-  const firstCompanyId = companies?.[0]?.id ?? null;
+    .select("id, name, slug, account_id, lms_enabled, created_at")
+    .in(
+      "account_id",
+      accountIds.length ? accountIds : ["00000000-0000-0000-0000-000000000000"]
+    );
+
+  const companies = (companiesData ?? []) as Company[];
+  const firstCompany = companies[0] ?? null;
+
+  const roleByAccount = new Map(
+    (accountMemberships ?? []).map((m) => [m.account_id, m.role] as const)
+  );
+  const userRole = roleByAccount.get(accountId as any) ?? "admin";
+  const isAdmin = true; // requireAdmin already enforced this
 
   return (
-    <div className="min-h-screen flex flex-col bg-rf-surface-page">
-      {/* Full-width sticky top bar */}
-      <AdminHeader
-        accountName={membership.account.name}
-        accountId={accountId}
-        userEmail={user?.email ?? ""}
-        backHref={firstCompanyId ? `/dashboard/${firstCompanyId}` : "/"}
-      />
-
-      {/* Sidebar + content */}
-      <div className="flex flex-col md:flex-row flex-1">
-        <AdminSidebar accountId={accountId} />
+    <StandaloneShell
+      companies={companies}
+      currentCompanyId={firstCompany?.id ?? ""}
+      userEmail={user?.email ?? ""}
+      accountId={accountId}
+      userRole={userRole}
+      isAdmin={isAdmin}
+      canCreateCompany={isAdmin}
+    >
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
+        <AdminSidebar accountId={accountId} companyId={firstCompany?.id ?? ""} />
         <main className="flex-1 min-w-0 px-6 py-8 max-w-5xl">
           {children}
         </main>
       </div>
-    </div>
+    </StandaloneShell>
   );
 }

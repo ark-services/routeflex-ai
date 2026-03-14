@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Zap, Puzzle } from "lucide-react";
+import { LayoutDashboard, Users, Zap, Puzzle, ArrowLeft } from "lucide-react";
 
 const navItems = [
   {
@@ -27,7 +27,7 @@ const navItems = [
   },
 ];
 
-export function AdminSidebar({ accountId }: { accountId: string }) {
+export function AdminSidebar({ accountId, companyId }: { accountId: string; companyId: string }) {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
@@ -35,11 +35,21 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
     return pathname === fullPath;
   };
 
+  const backHref = companyId ? `/dashboard/${companyId}` : "/";
+
   return (
     <>
       {/* Mobile: horizontal scrollable tab bar */}
       <div className="md:hidden w-full overflow-x-auto border-b border-rf-border bg-rf-surface-card">
         <nav className="flex min-w-max px-4 gap-1 py-2">
+          <Link
+            href={backHref}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap min-h-[44px] text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
+          >
+            <ArrowLeft className="w-4 h-4 flex-shrink-0 text-rf-text-muted" />
+            Back to Board
+          </Link>
+          <div className="w-px bg-rf-border my-1.5 mx-1" />
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -67,7 +77,14 @@ export function AdminSidebar({ accountId }: { accountId: string }) {
 
       {/* Desktop: vertical sidebar */}
       <aside className="hidden md:flex flex-col w-56 flex-shrink-0 bg-rf-surface-card border-r border-rf-border min-h-[calc(100vh-3.5rem)]">
-        <div className="sticky top-0 pt-6 px-3 pb-4">
+        <div className="sticky top-0 pt-4 px-3 pb-4">
+          <Link
+            href={backHref}
+            className="flex items-center gap-2 px-3 py-2 mb-4 rounded-lg text-sm font-semibold transition-colors text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
+          >
+            <ArrowLeft className="w-4 h-4 flex-shrink-0 text-rf-text-muted" />
+            Back to Board
+          </Link>
           <p className="px-3 mb-3 text-[9px] font-bold text-rf-text-muted uppercase tracking-[0.2em]">
             General
           </p>

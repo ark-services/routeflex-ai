@@ -532,7 +532,7 @@ export function FadvCard({ companyId, accountId, initialConnection }: Props) {
                     </label>
                     <Input
                       type="text"
-                      placeholder="e.g. 042443LHW"
+                      placeholder="e.g. 082443GVW"
                       value={clientId}
                       onChange={(e) => setClientId(e.target.value)}
                       autoComplete="off"

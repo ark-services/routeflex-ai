@@ -124,7 +124,7 @@ function VariablePickerButton({
         ref={triggerRef}
         type="button"
         onClick={openDropdown}
-        className="flex items-center gap-1 text-xs text-rf-primary hover:text-rf-primary/80 font-medium transition-colors"
+        className="flex items-center gap-1 text-xs text-rf-blue hover:text-rf-blue/80 font-medium transition-colors"
       >
         <Plus className="w-3 h-3" />
         Add variable
@@ -232,8 +232,8 @@ export function MassEmailDialog({
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-rf-border">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-rf-primary/10 shrink-0">
-              <Mail className="w-4 h-4 text-rf-primary" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-rf-blue/10 shrink-0">
+              <Mail className="w-4 h-4 text-rf-blue" />
             </div>
             <div className="min-w-0">
               <h2 className="text-sm font-semibold text-rf-text-primary leading-tight">
@@ -307,7 +307,7 @@ export function MassEmailDialog({
                   <button
                     type="button"
                     onClick={() => setRecipientsOpen((v) => !v)}
-                    className="flex items-center gap-2 bg-rf-surface-page border border-rf-border hover:border-rf-primary/40 rounded-lg px-3 py-1.5 text-xs font-medium text-rf-text-primary transition-colors group"
+                    className="flex items-center gap-2 bg-rf-surface-page border border-rf-border hover:border-rf-blue/40 rounded-lg px-3 py-1.5 text-xs font-medium text-rf-text-primary transition-colors group"
                   >
                     <Users className="w-3.5 h-3.5 text-rf-ink-700 shrink-0" />
                     <span>{withEmail.length} recipient{withEmail.length !== 1 ? "s" : ""} from Email column</span>
@@ -363,7 +363,7 @@ export function MassEmailDialog({
                     onChange={(e) => setSubject(e.target.value)}
                     disabled={sendState === "sending"}
                     placeholder="e.g. Your application for {{job_title}}"
-                    className="border border-rf-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-rf-primary/20 focus:border-rf-primary w-full bg-rf-surface-card disabled:opacity-60 transition-colors"
+                    className="border border-rf-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-rf-blue/20 focus:border-rf-blue w-full bg-rf-surface-card disabled:opacity-60 transition-colors"
                   />
                 </div>
               </div>
@@ -390,7 +390,7 @@ export function MassEmailDialog({
                     disabled={sendState === "sending"}
                     placeholder={"Hi {{first_name}},\n\nThank you for applying to {{job_title}}…"}
                     rows={8}
-                    className="border border-rf-border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-rf-primary/20 focus:border-rf-primary w-full bg-rf-surface-card resize-y min-h-[180px] disabled:opacity-60 font-mono leading-relaxed transition-colors"
+                    className="border border-rf-border rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-rf-blue/20 focus:border-rf-blue w-full bg-rf-surface-card resize-y min-h-[180px] disabled:opacity-60 font-mono leading-relaxed transition-colors"
                   />
                 </div>
               </div>
@@ -416,7 +416,7 @@ export function MassEmailDialog({
               <button
                 onClick={handleSend}
                 disabled={!canSend || sendState === "sending"}
-                className="bg-rf-primary text-white hover:bg-rf-primary/90 rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-rf-blue text-white hover:bg-rf-blue-dark rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendState === "sending" ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

@@ -4,6 +4,7 @@ import { getOrCreateApplicantsBoard } from "@/lib/boards/getOrCreateApplicantsBo
 import { ApplicantsBoardContainer } from "./ApplicantsBoardContainer";
 import { getBoardViews } from "./view-actions";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
+import { getFadvConnection } from "@/components/integrations/fadv-actions";
 
 const VERBOSE = false; // set to true to re-enable verbose data-loading logs
 
@@ -122,6 +123,7 @@ export default async function ApplicantsPage({
   // ============================================================================
   // Block 1: Parallel-fetch all independent data
   // These queries only need companyId, jobId, board.id — all available now.
+  // Also fetch integration status for the Setup Guide
   // ============================================================================
   const [
     applicantsResult,
@@ -130,6 +132,9 @@ export default async function ApplicantsPage({
     triggersResult,
     groupsForAutomationResult,
     savedViews,
+    fadvConnection,
+    formTokenResult,
+    fadvSubmissionResult,
   ] = await Promise.all([
     supabase
       .from("applicants")
@@ -175,6 +180,17 @@ export default async function ApplicantsPage({
       .eq("board_id", board.id)
       .order("sort_order", { ascending: true }),
     getBoardViews(companyId, board.id),
+    getFadvConnection(companyId),
+    supabase
+      .from("job_application_forms")
+      .select("public_token")
+      .eq("job_id", jobId)
+      .maybeSingle(),
+    supabase
+      .from("integration_submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("job_id", jobId)
+      .eq("provider", "fadv"),
   ]);
 
   const { data: applicants, error: appErr } = applicantsResult;
@@ -508,6 +524,15 @@ export default async function ApplicantsPage({
           triggers={triggers || []}
           boardGroups={groupsForAutomation || []}
           isSuperAdmin={isSuperAdmin}
+          setupStatus={{
+            applicantCount: (applicants ?? []).length,
+            fadvConnected: !!fadvConnection,
+            hasFadvSubmission: (fadvSubmissionResult.count ?? 0) > 0,
+            formPublicToken: formTokenResult.data?.public_token ?? null,
+            hasFadvAutomation: (automationsResult.data || []).some((a) =>
+              (a.automation_actions || []).some((action: any) => action.type === "fadv.add_subject")
+            ),
+          }}
         />
       </div>
     </div>

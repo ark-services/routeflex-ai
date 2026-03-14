@@ -411,6 +411,56 @@ export async function submitApplication(
       jobId: jobId,
     });
 
+    // Apply board column default values (e.g. FADV: Package, FADV: Position Type)
+    try {
+      const { data: cols } = await supabase
+        .from("board_columns")
+        .select("id, type, settings")
+        .eq("board_id", board.id)
+        .eq("company_id", form.company_id);
+
+      const cellsToInsert: Record<string, any>[] = [];
+      for (const col of cols ?? []) {
+        const dv = col.settings?.default_value;
+        if (dv == null) continue;
+        const base = { applicant_id: applicant.id, column_id: col.id };
+        let cell: Record<string, any> | null = null;
+        switch (col.type) {
+          case "status":
+            cell = { ...base, value_status_label_id: dv };
+            break;
+          case "text":
+          case "email":
+          case "phone":
+          case "fadv.package":
+          case "fadv.location":
+          case "fadv.facility_id":
+          case "fadv.position_type":
+            cell = { ...base, value_text: String(dv) };
+            break;
+          case "number":
+            cell = { ...base, value_number: Number(dv) };
+            break;
+          case "date":
+            cell = { ...base, value_date: String(dv) };
+            break;
+          case "checkbox":
+            cell = { ...base, value_bool: Boolean(dv) };
+            break;
+        }
+        if (cell) cellsToInsert.push(cell);
+      }
+
+      if (cellsToInsert.length > 0) {
+        await supabase
+          .from("board_cells")
+          .upsert(cellsToInsert, { onConflict: "applicant_id,column_id" });
+        console.log('[Application Submit] Applied', cellsToInsert.length, 'default cell(s)');
+      }
+    } catch (defaultErr) {
+      console.error('[Application Submit] Failed to apply default cells (non-fatal):', defaultErr);
+    }
+
     // Fire automation trigger: form.submitted and applicant.created
     try {
       // Fire form.submitted trigger

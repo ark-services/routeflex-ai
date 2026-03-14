@@ -7,6 +7,7 @@ import type { ActiveFilter, BoardView } from "./view-actions";
 import type { BoardColumn, BoardStatusLabel, BoardCell } from "@/lib/types";
 import { ActivityLogDrawer } from "@/components/activity/ActivityLogDrawer";
 import type { PipelineStage } from "./PipelineSummary";
+import { SetupGuide } from "./components/SetupGuide";
 
 type Group = {
   id: string;
@@ -50,6 +51,14 @@ interface ApplicantsBoardContainerProps {
   boardGroups: any[];
   // Super admin — shows "Save as Template…" button
   isSuperAdmin?: boolean;
+  // Setup status for the guide
+  setupStatus?: {
+    applicantCount: number;
+    fadvConnected: boolean;
+    hasFadvSubmission: boolean;
+    formPublicToken: string | null;
+    hasFadvAutomation: boolean;
+  };
 }
 
 export function ApplicantsBoardContainer({
@@ -69,6 +78,7 @@ export function ApplicantsBoardContainer({
   triggers,
   boardGroups,
   isSuperAdmin = false,
+  setupStatus,
 }: ApplicantsBoardContainerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
@@ -101,6 +111,20 @@ export function ApplicantsBoardContainer({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {/* Setup Guide — appears above toolbar for new onboarded users */}
+      {setupStatus && (
+        <SetupGuide
+          companyId={companyId}
+          jobId={jobId}
+          applicantCount={setupStatus.applicantCount}
+          fadvConnected={setupStatus.fadvConnected}
+          hasFadvSubmission={setupStatus.hasFadvSubmission}
+          hasFadvAutomation={setupStatus.hasFadvAutomation}
+          formPublicToken={setupStatus.formPublicToken}
+          integrationHref={integrationHref}
+        />
+      )}
+
       {/* Monday-style toolbar: search · filter · integrate · automate | views */}
       <BoardToolbar
         companyId={companyId}
