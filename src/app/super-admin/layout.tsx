@@ -38,6 +38,12 @@ export default async function SuperAdminLayout({
             Training
           </Link>
           <Link
+            href="/super-admin/screening/templates"
+            className="text-sm text-rf-ink-500 hover:text-rf-text-primary transition-colors"
+          >
+            Screening
+          </Link>
+          <Link
             href="/super-admin/accounts"
             className="text-sm text-rf-ink-500 hover:text-rf-text-primary transition-colors"
           >

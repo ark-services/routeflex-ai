@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, BookOpen, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings, Sun, Moon, Monitor } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, LayoutDashboard, FileText, BookOpen, MoreVertical, LayoutGrid, ShieldAlert, GraduationCap, Settings, Sun, Moon, Monitor, ClipboardList } from "lucide-react";
 import type { Job, Company } from "@/lib/types";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
 import { renameApplicantsBoard, duplicateApplicantsBoard, deleteApplicantsBoard } from "./board-actions";
@@ -71,6 +71,9 @@ export function Sidebar({
   const isOnKnowledgeBase =
     currentJobId !== null &&
     pathname?.endsWith("/knowledge-base");
+  const isOnScreening =
+    currentJobId !== null &&
+    pathname?.endsWith("/screening");
   const isOnTemplateCenter = pathname?.includes("/template-center") ?? false;
   const isOnTraining = pathname?.includes("/training") ?? false;
   const isOnSettings = pathname?.includes("/settings") ?? false;
@@ -327,6 +330,19 @@ export function Sidebar({
               >
                 <FileText className={`h-4 w-4 flex-shrink-0 ${isOnForm ? "text-rf-blue" : "text-rf-text-muted"}`} />
                 <span className="flex-1">Form</span>
+              </Link>
+
+              {/* Screening */}
+              <Link
+                href={`/dashboard/${companyId}/jobs/${currentJobId}/screening`}
+                className={`w-full px-5 py-[9px] text-sm font-semibold transition-colors flex items-center gap-2 select-none border-l-2 ${
+                  isOnScreening
+                    ? "border-rf-blue bg-rf-blue-tint text-rf-blue"
+                    : "border-transparent text-rf-ink-500 hover:text-rf-text-primary hover:bg-rf-surface-page"
+                }`}
+              >
+                <ClipboardList className={`h-4 w-4 flex-shrink-0 ${isOnScreening ? "text-rf-blue" : "text-rf-text-muted"}`} />
+                <span className="flex-1">Screening</span>
               </Link>
 
               {/* Knowledge Base */}

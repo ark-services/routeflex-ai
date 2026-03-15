@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Darker+Grotesque:wght@900&display=swap" />
+  <title>Confirm your RouteFlex account</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F3F3F0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F3F3F0;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+
+          <!-- Logo header -->
+          <tr>
+            <td align="center" style="padding-bottom:24px;">
+              <!--
+                Option A (recommended): Replace with a hosted PNG of the logo lockup.
+                Upload the logo PNG to Supabase Storage and paste the public URL below.
+
+                <img src="https://YOUR_PROJECT.supabase.co/storage/v1/object/public/brand/routeflex-logo-light.png"
+                     alt="RouteFlex" width="160" height="auto"
+                     style="display:block;border:0;" />
+
+                Option B (text fallback — active by default):
+              -->
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td valign="middle" style="padding-right:10px;">
+                    <!--
+                      Double-chevron icon as inline image.
+                      Replace src with hosted PNG if SVG rendering is needed.
+                      Most email clients will ignore inline SVG, so use a 1x1 spacer
+                      or a hosted PNG here.
+                    -->
+                    <img src="https://jaoykrdixbhmjezgwkzr.supabase.co/storage/v1/object/public/brand/routeflex-icon.png"
+                         alt="" width="28" height="28"
+                         style="display:block;border:0;" />
+                  </td>
+                  <td valign="middle">
+                    <!-- Text wordmark fallback -->
+                    <span style="font-family:'Darker Grotesque','Arial Black',Impact,sans-serif;font-size:28px;font-weight:900;color:#0F1623;letter-spacing:-0.5px;line-height:1;">Route<span style="color:#1D6FFF;">Flex</span></span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main card -->
+          <tr>
+            <td style="background-color:#ffffff;border-radius:16px;padding:40px 48px;box-shadow:0 1px 24px rgba(0,0,0,0.07);">
+
+              <!-- Blue accent bar -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="height:4px;background-color:#1D6FFF;border-radius:2px;"></td>
+                </tr>
+              </table>
+
+              <!-- Heading -->
+              <p style="margin:0 0 8px 0;font-size:22px;font-weight:700;color:#0F1623;letter-spacing:-0.3px;">
+                Confirm your account
+              </p>
+              <p style="margin:0 0 28px 0;font-size:15px;color:#5A6478;line-height:1.6;">
+                Thanks for signing up for RouteFlex. Click the button below to verify your email address and activate your account.
+              </p>
+
+              <!-- CTA button -->
+              <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center" style="background-color:#1D6FFF;border-radius:10px;">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:-0.1px;">
+                      Confirm email address
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;">
+                <tr>
+                  <td style="height:1px;background-color:#E4E8F0;"></td>
+                </tr>
+              </table>
+
+              <!-- Fallback link -->
+              <p style="margin:0;font-size:13px;color:#9BAABB;line-height:1.6;">
+                Button not working? Copy and paste this link into your browser:<br />
+                <a href="{{ .ConfirmationURL }}" style="color:#1D6FFF;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding-top:24px;">
+              <p style="margin:0;font-size:12px;color:#B8B8B0;line-height:1.6;">
+                If you didn't create a RouteFlex account, you can safely ignore this email.<br />
+                &copy; RouteFlex · Recruiting &middot; Onboarding &middot; Training
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

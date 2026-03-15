@@ -165,6 +165,8 @@ function buildDynamicName(
         return "send training link to applicant";
       case "portal.send_link":
         return "send status portal link to applicant";
+      case "screening.send_link":
+        return "send screening questionnaire link to applicant";
       case "ai.score_resume":
         return "score applicant with AI";
       case "esign.send_agreement":
@@ -375,6 +377,7 @@ export function ManageTab({
         'safety_trainer.submit':    'impact solutions safety cert',
         'lms.send_training_link':   'send training link',
         'portal.send_link':         'send status portal link',
+        'screening.send_link':      'send screening link',
         'ai.score_resume':          'ai score resume',
         'esign.send_agreement':     'send esign adobe sign',
       };

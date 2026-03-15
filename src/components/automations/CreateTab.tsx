@@ -486,6 +486,8 @@ export function CreateTab({
           return "send training link to applicant";
         case "portal.send_link":
           return "send status portal link to applicant";
+        case "screening.send_link":
+          return "send screening questionnaire link to applicant";
         case "ai.score_resume":
           return "score applicant with AI";
         default:

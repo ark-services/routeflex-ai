@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, ArrowRight, RefreshCw, Trash2, Calendar, Hash, TrendingUp, Mail, MessageSquare, Phone, PhoneCall, ExternalLink, GraduationCap, Settings, Shield, Award, Brain } from "lucide-react";
+import { Plus, Search, ArrowRight, RefreshCw, Trash2, Calendar, Hash, TrendingUp, Mail, MessageSquare, Phone, PhoneCall, ExternalLink, GraduationCap, ClipboardList, Settings, Shield, Award, Brain } from "lucide-react";
 
 export const ACTION_CATEGORIES = [
   {
@@ -24,6 +24,7 @@ export const ACTION_CATEGORIES = [
       { value: "twilio.make_call_say", label: "Call and say", icon: PhoneCall },
       { value: "portal.send_link", label: "Send portal link", icon: ExternalLink },
       { value: "lms.send_training_link", label: "Send training link", icon: GraduationCap },
+      { value: "screening.send_link", label: "Send screening link", icon: ClipboardList },
     ],
   },
   {

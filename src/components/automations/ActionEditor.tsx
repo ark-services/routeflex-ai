@@ -71,6 +71,8 @@ export function ActionEditor({
   const lmsMessageRef   = useRef<HTMLTextAreaElement>(null);
   const portalSubjectRef = useRef<HTMLInputElement>(null);
   const portalMessageRef = useRef<HTMLTextAreaElement>(null);
+  const screeningSubjectRef = useRef<HTMLInputElement>(null);
+  const screeningMessageRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div className="border border-emerald-200/80 bg-emerald-50/40 rounded-rf-lg px-5 py-5 shadow-rf-sm">
@@ -714,6 +716,81 @@ export function ActionEditor({
               </div>
             </div>
           </div>
+          );
+        })()}
+
+        {action.type === "screening.send_link" && (() => {
+          const screeningVarGroups: VariableGroup[] = [
+            {
+              section: "Applicant info",
+              items: [
+                { label: "First Name", token: "{{first_name}}" },
+                { label: "Full Name", token: "{{full_name}}" },
+                { label: "Company Name", token: "{{company_name}}" },
+                { label: "Screening Link", token: "{{screening_link}}" },
+              ],
+            },
+            ...(columns.length > 0
+              ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${slugifyColName(c.name)}}}` })) }]
+              : []),
+          ];
+          return (
+            <div className="w-full space-y-3 pt-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-rf-ink-700 w-36 shrink-0">Get email from</span>
+                <ColumnPicker
+                  columns={columns.filter((c) => c.type === "email" || c.type === "text")}
+                  selectedId={action.config.email_column_id}
+                  onSelect={(id) => onChange({ config: { ...action.config, email_column_id: id } })}
+                  placeholder="auto-detect"
+                />
+              </div>
+
+              <div className="space-y-2 pt-1 border-t border-rf-border">
+                <div className="flex flex-wrap items-start gap-2">
+                  <span className="text-sm text-rf-ink-700 w-36 shrink-0 pt-1.5">Email subject</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-end mb-1">
+                      <VariablePickerButton
+                        groups={screeningVarGroups}
+                        fieldRef={screeningSubjectRef}
+                        value={action.config.custom_subject ?? ""}
+                        onChange={(newVal) => onChange({ config: { ...action.config, custom_subject: newVal || undefined } })}
+                      />
+                    </div>
+                    <input
+                      ref={screeningSubjectRef}
+                      type="text"
+                      value={action.config.custom_subject ?? ""}
+                      onChange={(e) => onChange({ config: { ...action.config, custom_subject: e.target.value || undefined } })}
+                      placeholder="Complete your screening questionnaire"
+                      className="w-full text-sm border border-rf-border rounded-lg px-3 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-start gap-2">
+                  <span className="text-sm text-rf-ink-700 w-36 shrink-0 pt-1.5">Email message</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-end mb-1">
+                      <VariablePickerButton
+                        groups={screeningVarGroups}
+                        fieldRef={screeningMessageRef}
+                        value={action.config.custom_message ?? ""}
+                        onChange={(newVal) => onChange({ config: { ...action.config, custom_message: newVal || undefined } })}
+                      />
+                    </div>
+                    <textarea
+                      ref={screeningMessageRef}
+                      value={action.config.custom_message ?? ""}
+                      onChange={(e) => onChange({ config: { ...action.config, custom_message: e.target.value || undefined } })}
+                      placeholder={`Hi {{first_name}}, please complete your screening questionnaire using the link below.`}
+                      rows={3}
+                      className="w-full text-sm border border-rf-border rounded-lg px-3 py-1.5 bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue resize-y"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           );
         })()}
 

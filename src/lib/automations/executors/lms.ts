@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { ActionResult } from './types';
 import { logActivityEvent } from '@/lib/activity/logActivityEvent';
 import { defaultTokenExpiresAt } from '@/lib/helpers/tokenExpiry';
+import { createNotification } from '@/lib/notifications/createNotification';
 
 /**
  * Action: lms.send_training_link
@@ -219,16 +220,25 @@ export async function executeLmsSendTrainingLink(
     const msg = `Training link not sent: no Gmail account connected. Go to Settings → Integrations to connect Gmail.`;
     console.warn('[executeLmsSendTrainingLink] No Gmail connection — cannot send email');
     await writeOutput(msg);
-    await logActivityEvent(supabase, {
-      companyId,
-      jobId,
-      actorType: 'automation',
-      eventType: 'automation.run.warning',
-      entityType: 'applicant',
-      entityId: applicantId,
-      summary: `Training link not sent for ${applicant.full_name ?? applicantId}: no Gmail account connected`,
-      data: { applicant_id: applicantId, applicant_name: applicant.full_name, course_id, training_url: trainingUrl, error: 'Gmail not connected' },
-    });
+    await Promise.all([
+      logActivityEvent(supabase, {
+        companyId,
+        jobId,
+        actorType: 'automation',
+        eventType: 'automation.run.warning',
+        entityType: 'applicant',
+        entityId: applicantId,
+        summary: `Training link not sent for ${applicant.full_name ?? applicantId}: no Gmail account connected`,
+        data: { applicant_id: applicantId, applicant_name: applicant.full_name, course_id, training_url: trainingUrl, error: 'Gmail not connected' },
+      }),
+      createNotification(supabase, {
+        companyId,
+        jobId,
+        type: 'error',
+        title: 'Training link not sent — Gmail not connected',
+        body: `Could not send training link to ${applicant.full_name ?? 'applicant'}. Connect Gmail in Settings → Integrations.`,
+      }),
+    ]);
     return { success: false, error: msg };
   }
 
@@ -461,16 +471,25 @@ export async function executePortalSendLink(
   if (!gmail) {
     const msg = 'Status portal link not sent: no Gmail account connected. Go to Settings → Integrations to connect Gmail.';
     console.warn('[executePortalSendLink] No Gmail connection — cannot send email');
-    await logActivityEvent(supabase, {
-      companyId,
-      jobId,
-      actorType: 'automation',
-      eventType: 'automation.run.warning',
-      entityType: 'applicant',
-      entityId: applicantId,
-      summary: `Status portal link not sent for ${applicant.full_name ?? applicantId}: no Gmail account connected`,
-      data: { applicant_id: applicantId, applicant_name: applicant.full_name, portal_url: portalUrl, error: 'Gmail not connected' },
-    });
+    await Promise.all([
+      logActivityEvent(supabase, {
+        companyId,
+        jobId,
+        actorType: 'automation',
+        eventType: 'automation.run.warning',
+        entityType: 'applicant',
+        entityId: applicantId,
+        summary: `Status portal link not sent for ${applicant.full_name ?? applicantId}: no Gmail account connected`,
+        data: { applicant_id: applicantId, applicant_name: applicant.full_name, portal_url: portalUrl, error: 'Gmail not connected' },
+      }),
+      createNotification(supabase, {
+        companyId,
+        jobId,
+        type: 'error',
+        title: 'Portal link not sent — Gmail not connected',
+        body: `Could not send status portal link to ${applicant.full_name ?? 'applicant'}. Connect Gmail in Settings → Integrations.`,
+      }),
+    ]);
     return { success: false, error: msg };
   }
 

@@ -245,3 +245,36 @@ export function buildPortalLinkEmail(params: {
 </div>`.trim();
   return { subject, body };
 }
+
+export function buildScreeningLinkEmail(params: {
+  firstName: string;
+  companyName: string;
+  logoUrl?: string | null;
+  screeningUrl: string;
+  customSubject?: string;
+  customMessage?: string;
+}): { subject: string; body: string } {
+  const { firstName, companyName, logoUrl, screeningUrl, customSubject, customMessage } = params;
+  const subject = customSubject ?? `Action required: Complete your screening questionnaire - ${companyName}`;
+  const messageHtml = customMessage
+    ? customMessage.replace(/\n/g, '<br>')
+    : `Hi ${firstName}, please complete the short screening questionnaire below as part of your application review.`;
+  const body = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a; padding: 32px 24px;">
+  ${logoUrl ? `<img src="${logoUrl}" alt="${companyName}" style="height: 48px; margin-bottom: 28px; display: block;" />` : `<p style="font-size: 18px; font-weight: 700; margin-bottom: 28px;">${companyName}</p>`}
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 12px;">Complete your screening questionnaire</h2>
+  <p style="font-size: 15px; color: #555; margin: 0 0 28px; line-height: 1.6;">
+    ${messageHtml}
+  </p>
+  <a href="${screeningUrl}"
+     style="display: inline-block; background: #1a1a1a; color: #ffffff; text-decoration: none;
+            padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+    Start Questionnaire →
+  </a>
+  <p style="font-size: 13px; color: #999; margin-top: 36px; line-height: 1.5;">
+    This link is unique to you. Please complete it as soon as possible.<br>
+    If you have any questions, reply to this email.
+  </p>
+</div>`.trim();
+  return { subject, body };
+}

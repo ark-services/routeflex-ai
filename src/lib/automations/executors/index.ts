@@ -9,6 +9,7 @@ import { executeFadvAddSubject, executeFadvApproveOrder, executeSafetyTrainerSub
 import { executeLmsSendTrainingLink, executePortalSendLink } from './lms';
 import { executeAiScoreResume } from './ai';
 import { executeEsignSendAgreement } from './esign';
+import { executeScreeningSendLink } from './screening';
 
 /**
  * Executes a single automation action by type.
@@ -87,6 +88,9 @@ export async function executeAction(
 
     case 'esign.send_agreement':
       return executeEsignSendAgreement(supabase, companyId, jobId, config, payload);
+
+    case 'screening.send_link':
+      return executeScreeningSendLink(supabase, companyId, jobId, config, payload);
 
     default:
       return { success: false, error: `Unknown action type: ${type}` };
