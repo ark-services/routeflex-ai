@@ -610,56 +610,89 @@ export default function LandingPage() {
       {/* ══════════════════════════════════════════════════════
           Section 5: COST COMPARISON
           ══════════════════════════════════════════════════════ */}
-      <section className="py-20 sm:py-24 bg-rf-surface-page">
-        <div className="max-w-5xl mx-auto px-6 lg:px-10">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-rf-text-primary">
-              What $1,700+/month gets you vs. what $149/month gets you
+      <section className="py-20 sm:py-28 bg-[#0B1120] relative overflow-hidden">
+        {/* Subtle grid texture */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(#4B8EF0 1px, transparent 1px), linear-gradient(90deg, #4B8EF0 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+        {/* Blue glow top-center */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-rf-blue/10 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="relative max-w-5xl mx-auto px-6 lg:px-10">
+          {/* Header */}
+          <div className="text-center mb-14">
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-rf-blue mb-5">
+              The real cost comparison
+            </p>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
+              <span className="text-[#64748B] line-through decoration-red-500/60 decoration-2">
+                $1,700+/mo
+              </span>{" "}
+              <span className="text-[#475569]">vs.</span>{" "}
+              <span className="text-rf-blue">$149/mo</span>
             </h2>
-            <p className="text-rf-text-secondary mt-4 max-w-2xl mx-auto">
+            <p className="text-[#9BAABB] mt-4 max-w-xl mx-auto leading-relaxed">
               Agencies charge per location, require exclusivity, and stop at
               background checks. Here&apos;s what you actually get.
             </p>
           </div>
 
-          <div className="overflow-x-auto -mx-6 px-6">
-            <table className="w-full min-w-[600px]">
-              <thead>
-                <tr className="border-b-2 border-rf-border">
-                  <th className="text-left text-sm font-semibold text-rf-text-primary py-4 pr-4 w-[30%]">
-                    &nbsp;
-                  </th>
-                  <th className="text-left text-sm font-semibold text-rf-text-muted py-4 px-4 w-[35%]">
-                    Agency Model
-                  </th>
-                  <th className="text-left text-sm font-bold text-rf-blue py-4 pl-4 w-[35%]">
-                    RouteFlex
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonRows.map((row) => (
-                  <tr key={row.feature} className="border-b border-rf-border">
-                    <td className="text-sm font-medium text-rf-text-primary py-3.5 pr-4">
-                      {row.feature}
-                    </td>
-                    <td className="text-sm text-rf-text-secondary py-3.5 px-4">
-                      {row.agency}
-                    </td>
-                    <td className="text-sm font-medium text-rf-text-primary py-3.5 pl-4">
-                      {row.routeflex}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Column labels */}
+          <div className="grid grid-cols-[1.1fr_1fr_1fr] gap-3 mb-3 px-1">
+            <div />
+            <div className="flex items-center gap-2 px-4">
+              <div className="w-2 h-2 rounded-full bg-red-500/50 flex-shrink-0" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#475569]">
+                Agency Model
+              </span>
+            </div>
+            <div className="flex items-center gap-2 px-4">
+              <div className="w-2 h-2 rounded-full bg-rf-blue flex-shrink-0" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-rf-blue">
+                RouteFlex
+              </span>
+            </div>
           </div>
 
-          {/* Interactive cost calculator */}
+          {/* Comparison rows */}
+          <div className="space-y-1.5">
+            {comparisonRows.map((row, i) => (
+              <div
+                key={row.feature}
+                className="grid grid-cols-[1.1fr_1fr_1fr] gap-0 rounded-xl overflow-hidden"
+              >
+                {/* Feature label */}
+                <div className="flex items-center px-4 py-3.5 bg-[#111827] border border-[#1E2A3A]">
+                  <span className="text-xs font-semibold text-[#6B7280] uppercase tracking-wide">
+                    {row.feature}
+                  </span>
+                </div>
+                {/* Agency value */}
+                <div className="flex items-center px-4 py-3.5 bg-[#0E1420] border-y border-r border-[#1E2A3A]">
+                  <span className="text-sm text-[#475569]">{row.agency}</span>
+                </div>
+                {/* RouteFlex value */}
+                <div className="flex items-center gap-2.5 px-4 py-3.5 bg-[#0A1628] border-y border-r border-rf-blue/20 relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-rf-blue/40" />
+                  <Check className="w-3.5 h-3.5 text-rf-blue flex-shrink-0" />
+                  <span className="text-sm font-medium text-white">
+                    {row.routeflex}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Cost calculator */}
           <div className="mt-14">
             <CostCalculator />
           </div>
-          <p className="text-center text-xs text-rf-text-muted mt-4 max-w-xl mx-auto">
+          <p className="text-center text-xs text-[#4A5568] mt-4 max-w-xl mx-auto">
             RouteFlex also includes onboarding, training, and Day 1 management —
             which agencies don&apos;t offer at any price.
           </p>
@@ -667,7 +700,7 @@ export default function LandingPage() {
           <div className="mt-10 text-center">
             <Link
               href="/pricing"
-              className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-6 py-3 rounded-rf-lg transition-all shadow-rf-md hover:shadow-rf-lg"
+              className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-md hover:shadow-rf-lg"
             >
               See Full Pricing
               <ArrowRight className="h-4 w-4" />

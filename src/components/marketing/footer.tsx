@@ -6,14 +6,15 @@ const footerLinks = {
   Product: [
     { label: "Features", href: "/features" },
     { label: "Pricing", href: "/pricing" },
+    { label: "Contact", href: "/contact" },
   ],
   Company: [
     { label: "Log in", href: "/login" },
     { label: "Join Waitlist", href: null as string | null },
   ],
   Legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms of Service", href: "#" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
   ],
 };
 
@@ -24,7 +25,7 @@ export function MarketingFooter() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1">
-            <RouteFlexLogo size="nav" />
+            <RouteFlexLogo size="nav" className="[--rf-wm-route:#ffffff] [--rf-icon-stroke:#4B8EF0]" />
             <p className="mt-4 text-sm text-[#9BAABB] leading-relaxed">
               The recruiting platform built for FedEx Ground contractors.
             </p>

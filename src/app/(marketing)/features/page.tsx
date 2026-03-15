@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 import {
   ArrowRight,
   Inbox,
@@ -477,13 +478,10 @@ export default function FeaturesPage() {
             Your pipeline. Your candidates. Your control. Start your free trial today.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
-            <Link
-              href="/signup"
-              className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg"
-            >
+            <WaitlistButton className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg">
               Start Free Trial
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </WaitlistButton>
             <Link
               href="/pricing"
               className="inline-flex items-center gap-2 text-sm font-semibold text-[#9BAABB] hover:text-white px-6 py-3.5 rounded-rf-lg transition-colors border border-[#2A3347] hover:border-[#4A5568]"

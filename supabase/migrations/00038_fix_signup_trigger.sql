@@ -28,8 +28,8 @@ BEGIN
   company_name := split_part(NEW.email, '@', 1) || '''s Company';
 
   -- 1. Create an account for the new user
-  INSERT INTO public.accounts (name, plan_type, max_seats, billing_anchor_day)
-  VALUES (company_name, 'basic', 1, EXTRACT(day FROM now())::int)
+  INSERT INTO public.accounts (name, plan_type, max_seats, billing_anchor_day, onboarding_completed)
+  VALUES (company_name, 'basic', 1, EXTRACT(day FROM now())::int, false)
   RETURNING id INTO new_account_id;
 
   RAISE NOTICE '[handle_new_user] Created account: %', new_account_id;

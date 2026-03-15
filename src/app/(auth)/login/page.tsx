@@ -3,6 +3,8 @@ import { login } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { WaitlistButton } from "@/components/marketing/WaitlistButton";
+import { WaitlistModal } from "@/components/marketing/WaitlistModal";
 
 export default async function LoginPage({
   searchParams,
@@ -13,6 +15,7 @@ export default async function LoginPage({
 
   return (
     <div className="flex min-h-screen items-center justify-center py-12">
+      <WaitlistModal />
       <Card className="w-full max-w-sm p-8">
         <div className="text-center space-y-1 mb-8">
           <p className="text-sm font-semibold tracking-tight text-rf-text-muted">
@@ -64,12 +67,9 @@ export default async function LoginPage({
         </p>
         <p className="text-sm text-rf-text-secondary text-center mt-2">
           Don&apos;t have an account?{" "}
-          <Link
-            href={redirectTo ? `/signup?redirectTo=${encodeURIComponent(redirectTo)}` : "/signup"}
-            className="text-rf-text-primary hover:text-rf-ink-700 font-medium"
-          >
+          <WaitlistButton className="text-rf-text-primary hover:text-rf-ink-700 font-medium">
             Sign up
-          </Link>
+          </WaitlistButton>
         </p>
       </Card>
     </div>

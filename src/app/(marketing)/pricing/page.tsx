@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Check, ArrowRight, HelpCircle } from "lucide-react";
+import { ArrowRight, HelpCircle, Check, Minus } from "lucide-react";
 import { CostCalculator } from "@/components/marketing/cost-calculator";
 import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 
@@ -10,24 +9,37 @@ export const metadata: Metadata = {
     "Recruiting that pays for itself in week one. Most contractors spend $1,700+/month on agencies. RouteFlex starts at $149/mo.",
 };
 
-const tiers = [
+type FeatureValue = string | null;
+
+const tiers: {
+  name: string;
+  tagline: string;
+  price: string;
+  period: string;
+  descriptor: string;
+  popular: boolean;
+  features: { label: string; value: FeatureValue }[];
+  anchor: string;
+  cta: string;
+}[] = [
   {
     name: "Starter",
     tagline: "Get your pipeline running",
     price: "$149",
     period: "/mo",
-    target: "Solo operators, 1 location, 5-15 routes",
+    descriptor: "1 company, 1 job posting, 1 user seat",
     popular: false,
     features: [
-      "AI screening, scoring & communication",
-      "First Advantage integration",
-      "Pre-built workflow templates",
-      "Pipeline dashboard (single location)",
-      "Knowledge base & AI training",
-      "Email support",
+      { label: "Companies", value: "1" },
+      { label: "Active job postings", value: "1" },
+      { label: "User seats", value: "1" },
+      { label: "Automation actions", value: "1,000/mo" },
+      { label: "AI actions", value: "100/mo" },
+      { label: "LMS training courses", value: null },
+      { label: "Reporting", value: null },
     ],
     anchor:
-      "Typical agency maintenance fee: $867/mo for 1-2 candidates. RouteFlex handles the same volume at ~80% less.",
+      "Typical agency fee: $870/mo for 1–2 drivers. RouteFlex handles the same volume at ~80% less.",
     cta: "Join Waitlist",
   },
   {
@@ -35,18 +47,19 @@ const tiers = [
     tagline: "Scale without the overhead",
     price: "$299",
     period: "/mo",
-    target: "1-3 locations, hiring 3-8 drivers/month",
+    descriptor: "3 companies, 9 job postings, 5 seats",
     popular: true,
     features: [
-      "Everything in Starter",
-      "Multi-location pipeline management",
-      "LMS training & onboarding courses",
-      "Automated interview scheduling",
-      "Seasonal hiring mode (burst capacity)",
-      "Priority support",
+      { label: "Companies", value: "3" },
+      { label: "Active job postings", value: "9" },
+      { label: "User seats", value: "5" },
+      { label: "Automation actions", value: "3,000/mo" },
+      { label: "AI actions", value: "300/mo" },
+      { label: "LMS training courses", value: "1" },
+      { label: "Reporting", value: "Standard" },
     ],
     anchor:
-      "Typical agency cost: $1,733\u2013$2,383/mo for a single location. RouteFlex covers multiple for a fraction.",
+      "Typical agency cost: $1,700–$2,400/mo for a single location. RouteFlex covers multiple companies for a fraction.",
     cta: "Join Waitlist",
   },
   {
@@ -54,32 +67,41 @@ const tiers = [
     tagline: "Hire through their first day",
     price: "$599",
     period: "/mo",
-    target: "3+ locations, high-volume hiring, 8+ drivers/month",
+    descriptor: "Unlimited companies, postings, 10 seats",
     popular: false,
     features: [
-      "Everything in Growth",
-      "Unlimited locations & drivers",
-      "Advanced analytics & funnel reporting",
-      "Custom screening workflows",
-      "Full onboarding management (road tests, TSA, HR)",
-      "Dedicated support",
+      { label: "Companies", value: "Unlimited" },
+      { label: "Active job postings", value: "Unlimited" },
+      { label: "User seats", value: "10" },
+      { label: "Automation actions", value: "7,000/mo" },
+      { label: "AI actions", value: "700/mo" },
+      { label: "LMS training courses", value: "Unlimited" },
+      { label: "Reporting", value: "Advanced" },
     ],
     anchor:
-      "3 locations, 10+ drivers/mo with an agency: ~$17,400/mo. RouteFlex Pro: $599/mo.",
+      "3+ companies, 10+ drivers/mo with an agency: ~$7,000+/mo. RouteFlex Pro: $599/mo.",
     cta: "Join Waitlist",
   },
+];
+
+const allPlansInclude = [
+  "AI screening, scoring & communication",
+  "First Advantage integration",
+  "Knowledge base & AI training",
+  "Pre-built workflow templates",
+  "Pipeline dashboard & boards",
 ];
 
 const faqs = [
   {
     question: "Do I still need to pay for Indeed?",
     answer:
-      "Yes, you run your own ads. But you\u2019re already doing that. RouteFlex replaces the agency, not the job board. You keep full control of your ad spend.",
+      "Yes, you run your own ads. But you're already doing that. RouteFlex replaces the agency, not the job board. You keep full control of your ad spend.",
   },
   {
     question: "What if I only hire seasonally?",
     answer:
-      "Scale up before peak season (July), scale down after. No agency lock-in, no maintenance fees for months you don\u2019t need. Pause or cancel anytime.",
+      "Scale up before peak season (July), scale down after. No agency lock-in, no maintenance fees for months you don't need. Pause or cancel anytime.",
   },
   {
     question: "Can I use this for linehaul AND P&D?",
@@ -94,7 +116,7 @@ const faqs = [
   {
     question: "Is there a free trial?",
     answer:
-      "Yes \u2014 every plan includes a 14-day free trial. No credit card required to get started.",
+      "Yes — every plan includes a 14-day free trial. No credit card required to get started.",
   },
   {
     question: "Can I cancel anytime?",
@@ -120,7 +142,7 @@ export default function PricingPage() {
           <p className="text-xs font-bold text-rf-blue uppercase tracking-widest mb-4">
             Pricing
           </p>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-rf-text-primary">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-rf-text-primary text-balance">
             Recruiting that pays for itself in week one
           </h1>
           <p className="text-lg text-rf-text-secondary mt-5 max-w-2xl mx-auto leading-relaxed">
@@ -170,26 +192,38 @@ export default function PricingPage() {
                     <span className="text-4xl font-black text-rf-text-primary tracking-tight">
                       {tier.price}
                     </span>
-                    {tier.period && (
-                      <span className="text-sm font-medium text-rf-text-secondary">
-                        {tier.period}
-                      </span>
-                    )}
+                    <span className="text-sm font-medium text-rf-text-secondary">
+                      {tier.period}
+                    </span>
                   </div>
                   <p className="text-xs text-rf-text-muted mt-1">
-                    {tier.target}
+                    {tier.descriptor}
                   </p>
 
-                  <hr className="border-rf-border my-6" />
+                  <hr className="border-rf-border my-5" />
 
-                  <ul className="space-y-3 flex-1">
+                  <ul className="space-y-2.5 flex-1">
                     {tier.features.map((feature) => (
                       <li
-                        key={feature}
-                        className="flex items-start gap-2.5 text-sm text-rf-text-secondary"
+                        key={feature.label}
+                        className="flex items-center justify-between gap-2 text-sm"
                       >
-                        <Check className="h-4 w-4 text-rf-success flex-shrink-0 mt-0.5" />
-                        {feature}
+                        <span className="text-rf-text-secondary">
+                          {feature.label}
+                        </span>
+                        {feature.value === null ? (
+                          <Minus className="h-3.5 w-3.5 text-rf-text-muted flex-shrink-0" />
+                        ) : (
+                          <span
+                            className={`font-semibold text-right ${
+                              feature.value === "Unlimited"
+                                ? "text-rf-blue"
+                                : "text-rf-text-primary"
+                            }`}
+                          >
+                            {feature.value}
+                          </span>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -205,7 +239,7 @@ export default function PricingPage() {
                     className={`mt-6 block w-full text-center text-sm font-bold py-3 rounded-rf-lg transition-all ${
                       tier.popular
                         ? "text-white bg-rf-blue hover:bg-rf-blue-dark shadow-rf-sm hover:shadow-rf-md"
-                        : "text-rf-blue bg-rf-blue-tint hover:bg-rf-blue/10"
+                        : "text-rf-blue border border-rf-blue bg-transparent hover:bg-rf-blue-tint"
                     }`}
                   >
                     {tier.cta}
@@ -215,9 +249,27 @@ export default function PricingPage() {
             ))}
           </div>
 
-          <p className="text-center text-xs text-rf-text-muted mt-6">
-            All plans include: No long-term contracts &bull; Cancel anytime
-            &bull; 14-day free trial &bull; Your data, your candidates
+          {/* All plans include */}
+          <div className="mt-12 rounded-rf-xl border border-rf-border bg-rf-surface-card p-6 sm:p-8">
+            <p className="text-xs font-bold text-rf-text-muted uppercase tracking-widest mb-5 text-center">
+              All plans include
+            </p>
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-3">
+              {allPlansInclude.map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-rf-text-secondary"
+                >
+                  <Check className="h-4 w-4 text-rf-success flex-shrink-0" />
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-center text-xs text-rf-text-muted mt-5">
+            No long-term contracts &bull; Cancel anytime &bull; 14-day free
+            trial &bull; Your data, your candidates
           </p>
         </div>
       </section>

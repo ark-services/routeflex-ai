@@ -3,20 +3,25 @@
 import { useState } from "react";
 import { Calculator } from "lucide-react";
 
-const driverTiers = [
-  { label: "1–2", drivers: 2, agencyPerLocation: 1733 },
-  { label: "3–5", drivers: 5, agencyPerLocation: 2600 },
-  { label: "6–10", drivers: 10, agencyPerLocation: 4200 },
-  { label: "10+", drivers: 12, agencyPerLocation: 5800 },
+const driverOptions = [
+  { label: "1–2", agencyCost: 870 },
+  { label: "3–5", agencyCost: 2320 },
+  { label: "6–10", agencyCost: 4640 },
+  { label: "10+", agencyCost: 6960 },
+];
+
+const jobPostingOptions = [
+  { label: "1–3", routeflexPrice: 149, tierName: "Starter" },
+  { label: "4–10", routeflexPrice: 299, tierName: "Growth" },
+  { label: "10+", routeflexPrice: 599, tierName: "Pro" },
 ];
 
 export function CostCalculator() {
-  const [locations, setLocations] = useState(1);
-  const [driverTier, setDriverTier] = useState(0);
+  const [driverIdx, setDriverIdx] = useState(0);
+  const [postingIdx, setPostingIdx] = useState(0);
 
-  const agencyCost = locations * driverTiers[driverTier].agencyPerLocation;
-  const routeflexCost = locations <= 1 ? 149 : locations <= 3 ? 299 : 599;
-
+  const agencyCost = driverOptions[driverIdx].agencyCost;
+  const routeflexCost = jobPostingOptions[postingIdx].routeflexPrice;
   const savings = agencyCost - routeflexCost;
   const savingsPercent = Math.round((savings / agencyCost) * 100);
 
@@ -32,21 +37,20 @@ export function CostCalculator() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
         <div>
           <label className="text-xs font-bold text-rf-text-muted uppercase tracking-wider block mb-2">
-            How many locations?
+            Drivers to hire per month
           </label>
           <div className="flex gap-2">
-            {[1, 2, 3, 4].map((n) => (
+            {driverOptions.map((opt, i) => (
               <button
-                key={n}
-                onClick={() => setLocations(n)}
+                key={opt.label}
+                onClick={() => setDriverIdx(i)}
                 className={`flex-1 py-2.5 text-sm font-bold rounded-rf-md border transition-all ${
-                  locations === n
+                  driverIdx === i
                     ? "bg-rf-blue text-white border-rf-blue"
                     : "bg-rf-surface-page text-rf-text-secondary border-rf-border hover:border-rf-ink-300"
                 }`}
               >
-                {n}
-                {n === 4 ? "+" : ""}
+                {opt.label}
               </button>
             ))}
           </div>
@@ -54,20 +58,20 @@ export function CostCalculator() {
 
         <div>
           <label className="text-xs font-bold text-rf-text-muted uppercase tracking-wider block mb-2">
-            Drivers needed / month
+            Active job postings needed
           </label>
           <div className="flex gap-2">
-            {driverTiers.map((tier, i) => (
+            {jobPostingOptions.map((opt, i) => (
               <button
-                key={tier.label}
-                onClick={() => setDriverTier(i)}
+                key={opt.label}
+                onClick={() => setPostingIdx(i)}
                 className={`flex-1 py-2.5 text-sm font-bold rounded-rf-md border transition-all ${
-                  driverTier === i
+                  postingIdx === i
                     ? "bg-rf-blue text-white border-rf-blue"
                     : "bg-rf-surface-page text-rf-text-secondary border-rf-border hover:border-rf-ink-300"
                 }`}
               >
-                {tier.label}
+                {opt.label}
               </button>
             ))}
           </div>
@@ -97,6 +101,9 @@ export function CostCalculator() {
                 /mo
               </span>
             </p>
+            <p className="text-[11px] text-rf-text-muted mt-0.5">
+              {jobPostingOptions[postingIdx].tierName} plan
+            </p>
           </div>
           <div>
             <p className="text-xs font-bold text-rf-text-muted uppercase tracking-wider mb-1">
@@ -113,8 +120,8 @@ export function CostCalculator() {
       </div>
 
       <p className="text-xs text-rf-text-muted mt-4 text-center">
-        Agencies charge more as you hire more drivers. RouteFlex is flat-rate
-        — hire 2 or 20, the price stays the same.
+        Agencies charge per driver placed. RouteFlex is flat-rate — hire 2 or
+        20, the price stays the same.
       </p>
     </div>
   );
