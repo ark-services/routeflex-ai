@@ -1,6 +1,8 @@
 "use server";
 
-export async function submitContactForm(formData: FormData) {
+export async function submitContactForm(
+  formData: FormData
+): Promise<{ success: true } | { error: string }> {
   const name = (formData.get("name") as string)?.trim();
   const email = (formData.get("email") as string)?.trim().toLowerCase();
   const company = (formData.get("company") as string)?.trim();
