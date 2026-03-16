@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { SUPER_ADMIN_EMAIL } from "@/lib/constants";
-import type { TemplatePayload, TemplateForm, TemplateKnowledgeBaseEntry, TemplateBoardView } from "@/lib/types";
+import type { TemplatePayload, TemplateAgent, TemplateForm, TemplateKnowledgeBaseEntry, TemplateBoardView } from "@/lib/types";
 
 // ─── Annotation helpers ───────────────────────────────────────────────────────
 //
@@ -355,7 +355,7 @@ export async function captureJobLayoutToTemplate(
     JSON.stringify(columns, null, 2)
   );
 
-  // ── 5. Fetch automations + their actions ──────────────────────────────────
+  // ── 5. Fetch automations + their actions (including agent assignment) ───────
   const { data: rawAutomations } = await supabase
     .from("automations")
     .select(`
@@ -364,6 +364,7 @@ export async function captureJobLayoutToTemplate(
       trigger_key,
       filter,
       trigger_config,
+      agent_id,
       automation_actions (
         type,
         sort_order,
@@ -373,11 +374,31 @@ export async function captureJobLayoutToTemplate(
     .eq("company_id", companyId)
     .eq("job_id", jobId);
 
+  // ── 5b. Fetch automation agents so we can embed them in the payload ────────
+  const { data: rawAgents } = await supabase
+    .from("automation_agents")
+    .select("id, name, emoji, description, sort_order")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .order("sort_order", { ascending: true });
+
+  const agentIdToName = new Map<string, string>(
+    (rawAgents ?? []).map((ag: any) => [ag.id, ag.name])
+  );
+
+  const agents: TemplateAgent[] = (rawAgents ?? []).map((ag: any) => ({
+    name: ag.name,
+    emoji: ag.emoji,
+    description: ag.description ?? "",
+    sort_order: ag.sort_order,
+  }));
+
   // Annotate each automation's filter and action configs with name fields so
   // applyTemplate can remap UUIDs to the destination board by name.
   const automations = (rawAutomations ?? []).map((a: any) => ({
     type: a.trigger_key,
     name: a.name,
+    agent_name: a.agent_id ? agentIdToName.get(a.agent_id) : undefined,
     config: annotateFilter(
       a.filter ?? {},
       colIdToName,
@@ -623,6 +644,7 @@ export async function captureJobLayoutToTemplate(
   const payload: TemplatePayload = {
     groups: payloadGroups,
     columns,
+    agents: agents.length > 0 ? agents : undefined,
     automations,
     form: templateForm,
     knowledgeBase,

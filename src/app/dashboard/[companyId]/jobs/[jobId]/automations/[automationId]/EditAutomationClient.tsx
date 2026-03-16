@@ -152,6 +152,7 @@ export function EditAutomationClient({
             accountId={accountId}
             triggers={triggers}
             groups={groups}
+            agents={[]}
             editingAutomation={automation}
             onCreated={() => {
               // Refresh run history after save

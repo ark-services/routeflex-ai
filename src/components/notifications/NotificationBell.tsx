@@ -71,6 +71,10 @@ function actionUrl(
   if (source === "gmail.missing_read_scope") {
     return `/admin/${accountId}/companies/${companyId}/integrations`;
   }
+  if (source === "kb_suggestion") {
+    const path = item.metadata?.path as string | undefined;
+    if (path) return path;
+  }
   return null;
 }
 

@@ -49,6 +49,7 @@ interface ApplicantsBoardContainerProps {
   automations: any[];
   triggers: any[];
   boardGroups: any[];
+  automationAgents: any[];
   // Super admin — shows "Save as Template…" button
   isSuperAdmin?: boolean;
   // Setup status for the guide
@@ -77,6 +78,7 @@ export function ApplicantsBoardContainer({
   automations,
   triggers,
   boardGroups,
+  automationAgents,
   isSuperAdmin = false,
   setupStatus,
 }: ApplicantsBoardContainerProps) {
@@ -143,6 +145,7 @@ export function ApplicantsBoardContainer({
         automations={automations}
         triggers={triggers}
         groups={boardGroups}
+        automationAgents={automationAgents}
         onOpenActivityLog={() => setActivityLogOpen(true)}
         onOpenArchive={() => setArchiveDrawerOpen(true)}
         onOpenDefaultValues={() => setDefaultValuesOpen(true)}

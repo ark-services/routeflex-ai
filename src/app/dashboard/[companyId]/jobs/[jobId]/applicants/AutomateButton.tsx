@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Zap } from "lucide-react";
+import { Users } from "lucide-react";
 import { AutomationOverlay } from "@/components/automations/AutomationOverlay";
 
 interface AutomateButtonProps {
@@ -13,6 +13,7 @@ interface AutomateButtonProps {
   automations: any[];
   triggers: any[];
   groups: any[];
+  automationAgents: any[];
 }
 
 export function AutomateButton({
@@ -23,6 +24,7 @@ export function AutomateButton({
   automations,
   triggers,
   groups,
+  automationAgents,
 }: AutomateButtonProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -47,8 +49,8 @@ export function AutomateButton({
         onClick={() => setIsOpen(true)}
         className="h-8 px-3 bg-rf-blue text-white rounded-lg hover:bg-rf-blue-dark hover:shadow-rf-md transition-all flex items-center gap-1.5 text-sm font-medium shadow-rf-sm shrink-0"
       >
-        <Zap className="w-4 h-4 flex-shrink-0" />
-        <span className="hidden sm:inline">Automate</span>
+        <Users className="w-4 h-4 flex-shrink-0" />
+        <span className="hidden sm:inline">Agents</span>
       </button>
 
       <AutomationOverlay
@@ -61,6 +63,7 @@ export function AutomateButton({
         automations={automations}
         triggers={triggers}
         groups={groups}
+        agents={automationAgents}
       />
     </>
   );

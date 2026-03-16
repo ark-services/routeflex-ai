@@ -47,12 +47,18 @@ export async function fireJobTrigger(
 
   try {
     // Find enabled automations for this job + trigger
-    const { data: automations, error: fetchError } = await supabase
+    // Left-join automation_agents to check agent-level enable/disable
+    const { data: rawAutomations, error: fetchError } = await supabase
       .from('automations')
       .select(`
         id,
         name,
         filter,
+        agent_id,
+        automation_agents (
+          id,
+          is_enabled
+        ),
         automation_actions (
           id,
           type,
@@ -71,9 +77,15 @@ export async function fireJobTrigger(
       return;
     }
 
-    console.log('[fireJobTrigger] Found automations:', automations?.length || 0);
+    // Filter out automations whose agent is disabled
+    const automations = (rawAutomations ?? []).filter((a: any) => {
+      if (!a.automation_agents) return true; // no agent = always eligible
+      return a.automation_agents.is_enabled !== false;
+    });
 
-    if (!automations || automations.length === 0) {
+    console.log('[fireJobTrigger] Found automations:', rawAutomations?.length || 0, '(eligible after agent filter:', automations.length, ')');
+
+    if (automations.length === 0) {
       console.log('[fireJobTrigger] No automations configured for this job + trigger');
       return; // No automations configured for this job
     }
@@ -535,17 +547,56 @@ async function evaluateCondition(
       .maybeSingle();
 
     if (!cell) {
-      const passWhenEmpty = type.endsWith('_is_not') || type === 'is_empty' || type === 'text_contains';
-      console.warn(
-        `[evaluateCondition] No board_cell found for applicant=${applicantId} column=${column_id} — ${passWhenEmpty ? 'passing' : 'failing'} (${type})`
-      );
-      return passWhenEmpty;
-    }
+      // board_cells is empty for form-submitted fields — fall back to applicant_field_values
+      // via the column's linked field_id (same logic the board view uses at read time).
+      const { data: col } = await supabase
+        .from('board_columns')
+        .select('field_id, type')
+        .eq('id', column_id)
+        .maybeSingle();
 
-    if      (type.startsWith('status_'))  cellValue = cell.value_status_label_id ?? null;
-    else if (type.startsWith('text_'))    cellValue = cell.value_text ?? null;
-    else if (type.startsWith('number_'))  cellValue = cell.value_number ?? null;
-    else if (type.startsWith('date_'))    cellValue = cell.value_date ?? null;
+      if (col?.field_id) {
+        const { data: fv } = await supabase
+          .from('applicant_field_values')
+          .select('value_text, value_number, value_date, value_bool')
+          .eq('applicant_id', applicantId)
+          .eq('field_id', col.field_id)
+          .maybeSingle();
+
+        if (fv) {
+          if (type.startsWith('status_') && fv.value_text) {
+            // Resolve plain-text answer → status label ID (same as board page.tsx does)
+            const { data: label } = await supabase
+              .from('board_column_labels')
+              .select('id')
+              .eq('column_id', column_id)
+              .ilike('label', fv.value_text)
+              .maybeSingle();
+            cellValue = label?.id ?? null;
+            console.log(`[evaluateCondition] Resolved via field_values: text="${fv.value_text}" → label_id=${cellValue}`);
+          } else if (type.startsWith('text_')) {
+            cellValue = fv.value_text ?? null;
+          } else if (type.startsWith('number_')) {
+            cellValue = fv.value_number ?? null;
+          } else if (type.startsWith('date_')) {
+            cellValue = fv.value_date ?? null;
+          }
+        }
+      }
+
+      if (cellValue === null || cellValue === undefined) {
+        const passWhenEmpty = type.endsWith('_is_not') || type === 'is_empty' || type === 'text_contains';
+        console.warn(
+          `[evaluateCondition] No board_cell or field_value found for applicant=${applicantId} column=${column_id} — ${passWhenEmpty ? 'passing' : 'failing'} (${type})`
+        );
+        return passWhenEmpty;
+      }
+    } else {
+      if      (type.startsWith('status_'))  cellValue = cell.value_status_label_id ?? null;
+      else if (type.startsWith('text_'))    cellValue = cell.value_text ?? null;
+      else if (type.startsWith('number_'))  cellValue = cell.value_number ?? null;
+      else if (type.startsWith('date_'))    cellValue = cell.value_date ?? null;
+    }
   }
 
   // ── Evaluate ──────────────────────────────────────────────────────────────

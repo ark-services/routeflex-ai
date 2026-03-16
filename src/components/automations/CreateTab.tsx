@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createJobAutomation, updateJobAutomation, getJobBoardColumns, getLmsCoursesForCompany } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
+import type { AutomationAgent } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { useToast } from "@/components/ui/toast-provider";
 import type { Trigger, Group, Column, Action, FilterCondition } from "./automations-types";
 import { TEXT_COL_TYPES, conditionOpLabel, parseSimplePattern } from "./automations-types";
@@ -17,6 +18,7 @@ interface Automation {
   filter: any;
   created_at: string;
   updated_at: string;
+  agent_id?: string | null;
   automation_actions: Array<{
     id: string;
     type: string;
@@ -31,8 +33,10 @@ interface CreateTabProps {
   accountId: string;
   triggers: Trigger[];
   groups: Group[];
+  agents: AutomationAgent[];
   onCreated: () => void;
   editingAutomation?: Automation | null;
+  defaultAgentId?: string | null;
   onCancelEdit?: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -43,8 +47,10 @@ export function CreateTab({
   accountId,
   triggers,
   groups,
+  agents,
   onCreated,
   editingAutomation,
+  defaultAgentId,
   onCancelEdit,
   onDirtyChange,
 }: CreateTabProps) {
@@ -56,6 +62,9 @@ export function CreateTab({
   const [columns, setColumns] = useState<Column[]>([]);
   const [lmsCourses, setLmsCourses] = useState<{ id: string; name: string }[]>([]);
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(
+    editingAutomation?.agent_id ?? defaultAgentId ?? null
+  );
   // For Gmail body-extract: true = show raw regex input, false = friendly "value comes after" input
   const [bodyExtractAdvanced, setBodyExtractAdvanced] = useState(false);
 
@@ -138,6 +147,9 @@ export function CreateTab({
           : []
       );
 
+      // Set agent
+      setSelectedAgentId(editingAutomation.agent_id ?? null);
+
       // Set actions
       const editActions = editingAutomation.automation_actions
         .sort((a, b) => a.sort_order - b.sort_order)
@@ -154,6 +166,7 @@ export function CreateTab({
     setTriggerConfig({});
     setActions([]);
     setFilterConditions([]);
+    setSelectedAgentId(null);
     setBodyExtractAdvanced(false);
   };
 
@@ -360,6 +373,7 @@ export function CreateTab({
           name,
           trigger_key: selectedTrigger.key,
           filter: filterToSave,
+          agent_id: selectedAgentId,
           actions: actions.map((action, index) => ({
             type: action.type,
             config: action.config,
@@ -372,6 +386,7 @@ export function CreateTab({
           name,
           trigger_key: selectedTrigger.key,
           filter: filterToSave,
+          agent_id: selectedAgentId,
           actions: actions.map((action, index) => ({
             type: action.type as any,
             config: action.config,
@@ -529,6 +544,28 @@ export function CreateTab({
   return (
     <div className="p-5 sm:p-8">
       <div className="space-y-6">
+        {/* Agent Picker (only show if agents exist) */}
+        {agents.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="text-xs font-bold uppercase tracking-widest text-rf-ink-500">Agent</span>
+              <div className="flex-1 h-px bg-rf-ink-100" />
+            </div>
+            <select
+              value={selectedAgentId ?? ""}
+              onChange={(e) => setSelectedAgentId(e.target.value || null)}
+              className="w-full sm:w-64 px-3 py-2 border border-rf-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rf-blue bg-rf-surface-card"
+            >
+              <option value="">No agent (unassigned)</option>
+              {agents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.emoji} {agent.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Trigger Section */}
         <div>
           <div className="flex items-center gap-2.5 mb-3">

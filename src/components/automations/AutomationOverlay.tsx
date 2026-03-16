@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { ManageTab } from "./ManageTab";
 import { CreateTab } from "./CreateTab";
 import { HistoryTab } from "./HistoryTab";
 import { AutomationRunHistoryPanel } from "./AutomationRunHistoryPanel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { AutomationAgent } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 
 interface Automation {
   id: string;
@@ -16,6 +18,7 @@ interface Automation {
   filter: any;
   created_at: string;
   updated_at: string;
+  agent_id?: string | null;
   automation_actions: Array<{
     id: string;
     type: string;
@@ -47,6 +50,7 @@ interface AutomationOverlayProps {
   automations: Automation[];
   triggers: Trigger[];
   groups: Group[];
+  agents: AutomationAgent[];
 }
 
 export function AutomationOverlay({
@@ -59,12 +63,15 @@ export function AutomationOverlay({
   automations,
   triggers,
   groups,
+  agents,
 }: AutomationOverlayProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"manage" | "create" | "history">(
     automations.length > 0 ? "manage" : "create"
   );
   const [key, setKey] = useState(0);
   const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
+  const [defaultAgentId, setDefaultAgentId] = useState<string | null>(null);
   const [isCreateDirty, setIsCreateDirty] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState<{ action: () => void } | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
@@ -92,9 +99,11 @@ export function AutomationOverlay({
   const handleCreated = () => {
     setIsCreateDirty(false);
     setEditingAutomation(null);
+    setDefaultAgentId(null);
     setActiveTab("manage");
     setKey(k => k + 1);
     setHistoryRefreshKey(k => k + 1);
+    router.refresh();
   };
 
   const handleEdit = (automation: Automation) => {
@@ -105,7 +114,15 @@ export function AutomationOverlay({
 
   const handleCancelEdit = () => {
     setEditingAutomation(null);
+    setDefaultAgentId(null);
     setActiveTab("manage");
+  };
+
+  const handleAddTaskForAgent = (agentId: string) => {
+    setEditingAutomation(null);
+    setDefaultAgentId(agentId);
+    setActiveTab("create");
+    setKey(k => k + 1);
   };
 
   const handleTabSwitch = (tab: "manage" | "create" | "history") => {
@@ -131,7 +148,7 @@ export function AutomationOverlay({
           {/* Header */}
           <div className="flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 border-b border-rf-border flex-shrink-0">
             <h2 className="text-xl sm:text-2xl font-semibold text-rf-ink-900">
-              Automations{jobTitle && <span className="text-rf-text-muted font-normal"> &middot; {jobTitle}</span>}
+              Agents{jobTitle && <span className="text-rf-text-muted font-normal"> &middot; {jobTitle}</span>}
             </h2>
             <button
               onClick={handleClose}
@@ -171,7 +188,9 @@ export function AutomationOverlay({
                   jobId={jobId}
                   automations={automations}
                   triggers={triggers}
+                  agents={agents}
                   onEdit={handleEdit}
+                  onAddTaskForAgent={handleAddTaskForAgent}
                 />
               </div>
             )}
@@ -185,8 +204,10 @@ export function AutomationOverlay({
                     accountId={accountId}
                     triggers={triggers}
                     groups={groups}
+                    agents={agents}
                     onCreated={handleCreated}
                     editingAutomation={editingAutomation}
+                    defaultAgentId={defaultAgentId}
                     onCancelEdit={handleCancelEdit}
                     onDirtyChange={setIsCreateDirty}
                   />

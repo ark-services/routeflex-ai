@@ -131,6 +131,7 @@ export default async function ApplicantsPage({
     automationsResult,
     triggersResult,
     groupsForAutomationResult,
+    automationAgentsResult,
     savedViews,
     fadvConnection,
     formTokenResult,
@@ -158,6 +159,7 @@ export default async function ApplicantsPage({
         is_enabled,
         trigger_key,
         filter,
+        agent_id,
         created_at,
         updated_at,
         automation_actions (
@@ -179,6 +181,12 @@ export default async function ApplicantsPage({
       .select("id, name, color")
       .eq("board_id", board.id)
       .order("sort_order", { ascending: true }),
+    supabase
+      .from("automation_agents")
+      .select("id, name, emoji, description, sort_order, is_enabled, created_at, updated_at")
+      .eq("company_id", companyId)
+      .eq("job_id", jobId)
+      .order("sort_order", { ascending: true }),
     getBoardViews(companyId, board.id),
     getFadvConnection(companyId),
     supabase
@@ -198,6 +206,7 @@ export default async function ApplicantsPage({
   const automations = automationsResult.data;
   const triggers = triggersResult.data;
   const groupsForAutomation = groupsForAutomationResult.data;
+  const automationAgents = automationAgentsResult.data || [];
 
   // ── Error handling for critical queries ────────────────────────────────────
 
@@ -523,6 +532,7 @@ export default async function ApplicantsPage({
           automations={automations || []}
           triggers={triggers || []}
           boardGroups={groupsForAutomation || []}
+          automationAgents={automationAgents}
           isSuperAdmin={isSuperAdmin}
           setupStatus={{
             applicantCount: (applicants ?? []).length,

@@ -236,9 +236,17 @@ export interface TemplateAutomationAction {
 export interface TemplateAutomation {
   type: string;       // trigger_key value
   name?: string;
+  agent_name?: string; // name of the agent this automation belongs to (resolved on apply)
   config: Record<string, unknown>;   // filter jsonb
   trigger_config?: Record<string, unknown>; // trigger-specific config (e.g. Gmail matching rules)
   actions?: TemplateAutomationAction[];
+}
+
+export interface TemplateAgent {
+  name: string;
+  emoji: string;
+  description: string;
+  sort_order: number;
 }
 
 // ─── Template Form (Application Form captured into a template) ───────────────
@@ -282,6 +290,7 @@ export interface TemplateBoardView {
 export interface TemplatePayload {
   groups: TemplateGroup[];
   columns?: TemplateColumn[];
+  agents?: TemplateAgent[];           // Automation agent groupings (optional — older templates won't have it)
   automations?: TemplateAutomation[];
   form?: TemplateForm;  // Application Form definition (optional — older templates won't have it)
   knowledgeBase?: TemplateKnowledgeBaseEntry[];  // Q&A entries for AI automations

@@ -2231,10 +2231,21 @@ export async function moveApplicant(
 ) {
   const supabase = await createClient();
 
+  // Determine the next position in the target group so the applicant lands at the bottom
+  const { data: tail } = await supabase
+    .from("applicants")
+    .select("position")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .eq("group_id", groupId)
+    .order("position", { ascending: false })
+    .limit(1);
+  const nextPosition = (tail?.[0]?.position ?? -1) + 1;
+
   // UPDATE — RLS enforces auth, no pre-flight SELECTs needed
   const { error, count } = await supabase
     .from("applicants")
-    .update({ group_id: groupId }, { count: 'exact' })
+    .update({ group_id: groupId, position: nextPosition }, { count: 'exact' })
     .eq("id", applicantId)
     .eq("company_id", companyId)
     .eq("job_id", jobId);

@@ -28,6 +28,7 @@ export async function listJobAutomations(companyId: string, jobId: string) {
       filter,
       created_at,
       updated_at,
+      agent_id,
       automation_actions (
         id,
         type,
@@ -54,6 +55,7 @@ export async function createJobAutomation(
     name: string;
     trigger_key: string;
     filter?: Record<string, any>;
+    agent_id?: string | null;
     actions: Array<{
       type: AutomationActionType;
       config: Record<string, any>;
@@ -77,6 +79,7 @@ export async function createJobAutomation(
       trigger_key: input.trigger_key,
       filter: input.filter || {},
       created_by: user.id,
+      ...(input.agent_id ? { agent_id: input.agent_id } : {}),
     })
     .select()
     .single();
@@ -418,6 +421,7 @@ export async function updateJobAutomation(
     name: string;
     trigger_key: string;
     filter?: Record<string, any>;
+    agent_id?: string | null;
     actions: Array<{
       type: string;
       config: Record<string, any>;
@@ -434,6 +438,7 @@ export async function updateJobAutomation(
       name: input.name,
       trigger_key: input.trigger_key,
       filter: input.filter || {},
+      agent_id: input.agent_id ?? null,
     })
     .eq("id", automationId)
     .eq("company_id", companyId)
@@ -517,6 +522,7 @@ export async function duplicateJobAutomation(
       name,
       trigger_key,
       filter,
+      agent_id,
       automation_actions (
         id,
         type,
@@ -542,6 +548,7 @@ export async function duplicateJobAutomation(
       name: `${source.name} (Copy)`,
       trigger_key: source.trigger_key,
       filter: source.filter,
+      agent_id: source.agent_id ?? null,
       created_by: user.id,
     })
     .select()
@@ -860,4 +867,173 @@ export async function setupFadvAutomation(
   });
 
   return { success: true };
+}
+
+// ── Automation Agents CRUD ──────────────────────────────────────────────────
+
+export interface AutomationAgent {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  sort_order: number;
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * List all automation agents for a job
+ */
+export async function listJobAutomationAgents(
+  companyId: string,
+  jobId: string
+): Promise<AutomationAgent[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("automation_agents")
+    .select("id, name, emoji, description, sort_order, is_enabled, created_at, updated_at")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .order("sort_order", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+/**
+ * Create a new automation agent
+ */
+export async function createJobAutomationAgent(
+  companyId: string,
+  jobId: string,
+  input: { name: string; emoji?: string; description?: string }
+) {
+  const supabase = await createClient();
+
+  // Get max sort_order
+  const { data: existing } = await supabase
+    .from("automation_agents")
+    .select("sort_order")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+
+  const nextOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+  const { data, error } = await supabase
+    .from("automation_agents")
+    .insert({
+      company_id: companyId,
+      job_id: jobId,
+      name: input.name,
+      emoji: input.emoji || "🤖",
+      description: input.description || "",
+      sort_order: nextOrder,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(jobPath(companyId, jobId));
+  return data;
+}
+
+/**
+ * Update an automation agent (name, emoji)
+ */
+export async function updateJobAutomationAgent(
+  companyId: string,
+  jobId: string,
+  agentId: string,
+  input: { name?: string; emoji?: string; description?: string }
+) {
+  const supabase = await createClient();
+
+  const updates: Record<string, any> = {};
+  if (input.name !== undefined) updates.name = input.name;
+  if (input.emoji !== undefined) updates.emoji = input.emoji;
+  if (input.description !== undefined) updates.description = input.description;
+
+  const { error } = await supabase
+    .from("automation_agents")
+    .update(updates)
+    .eq("id", agentId)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(jobPath(companyId, jobId));
+}
+
+/**
+ * Toggle an automation agent enabled/disabled
+ */
+export async function toggleJobAutomationAgent(
+  companyId: string,
+  jobId: string,
+  agentId: string,
+  is_enabled: boolean
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("automation_agents")
+    .update({ is_enabled })
+    .eq("id", agentId)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(jobPath(companyId, jobId));
+}
+
+/**
+ * Delete an automation agent (automations get unassigned via ON DELETE SET NULL)
+ */
+export async function deleteJobAutomationAgent(
+  companyId: string,
+  jobId: string,
+  agentId: string
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("automation_agents")
+    .delete()
+    .eq("id", agentId)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(jobPath(companyId, jobId));
+}
+
+/**
+ * Assign an automation to an agent (or unassign with null)
+ */
+export async function assignAutomationToAgent(
+  companyId: string,
+  jobId: string,
+  automationId: string,
+  agentId: string | null
+) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("automations")
+    .update({ agent_id: agentId })
+    .eq("id", automationId)
+    .eq("company_id", companyId)
+    .eq("job_id", jobId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(jobPath(companyId, jobId));
 }

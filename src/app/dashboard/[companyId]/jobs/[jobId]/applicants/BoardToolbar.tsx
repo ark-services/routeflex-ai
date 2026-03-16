@@ -39,6 +39,7 @@ export interface BoardToolbarProps {
   automations: any[];
   triggers: any[];
   groups: any[];
+  automationAgents: any[];
   // Activity log
   onOpenActivityLog: () => void;
   // Archive drawer
@@ -71,6 +72,7 @@ export function BoardToolbar({
   automations,
   triggers,
   groups,
+  automationAgents,
   onOpenActivityLog,
   onOpenArchive,
   onOpenDefaultValues,
@@ -236,6 +238,7 @@ export function BoardToolbar({
             automations={automations}
             triggers={triggers}
             groups={groups}
+            automationAgents={automationAgents}
           />
 
           {/* More "..." menu */}

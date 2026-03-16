@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import type { TemplatePayload, TemplateColumn, TemplateForm, TemplateKnowledgeBaseEntry, TemplateBoardView } from "@/lib/types";
+import type { TemplatePayload, TemplateAgent, TemplateColumn, TemplateForm, TemplateKnowledgeBaseEntry, TemplateBoardView } from "@/lib/types";
 import { logActivityEvent } from "@/lib/activity/logActivityEvent";
 
 // ─── ID-remapping helper ──────────────────────────────────────────────────────
@@ -665,6 +665,43 @@ export async function applyTemplate(
     }
   }
 
+  // ─── Clone automation agents ───────────────────────────────────────────────
+  //
+  // Agents are created first so that automations can be assigned to them by
+  // name.  We build an agentNameToId map keyed by agent name for the lookup
+  // below.  Older templates without a payload.agents field are handled
+  // gracefully — all automations will simply be created without an agent.
+
+  const agentNameToId = new Map<string, string>();
+  const templateAgents = (payload as TemplatePayload & { agents?: TemplateAgent[] }).agents ?? [];
+
+  for (const agent of templateAgents) {
+    try {
+      const { data: newAgent, error: agentErr } = await supabase
+        .from("automation_agents")
+        .insert({
+          company_id: companyId,
+          job_id: jobId,
+          name: agent.name,
+          emoji: agent.emoji,
+          description: agent.description ?? "",
+          sort_order: agent.sort_order,
+          is_enabled: true,
+        })
+        .select("id")
+        .single();
+
+      if (agentErr || !newAgent) {
+        console.warn("[applyTemplate] Could not create agent:", agentErr?.message);
+        continue;
+      }
+
+      agentNameToId.set(agent.name, newAgent.id);
+    } catch (agentErr) {
+      console.warn("[applyTemplate] Skipping agent (insert failed):", agentErr);
+    }
+  }
+
   // ─── Clone automations (best-effort, non-blocking) ────────────────────────
   //
   // Each automation's filter (trigger config) and every action config may
@@ -689,6 +726,9 @@ export async function applyTemplate(
         groupNameToId
       );
 
+      // Resolve agent name → newly-created agent ID (if any)
+      const agentId = auto.agent_name ? agentNameToId.get(auto.agent_name) ?? null : null;
+
       const { data: newAutomation, error: autoInsertErr } = await supabase
         .from("automations")
         .insert({
@@ -699,6 +739,7 @@ export async function applyTemplate(
           filter: remappedFilter,
           trigger_config: auto.trigger_config ?? {},
           is_enabled: false, // user enables manually after reviewing
+          agent_id: agentId,
         })
         .select("id")
         .single();
