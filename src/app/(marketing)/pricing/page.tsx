@@ -32,6 +32,7 @@ const tiers: {
     features: [
       { label: "Companies", value: "1" },
       { label: "Active job postings", value: "1" },
+      { label: "Agents per job", value: "5" },
       { label: "User seats", value: "1" },
       { label: "Automation actions", value: "1,000/mo" },
       { label: "AI actions", value: "100/mo" },
@@ -52,6 +53,7 @@ const tiers: {
     features: [
       { label: "Companies", value: "3" },
       { label: "Active job postings", value: "9" },
+      { label: "Agents per job", value: "7" },
       { label: "User seats", value: "5" },
       { label: "Automation actions", value: "3,000/mo" },
       { label: "AI actions", value: "300/mo" },
@@ -72,6 +74,7 @@ const tiers: {
     features: [
       { label: "Companies", value: "Unlimited" },
       { label: "Active job postings", value: "Unlimited" },
+      { label: "Agents per job", value: "10" },
       { label: "User seats", value: "10" },
       { label: "Automation actions", value: "7,000/mo" },
       { label: "AI actions", value: "700/mo" },

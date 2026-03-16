@@ -4,9 +4,9 @@ import { MarketingFooter } from "@/components/marketing/footer";
 import { WaitlistModal } from "@/components/marketing/WaitlistModal";
 
 export const metadata: Metadata = {
-  title: "RouteFlex - Automated Recruiting for FedEx Contractors",
+  title: "RouteFlex - Your AI Recruiting Team for FedEx Contractors",
   description:
-    "The Monday-style recruiting platform built for FedEx Ground contractors. Automate applicant tracking, background checks, and onboarding.",
+    "Build a team of AI agents that manages your entire hiring pipeline — from application to first day on route. Built for FedEx Ground contractors.",
 };
 
 export default function MarketingLayout({

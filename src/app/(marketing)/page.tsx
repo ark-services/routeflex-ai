@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { WaitlistButton } from "@/components/marketing/WaitlistButton";
+import { HeroAgentTeamMockup } from "@/components/marketing/HeroAgentTeamMockup";
+import { AgentTeamTemplate } from "@/components/marketing/AgentTeamTemplate";
 import {
   ArrowRight,
   ArrowDown,
-  Inbox,
-  Bot,
-  ShieldCheck,
-  GraduationCap,
-  Calendar,
   DollarSign,
   Clock,
   Brain,
@@ -19,131 +16,12 @@ import {
   BookOpen,
   TrendingUp,
   AlertCircle,
+  Layers,
+  Zap,
 } from "lucide-react";
 import { CostCalculator } from "@/components/marketing/cost-calculator";
 
-/* ── Hero: Full-pipeline mockup ── */
-function HeroPipelineMockup() {
-  return (
-    <div className="rounded-rf-xl border border-rf-border bg-rf-surface-card shadow-rf-xl overflow-hidden">
-      {/* Browser chrome */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-rf-border bg-rf-surface-page">
-        <div className="flex gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-rf-ink-100" />
-          <div className="w-2.5 h-2.5 rounded-full bg-rf-ink-100" />
-          <div className="w-2.5 h-2.5 rounded-full bg-rf-ink-100" />
-        </div>
-        <div className="flex-1 mx-3">
-          <div className="bg-rf-surface-card rounded-rf-md border border-rf-border px-3 py-1 text-[10px] font-mono text-rf-text-muted text-center">
-            app.routeflex.ai/pipeline
-          </div>
-        </div>
-      </div>
-
-      <div className="p-4 bg-rf-surface-page">
-        {/* Pipeline funnel — shows the full 5-stage journey */}
-        <div className="flex gap-2 mb-4">
-          {[
-            { name: "Applied", count: 8, color: "bg-rf-ink-300" },
-            { name: "Screened", count: 5, color: "bg-[#D97706]" },
-            { name: "FADV", count: 3, color: "bg-[#16A34A]" },
-            { name: "Training", count: 2, color: "bg-rf-blue" },
-            { name: "Day 1", count: 1, color: "bg-rf-blue" },
-          ].map((s) => (
-            <div key={s.name} className="flex-1 text-center">
-              <div className={`h-1 rounded-full ${s.color} mb-1.5`} />
-              <div className="text-sm font-black text-rf-text-primary">
-                {s.count}
-              </div>
-              <div className="text-[8px] font-mono text-rf-text-muted uppercase tracking-wider">
-                {s.name}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Candidate journey tracker */}
-        <div className="rounded-rf-lg bg-rf-surface-card border border-rf-border p-3 mb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-rf-md bg-rf-blue-tint flex items-center justify-center text-[9px] font-bold text-rf-blue">
-              DP
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-semibold text-rf-text-primary">
-                Diana Patel · CDL-A
-              </div>
-            </div>
-            <span className="text-[9px] font-mono text-rf-success bg-rf-success-bg px-2 py-0.5 rounded-rf-pill">
-              Stage 4/5
-            </span>
-          </div>
-          <div className="flex gap-0.5">
-            {[
-              { label: "Applied", done: true },
-              { label: "Screened", done: true },
-              { label: "FADV Clear", done: true },
-              { label: "Training", active: true },
-              { label: "Day 1", done: false },
-            ].map((stage) => (
-              <div key={stage.label} className="flex-1">
-                <div
-                  className={`h-1.5 rounded-full ${
-                    stage.done
-                      ? "bg-rf-blue"
-                      : stage.active
-                        ? "bg-rf-blue/40"
-                        : "bg-rf-ink-100"
-                  }`}
-                />
-                <div className="text-[7px] font-mono text-rf-text-muted mt-1 text-center truncate">
-                  {stage.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Live activity feed */}
-        <div className="space-y-1.5">
-          {[
-            {
-              text: "Safety training assigned to Diana Patel",
-              time: "now",
-              dot: "bg-rf-blue",
-            },
-            {
-              text: "AI screened 4 applicants — 2 qualified",
-              time: "2m",
-              dot: "bg-[#D97706]",
-            },
-            {
-              text: "Tom Lee auto-submitted to FADV",
-              time: "15m",
-              dot: "bg-[#16A34A]",
-            },
-          ].map((item) => (
-            <div
-              key={item.text}
-              className="flex items-center gap-2 text-[10px]"
-            >
-              <div
-                className={`w-1.5 h-1.5 rounded-full ${item.dot} flex-shrink-0`}
-              />
-              <span className="text-rf-text-secondary flex-1 truncate">
-                {item.text}
-              </span>
-              <span className="text-rf-text-muted font-mono flex-shrink-0">
-                {item.time}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Section 4: AI learning accuracy visual ── */
+/* ── AI learning accuracy visual ── */
 function AILearningVisual() {
   const weeks = [
     { label: "Week 1", value: 82 },
@@ -157,7 +35,7 @@ function AILearningVisual() {
       <div className="flex items-center gap-2 mb-6">
         <TrendingUp className="h-4 w-4 text-rf-blue" />
         <span className="text-xs font-bold text-rf-text-primary">
-          Screening Accuracy
+          Agent Team Accuracy
         </span>
         <span className="text-[10px] font-mono text-rf-success bg-rf-success-bg px-2 py-0.5 rounded-rf-pill ml-auto">
           Improving
@@ -182,8 +60,8 @@ function AILearningVisual() {
         ))}
       </div>
       <p className="text-[10px] text-rf-text-muted mt-5 leading-relaxed">
-        Based on your knowledge base and hiring patterns. Accuracy improves as
-        you hire.
+        Based on your knowledge base and team activity. Accuracy improves as
+        your agents learn.
       </p>
     </div>
   );
@@ -194,80 +72,111 @@ function AILearningVisual() {
 const problems = [
   {
     icon: Clock,
-    title: "They stop at \"ready to train.\"",
+    title: "Agencies hand you a candidate and walk away.",
     description:
-      "Agencies hand off a candidate who cleared a background check. Road tests, safety training, HR paperwork, TSA processing, scheduling Day 1 — that's all still on you.",
+      "They stop at the background check. Road tests, safety training, HR paperwork, TSA processing, Day 1 scheduling — that's all still on you. You're paying for half the job.",
   },
   {
     icon: DollarSign,
-    title: "They charge more the more you hire.",
+    title: "One recruiter. One bottleneck. One invoice.",
     description:
-      "Need 10 drivers this month instead of 3? Your agency bill doubles. Running 2 terminals? Double it again. You're penalized for growing.",
+      "A single recruiter juggles every step — and you pay per placement. Need more drivers? The cost scales linearly. But a team of agents scales instantly.",
   },
   {
     icon: AlertCircle,
-    title: "Their process never gets better.",
+    title: "Their process never learns your operation.",
     description:
-      "Every candidate goes through the same generic pipeline. No learning. No improvement. No intelligence behind who actually succeeds at your operation.",
+      "Generic pipeline, generic candidates. No memory of who succeeds at your terminals. No improvement cycle. Every hire starts from scratch.",
   },
 ];
 
-const pipelineStages = [
+const agentCapabilities = [
+  {
+    emoji: "🔍",
+    name: "Screening",
+    description:
+      "AI-score every applicant against FedEx requirements and your custom preferences. Send personalized responses. Filter out unqualified candidates instantly.",
+  },
+  {
+    emoji: "🛡️",
+    name: "Background Checks",
+    description:
+      "Auto-submit qualified candidates to First Advantage. Approve background checks automatically. Track status in real time. Send follow-ups when candidates stall.",
+  },
+  {
+    emoji: "✈️",
+    name: "TSA Approval",
+    description:
+      "Track TSA vetting status for every candidate. Send automated nudges. Update the board when clearances come through.",
+  },
+  {
+    emoji: "🎓",
+    name: "Safety Training",
+    description:
+      "Assign courses through the built-in LMS. Track completion rates. Ensure every driver finishes required training before Day 1.",
+  },
+  {
+    emoji: "📋",
+    name: "HR Paperwork",
+    description:
+      "Send and track W-4s, I-9s, direct deposit forms, and every document needed. Answer candidate questions from your knowledge base.",
+  },
+  {
+    emoji: "📅",
+    name: "Onboarding",
+    description:
+      "Schedule road tests and first days. Ensure every step is complete. The candidate shows up prepared. You show up confident.",
+  },
+  {
+    emoji: "📊",
+    name: "Reporting",
+    description:
+      "Pipeline cleanup, status updates, candidate archival. Keep your board organized without lifting a finger.",
+  },
+];
+
+const howItWorks = [
   {
     num: "01",
-    label: "Capture",
-    icon: Inbox,
+    icon: Layers,
+    title: "Pick a template or start from scratch",
     description:
-      "Candidates apply through your Indeed ad and land directly in RouteFlex. Smart intake forms collect license type, availability, commute range, and experience.",
+      "Deploy a pre-built agent team for P&D, Linehaul, or AVP drivers — or build your own from the ground up. Every agent is customizable.",
   },
   {
     num: "02",
-    label: "Screen",
-    icon: Bot,
+    icon: BookOpen,
+    title: "Train your agents",
     description:
-      "AI scores and qualifies every applicant instantly — checking against FedEx requirements and your custom preferences. Sends texts, emails, and answers questions automatically.",
+      "Add your knowledge base, set screening criteria, customize communications. Your agents learn what works at your operation.",
   },
   {
     num: "03",
-    label: "First Advantage",
-    icon: ShieldCheck,
+    icon: Zap,
+    title: "Let them work",
     description:
-      "Qualified candidates are auto-submitted to FADV. Background checks approved automatically. Status updates flow into your dashboard in real time.",
-  },
-  {
-    num: "04",
-    label: "Onboard",
-    icon: GraduationCap,
-    description:
-      "Schedule road tests. Assign safety training through the built-in LMS. Track HR paperwork. Manage TSA processing. Everything to get route-ready.",
-  },
-  {
-    num: "05",
-    label: "Day 1",
-    icon: Calendar,
-    description:
-      "Schedule their first day. Every step tracked and visible. The candidate shows up prepared. You show up confident.",
+      "Agents handle the pipeline 24/7. You review results, refine guidance, and watch them improve with every hire.",
   },
 ];
 
 const aiFeatures = [
   {
     icon: BookOpen,
-    title: "Knowledge Base",
+    title: "Agent Training",
     description:
-      "Build a knowledge base specific to your operation. The AI uses it to screen better, answer candidate questions, and match candidates to your actual needs.",
+      "Build a knowledge base that powers your entire team. Pay policies, route details, operation-specific FAQs — your agents use it to screen better and answer candidate questions accurately.",
   },
   {
     icon: TrendingUp,
-    title: "Pattern Recognition",
+    title: "Collective Intelligence",
     description:
-      "The more applicants interact with your pipeline, the better the AI gets at identifying who'll succeed — and who'll ghost.",
+      "Every agent improves from your hiring patterns. The screener gets better at identifying top candidates. Communications get more natural. The whole team levels up together.",
   },
   {
     icon: Brain,
-    title: "Your Hiring Agent",
+    title: "Always Improving",
     description:
-      "RouteFlex learns what a good hire looks like at your operation. Not a one-size-fits-all tool — a hiring agent that improves every cycle.",
+      "Traditional agencies never learn. Your agents do. They learn what a good hire looks like at your operation — and what a ghost looks like too.",
   },
 ];
 
@@ -275,7 +184,7 @@ const comparisonRows = [
   {
     feature: "What you get",
     agency: "A recruiter who finds candidates",
-    routeflex: "An AI platform that runs your hiring pipeline",
+    routeflex: "A team of AI agents running your pipeline",
   },
   {
     feature: "Pipeline ends at",
@@ -283,24 +192,24 @@ const comparisonRows = [
     routeflex: "Driver's first day on route",
   },
   {
-    feature: "Who controls pipeline",
+    feature: "Who manages pipeline",
     agency: "They do",
-    routeflex: "You do",
+    routeflex: "Your agents do, with your guidance",
   },
   {
     feature: "First Advantage",
     agency: "Manual processing",
-    routeflex: "Fully automated — submit, approve, track",
+    routeflex: "FADV Agent — fully automated",
   },
   {
     feature: "Screening",
     agency: "Manual, by their team",
-    routeflex: "AI-powered, improves over time",
+    routeflex: "Screener Agent — AI-powered, improves over time",
   },
   {
     feature: "Onboarding & training",
     agency: "Not included",
-    routeflex: "Built-in LMS, HR, road tests",
+    routeflex: "HR Agent — built-in LMS, paperwork tracking",
   },
   {
     feature: "Monthly cost",
@@ -315,16 +224,17 @@ const comparisonRows = [
   {
     feature: "Gets smarter",
     agency: "No",
-    routeflex: "Yes — learns your patterns",
+    routeflex: "Yes — every agent learns from every hire",
   },
 ];
 
 const templates = [
   {
     icon: Truck,
-    name: "P&D Driver",
-    stages: 5,
-    automations: 14,
+    name: "P&D Driver Team",
+    agents: 5,
+    tasks: 14,
+    agentEmojis: ["🔍", "🛡️", "🎓", "📋", "📊"],
     features: [
       "FADV auto-submit",
       "Safety training",
@@ -334,9 +244,10 @@ const templates = [
   },
   {
     icon: MapPin,
-    name: "Linehaul Driver",
-    stages: 4,
-    automations: 11,
+    name: "Linehaul Driver Team",
+    agents: 4,
+    tasks: 11,
+    agentEmojis: ["🔍", "🛡️", "📋", "📊"],
     features: [
       "FADV auto-submit",
       "DOT compliance",
@@ -346,9 +257,10 @@ const templates = [
   },
   {
     icon: Package,
-    name: "AVP Driver",
-    stages: 4,
-    automations: 8,
+    name: "AVP Driver Team",
+    agents: 4,
+    tasks: 8,
+    agentEmojis: ["🔍", "🛡️", "📋", "📊"],
     features: [
       "Background check",
       "Vehicle verification",
@@ -360,7 +272,7 @@ const templates = [
 
 const metrics = [
   { value: "91%", label: "Less than agency cost" },
-  { value: "15+", label: "Hours saved per month" },
+  { value: "24/7", label: "Agents always working" },
   { value: "<24hr", label: "Avg. time to screen" },
   { value: "0", label: "Lock-in contracts" },
 ];
@@ -387,24 +299,24 @@ export default function LandingPage() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-rf-pill bg-rf-blue-tint text-rf-blue text-xs font-bold tracking-wide uppercase mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-rf-blue" />
-                Built for FedEx Ground Contractors
+                AI Agents for FedEx Ground Contractors
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black tracking-tight text-rf-text-primary leading-[1.08]">
-                From application to first day.{" "}
-                <span className="text-rf-blue">No recruiter required.</span>
+                Build your AI{" "}
+                <span className="text-rf-blue">recruiting team.</span>
               </h1>
 
-              <p className="text-lg text-rf-text-secondary max-w-lg mt-6 leading-relaxed">
-                RouteFlex is the AI hiring platform for FedEx contractors.
-                Screen applicants, automate First Advantage, manage training and
-                onboarding — from one dashboard that gets smarter every time you
-                hire.
+              <p className="text-base sm:text-lg text-rf-text-secondary max-w-lg mt-6 leading-relaxed">
+                An agent for every step. A fraction of the cost. Instead of one
+                recruiter juggling your entire pipeline, build a team of AI
+                agents — each one specialized for a step in the hiring process.
+                They work 24/7, and they get smarter every time you hire.
               </p>
 
               <div className="flex flex-col sm:flex-row items-start gap-3 mt-8">
                 <Link
-                  href="#pipeline"
+                  href="#how-it-works"
                   className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-md hover:shadow-rf-lg"
                 >
                   See How It Works
@@ -419,11 +331,11 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Product mockup — full pipeline */}
+            {/* Product mockup — agent team */}
             <div className="relative lg:ml-4">
               <div className="absolute -inset-8 bg-rf-blue/5 rounded-[32px] blur-2xl pointer-events-none" />
               <div className="relative">
-                <HeroPipelineMockup />
+                <HeroAgentTeamMockup />
               </div>
             </div>
           </div>
@@ -437,8 +349,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="max-w-3xl mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-rf-text-primary">
-              Recruiting agencies solve half the problem and charge you for the
-              whole thing
+              You&apos;re paying a recruiter. You should be building a team.
             </h2>
           </div>
 
@@ -464,49 +375,44 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          Section 3: THE PIPELINE (Centerpiece)
-          5-stage journey with "Agencies stop here" divider
+          Section 3: THE CONCEPT — Agent Capabilities
           ══════════════════════════════════════════════════════ */}
       <section
-        id="pipeline"
+        id="agents"
         className="py-20 sm:py-28 bg-rf-surface-page scroll-mt-20"
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <p className="text-xs font-bold text-rf-blue uppercase tracking-widest mb-3">
-              The full journey
+              Your AI recruiting team
             </p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-rf-text-primary">
-              One platform. Application to Day 1.
+              An agent for every step in your pipeline.
             </h2>
             <p className="text-rf-text-secondary mt-4 leading-relaxed">
-              Watch a candidate move through your entire hiring pipeline — from
-              Indeed application to their first day on a route.
+              You decide what agents you need. Give each one a job. They handle
+              it from there — screening, background checks, training,
+              onboarding, and anything else your pipeline requires.
             </p>
           </div>
 
-          {/* Stages 1–3: what agencies cover */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {pipelineStages.slice(0, 3).map((stage) => (
+          {/* Top row — the steps agencies cover */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {agentCapabilities.slice(0, 3).map((cap) => (
               <div
-                key={stage.num}
+                key={cap.name}
                 className="rounded-rf-xl border border-rf-border bg-rf-surface-card p-6"
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-rf-lg bg-rf-blue-tint flex items-center justify-center">
-                    <stage.icon className="h-4 w-4 text-rf-blue" />
+                  <div className="w-10 h-10 rounded-rf-lg bg-rf-blue-tint flex items-center justify-center text-lg">
+                    {cap.emoji}
                   </div>
-                  <div>
-                    <span className="text-[10px] font-mono text-rf-text-muted block">
-                      {stage.num}
-                    </span>
-                    <span className="text-sm font-bold text-rf-text-primary uppercase tracking-wide">
-                      {stage.label}
-                    </span>
-                  </div>
+                  <span className="text-sm font-bold text-rf-text-primary uppercase tracking-wide">
+                    {cap.name}
+                  </span>
                 </div>
                 <p className="text-sm text-rf-text-secondary leading-relaxed">
-                  {stage.description}
+                  {cap.description}
                 </p>
               </div>
             ))}
@@ -519,39 +425,39 @@ export default function LandingPage() {
             </div>
             <div className="relative flex justify-center">
               <span className="bg-rf-surface-page px-5 py-2 rounded-rf-pill text-[11px] font-bold uppercase tracking-wider text-rf-text-muted border border-rf-border">
-                Agencies stop here · RouteFlex keeps going
+                Agencies stop here · Your agents keep going
               </span>
             </div>
           </div>
 
-          {/* Stages 4–5: only RouteFlex — highlighted */}
+          {/* Bottom row — what only your agents cover */}
           <div className="rounded-rf-2xl border-2 border-rf-blue/20 bg-rf-blue/[0.03] p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {pipelineStages.slice(3).map((stage) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {agentCapabilities.slice(3).map((cap) => (
                 <div
-                  key={stage.num}
-                  className="rounded-rf-xl border border-rf-blue/10 bg-rf-surface-card p-6"
+                  key={cap.name}
+                  className="rounded-rf-xl border border-rf-blue/10 bg-rf-surface-card p-5"
                 >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-9 h-9 rounded-rf-lg bg-rf-blue flex items-center justify-center">
-                      <stage.icon className="h-4 w-4 text-white" />
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-rf-md bg-rf-blue flex items-center justify-center text-sm">
+                      {cap.emoji}
                     </div>
-                    <div>
-                      <span className="text-[10px] font-mono text-rf-blue block">
-                        {stage.num}
-                      </span>
-                      <span className="text-sm font-bold text-rf-text-primary uppercase tracking-wide">
-                        {stage.label}
-                      </span>
-                    </div>
+                    <span className="text-xs font-bold text-rf-text-primary uppercase tracking-wide">
+                      {cap.name}
+                    </span>
                   </div>
-                  <p className="text-sm text-rf-text-secondary leading-relaxed">
-                    {stage.description}
+                  <p className="text-xs text-rf-text-secondary leading-relaxed">
+                    {cap.description}
                   </p>
                 </div>
               ))}
             </div>
           </div>
+
+          <p className="text-center text-sm text-rf-text-muted mt-8">
+            These are just examples. Build as many agents as your pipeline
+            needs — each one customized for your operation.
+          </p>
 
           <div className="mt-10 text-center">
             <WaitlistButton className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-dark px-6 py-3 rounded-rf-lg transition-all shadow-rf-md hover:shadow-rf-lg">
@@ -563,22 +469,66 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          Section 4: THE AI THAT LEARNS
+          Section 4: HOW IT WORKS
           ══════════════════════════════════════════════════════ */}
-      <section className="py-16 sm:py-24 bg-rf-surface-card border-y border-rf-border">
+      <section
+        id="how-it-works"
+        className="py-16 sm:py-24 bg-rf-surface-card border-y border-rf-border scroll-mt-20"
+      >
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <p className="text-xs font-bold text-rf-blue uppercase tracking-widest mb-3">
+              Getting started
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-rf-text-primary">
+              Three steps to your own recruiting team.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {howItWorks.map((step) => (
+              <div
+                key={step.num}
+                className="rounded-rf-xl border border-rf-border bg-rf-surface-page p-7"
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-rf-lg bg-rf-blue text-white flex items-center justify-center text-sm font-black">
+                    {step.num}
+                  </div>
+                  <div className="w-9 h-9 rounded-rf-md bg-rf-blue-tint flex items-center justify-center">
+                    <step.icon className="h-4 w-4 text-rf-blue" />
+                  </div>
+                </div>
+                <h3 className="text-base font-bold text-rf-text-primary mb-2">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-rf-text-secondary leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          Section 5: THE AI THAT LEARNS
+          ══════════════════════════════════════════════════════ */}
+      <section className="py-16 sm:py-24 bg-rf-surface-page">
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <div>
               <p className="text-xs font-bold text-rf-blue uppercase tracking-widest mb-3">
-                Adaptive AI
+                Continuous improvement
               </p>
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-rf-text-primary">
-                An AI hiring agent that gets smarter every time you hire
+                Your agents get better. Every single hire.
               </h2>
               <p className="text-rf-text-secondary mt-4 leading-relaxed max-w-lg">
-                Not a static chatbot. Not a generic screening tool. A hiring
-                agent trained on your operation that improves with every
-                candidate.
+                This isn&apos;t a static tool you configure once. Your agents
+                learn from your knowledge base, your hiring patterns, and your
+                feedback. Week over week, they screen more accurately and
+                communicate more naturally.
               </p>
 
               <div className="mt-8 space-y-6">
@@ -608,7 +558,7 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          Section 5: COST COMPARISON
+          Section 6: COST COMPARISON
           ══════════════════════════════════════════════════════ */}
       <section className="py-20 sm:py-28 bg-[#0B1120] relative overflow-hidden">
         {/* Subtle grid texture */}
@@ -637,8 +587,9 @@ export default function LandingPage() {
               <span className="text-rf-blue">$149/mo</span>
             </h2>
             <p className="text-[#9BAABB] mt-4 max-w-xl mx-auto leading-relaxed">
-              Agencies charge per location, require exclusivity, and stop at
-              background checks. Here&apos;s what you actually get.
+              A recruiting agency gives you one recruiter who stops at the
+              background check. RouteFlex gives you a team of AI agents who take
+              candidates from application to Day 1.
             </p>
           </div>
 
@@ -654,14 +605,14 @@ export default function LandingPage() {
             <div className="flex items-center gap-2 px-4">
               <div className="w-2 h-2 rounded-full bg-rf-blue flex-shrink-0" />
               <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-rf-blue">
-                RouteFlex
+                Your Agent Team
               </span>
             </div>
           </div>
 
           {/* Comparison rows */}
           <div className="space-y-1.5">
-            {comparisonRows.map((row, i) => (
+            {comparisonRows.map((row) => (
               <div
                 key={row.feature}
                 className="grid grid-cols-[1.1fr_1fr_1fr] gap-0 rounded-xl overflow-hidden"
@@ -693,8 +644,8 @@ export default function LandingPage() {
             <CostCalculator />
           </div>
           <p className="text-center text-xs text-[#4A5568] mt-4 max-w-xl mx-auto">
-            RouteFlex also includes onboarding, training, and Day 1 management —
-            which agencies don&apos;t offer at any price.
+            Your agent team also handles onboarding, training, and Day 1
+            management — things agencies don&apos;t offer at any price.
           </p>
 
           <div className="mt-10 text-center">
@@ -710,7 +661,7 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          Section 6: TEMPLATES & QUICK START
+          Section 7: PRE-BUILT AGENT TEAMS
           ══════════════════════════════════════════════════════ */}
       <section className="py-16 sm:py-20 bg-rf-surface-card border-y border-rf-border">
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
@@ -719,58 +670,30 @@ export default function LandingPage() {
               Quick start
             </p>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-rf-text-primary">
-              Go live in minutes, not weeks
+              Go live in minutes.
             </h2>
             <p className="text-rf-text-secondary mt-4 leading-relaxed">
-              Pick a pre-built template with proven workflows and automations. Or
-              build from scratch. No waiting for a recruiter to onboard you.
+              Deploy a pre-built agent team with proven workflows and
+              automations. Or build your own team from scratch — add as many
+              agents as your pipeline needs.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {templates.map((tmpl) => (
-              <div
-                key={tmpl.name}
-                className="group rounded-rf-xl border border-rf-border bg-rf-surface-page p-6 hover:shadow-rf-md hover:border-rf-blue/30 transition-all cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-rf-lg bg-rf-blue-tint flex items-center justify-center mb-4 group-hover:bg-rf-blue transition-colors">
-                  <tmpl.icon className="h-5 w-5 text-rf-blue group-hover:text-white transition-colors" />
-                </div>
-                <h3 className="text-base font-bold text-rf-text-primary mb-1">
-                  {tmpl.name}
-                </h3>
-                <div className="flex gap-3 text-[11px] font-mono text-rf-text-muted mb-4">
-                  <span>{tmpl.stages} stages</span>
-                  <span>·</span>
-                  <span>{tmpl.automations} automations</span>
-                </div>
-                <ul className="space-y-1.5 mb-5">
-                  {tmpl.features.map((f) => (
-                    <li
-                      key={f}
-                      className="flex items-center gap-2 text-xs text-rf-text-secondary"
-                    >
-                      <Check className="h-3 w-3 text-rf-success flex-shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <div className="text-xs font-bold text-rf-blue group-hover:text-rf-blue-dark flex items-center gap-1 transition-colors">
-                  Use Template <ArrowRight className="h-3 w-3" />
-                </div>
-              </div>
+              <AgentTeamTemplate key={tmpl.name} {...tmpl} />
             ))}
           </div>
 
           <p className="text-xs text-rf-text-muted mt-6 text-center">
-            Want full control? Build your workspace from scratch with custom
-            stages, automations, and rules.
+            Or build your own team from scratch — add as many agents as your
+            pipeline needs.
           </p>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          Section 7: SOCIAL PROOF
+          Section 8: SOCIAL PROOF
           ══════════════════════════════════════════════════════ */}
 
       {/* Metrics strip */}
@@ -796,9 +719,9 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto px-6 lg:px-10 text-center">
           <Quote className="h-8 w-8 text-rf-blue/20 mx-auto mb-6" />
           <blockquote className="text-xl sm:text-2xl font-semibold text-rf-text-primary leading-relaxed tracking-tight">
-            &ldquo;We went from paying an agency $3,400 a month to managing the
-            whole pipeline ourselves — from Indeed ad to first day on the road.
-            RouteFlex paid for itself in the first week.&rdquo;
+            &ldquo;We went from paying an agency $3,400 a month to having our
+            own AI team managing the whole pipeline — from Indeed ad to first day
+            on the road. RouteFlex paid for itself in the first week.&rdquo;
           </blockquote>
           <div className="mt-6">
             <p className="text-sm font-bold text-rf-text-primary">
@@ -812,7 +735,7 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          Section 8: FINAL CTA
+          Section 9: FINAL CTA
           ══════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden bg-[#0F1623] py-20 sm:py-24">
         <div
@@ -826,11 +749,11 @@ export default function LandingPage() {
 
         <div className="relative max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            Ready to own your hiring pipeline?
+            Ready to build your recruiting team?
           </h2>
           <p className="text-[#9BAABB] mt-4 max-w-xl mx-auto leading-relaxed">
-            No long-term contracts. No exclusivity. Cancel anytime. Your data
-            stays yours.
+            No recruiter fees. No contracts. No exclusivity. Your agents start
+            working the moment you deploy them.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
             <WaitlistButton className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg">

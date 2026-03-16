@@ -3,6 +3,7 @@ import { login } from "../actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { RouteFlexLogo } from "@/components/ui/routeflex-logo";
 import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 import { WaitlistModal } from "@/components/marketing/WaitlistModal";
 
@@ -14,15 +15,13 @@ export default async function LoginPage({
   const { error, redirectTo } = await searchParams;
 
   return (
-    <div className="flex min-h-screen items-center justify-center py-12">
+    <>
       <WaitlistModal />
-      <Card className="w-full max-w-sm p-8">
-        <div className="text-center space-y-1 mb-8">
-          <p className="text-sm font-semibold tracking-tight text-rf-text-muted">
-            RouteFlex AI
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight text-rf-text-primary">
-            Log in
+      <Card className="mx-auto w-full max-w-sm p-8">
+        <div className="mb-8 flex flex-col items-center gap-5">
+          <RouteFlexLogo size="default" />
+          <h1 className="text-2xl font-semibold tracking-tight text-rf-text-primary">
+            Log in to your account
           </h1>
         </div>
         {error && (
@@ -61,7 +60,10 @@ export default async function LoginPage({
           </Button>
         </form>
         <p className="text-sm text-rf-text-secondary text-center mt-4">
-          <Link href="/forgot-password" className="text-rf-text-primary hover:text-rf-ink-700 font-medium">
+          <Link
+            href="/forgot-password"
+            className="text-rf-text-primary hover:text-rf-ink-700 font-medium"
+          >
             Forgot password?
           </Link>
         </p>
@@ -72,6 +74,6 @@ export default async function LoginPage({
           </WaitlistButton>
         </p>
       </Card>
-    </div>
+    </>
   );
 }

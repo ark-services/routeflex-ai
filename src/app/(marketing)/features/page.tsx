@@ -3,13 +3,9 @@ import Link from "next/link";
 import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 import {
   ArrowRight,
-  Inbox,
-  FileText,
-  UserCheck,
   Bot,
   MessageSquare,
   Star,
-  SlidersHorizontal,
   LayoutDashboard,
   MapPin,
   CalendarClock,
@@ -17,33 +13,32 @@ import {
   CalendarRange,
   BarChart3,
   ShieldCheck,
-  DollarSign,
-  Download,
-  Brain,
+  Zap,
   GraduationCap,
   ClipboardList,
   Car,
   Plane,
   Calendar,
-  Zap,
   Layers,
+  UserCheck,
 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Features - RouteFlex",
   description:
-    "AI screening, deep First Advantage integration, built-in LMS, and full onboarding management — hire drivers from application to first day.",
+    "Build AI agents for every step in your hiring pipeline — screening, background checks, training, onboarding, and more.",
 };
 
-/* ── Feature categories ── */
-const categories = [
+/* ── Agent capability areas ── */
+const capabilities = [
   {
-    id: "ai-agent",
-    label: "AI Agent",
+    id: "screening",
+    emoji: "🔍",
+    label: "Screening",
     color: "bg-rf-blue",
-    title: "An AI hiring agent that gets better with every hire",
+    title: "Build a screener that learns what a good hire looks like",
     description:
-      "AI screens applications, scores candidates, writes emails, sends text reminders, and answers candidate questions — all trained on a knowledge base you build. The more you hire, the smarter it gets.",
+      "Create an agent that screens every applicant against FedEx requirements and your custom preferences. It scores candidates, sends personalized responses, answers questions from your knowledge base, and gets smarter with every hire.",
     features: [
       {
         icon: Bot,
@@ -61,21 +56,21 @@ const categories = [
         icon: BookOpen,
         title: "Knowledge Base",
         description:
-          "Build a knowledge base to train your hiring agent. Feed it your best practices, FAQs, and preferences. The AI learns what works for your operation.",
+          "Train your screening agent with your best practices, FAQs, and preferences. It learns what works for your operation.",
       },
       {
         icon: Star,
         title: "Improves Over Time",
         description:
-          "The more applicants interact with your pipeline, the better AI gets at identifying top candidates and matching your hiring patterns.",
+          "The more applicants interact with your pipeline, the better your agent gets at identifying top candidates and matching your hiring patterns.",
       },
     ],
     visual: (
       <div className="rounded-rf-xl border border-rf-border bg-rf-surface-page p-5 shadow-rf-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Bot className="h-4 w-4 text-rf-blue" />
+          <span className="text-base">🔍</span>
           <span className="text-xs font-bold text-rf-text-primary">
-            AI Hiring Agent
+            Screener Agent
           </span>
           <span className="text-[10px] font-mono text-rf-success bg-rf-success-bg px-2 py-0.5 rounded-rf-pill ml-auto">
             Active
@@ -110,7 +105,8 @@ const categories = [
                 Answered candidate question
               </div>
               <div className="text-[9px] font-mono text-rf-text-muted">
-                &ldquo;What&apos;s the pay structure?&rdquo; → Knowledge base response
+                &ldquo;What&apos;s the pay structure?&rdquo; → Knowledge base
+                response
               </div>
             </div>
             <span className="text-[9px] text-rf-text-muted">1h ago</span>
@@ -120,18 +116,19 @@ const categories = [
     ),
   },
   {
-    id: "fadv",
-    label: "First Advantage",
+    id: "background-checks",
+    emoji: "🛡️",
+    label: "Background Checks",
     color: "bg-[#16A34A]",
-    title: "The deepest FADV integration in the industry",
+    title: "An FADV agent that handles background checks end to end",
     description:
-      "RouteFlex doesn't just \"guide\" candidates through First Advantage — it's fully integrated. Applications are submitted automatically, background checks are approved, and status updates flow back to your dashboard in real time.",
+      "Build an agent that auto-submits qualified candidates to First Advantage, approves background checks, tracks status in real time, and follows up when candidates stall. The deepest FADV integration in the industry.",
     features: [
       {
         icon: ShieldCheck,
         title: "Automatic Submission",
         description:
-          "When a candidate is ready, RouteFlex submits their application to First Advantage automatically. No manual data entry.",
+          "When a candidate is ready, your agent submits their application to First Advantage automatically. No manual data entry.",
       },
       {
         icon: UserCheck,
@@ -155,16 +152,31 @@ const categories = [
     visual: (
       <div className="rounded-rf-xl border border-rf-border bg-rf-surface-page p-5 shadow-rf-sm">
         <div className="flex items-center gap-2 mb-4">
-          <ShieldCheck className="h-4 w-4 text-[#16A34A]" />
+          <span className="text-base">🛡️</span>
           <span className="text-xs font-bold text-rf-text-primary">
-            First Advantage
+            FADV Agent
           </span>
         </div>
         <div className="space-y-2.5">
           {[
-            { name: "Diana Patel", status: "Clear", statusColor: "text-rf-success bg-rf-success-bg", detail: "Background check passed" },
-            { name: "Tom Lee", status: "In Progress", statusColor: "text-[#D97706] bg-[#D97706]/10", detail: "Submitted 2 days ago" },
-            { name: "Sarah Adams", status: "Auto-Submitted", statusColor: "text-rf-blue bg-rf-blue-tint", detail: "Just now" },
+            {
+              name: "Diana Patel",
+              status: "Clear",
+              statusColor: "text-rf-success bg-rf-success-bg",
+              detail: "Background check passed",
+            },
+            {
+              name: "Tom Lee",
+              status: "In Progress",
+              statusColor: "text-[#D97706] bg-[#D97706]/10",
+              detail: "Submitted 2 days ago",
+            },
+            {
+              name: "Sarah Adams",
+              status: "Auto-Submitted",
+              statusColor: "text-rf-blue bg-rf-blue-tint",
+              detail: "Just now",
+            },
           ].map((c) => (
             <div
               key={c.name}
@@ -178,7 +190,9 @@ const categories = [
                   {c.detail}
                 </div>
               </div>
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-rf-pill ${c.statusColor}`}>
+              <span
+                className={`text-[9px] font-bold px-2 py-0.5 rounded-rf-pill ${c.statusColor}`}
+              >
                 {c.status}
               </span>
             </div>
@@ -188,85 +202,13 @@ const categories = [
     ),
   },
   {
-    id: "pipeline",
-    label: "Pipeline",
-    color: "bg-rf-blue",
-    title: "Your workspace, your way",
-    description:
-      "Start with a pre-made template that gives you a proven workflow and automations out of the box. Or build your workspace from scratch. Either way, manage every location and role from one dashboard.",
-    features: [
-      {
-        icon: Layers,
-        title: "Templates & Custom Workspaces",
-        description:
-          "Click a template and get a proven hiring workflow with automations ready to go. Or build your own from scratch.",
-      },
-      {
-        icon: LayoutDashboard,
-        title: "Visual Pipeline Dashboard",
-        description:
-          "See every candidate's status at a glance — new, screening, qualified, interview, hired. Drag and drop to move them forward.",
-      },
-      {
-        icon: MapPin,
-        title: "Multi-Location Management",
-        description:
-          "Toggle between locations or see everything at once. One dashboard, one subscription, no per-location upcharges.",
-      },
-      {
-        icon: CalendarClock,
-        title: "Interview Scheduling",
-        description:
-          "One-click scheduling with automatic calendar sync and candidate reminders.",
-      },
-      {
-        icon: CalendarRange,
-        title: "Seasonal Hiring Mode",
-        description:
-          "Ramp up automation before peak season. Wind down when you're staffed. Pause anytime.",
-      },
-    ],
-    visual: (
-      <div className="rounded-rf-xl border border-rf-border bg-rf-surface-page p-5 shadow-rf-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <LayoutDashboard className="h-4 w-4 text-rf-blue" />
-          <span className="text-xs font-bold text-rf-text-primary">
-            Pipeline
-          </span>
-          <span className="text-[10px] font-mono text-rf-text-muted ml-auto">
-            Portland + Seattle
-          </span>
-        </div>
-        <div className="flex gap-3">
-          {[
-            { name: "New", count: 8, color: "bg-rf-blue" },
-            { name: "Screened", count: 5, color: "bg-[#D97706]" },
-            { name: "Interview", count: 3, color: "bg-rf-info" },
-            { name: "Hired", count: 2, color: "bg-[#16A34A]" },
-          ].map((col) => (
-            <div key={col.name} className="flex-1 min-w-0">
-              <div className="flex items-center gap-1 mb-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${col.color}`} />
-                <span className="text-[9px] font-bold text-rf-text-muted uppercase tracking-wider">
-                  {col.name}
-                </span>
-              </div>
-              <div className="text-center py-3 rounded-rf-md bg-rf-surface-card border border-rf-border">
-                <span className="text-lg font-black text-rf-text-primary">{col.count}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "onboarding",
-    label: "Onboarding",
+    id: "training-onboarding",
+    emoji: "🎓",
+    label: "Training & Onboarding",
     color: "bg-[#D97706]",
-    title: "Hire all the way through day one",
+    title: "Agents that take candidates from cleared to route-ready",
     description:
-      "Unlike recruiters who stop at the background check, RouteFlex manages the entire post-hire process. Safety training, road tests, HR paperwork, TSA clearance, and first day scheduling — all in one place.",
+      "Build agents for every post-background-check step — safety training, road tests, HR paperwork, TSA clearance, and Day 1 scheduling. This is the work agencies never touch.",
     features: [
       {
         icon: GraduationCap,
@@ -302,9 +244,9 @@ const categories = [
     visual: (
       <div className="rounded-rf-xl border border-rf-border bg-rf-surface-page p-5 shadow-rf-sm">
         <div className="flex items-center gap-2 mb-4">
-          <ClipboardList className="h-4 w-4 text-[#D97706]" />
+          <span className="text-base">📋</span>
           <span className="text-xs font-bold text-rf-text-primary">
-            Onboarding — Diana Patel
+            HR Agent — Diana Patel
           </span>
         </div>
         <div className="space-y-2">
@@ -319,10 +261,22 @@ const categories = [
               key={item.task}
               className="flex items-center gap-3 rounded-rf-md bg-rf-surface-card border border-rf-border p-3"
             >
-              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${item.done ? "bg-[#16A34A] border-[#16A34A]" : "border-rf-ink-100"}`}>
+              <div
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${item.done ? "bg-[#16A34A] border-[#16A34A]" : "border-rf-ink-100"}`}
+              >
                 {item.done && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-2.5 h-2.5 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 )}
               </div>
@@ -331,9 +285,87 @@ const categories = [
                   {item.task}
                 </div>
               </div>
-              <span className={`text-[9px] font-mono ${item.done ? "text-rf-success" : "text-rf-text-muted"}`}>
+              <span
+                className={`text-[9px] font-mono ${item.done ? "text-rf-success" : "text-rf-text-muted"}`}
+              >
                 {item.status}
               </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "pipeline",
+    emoji: "📊",
+    label: "Pipeline Management",
+    color: "bg-rf-blue",
+    title: "A pipeline agent that keeps everything organized",
+    description:
+      "Build agents to manage your board — archiving stale candidates, syncing statuses, managing multi-location dashboards, and handling seasonal hiring ramps. Your pipeline stays clean without you lifting a finger.",
+    features: [
+      {
+        icon: Layers,
+        title: "Templates & Custom Workspaces",
+        description:
+          "Deploy a pre-built agent team and get a proven workflow out of the box. Or build your own from scratch.",
+      },
+      {
+        icon: LayoutDashboard,
+        title: "Visual Pipeline Dashboard",
+        description:
+          "See every candidate's status at a glance — new, screening, qualified, interview, hired. Drag and drop to move them forward.",
+      },
+      {
+        icon: MapPin,
+        title: "Multi-Location Management",
+        description:
+          "Toggle between locations or see everything at once. One dashboard, one subscription, no per-location upcharges.",
+      },
+      {
+        icon: CalendarClock,
+        title: "Interview Scheduling",
+        description:
+          "One-click scheduling with automatic calendar sync and candidate reminders.",
+      },
+      {
+        icon: CalendarRange,
+        title: "Seasonal Hiring Mode",
+        description:
+          "Ramp up agents before peak season. Wind down when you're staffed. Pause anytime.",
+      },
+    ],
+    visual: (
+      <div className="rounded-rf-xl border border-rf-border bg-rf-surface-page p-5 shadow-rf-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-base">📊</span>
+          <span className="text-xs font-bold text-rf-text-primary">
+            Pipeline Admin
+          </span>
+          <span className="text-[10px] font-mono text-rf-text-muted ml-auto">
+            Portland + Seattle
+          </span>
+        </div>
+        <div className="flex gap-3">
+          {[
+            { name: "New", count: 8, color: "bg-rf-blue" },
+            { name: "Screened", count: 5, color: "bg-[#D97706]" },
+            { name: "Interview", count: 3, color: "bg-rf-info" },
+            { name: "Hired", count: 2, color: "bg-[#16A34A]" },
+          ].map((col) => (
+            <div key={col.name} className="flex-1 min-w-0">
+              <div className="flex items-center gap-1 mb-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${col.color}`} />
+                <span className="text-[9px] font-bold text-rf-text-muted uppercase tracking-wider">
+                  {col.name}
+                </span>
+              </div>
+              <div className="text-center py-3 rounded-rf-md bg-rf-surface-card border border-rf-border">
+                <span className="text-lg font-black text-rf-text-primary">
+                  {col.count}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -345,17 +377,17 @@ const categories = [
 /* ── Workflow step indicator ── */
 function WorkflowNav() {
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-4 mb-4">
-      {categories.map((cat, i) => (
-        <div key={cat.id} className="flex items-center gap-2 sm:gap-4">
+    <div className="flex items-center justify-center gap-2 sm:gap-4 mb-4 flex-wrap">
+      {capabilities.map((cap, i) => (
+        <div key={cap.id} className="flex items-center gap-2 sm:gap-4">
           <a
-            href={`#${cat.id}`}
+            href={`#${cap.id}`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-rf-pill text-xs font-bold uppercase tracking-wide hover:bg-rf-blue-tint hover:text-rf-blue transition-colors text-rf-text-muted"
           >
-            <span className={`w-2 h-2 rounded-full ${cat.color}`} />
-            {cat.label}
+            <span className="text-sm">{cap.emoji}</span>
+            {cap.label}
           </a>
-          {i < categories.length - 1 && (
+          {i < capabilities.length - 1 && (
             <ArrowRight className="h-3 w-3 text-rf-text-muted hidden sm:block" />
           )}
         </div>
@@ -382,12 +414,12 @@ export default function FeaturesPage() {
             Platform
           </p>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-rf-text-primary max-w-3xl mx-auto">
-            From application to first day. One platform.
+            Build agents for every step in your pipeline.
           </h1>
           <p className="text-lg text-rf-text-secondary mt-5 max-w-2xl mx-auto leading-relaxed">
-            AI that screens, communicates, and learns. Deep First Advantage
-            integration. Built-in training. And everything you need to get new
-            hires on the road.
+            Each agent is specialized — screening, background checks, training,
+            onboarding, and more. You decide what they do. They learn how to do
+            it better.
           </p>
 
           <div className="mt-10">
@@ -396,11 +428,11 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Feature categories */}
-      {categories.map((cat, index) => (
+      {/* Capability sections */}
+      {capabilities.map((cap, index) => (
         <section
-          key={cat.id}
-          id={cat.id}
+          key={cap.id}
+          id={cap.id}
           className={`py-16 sm:py-20 scroll-mt-20 ${
             index % 2 === 0
               ? "bg-rf-surface-card border-y border-rf-border"
@@ -416,20 +448,20 @@ export default function FeaturesPage() {
               {/* Text side */}
               <div className={index % 2 !== 0 ? "lg:[direction:ltr]" : ""}>
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-rf-pill bg-rf-blue-tint text-rf-blue mb-4">
-                  <span className={`w-2 h-2 rounded-full ${cat.color}`} />
+                  <span className="text-sm">{cap.emoji}</span>
                   <span className="text-[11px] font-bold uppercase tracking-wide">
-                    {cat.label}
+                    {cap.label}
                   </span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-rf-text-primary mt-1">
-                  {cat.title}
+                  {cap.title}
                 </h2>
                 <p className="text-rf-text-secondary mt-4 leading-relaxed">
-                  {cat.description}
+                  {cap.description}
                 </p>
 
                 <div className="mt-8 space-y-5">
-                  {cat.features.map((feature) => (
+                  {cap.features.map((feature) => (
                     <div key={feature.title} className="flex items-start gap-3">
                       <div className="w-8 h-8 rounded-rf-md bg-rf-blue-tint flex items-center justify-center flex-shrink-0 mt-0.5">
                         <feature.icon className="h-4 w-4 text-rf-blue" />
@@ -453,7 +485,7 @@ export default function FeaturesPage() {
                   index % 2 !== 0 ? "lg:[direction:ltr]" : ""
                 } max-w-md lg:max-w-none mx-auto w-full lg:sticky lg:top-28`}
               >
-                {cat.visual}
+                {cap.visual}
               </div>
             </div>
           </div>
@@ -472,14 +504,14 @@ export default function FeaturesPage() {
         />
         <div className="relative max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            See it in action
+            Ready to build your recruiting team?
           </h2>
           <p className="text-[#9BAABB] mt-4 max-w-xl mx-auto leading-relaxed">
-            Your pipeline. Your candidates. Your control. Start your free trial today.
+            Deploy your first agent team today. No contracts, no recruiter fees.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-10">
             <WaitlistButton className="inline-flex items-center gap-2 text-sm font-bold text-white bg-rf-blue hover:bg-rf-blue-light px-6 py-3.5 rounded-rf-lg transition-all shadow-rf-lg">
-              Start Free Trial
+              Get Early Access
               <ArrowRight className="h-4 w-4" />
             </WaitlistButton>
             <Link

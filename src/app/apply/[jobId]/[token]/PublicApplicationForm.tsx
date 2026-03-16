@@ -136,7 +136,7 @@ type Form = {
 
 // Shared input className — softer borders, refined focus ring, consistent sizing
 const inputCls =
-  "w-full px-3.5 py-2.5 border border-rf-border rounded-lg text-sm text-rf-text-primary placeholder-rf-text-muted bg-rf-surface-card focus:outline-none focus:ring-2 focus:ring-rf-blue/30 focus:border-blue-400 transition-colors";
+  "w-full px-3.5 py-2.5 border border-rf-border rounded-lg text-sm text-rf-text-primary placeholder-rf-text-muted bg-rf-surface-input focus:outline-none focus:ring-2 focus:ring-rf-blue/30 focus:border-blue-400 focus:bg-white transition-colors";
 
 export default function PublicApplicationForm({
   jobId,
