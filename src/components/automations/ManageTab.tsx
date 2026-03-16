@@ -2,7 +2,24 @@
 
 import { type ReactNode, useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { MoreVertical, Trash2, Copy, Pencil, ChevronDown, ChevronRight, Plus, Check, X, UserRound, ArrowRight } from "lucide-react";
+import { MoreVertical, Trash2, Copy, Pencil, ChevronDown, ChevronRight, Plus, Check, X, UserRound, ArrowRight, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   toggleJobAutomation,
   deleteJobAutomation,
@@ -12,6 +29,7 @@ import {
   toggleJobAutomationAgent,
   deleteJobAutomationAgent,
   assignAutomationToAgent,
+  reorderJobAutomationAgents,
 } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import type { AutomationAgent } from "@/app/dashboard/[companyId]/jobs/[jobId]/automations/actions";
 import { createClient } from "@/lib/supabase/client";
@@ -50,6 +68,43 @@ interface ManageTabProps {
   agents: AutomationAgent[];
   onEdit: (automation: Automation) => void;
   onAddTaskForAgent?: (agentId: string) => void;
+}
+
+// ── Sortable wrapper for agent group rows ────────────────────────────────────
+function SortableAgentGroupItem({
+  id,
+  isDraggable,
+  className,
+  children,
+}: {
+  id: string;
+  isDraggable: boolean;
+  className?: string;
+  children: (dragHandleProps: React.HTMLAttributes<HTMLElement>) => ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: !isDraggable });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        zIndex: isDragging ? 50 : undefined,
+      }}
+      className={className}
+    >
+      {children(isDraggable ? { ...attributes, ...listeners } : {})}
+    </div>
+  );
 }
 
 // ── Emoji presets for agent creation ─────────────────────────────────────────
@@ -262,6 +317,32 @@ export function ManageTab({
   // Local automations state for optimistic updates (e.g. move-to-agent)
   const [localAutomations, setLocalAutomations] = useState(automations);
   useEffect(() => { setLocalAutomations(automations); }, [automations]);
+
+  // Local agents state for optimistic drag-to-reorder
+  const [localAgents, setLocalAgents] = useState(agents);
+  useEffect(() => { setLocalAgents(agents); }, [agents]);
+
+  // DnD sensors — require 8px movement before activating (prevents accidental drags)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleAgentDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = localAgents.findIndex((a) => a.id === active.id);
+    const newIndex = localAgents.findIndex((a) => a.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(localAgents, oldIndex, newIndex);
+    setLocalAgents(reordered);
+    try {
+      await reorderJobAutomationAgents(companyId, jobId, reordered.map((a) => a.id));
+    } catch (err: any) {
+      setLocalAgents(localAgents); // revert on error
+      toast.error(err.message);
+    }
+  };
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -450,9 +531,8 @@ export function ManageTab({
   const agentGroups = useMemo(() => {
     const groups: Array<{ agent: AutomationAgent | null; automations: Automation[] }> = [];
 
-    // Named agents first, sorted by sort_order
-    const sortedAgents = [...agents].sort((a, b) => a.sort_order - b.sort_order);
-    for (const agent of sortedAgents) {
+    // Use localAgents order (already sorted / updated by drag-and-drop)
+    for (const agent of localAgents) {
       const agentAutomations = filteredAutomations.filter((a) => a.agent_id === agent.id);
       // Show agent section even if empty (when not searching), hide when searching and empty
       if (agentAutomations.length > 0 || !searchQuery.trim()) {
@@ -467,7 +547,7 @@ export function ManageTab({
     }
 
     return groups;
-  }, [agents, filteredAutomations, searchQuery]);
+  }, [localAgents, filteredAutomations, searchQuery]);
 
   const toggleCollapse = (agentId: string) => {
     setCollapsedAgents((prev) => {
@@ -842,14 +922,30 @@ export function ManageTab({
         </div>
       ) : hasAgents ? (
         /* ── Grouped view ──────────────────────────────────────────────────── */
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleAgentDragEnd}
+        >
+          <SortableContext
+            items={localAgents.map((a) => a.id)}
+            strategy={verticalListSortingStrategy}
+          >
         <div className="space-y-4">
           {agentGroups.map(({ agent, automations: groupAutomations }) => {
             const isUnassigned = !agent;
             const collapseKey = agent ? agent.id : "__unassigned";
             const isCollapsed = collapsedAgents.has(collapseKey);
+            const canDrag = !isUnassigned && !searchQuery.trim();
 
             return (
-              <div key={agent?.id ?? "__unassigned"} className="rounded-lg border border-rf-border">
+              <SortableAgentGroupItem
+                key={agent?.id ?? "__unassigned"}
+                id={agent?.id ?? "__unassigned"}
+                isDraggable={canDrag}
+                className="rounded-lg border border-rf-border"
+              >
+              {(dragHandleProps) => (<>
                 {/* Agent section header */}
                 <div
                   className={`flex items-center gap-3 px-4 py-3 ${
@@ -860,6 +956,17 @@ export function ManageTab({
                         : "bg-rf-ink-100/50"
                   }`}
                 >
+                  {/* Drag handle (named agents only, not while searching) */}
+                  {canDrag && (
+                    <span
+                      {...dragHandleProps}
+                      className="cursor-grab active:cursor-grabbing p-0.5 text-rf-ink-300 hover:text-rf-ink-500 transition-colors touch-none"
+                      title="Drag to reorder"
+                    >
+                      <GripVertical className="w-4 h-4" />
+                    </span>
+                  )}
+
                   {/* Collapse toggle */}
                   <button
                     onClick={() => toggleCollapse(collapseKey)}
@@ -1047,10 +1154,13 @@ export function ManageTab({
                     )}
                   </div>
                 )}
-              </div>
+              </>)}
+              </SortableAgentGroupItem>
             );
           })}
         </div>
+          </SortableContext>
+        </DndContext>
       ) : (
         /* ── Flat view (no agents created yet) ────────────────────────────── */
         <div className="space-y-3">

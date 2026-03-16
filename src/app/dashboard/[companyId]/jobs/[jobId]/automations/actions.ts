@@ -1016,6 +1016,30 @@ export async function deleteJobAutomationAgent(
 }
 
 /**
+ * Reorder agents by updating their sort_order to match the given array order
+ */
+export async function reorderJobAutomationAgents(
+  companyId: string,
+  jobId: string,
+  orderedIds: string[]
+) {
+  const supabase = await createClient();
+
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase
+        .from("automation_agents")
+        .update({ sort_order: index })
+        .eq("id", id)
+        .eq("company_id", companyId)
+        .eq("job_id", jobId)
+    )
+  );
+
+  revalidatePath(jobPath(companyId, jobId));
+}
+
+/**
  * Assign an automation to an agent (or unassign with null)
  */
 export async function assignAutomationToAgent(
