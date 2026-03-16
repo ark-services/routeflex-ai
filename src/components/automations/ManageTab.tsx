@@ -346,7 +346,16 @@ export function ManageTab({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [collapsedAgents, setCollapsedAgents] = useState<Set<string>>(new Set());
+  const collapsedStorageKey = `agents-collapsed-${jobId}`;
+  const [collapsedAgents, setCollapsedAgents] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = localStorage.getItem(`agents-collapsed-${jobId}`);
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [creatingAgent, setCreatingAgent] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentEmoji, setNewAgentEmoji] = useState("👤");
@@ -554,6 +563,9 @@ export function ManageTab({
       const next = new Set(prev);
       if (next.has(agentId)) next.delete(agentId);
       else next.add(agentId);
+      try {
+        localStorage.setItem(collapsedStorageKey, JSON.stringify([...next]));
+      } catch {}
       return next;
     });
   };

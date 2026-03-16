@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { X } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { X, Sparkles, AlertCircle, Loader2 } from "lucide-react";
 import type { Action, Column, Group, FilterCondition, VariableGroup } from "./automations-types";
 import { TEXT_COL_TYPES, slugifyColName } from "./automations-types";
 import { ColumnPicker, LabelPicker, CoursePicker, StatusLabelPicker, GroupPicker, VariablePickerButton } from "./Pickers";
@@ -19,6 +19,7 @@ export function ActionEditor({
   groups,
   lmsCourses,
   companyId,
+  jobId,
   accountId,
   onChange,
   onRemove,
@@ -32,6 +33,7 @@ export function ActionEditor({
   groups: Group[];
   lmsCourses: { id: string; name: string }[];
   companyId: string;
+  jobId?: string;
   accountId: string;
   onChange: (updates: Partial<Action>) => void;
   onRemove: () => void;
@@ -73,6 +75,52 @@ export function ActionEditor({
   const portalMessageRef = useRef<HTMLTextAreaElement>(null);
   const screeningSubjectRef = useRef<HTMLInputElement>(null);
   const screeningMessageRef = useRef<HTMLTextAreaElement>(null);
+
+  // Screening AI panel state
+  const DEFAULT_SCREENING_PROMPT = `Write an email that asks the applicant to complete a short questionnaire related to the job. Include the screening link, "{{screening_link}}" as the main call to action.`;
+  const [screeningAiPanel, setScreeningAiPanel] = useState(false);
+  const [screeningAiPrompt, setScreeningAiPrompt] = useState(DEFAULT_SCREENING_PROMPT);
+  const [screeningAiLoading, setScreeningAiLoading] = useState(false);
+  const [screeningAiError, setScreeningAiError] = useState('');
+  const [screeningHasQuestions, setScreeningHasQuestions] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (action.type !== 'screening.send_link' || !jobId) return;
+    fetch(`/api/screening/check-setup?job_id=${jobId}`)
+      .then((r) => r.json())
+      .then((d) => setScreeningHasQuestions(d.has_questions ?? false))
+      .catch(() => setScreeningHasQuestions(null));
+  }, [action.type, jobId]);
+
+  async function handleScreeningGenerateEmail() {
+    setScreeningAiLoading(true);
+    setScreeningAiError('');
+    try {
+      const response = await fetch('/api/automations/generate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trigger_key: triggerKey ?? '',
+          trigger_config: triggerConfig ?? {},
+          filter_conditions: filterConditions ?? [],
+          columns,
+          user_prompt: screeningAiPrompt,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setScreeningAiError(data.error ?? 'Failed to generate email.');
+        return;
+      }
+      onChange({ config: { ...action.config, custom_subject: data.subject, custom_message: data.body } });
+      setScreeningAiPanel(false);
+      setScreeningAiPrompt(DEFAULT_SCREENING_PROMPT);
+    } catch {
+      setScreeningAiError('Failed to generate email. Please try again.');
+    } finally {
+      setScreeningAiLoading(false);
+    }
+  }
 
   return (
     <div className="border border-emerald-200/80 bg-emerald-50/40 rounded-rf-lg px-5 py-5 shadow-rf-sm">
@@ -734,8 +782,23 @@ export function ActionEditor({
               ? [{ section: "Board columns", items: columns.map((c) => ({ label: c.name, token: `{{col:${slugifyColName(c.name)}}}` })) }]
               : []),
           ];
+          const screeningHref = jobId ? `/dashboard/${companyId}/jobs/${jobId}/screening` : '#';
           return (
             <div className="w-full space-y-3 pt-1">
+              {/* Empty questionnaire warning */}
+              {screeningHasQuestions === false && (
+                <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
+                  <span>
+                    The Screening Questionnaire has no questions yet.{' '}
+                    <a href={screeningHref} className="underline font-medium hover:text-amber-900">
+                      Set it up here
+                    </a>{' '}
+                    — you can still create this automation.
+                  </span>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-rf-ink-700 w-36 shrink-0">Get email from</span>
                 <ColumnPicker
@@ -747,6 +810,69 @@ export function ActionEditor({
               </div>
 
               <div className="space-y-2 pt-1 border-t border-rf-border">
+                {/* Compose header with Generate with AI button */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-rf-text-muted uppercase tracking-wide">Compose</span>
+                  <button
+                    onClick={() => { setScreeningAiPanel(!screeningAiPanel); setScreeningAiError(''); }}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Generate with AI
+                  </button>
+                </div>
+
+                {/* AI Generation Panel */}
+                {screeningAiPanel && (
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-purple-800">Generate email with AI</p>
+                        <p className="text-xs text-purple-600 mt-0.5">
+                          Claude will use your automation&apos;s trigger and conditions as context.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { setScreeningAiPanel(false); setScreeningAiError(''); }}
+                        className="text-purple-400 hover:text-purple-600 transition-colors mt-0.5"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-purple-700 mb-1 block">
+                        Instructions
+                      </label>
+                      <textarea
+                        value={screeningAiPrompt}
+                        onChange={(e) => setScreeningAiPrompt(e.target.value)}
+                        className="w-full px-3 py-2 border border-purple-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-rf-surface-card resize-none"
+                        rows={3}
+                      />
+                    </div>
+
+                    {screeningAiError && (
+                      <div className="flex items-center gap-2 text-xs text-red-600">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        {screeningAiError}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleScreeningGenerateEmail}
+                      disabled={screeningAiLoading}
+                      className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {screeningAiLoading ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" />Generating...</>
+                      ) : (
+                        <><Sparkles className="w-4 h-4" />Generate email</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-start gap-2">
                   <span className="text-sm text-rf-ink-700 w-36 shrink-0 pt-1.5">Email subject</span>
                   <div className="flex-1 min-w-0">

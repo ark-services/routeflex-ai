@@ -84,7 +84,7 @@ export default async function PublicApplicationPage({
               />
             )}
             <h1 className="text-2xl font-bold text-rf-text-primary leading-tight">
-              {form.job_title}
+              {form.title || form.job_title}
             </h1>
           </div>
 

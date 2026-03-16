@@ -622,6 +622,7 @@ export function CreateTab({
                 groups={groups}
                 lmsCourses={lmsCourses}
                 companyId={companyId}
+                jobId={jobId}
                 accountId={accountId}
                 onChange={(updates) => updateAction(index, updates)}
                 onRemove={() => removeAction(index)}

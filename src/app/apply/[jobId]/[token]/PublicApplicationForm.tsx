@@ -69,7 +69,7 @@ function DescriptionCallout({ text }: { text: string }) {
 
   if (!parsed) {
     return (
-      <div className="rounded-xl border border-rf-ink-100 bg-rf-surface-page px-5 py-4">
+      <div className="px-1 py-1">
         <p className="text-sm text-rf-text-secondary leading-relaxed whitespace-pre-line">{renderFormattedText(text)}</p>
       </div>
     );
@@ -77,7 +77,7 @@ function DescriptionCallout({ text }: { text: string }) {
 
   const { title, bullets, footer } = parsed;
   return (
-    <div className="rounded-xl border border-rf-ink-100 bg-rf-surface-page overflow-hidden">
+    <div className="overflow-hidden px-1 py-1">
       {title && (title.length <= 60 ? (
         <div className="flex items-center gap-2 px-5 py-3 border-b border-rf-ink-100">
           <svg
@@ -330,9 +330,12 @@ export default function PublicApplicationForm({
 
       {/* Form description — styled callout with optional bullet parsing */}
       {form.description && (
-        <div className="-mt-2 mb-2">
-          <DescriptionCallout text={form.description} />
-        </div>
+        <>
+          <div className="-mt-2">
+            <DescriptionCallout text={form.description} />
+          </div>
+          <hr className="border-rf-ink-100 mt-6 mb-6" />
+        </>
       )}
 
       {error && (
