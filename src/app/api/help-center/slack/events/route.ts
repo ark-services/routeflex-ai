@@ -24,9 +24,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Slack URL verification challenge
+  // Slack URL verification challenge — must return plain text
   if (body.type === "url_verification") {
-    return NextResponse.json({ challenge: body.challenge });
+    return new NextResponse(body.challenge as string, {
+      status: 200,
+      headers: { "Content-Type": "text/plain" },
+    });
   }
 
   // Verify this is an event callback
