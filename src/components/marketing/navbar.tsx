@@ -9,6 +9,7 @@ import { WaitlistButton } from "@/components/marketing/WaitlistButton";
 const navLinks = [
   { label: "Features", href: "/features" },
   { label: "Pricing", href: "/pricing" },
+  { label: "Help Center", href: "/help-center" },
   { label: "Contact", href: "/contact" },
 ];
 

@@ -8,6 +8,10 @@ const footerLinks = {
     { label: "Pricing", href: "/pricing" },
     { label: "Contact", href: "/contact" },
   ],
+  Support: [
+    { label: "Help Center", href: "/help-center" },
+    { label: "Submit a Ticket", href: "/help-center/tickets" },
+  ],
   Company: [
     { label: "Log in", href: "/login" },
     { label: "Join Waitlist", href: null as string | null },
