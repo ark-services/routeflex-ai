@@ -181,7 +181,7 @@ export function AutomationOverlay({
           {/* Tab Content - Scrollable Area */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {activeTab === "manage" && (
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto min-h-0">
                 <ManageTab
                   key={`manage-${key}`}
                   companyId={companyId}
@@ -196,7 +196,7 @@ export function AutomationOverlay({
             )}
             {activeTab === "create" && (
               <>
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto min-h-0">
                   <CreateTab
                     key={`create-${key}`}
                     companyId={companyId}
@@ -226,7 +226,7 @@ export function AutomationOverlay({
               </>
             )}
             {activeTab === "history" && (
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto min-h-0">
                 <HistoryTab
                   companyId={companyId}
                   jobId={jobId}

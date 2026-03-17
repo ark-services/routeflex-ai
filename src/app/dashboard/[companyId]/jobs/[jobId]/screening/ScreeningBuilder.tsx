@@ -315,6 +315,18 @@ export default function ScreeningBuilder({
             </SortableContext>
           </DndContext>
         )}
+
+        {/* Bottom add button */}
+        {questions.length > 0 && (
+          <button
+            type="button"
+            onClick={handleAddQuestion}
+            className="mt-4 w-full px-3 py-2 text-xs font-medium border border-dashed border-rf-border rounded-lg text-rf-text-muted hover:text-rf-text-primary hover:border-rf-blue/50 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Question
+          </button>
+        )}
       </div>
 
       {/* ── Right: settings panel ── */}

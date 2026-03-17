@@ -203,3 +203,82 @@ export async function addTicketMessage(input: {
 
   return data as HelpTicketMessage;
 }
+
+// ─── Admin operations ────────────────────────────────────────
+
+export async function updateTicketStatus(
+  ticketId: string,
+  status: "open" | "in_progress" | "resolved" | "closed"
+): Promise<{ error: string | null }> {
+  const supabase = createServiceClient();
+
+  const update: Record<string, unknown> = { status };
+  if (status === "resolved" || status === "closed") {
+    update.resolved_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
+    .from("help_tickets")
+    .update(update)
+    .eq("id", ticketId);
+
+  if (error) {
+    console.error("[help-center] Failed to update ticket status:", error.message);
+    return { error: "Failed to update status." };
+  }
+
+  return { error: null };
+}
+
+export async function adminReplyToTicket(input: {
+  ticketId: string;
+  senderName: string;
+  body: string;
+}): Promise<{ message: HelpTicketMessage | null; error: string | null }> {
+  const supabase = createServiceClient();
+
+  const { data: msg, error } = await supabase
+    .from("help_ticket_messages")
+    .insert({
+      ticket_id: input.ticketId,
+      sender_type: "admin",
+      sender_name: input.senderName,
+      body: input.body,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[help-center] Failed to add admin reply:", error.message);
+    return { message: null, error: "Failed to send reply." };
+  }
+
+  // Update status to in_progress if still open
+  await supabase
+    .from("help_tickets")
+    .update({ status: "in_progress" })
+    .eq("id", input.ticketId)
+    .eq("status", "open");
+
+  // Post to Slack thread if connected
+  try {
+    const { data: ticket } = await supabase
+      .from("help_tickets")
+      .select("slack_channel, slack_ts")
+      .eq("id", input.ticketId)
+      .single();
+
+    if (ticket?.slack_channel && ticket?.slack_ts) {
+      const { postReplyToSlack } = await import("./slack");
+      await postReplyToSlack(
+        ticket.slack_channel,
+        ticket.slack_ts,
+        `*${input.senderName}:* ${input.body}`
+      );
+    }
+  } catch (err) {
+    console.error("[help-center] Failed to post admin reply to Slack:", err);
+  }
+
+  return { message: msg as HelpTicketMessage, error: null };
+}

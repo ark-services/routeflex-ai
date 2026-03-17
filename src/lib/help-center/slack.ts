@@ -46,7 +46,7 @@ export async function postTicketToSlack(ticket: {
 
   const helpCenterUrl = process.env.NEXT_PUBLIC_APP_URL || "https://routeflex.com";
 
-  const result = await slackAPI(integration.access_token, "chat.postMessage", {
+  const messagePayload = {
     channel: integration.channel_id,
     blocks: [
       {
@@ -82,7 +82,21 @@ export async function postTicketToSlack(ticket: {
       },
     ],
     text: `New support ticket #${ticket.ticket_number}: ${ticket.subject}`,
-  });
+  };
+
+  let result = await slackAPI(integration.access_token, "chat.postMessage", messagePayload);
+
+  // If bot isn't in the channel, join it and retry
+  if (!result.ok && result.error === "not_in_channel") {
+    const joinResult = await slackAPI(integration.access_token, "conversations.join", {
+      channel: integration.channel_id,
+    });
+    if (joinResult.ok) {
+      result = await slackAPI(integration.access_token, "chat.postMessage", messagePayload);
+    } else {
+      console.error("[help-center/slack] Failed to join channel:", joinResult.error);
+    }
+  }
 
   if (result.ok && result.channel && result.ts) {
     return {

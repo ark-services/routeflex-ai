@@ -55,6 +55,12 @@ export default async function SuperAdminLayout({
           >
             Waitlist
           </Link>
+          <Link
+            href="/super-admin/help-center"
+            className="text-sm text-rf-ink-500 hover:text-rf-text-primary transition-colors"
+          >
+            Help Center
+          </Link>
         </nav>
         <div className="ml-auto">
           <Link
