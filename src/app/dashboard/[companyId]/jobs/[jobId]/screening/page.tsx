@@ -86,6 +86,7 @@ export default async function ScreeningPage({
         <ScreeningBuilder
           companyId={companyId}
           jobId={jobId}
+          jobTitle={job.title}
           config={config ? {
             id: config.id,
             deadline_hours: config.deadline_hours,

@@ -40,6 +40,7 @@ type Config = {
 type Props = {
   companyId: string;
   jobId: string;
+  jobTitle: string;
   config: Config | null;
   initialQuestions: QuestionData[];
   templates: Template[];
@@ -48,13 +49,19 @@ type Props = {
 function SortableQuestion({
   question,
   index,
+  jobTitle,
+  enhancingId,
   onUpdate,
   onDelete,
+  onEnhance,
 }: {
   question: QuestionData;
   index: number;
+  jobTitle: string;
+  enhancingId: string | null;
   onUpdate: (id: string, changes: Partial<QuestionData>) => void;
   onDelete: (id: string) => void;
+  onEnhance: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: question.id });
@@ -70,9 +77,12 @@ function SortableQuestion({
       <QuestionCard
         question={question}
         index={index}
+        jobTitle={jobTitle}
+        isEnhancing={enhancingId === question.id}
         dragHandleProps={{ ...attributes, ...listeners }}
         onUpdate={onUpdate}
         onDelete={onDelete}
+        onEnhance={onEnhance}
       />
     </div>
   );
@@ -81,6 +91,7 @@ function SortableQuestion({
 export default function ScreeningBuilder({
   companyId,
   jobId,
+  jobTitle,
   config: initialConfig,
   initialQuestions,
   templates,
@@ -92,6 +103,7 @@ export default function ScreeningBuilder({
   const [saving, setSaving] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [enhancingId, setEnhancingId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -155,6 +167,42 @@ export default function ScreeningBuilder({
       deleteQuestion(id, jobId, companyId).catch(console.error);
     },
     [jobId, companyId]
+  );
+
+  const handleEnhanceQuestion = useCallback(
+    async (id: string) => {
+      const question = questions.find((q) => q.id === id);
+      if (!question || enhancingId) return;
+      setEnhancingId(id);
+      try {
+        const res = await fetch("/api/screening/enhance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, jobTitle }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          console.error("[enhance] failed:", errData.error);
+          return;
+        }
+        const { question: enhanced } = await res.json();
+        if (enhanced) {
+          const changes: Partial<QuestionData> = {};
+          if (enhanced.text && enhanced.text !== question.text) changes.text = enhanced.text;
+          if (enhanced.options !== undefined) changes.options = enhanced.options;
+          if (enhanced.ai_scoring_guidance !== undefined)
+            changes.ai_scoring_guidance = enhanced.ai_scoring_guidance;
+          if (Object.keys(changes).length > 0) {
+            handleUpdateQuestion(id, changes);
+          }
+        }
+      } catch (err) {
+        console.error("[enhance] error:", err);
+      } finally {
+        setEnhancingId(null);
+      }
+    },
+    [questions, enhancingId, jobTitle, handleUpdateQuestion]
   );
 
   function handleDragEnd(event: DragEndEvent) {
@@ -256,8 +304,11 @@ export default function ScreeningBuilder({
                     key={q.id}
                     question={q}
                     index={i}
+                    jobTitle={jobTitle}
+                    enhancingId={enhancingId}
                     onUpdate={handleUpdateQuestion}
                     onDelete={handleDeleteQuestion}
+                    onEnhance={handleEnhanceQuestion}
                   />
                 ))}
               </div>

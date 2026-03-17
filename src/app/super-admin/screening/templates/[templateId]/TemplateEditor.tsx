@@ -61,9 +61,12 @@ function SortableQuestion({
       <QuestionCard
         question={question}
         index={index}
+        jobTitle=""
+        isEnhancing={false}
         dragHandleProps={{ ...attributes, ...listeners }}
         onUpdate={onUpdate}
         onDelete={onDelete}
+        onEnhance={() => {}}
       />
     </div>
   );

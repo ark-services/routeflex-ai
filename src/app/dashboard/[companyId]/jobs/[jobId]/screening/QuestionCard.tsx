@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, GripVertical, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { Trash2, GripVertical, ChevronDown, ChevronUp, Plus, X, Sparkles, Loader2 } from "lucide-react";
 
 type QuestionOption = { id: string; label: string };
 
@@ -19,9 +19,12 @@ export type QuestionData = {
 type Props = {
   question: QuestionData;
   index: number;
+  jobTitle: string;
+  isEnhancing: boolean;
   dragHandleProps?: Record<string, any>;
   onUpdate: (id: string, changes: Partial<QuestionData>) => void;
   onDelete: (id: string) => void;
+  onEnhance: (id: string) => void;
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -34,9 +37,12 @@ const TYPE_LABELS: Record<string, string> = {
 export default function QuestionCard({
   question,
   index,
+  jobTitle,
+  isEnhancing,
   dragHandleProps,
   onUpdate,
   onDelete,
+  onEnhance,
 }: Props) {
   const [expanded, setExpanded] = useState(true);
   const [newOptionLabel, setNewOptionLabel] = useState("");
@@ -66,7 +72,7 @@ export default function QuestionCard({
       : "";
 
   return (
-    <div className="bg-rf-surface-card border border-rf-border rounded-lg overflow-hidden">
+    <div className="group bg-rf-surface-card border border-rf-border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3">
         <div
@@ -99,6 +105,19 @@ export default function QuestionCard({
             <ChevronUp className="h-4 w-4" />
           ) : (
             <ChevronDown className="h-4 w-4" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => onEnhance(question.id)}
+          disabled={isEnhancing}
+          title="Enhance with AI"
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-rf-text-muted hover:text-rf-blue flex-shrink-0 disabled:opacity-50"
+        >
+          {isEnhancing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
           )}
         </button>
         <button
