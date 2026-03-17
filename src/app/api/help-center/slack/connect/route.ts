@@ -8,18 +8,18 @@ import { NextResponse } from "next/server";
  *   chat:write       — post messages to channels
  *   channels:join    — auto-join public channels (avoids "not_in_channel" errors)
  *   channels:read    — read channel info
- *   users:info       — fetch user display names for reply attribution
+ *   users:read       — fetch user display names for reply attribution
  */
 export async function GET() {
   const clientId = process.env.SLACK_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://routeflex.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://routeflex.ai";
 
   if (!clientId) {
     return NextResponse.json({ error: "SLACK_CLIENT_ID not configured" }, { status: 500 });
   }
 
   const redirectUri = `${appUrl}/api/help-center/slack/oauth`;
-  const scopes = ["chat:write", "channels:join", "channels:read", "users:info"].join(",");
+  const scopes = ["chat:write", "channels:join", "channels:read", "users:read"].join(",");
 
   const url = new URL("https://slack.com/oauth/v2/authorize");
   url.searchParams.set("client_id", clientId);
