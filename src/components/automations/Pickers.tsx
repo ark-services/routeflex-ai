@@ -79,7 +79,7 @@ export function ColumnPicker({
                   close();
                 }
               }}
-              placeholder="Search columns\u2026"
+              placeholder="Search columns…"
               className="w-full text-sm outline-none bg-transparent text-rf-ink-900 placeholder-rf-text-muted"
             />
           </div>

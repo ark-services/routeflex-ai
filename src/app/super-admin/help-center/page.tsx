@@ -1,6 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { getSlackChannels } from "@/lib/help-center/actions";
+import { SlackChannelPicker } from "@/components/help-center/SlackChannelPicker";
 
 export default async function HelpCenterAdminPage() {
   const supabase = createServiceClient();
@@ -19,6 +21,8 @@ export default async function HelpCenterAdminPage() {
     .from("help_tickets")
     .select("*", { count: "exact", head: true })
     .eq("status", "open");
+
+  const slackChannels = integration ? await getSlackChannels() : [];
 
   return (
     <div className="space-y-8">
@@ -79,10 +83,13 @@ export default async function HelpCenterAdminPage() {
               <dt className="text-rf-text-secondary w-24 shrink-0">Workspace:</dt>
               <dd className="text-rf-text-primary font-medium">{integration.team_name || "—"}</dd>
             </div>
-            <div className="flex gap-2">
-              <dt className="text-rf-text-secondary w-24 shrink-0">Channel:</dt>
-              <dd className="text-rf-text-primary font-medium">
-                {integration.channel_name ? `#${integration.channel_name}` : integration.channel_id}
+            <div className="flex gap-2 items-start">
+              <dt className="text-rf-text-secondary w-24 shrink-0 pt-1.5">Channel:</dt>
+              <dd>
+                <SlackChannelPicker
+                  channels={slackChannels}
+                  currentChannelId={integration.channel_id ?? ""}
+                />
               </dd>
             </div>
           </dl>
@@ -109,7 +116,7 @@ export default async function HelpCenterAdminPage() {
               <code className="font-mono">chat:write</code>,{" "}
               <code className="font-mono">channels:join</code>,{" "}
               <code className="font-mono">channels:read</code>,{" "}
-              <code className="font-mono">users:info</code>
+              <code className="font-mono">users:read</code>
               <br />
               If notifications are not working, make sure these scopes are added in your{" "}
               <a

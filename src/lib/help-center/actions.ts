@@ -2,7 +2,7 @@
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
-import { postTicketToSlack } from "./slack";
+import { postTicketToSlack, fetchSlackChannels } from "./slack";
 import type {
   HelpCategory,
   HelpArticle,
@@ -202,6 +202,32 @@ export async function addTicketMessage(input: {
   }
 
   return data as HelpTicketMessage;
+}
+
+// ─── Slack channel management ────────────────────────────────
+
+export async function getSlackChannels(): Promise<{ id: string; name: string }[]> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("help_slack_integration")
+    .select("access_token")
+    .limit(1)
+    .single();
+  if (!data?.access_token) return [];
+  return fetchSlackChannels(data.access_token);
+}
+
+export async function setSlackChannel(
+  channelId: string,
+  channelName: string
+): Promise<{ error: string | null }> {
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from("help_slack_integration")
+    .update({ channel_id: channelId, channel_name: channelName })
+    .not("team_id", "is", null);
+  if (error) return { error: error.message };
+  return { error: null };
 }
 
 // ─── Admin operations ────────────────────────────────────────

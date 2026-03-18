@@ -567,7 +567,7 @@ async function evaluateCondition(
           if (type.startsWith('status_') && fv.value_text) {
             // Resolve plain-text answer → status label ID (same as board page.tsx does)
             const { data: label } = await supabase
-              .from('board_column_labels')
+              .from('board_status_labels')
               .select('id')
               .eq('column_id', column_id)
               .ilike('label', fv.value_text)

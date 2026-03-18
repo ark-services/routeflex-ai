@@ -10,6 +10,17 @@ import {
   Trash2,
   Archive,
   Mail,
+  Type,
+  Phone,
+  Hash,
+  Calendar,
+  MapPin,
+  Paperclip,
+  ToggleLeft,
+  CheckSquare,
+  Package,
+  Building2,
+  Briefcase,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -2267,76 +2278,112 @@ export default function ApplicantsBoard({
         </div>
 
         {/* Add Column Modal */}
-        {showAddColumnModal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
-            <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-xl border border-rf-border bg-rf-surface-card p-5 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-semibold text-rf-text-primary">Add Column</h3>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-rf-ink-700">Column name</label>
-                  <input
-                    value={newColumnName}
-                    onChange={(e) => {
-                      setNewColumnName(e.target.value);
-                      setAddColumnError(null);
-                    }}
-                    placeholder="e.g. Interview Score"
-                    className="mt-1 h-11 w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 text-base outline-none focus:border-rf-ink-300"
-                    autoFocus
-                  />
-                  {addColumnError && (
-                    <p className="mt-1.5 text-xs text-rf-danger">{addColumnError}</p>
-                  )}
+        {showAddColumnModal && (() => {
+          const ESSENTIAL_COLUMN_TYPES = [
+            { value: "text",     label: "Text",     icon: Type        },
+            { value: "email",    label: "Email",    icon: Mail        },
+            { value: "phone",    label: "Phone",    icon: Phone       },
+            { value: "number",   label: "Number",   icon: Hash        },
+            { value: "date",     label: "Date",     icon: Calendar    },
+            { value: "location", label: "Location", icon: MapPin      },
+            { value: "file",     label: "File",     icon: Paperclip   },
+            { value: "status",   label: "Status",   icon: ToggleLeft  },
+            { value: "checkbox", label: "Checkbox", icon: CheckSquare },
+          ] as const;
+          const FADV_COLUMN_TYPES = [
+            { value: "fadv.package",      label: "Package",     icon: Package   },
+            { value: "fadv.facility_id",  label: "Facility ID", icon: Building2 },
+            { value: "fadv.position_type",label: "Position",    icon: Briefcase },
+          ] as const;
+          return (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-0 sm:p-4">
+              <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-xl border border-rf-border bg-rf-surface-card shadow-xl max-h-[90vh] flex flex-col">
+                {/* Header */}
+                <div className="px-5 pt-5 pb-4 border-b border-rf-border flex-shrink-0">
+                  <h3 className="text-lg font-semibold text-rf-text-primary">Add Column</h3>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-rf-ink-700">Column type</label>
-                  <select
-                    value={newColumnType}
-                    onChange={(e) => setNewColumnType(e.target.value as any)}
-                    className="mt-1 h-11 w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 text-base outline-none focus:border-rf-ink-300"
+
+                {/* Scrollable body */}
+                <div className="overflow-y-auto flex-1 p-5 space-y-5">
+                  {/* Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-1.5">Column name</label>
+                    <input
+                      value={newColumnName}
+                      onChange={(e) => { setNewColumnName(e.target.value); setAddColumnError(null); }}
+                      placeholder="e.g. Interview Score"
+                      className="h-11 w-full rounded-lg border border-rf-border bg-rf-surface-card px-3 text-base outline-none focus:border-rf-blue focus:ring-2 focus:ring-rf-blue/10 transition-shadow"
+                      autoFocus
+                    />
+                    {addColumnError && <p className="mt-1.5 text-xs text-rf-danger">{addColumnError}</p>}
+                  </div>
+
+                  {/* Type grid */}
+                  <div>
+                    <label className="block text-sm font-medium text-rf-ink-700 mb-3">Column type</label>
+
+                    <p className="text-[11px] font-bold text-rf-ink-400 uppercase tracking-widest mb-2">Essentials</p>
+                    <div className="grid grid-cols-3 gap-1.5 mb-4">
+                      {ESSENTIAL_COLUMN_TYPES.map(({ value, label, icon: Icon }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setNewColumnType(value as any)}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all text-left ${
+                            newColumnType === value
+                              ? "border-rf-blue bg-rf-blue/5 text-rf-blue"
+                              : "border-rf-border bg-rf-surface-page text-rf-ink-700 hover:border-rf-ink-200 hover:bg-rf-surface-card"
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${newColumnType === value ? "text-rf-blue" : "text-rf-ink-400"}`} />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] font-bold text-rf-ink-400 uppercase tracking-widest mb-2">First Advantage (FADV)</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {FADV_COLUMN_TYPES.map(({ value, label, icon: Icon }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setNewColumnType(value as any)}
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all text-left ${
+                            newColumnType === value
+                              ? "border-rf-blue bg-rf-blue/5 text-rf-blue"
+                              : "border-rf-border bg-rf-surface-page text-rf-ink-700 hover:border-rf-ink-200 hover:bg-rf-surface-card"
+                          }`}
+                        >
+                          <Icon className={`w-4 h-4 flex-shrink-0 ${newColumnType === value ? "text-rf-blue" : "text-rf-ink-400"}`} />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-5 py-4 border-t border-rf-border flex-shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddColumnModal(false); setNewColumnName(""); setNewColumnType("text"); setAddColumnError(null); setAddAfterColumnId(null); }}
+                    className="h-10 rounded-lg border border-rf-border px-4 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page w-full sm:w-auto"
                   >
-                    <option value="text">Text</option>
-                    <option value="email">Email</option>
-                    <option value="phone">Phone</option>
-                    <option value="number">Number</option>
-                    <option value="date">Date</option>
-                    <option value="location">Location</option>
-                    <option value="file">File</option>
-                    <option value="status">Status</option>
-                    <option value="checkbox">Checkbox</option>
-                    <optgroup label="First Advantage (FADV)">
-                      <option value="fadv.package">FADV: Package</option>
-                      <option value="fadv.location">FADV: Location</option>
-                      <option value="fadv.facility_id">FADV: Facility ID</option>
-                      <option value="fadv.position_type">FADV: Position Type</option>
-                    </optgroup>
-                  </select>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onAddColumn}
+                    disabled={isPending || !newColumnName.trim()}
+                    className="h-10 rounded-lg bg-rf-blue px-5 text-sm font-medium text-white hover:bg-rf-blue-dark disabled:opacity-60 w-full sm:w-auto"
+                  >
+                    Add column
+                  </button>
                 </div>
-              </div>
-              <div className="mt-6 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setShowAddColumnModal(false);
-                    setNewColumnName("");
-                    setNewColumnType("text");
-                    setAddColumnError(null);
-                    setAddAfterColumnId(null);
-                  }}
-                  className="h-11 rounded-lg border border-rf-border bg-rf-surface-card px-4 text-sm font-medium text-rf-ink-700 hover:bg-rf-surface-page w-full sm:w-auto"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={onAddColumn}
-                  disabled={isPending || !newColumnName.trim()}
-                  className="h-11 rounded-lg bg-rf-ink-900 px-4 text-sm font-medium text-white hover:bg-rf-ink-700 disabled:opacity-60 w-full sm:w-auto"
-                >
-                  Add
-                </button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Board Default Values Modal */}
         {showDefaultValues && (

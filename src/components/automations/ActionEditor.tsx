@@ -326,7 +326,7 @@ export function ActionEditor({
               }
               className="px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium"
             >
-              <option value="">choose field\u2026</option>
+              <option value="">Select a field…</option>
               {FADV_FIELD_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -340,7 +340,7 @@ export function ActionEditor({
               onChange={(e) =>
                 onChange({ config: { ...action.config, value: e.target.value } })
               }
-              placeholder="value\u2026"
+              placeholder="Enter value…"
               className="px-2 py-0.5 text-sm border border-rf-blue-tint rounded bg-rf-surface-card text-rf-blue font-medium min-w-[120px]"
             />
           </>

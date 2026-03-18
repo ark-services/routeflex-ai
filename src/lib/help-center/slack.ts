@@ -44,7 +44,7 @@ export async function postTicketToSlack(ticket: {
   const integration = await getSlackIntegration();
   if (!integration) return null;
 
-  const helpCenterUrl = process.env.NEXT_PUBLIC_APP_URL || "https://routeflex.com";
+  const helpCenterUrl = process.env.NEXT_PUBLIC_APP_URL || "https://routeflex.ai";
 
   const messagePayload = {
     channel: integration.channel_id,
@@ -122,6 +122,21 @@ export async function postReplyToSlack(
     thread_ts: threadTs,
     text,
   });
+}
+
+export async function fetchSlackChannels(
+  accessToken: string
+): Promise<{ id: string; name: string }[]> {
+  const res = await fetch(
+    "https://slack.com/api/conversations.list?exclude_archived=true&types=public_channel,private_channel&limit=200",
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  const data = (await res.json()) as {
+    ok: boolean;
+    channels?: { id: string; name: string }[];
+  };
+  if (!data.ok) return [];
+  return (data.channels ?? []).map((c) => ({ id: c.id, name: c.name }));
 }
 
 export { getSlackIntegration };

@@ -179,7 +179,7 @@ export function AutomationOverlay({
           </div>
 
           {/* Tab Content - Scrollable Area */}
-          <div className="flex-1 flex min-h-0 overflow-hidden">
+          <div className="flex-1 flex min-h-0">
             {activeTab === "manage" && (
               <div className="flex-1 overflow-y-auto min-h-0">
                 <ManageTab

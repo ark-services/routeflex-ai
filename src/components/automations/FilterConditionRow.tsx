@@ -95,7 +95,7 @@ export function FilterConditionRow({
           type="text"
           value={typeof condition.value === "string" ? condition.value : ""}
           onChange={(e) => onChange({ value: e.target.value })}
-          placeholder="value\u2026"
+          placeholder="Enter value…"
           className="text-sm border border-rf-border rounded-lg px-2.5 py-1.5 bg-rf-surface-card min-w-[120px] focus:outline-none focus:ring-1 focus:ring-rf-blue"
         />
       )}
