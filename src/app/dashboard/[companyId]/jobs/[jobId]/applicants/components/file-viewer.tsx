@@ -89,6 +89,7 @@ export function FileViewer({
   const [signedUrls, setSignedUrls] = useState<Record<string, string | null>>({});
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [slideDir, setSlideDir] = useState<"left" | "right" | null>(null);
   const [animating, setAnimating] = useState(false);
 
@@ -117,6 +118,7 @@ export function FileViewer({
   useEffect(() => {
     if (!current) return;
     setZoom(1);
+    setRotation(0);
     fetchSignedUrl(current);
     if (files[index + 1]) fetchSignedUrl(files[index + 1]);
     if (files[index - 1]) fetchSignedUrl(files[index - 1]);
@@ -148,6 +150,7 @@ export function FileViewer({
       if (e.key === "+" || e.key === "=") setZoom((z) => Math.min(4, z + 0.25));
       if (e.key === "-") setZoom((z) => Math.max(0.25, z - 0.25));
       if (e.key === "0") setZoom(1);
+      if (e.key === "r" || e.key === "R") setRotation((r) => (r + 90) % 360);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -308,6 +311,16 @@ export function FileViewer({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                     </svg>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setRotation((r) => (r + 90) % 360)}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/8 hover:text-white/90"
+                    title="Rotate (R)"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
                   <div className="mx-1.5 h-4 w-px" style={{ background: "rgba(255,255,255,0.08)" }} />
                 </>
               )}
@@ -401,25 +414,25 @@ export function FileViewer({
               ) : isImage ? (
                 /* Image viewer */
                 <div
-                  className="overflow-auto rounded-lg"
-                  style={{ maxHeight: "100%", maxWidth: "100%", cursor: zoom > 1 ? "move" : "default" }}
+                  className="overflow-auto"
+                  style={{ height: "calc(92vh - 140px)", display: "flex", alignItems: "center", justifyContent: "center", cursor: zoom > 1 ? "move" : "default" }}
                 >
                   <img
                     src={url}
                     alt={current?.name}
                     style={{
-                      transform: `scale(${zoom})`,
+                      transform: `scale(${zoom}) rotate(${rotation}deg)`,
                       transformOrigin: "center",
                       transition: "transform 0.15s cubic-bezier(0.16,1,0.3,1)",
                       display: "block",
-                      maxHeight: "calc(92vh - 140px)",
+                      height: "calc(92vh - 140px)",
+                      width: "auto",
                       maxWidth: "100%",
                       objectFit: "contain",
                       borderRadius: "8px",
                       boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
                     }}
                     onError={(e) => {
-                      // If img fails to load with signed URL, show fallback
                       (e.currentTarget as HTMLImageElement).style.display = "none";
                     }}
                   />

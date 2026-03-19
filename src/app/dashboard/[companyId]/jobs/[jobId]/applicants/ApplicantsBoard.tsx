@@ -946,6 +946,18 @@ export default function ApplicantsBoard({
     setSelected({});
   }
 
+  // Escape key clears selection (only when no dialog is open)
+  useEffect(() => {
+    if (Object.keys(selected).length === 0) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (showMassEmail || showAddColumnModal || deleteGroupModalOpen) return;
+      clearSelection();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [selected, showMassEmail, showAddColumnModal, deleteGroupModalOpen]);
+
   async function onBulkDelete() {
     if (selectedIds.length === 0) return;
     const ok = await confirm({
